@@ -216,3 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Coding agent local state (puede guardar credenciales/tokens)
+.claude/settings.local.json
+
+# Uploads locales de documentos (MVP)
+uploads/
+mia.db
