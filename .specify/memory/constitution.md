@@ -1,20 +1,3 @@
-<!--
-Sync Impact Report
-Version change: (template sin ratificar) → 1.0.0
-Modified principles: ninguno (primera ratificación)
-Added sections:
-  - Core Principles: I. Almacenamiento y Consulta Desacoplados (Multi-Artefacto)
-  - Core Principles: II. Pipeline Modular e Intercambiable
-  - Core Principles: III. Independencia de Proveedor de LLM y Embeddings
-  - Core Principles: IV. Extensibilidad de Dominios Sin Fricción Operativa
-  - Core Principles: V. Trazabilidad de Respuestas
-  - Restricciones Técnicas y de Datos Sensibles
-  - Alcance Incremental y Documentación Viva
-  - Governance
-Removed sections: ninguno
-Deferred TODOs: ninguno
--->
-
 # MIA Constitution
 
 ## Core Principles
@@ -43,17 +26,25 @@ Rationale: requisito técnico explícito desde la definición conceptual origina
 pipeline sin que interfiera con el resto del producto"), ya materializado en el patrón interfaz más
 factory de `DocumentLoader`, `EmbeddingProvider`, `LLMProvider` y `VectorStore`.
 
-### III. Independencia de Proveedor de LLM y Embeddings
+### III. Independencia de Proveedor de LLM
 
-El sistema DEBE poder operar tanto con modelos locales o auto-hospedados como con proveedores
-comerciales por API key, seleccionable por configuración y sin cambios de código. Ninguna decisión
-de arquitectura puede asumir de forma permanente que el LLM o los embeddings correrán en un
-proveedor específico.
+El sistema DEBE poder operar tanto con un LLM local o auto-hospedado como con uno comercial por API
+key, seleccionable por configuración y sin cambios de código. Ninguna decisión de arquitectura puede
+asumir de forma permanente que el LLM correrá en un proveedor específico.
+
+Los embeddings quedan exceptuados de esta exigencia de simetría: a diferencia del LLM, no tienen
+costo variable por uso, no envían contenido institucional a un tercero, y su latencia es
+insignificante frente a la del LLM incluso cuando corren en cada consulta (para embeber la
+pregunta, no solo al ingerir documentos). Un proveedor de embeddings local puede ser, por lo tanto,
+una decisión de arquitectura permanente y no solo una limitación temporal. La interfaz intercambiable
+de embeddings (Principio II) se mantiene por si el criterio cambia, pero no se exige que exista una
+implementación comercial de embeddings funcionando en paralelo a la local.
 
 Rationale: mientras no se disponga de hardware propio para correr modelos localmente, el proyecto
-depende de proveedores comerciales por suscripción. La meta declarada es migrar a modelos locales
-cuando sea viable, para reducir costo y dependencia externa; bloquear la arquitectura a un solo
-proveedor comprometería esa meta.
+depende de un proveedor comercial de LLM por suscripción. La meta declarada es migrar el LLM a un
+modelo local cuando sea viable, para reducir costo y dependencia externa; bloquear la arquitectura a
+un solo proveedor de LLM comprometería esa meta. Los embeddings no comparten ese riesgo de costo o
+dependencia, exigirles la misma simetría sería una restricción sin beneficio real.
 
 ### IV. Extensibilidad de Dominios Sin Fricción Operativa
 
@@ -107,4 +98,4 @@ eliminación o redefinición incompatible de un principio, MINOR para un princip
 PATCH para aclaraciones de redacción. Usar `CLAUDE.md` para guía operativa de desarrollo del día a
 día que no altere estos principios.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-26 | **Last Amended**: 2026-09-26
+**Version**: 1.1.0 | **Ratified**: 2026-09-26 | **Last Amended**: 2026-09-26
