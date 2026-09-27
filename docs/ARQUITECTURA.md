@@ -58,8 +58,3 @@ Detalle completo de esta feature en `specs/001-pipeline-ingesta-rag/` (spec, pla
 
 - **Desarrollo local:** `docker-compose.yml` levanta Qdrant local + la API con hot-reload.
 - **Demo compartida / producción:** `render.yaml` (Blueprint de Render) despliega la API; Qdrant corre en Qdrant Cloud (clúster free tier, región N. Virginia en AWS). La API se conecta a uno u otro solo cambiando `QDRANT_URL`/`QDRANT_API_KEY` en `.env` (local) o en las variables de entorno de Render (producción): el código no cambia.
-
-## Convenciones del proyecto
-
-- Documentación, nombres de dominio/conceptos y mensajes de commit en español (el resto del proyecto, incluida la definición conceptual original, está en español).
-- No usar guión largo (—) en ningún documento o texto generado para este proyecto (ver CLAUDE.md).
