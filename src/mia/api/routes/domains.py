@@ -2,17 +2,16 @@ import hashlib
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from mia.ingestion.pipeline import UPLOAD_DIR, ingest_document
 from mia.storage.db import get_session
 from mia.storage.models import Document, Domain
 
 router = APIRouter(tags=["domains"])
-
-UPLOAD_DIR = Path("uploads")
 
 
 class DomainCreate(BaseModel):
@@ -53,7 +52,10 @@ def list_domains(session: Session = Depends(get_session)) -> list[Domain]:
 
 @router.post("/domains/{domain_id}/documents", response_model=DocumentOut)
 def upload_document(
-    domain_id: str, file: UploadFile, session: Session = Depends(get_session)
+    domain_id: str,
+    file: UploadFile,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
 ) -> Document:
     domain = session.get(Domain, domain_id)
     if domain is None:
@@ -88,6 +90,9 @@ def upload_document(
     session.add(document)
     session.commit()
     session.refresh(document)
+
+    background_tasks.add_task(ingest_document, document.id)
+
     return document
 
 

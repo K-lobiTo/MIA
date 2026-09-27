@@ -1,7 +1,16 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from functools import lru_cache
 
 from qdrant_client import QdrantClient
+from qdrant_client.models import (
+    Distance,
+    FieldCondition,
+    Filter,
+    MatchAny,
+    PointStruct,
+    VectorParams,
+)
 
 
 @dataclass
@@ -25,6 +34,9 @@ class SearchResult:
 
 class VectorStore(ABC):
     @abstractmethod
+    def ensure_collection(self, vector_size: int) -> None: ...
+
+    @abstractmethod
     def upsert(self, chunks: list[Chunk]) -> None: ...
 
     @abstractmethod
@@ -41,15 +53,51 @@ class QdrantVectorStore(VectorStore):
         self.collection = collection
         self.client = QdrantClient(url=url, api_key=api_key or None)
 
+    def ensure_collection(self, vector_size: int) -> None:
+        if not self.client.collection_exists(self.collection):
+            self.client.create_collection(
+                collection_name=self.collection,
+                vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+            )
+
     def upsert(self, chunks: list[Chunk]) -> None:
-        raise NotImplementedError
+        points = [
+            PointStruct(
+                id=chunk.id,
+                vector=chunk.embedding,
+                payload={
+                    "document_id": chunk.document_id,
+                    "domain": chunk.domain,
+                    "text": chunk.text,
+                    "chunk_index": chunk.chunk_index,
+                },
+            )
+            for chunk in chunks
+        ]
+        self.client.upsert(collection_name=self.collection, points=points)
 
     def search(
         self, query_embedding: list[float], domains: list[str], limit: int = 5
     ) -> list[SearchResult]:
-        raise NotImplementedError
+        response = self.client.query_points(
+            collection_name=self.collection,
+            query=query_embedding,
+            query_filter=Filter(must=[FieldCondition(key="domain", match=MatchAny(any=domains))]),
+            limit=limit,
+        )
+        return [
+            SearchResult(
+                chunk_id=str(point.id),
+                document_id=point.payload["document_id"],
+                domain=point.payload["domain"],
+                text=point.payload["text"],
+                score=point.score,
+            )
+            for point in response.points
+        ]
 
 
+@lru_cache
 def get_vector_store() -> VectorStore:
     from mia.config import settings
 

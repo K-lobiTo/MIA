@@ -13,6 +13,14 @@ class Settings(BaseSettings):
     embedding_provider: str = "local"
     llm_provider: str = "local"
 
+    anthropic_api_key: str = ""
+    anthropic_effort: str = "medium"
+
+    gemini_api_key: str = ""
+
+    query_similarity_threshold: float = 0.8
+    query_search_limit: int = 5
+
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 

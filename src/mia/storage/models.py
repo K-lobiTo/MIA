@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -15,7 +15,7 @@ class Domain(Base):
     name: Mapped[str] = mapped_column(String, unique=True)
     description: Mapped[str] = mapped_column(String, default="")
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
+        DateTime, default=lambda: datetime.now(UTC)
     )
 
     documents: Mapped[list["Document"]] = relationship(back_populates="domain")
@@ -31,7 +31,7 @@ class Document(Base):
     file_hash: Mapped[str] = mapped_column(String, index=True)
     status: Mapped[str] = mapped_column(String, default="pending")
     uploaded_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
+        DateTime, default=lambda: datetime.now(UTC)
     )
 
     domain: Mapped[Domain] = relationship(back_populates="documents")

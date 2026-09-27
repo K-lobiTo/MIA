@@ -1,9 +1,9 @@
-import anthropic
+from google import genai
 
 from mia.config import settings
 from mia.rag.llm import LLMProvider, RagContext
 
-MODEL = "claude-sonnet-5"
+MODEL = "gemini-3.5-flash-lite"
 
 SYSTEM_PROMPT = (
     "Eres un asistente que responde preguntas únicamente con base en los fragmentos de "
@@ -13,19 +13,19 @@ SYSTEM_PROMPT = (
 )
 
 
-class AnthropicLLMProvider(LLMProvider):
+class GeminiLLMProvider(LLMProvider):
     def __init__(self) -> None:
-        self._client = anthropic.Anthropic(api_key=settings.anthropic_api_key or None)
+        self._client = (
+            genai.Client(api_key=settings.gemini_api_key) if settings.gemini_api_key else genai.Client()
+        )
 
     def answer(self, question: str, context: list[RagContext]) -> str:
         context_block = "\n\n".join(
             f"[Fuente: dominio={c.domain}, documento={c.document}]\n{c.excerpt}" for c in context
         )
-        message = self._client.messages.create(
+        interaction = self._client.interactions.create(
             model=MODEL,
-            max_tokens=16000,
-            system=SYSTEM_PROMPT,
-            output_config={"effort": settings.anthropic_effort},
-            messages=[{"role": "user", "content": f"Contexto:\n{context_block}\n\nPregunta: {question}"}],
+            system_instruction=SYSTEM_PROMPT,
+            input=f"Contexto:\n{context_block}\n\nPregunta: {question}",
         )
-        return next((block.text for block in message.content if block.type == "text"), "")
+        return interaction.output_text

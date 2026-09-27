@@ -1,0 +1,15 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.git/
+.pytest_cache/
+.ruff_cache/
+mia.db
+uploads/
+.env
+.env.local
+specs/
+docs/
+*.md
+tests/
