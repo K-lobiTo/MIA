@@ -37,18 +37,22 @@ src/mia/
 
 ## Qué funciona hoy vs. qué es interfaz sin implementar
 
-**Funciona (probado con tests y en producción en Render):**
+**Funciona (probado con tests unitarios y manualmente contra Qdrant/Anthropic reales):**
 - CRUD básico de dominios y documentos (`/domains`, `/domains/{id}/documents`), con deduplicación por hash de archivo.
 - `PdfLoader`, `DocxLoader`, `TxtLoader`: extracción real de texto.
 - `chunk_text()`: chunking con overlap.
 - Metadata store (SQLite + SQLAlchemy), inicializado automáticamente al arrancar la API.
+- `LocalEmbeddingProvider`: embeddings con `sentence-transformers` (`intfloat/multilingual-e5-small`), corre en CPU.
+- `QdrantVectorStore.ensure_collection()` / `.upsert()` / `.search()`: colección `mia_chunks` bootstrapeada en el `lifespan`, filtro por dominio funcional.
+- `src/mia/ingestion/pipeline.py`: orquesta loader → chunker → embeddings → upsert, disparado en segundo plano (`BackgroundTasks`) desde la subida de documentos, con transición de estado `pending → processing → done`/`error`.
+- `AnthropicLLMProvider`: modelo fijo `claude-sonnet-5` (nunca `claude-opus-5`), esfuerzo configurable (`ANTHROPIC_EFFORT`, default `medium`).
+- `GeminiLLMProvider`: modelo fijo `gemini-3.5-flash-lite` (tier gratuito de Google AI Studio, sin tarjeta). Agregado como segunda opción comercial mientras se resuelve el acceso a créditos de Anthropic; ambos quedan disponibles, se elige con `LLM_PROVIDER`.
+- `POST /query`: búsqueda semántica filtrada por dominio, umbral de similitud configurable (`QUERY_SIMILARITY_THRESHOLD`, calibrado empíricamente en `specs/001-pipeline-ingesta-rag/research.md`) para responder "sin información suficiente" cuando corresponde, y respuesta citando documento y dominio de origen cuando sí hay contexto relevante.
 
 **Interfaz definida, implementación pendiente (lanzan `NotImplementedError` a propósito, no es un bug):**
-- Todos los `EmbeddingProvider` y `LLMProvider` concretos (`local`, `openai`, `anthropic`).
-- `QdrantVectorStore.upsert()` / `.search()` (el cliente sí se conecta; falta la lógica).
-- El endpoint `/query` (espera a que exista un `LLMProvider` real que consumir).
+- `OpenAIEmbeddingProvider`, `OpenAILLMProvider`, `LocalLLMProvider` (LLM local, sigue esperando hardware propio).
 
-Cuando se implemente cualquiera de estos, actualizar esta sección.
+Detalle completo de esta feature en `specs/001-pipeline-ingesta-rag/` (spec, plan, research, tasks). Cuando se implemente cualquiera de los pendientes de arriba, actualizar esta sección.
 
 ## Despliegue
 
