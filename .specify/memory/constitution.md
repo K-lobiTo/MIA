@@ -1,50 +1,110 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+Version change: (template sin ratificar) → 1.0.0
+Modified principles: ninguno (primera ratificación)
+Added sections:
+  - Core Principles: I. Almacenamiento y Consulta Desacoplados (Multi-Artefacto)
+  - Core Principles: II. Pipeline Modular e Intercambiable
+  - Core Principles: III. Independencia de Proveedor de LLM y Embeddings
+  - Core Principles: IV. Extensibilidad de Dominios Sin Fricción Operativa
+  - Core Principles: V. Trazabilidad de Respuestas
+  - Restricciones Técnicas y de Datos Sensibles
+  - Alcance Incremental y Documentación Viva
+  - Governance
+Removed sections: ninguno
+Deferred TODOs: ninguno
+-->
+
+# MIA Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Almacenamiento y Consulta Desacoplados (Multi-Artefacto)
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+El almacenamiento de dominios de conocimiento (base vectorial + metadata) y los artefactos que lo
+consultan (chatbot de WhatsApp, chatbot web, consulta interna de Coordinación, o cualquier
+integración futura) DEBEN permanecer desacoplados a través de una única API intermediaria. Ningún
+artefacto nuevo puede requerir duplicar o modificar la infraestructura de almacenamiento existente;
+la API es el único punto de contacto entre ambos mundos.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+Rationale: es el requisito fundacional del proyecto desde su definición conceptual original,
+permitir múltiples artefactos sobre la misma memoria institucional sin construir un sistema
+separado por cada uno.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### II. Pipeline Modular e Intercambiable
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+Cada etapa del pipeline (carga de documentos por tipo de fuente, chunking, generación de
+embeddings, almacenamiento vectorial, generación de respuesta por LLM) DEBE implementarse como una
+interfaz con implementaciones intercambiables seleccionables por configuración, nunca
+hardcodeadas. Agregar un tipo de fuente nuevo (CSV, web scraping) o cambiar el motor de RAG NO DEBE
+requerir modificar el resto del sistema.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Rationale: requisito técnico explícito desde la definición conceptual original ("cambiar partes del
+pipeline sin que interfiera con el resto del producto"), ya materializado en el patrón interfaz más
+factory de `DocumentLoader`, `EmbeddingProvider`, `LLMProvider` y `VectorStore`.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### III. Independencia de Proveedor de LLM y Embeddings
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+El sistema DEBE poder operar tanto con modelos locales o auto-hospedados como con proveedores
+comerciales por API key, seleccionable por configuración y sin cambios de código. Ninguna decisión
+de arquitectura puede asumir de forma permanente que el LLM o los embeddings correrán en un
+proveedor específico.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+Rationale: mientras no se disponga de hardware propio para correr modelos localmente, el proyecto
+depende de proveedores comerciales por suscripción. La meta declarada es migrar a modelos locales
+cuando sea viable, para reducir costo y dependencia externa; bloquear la arquitectura a un solo
+proveedor comprometería esa meta.
+
+### IV. Extensibilidad de Dominios Sin Fricción Operativa
+
+DEBE ser posible crear un dominio nuevo o agregar documentos a un dominio existente en cualquier
+momento, sin interrumpir la operación del resto del sistema ni requerir migración de los dominios
+existentes. El mecanismo concreto para crear o gestionar dominios (API, script, interfaz de
+administración) es una decisión de implementación, no una restricción de esta ley.
+
+Rationale: requisito explícito desde la primera definición conceptual del prototipo, poder crear
+dominios nuevos e ingresar documentos a los existentes sin que eso interfiera en el funcionamiento
+general del producto.
+
+### V. Trazabilidad de Respuestas
+
+Toda respuesta generada por el motor RAG DEBE poder citar el o los documentos y dominios de origen
+de la información utilizada. Una respuesta sin fuente verificable se considera un defecto, no una
+limitación aceptable.
+
+Rationale: MIA reemplaza el conocimiento tácito de una persona por una memoria consultable. Sin
+trazabilidad, Coordinación y el Consejo no tienen forma de confiar en ni verificar lo que el
+sistema responde.
+
+## Restricciones Técnicas y de Datos Sensibles
+
+- Stack base: Python más FastAPI para la API, Qdrant para vectores, SQLite para metadata
+  (migrable a Postgres sin cambiar la capa de acceso a datos). Cambiar cualquiera de estos
+  componentes requiere actualizar `docs/ARQUITECTURA.md`.
+- Los dominios que contengan datos sensibles de personas (por ejemplo, evaluaciones de desempeño
+  docente) NO DEBEN exponerse a través de un artefacto de acceso público (chatbot web o WhatsApp)
+  sin un mecanismo de control de acceso implementado antes.
+- La documentación técnica, los nombres de dominios y conceptos, y los mensajes de commit se
+  escriben en español. Nunca se usa guión largo (em dash) en ningún texto generado para el
+  proyecto (ver `CLAUDE.md`).
+
+## Alcance Incremental y Documentación Viva
+
+- El sistema se construye en orden de validación: no se agrega un artefacto de consulta, un
+  mecanismo de autenticación, o un dominio nuevo antes de que exista evidencia de que el pipeline
+  base (ingesta más RAG) funciona sobre el primer dominio y caso de uso reales.
+- Toda decisión de alcance, arquitectura o despliegue se documenta en
+  `docs/Definicion_Requerimientos_MVP.md` (el qué y el por qué) o `docs/ARQUITECTURA.md` (el cómo
+  está implementado). Ninguna decisión relevante queda solo en el historial de conversación.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+Esta constitución tiene precedencia sobre cualquier práctica ad hoc. Cualquier plan
+(`/speckit-plan`) o especificación (`/speckit-specify`) que entre en conflicto con un principio
+debe justificar explícitamente la excepción o modificar primero esta constitución. Las enmiendas se
+hacen exclusivamente mediante `/speckit-constitution`, versionando según semver: MAJOR para
+eliminación o redefinición incompatible de un principio, MINOR para un principio o sección nueva,
+PATCH para aclaraciones de redacción. Usar `CLAUDE.md` para guía operativa de desarrollo del día a
+día que no altere estos principios.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-09-26 | **Last Amended**: 2026-09-26
