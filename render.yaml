@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: mia-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: QDRANT_COLLECTION
+        value: mia_chunks
+      - key: DATABASE_URL
+        value: sqlite:///./mia.db
+      - key: EMBEDDING_PROVIDER
+        value: local
+      - key: LLM_PROVIDER
+        value: local

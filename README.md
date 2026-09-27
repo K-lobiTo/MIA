@@ -24,6 +24,10 @@ La API queda en `http://localhost:8000/docs` (Swagger UI, cliente de prueba del 
 pytest
 ```
 
+## Despliegue (Render + Qdrant Cloud)
+
+En producción/demo compartida, la API corre en [Render](https://render.com) (Blueprint en `render.yaml`) y Qdrant en [Qdrant Cloud](https://cloud.qdrant.io) (clúster free tier) en vez de la instancia local de `docker-compose.yml`. Pasos en [docs/Definicion_Requerimientos_MVP.md](docs/Definicion_Requerimientos_MVP.md#8-stack-tecnológico).
+
 ## Spec-driven development
 
 Este repo usa [Spec Kit](https://github.com/github/spec-kit) para el flujo de especificación con Claude Code (`.specify/`, skills en `.claude/skills/`). Ver `.specify/memory/constitution.md` para los principios del proyecto.

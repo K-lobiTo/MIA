@@ -123,8 +123,9 @@ Para cumplir el requerimiento de "cambiar partes del pipeline sin que interfiera
 - **Metadata store:** SQLite + SQLAlchemy (MVP), migrable a Postgres.
 - **Procesamiento de documentos:** `pypdf`/`pdfplumber` (PDF), `python-docx` (DOCX).
 - **Orquestación RAG:** por definir en implementación — evaluar LangChain/LlamaIndex vs. implementación directa y ligera (a decidir al iniciar el código, no bloquea este documento).
-- **Contenedores:** Docker + docker-compose (API + Qdrant).
+- **Contenedores:** Docker + docker-compose (API + Qdrant, para desarrollo local).
 - **Configuración:** variables de entorno vía `.env` (`pydantic-settings`).
+- **Despliegue (demo compartida/producción):** API en [Render](https://render.com) (Blueprint `render.yaml`, plan free) + base vectorial en [Qdrant Cloud](https://cloud.qdrant.io) (clúster free tier), en vez de Railway. Decisión (2026-09-26): separar API y base vectorial en el proveedor gratuito que mejor ajusta a cada una, en lugar de forzar ambas al mismo proveedor (ver comparación de hosting en la conversación de definición del MVP). Trade-off aceptado: el servicio de Render en plan free se duerme tras 15 min sin tráfico (primera respuesta tarda 30-60s tras despertar); el clúster de Qdrant Cloud free se suspende tras 1 semana de inactividad.
 
 ## 9. Estructura de repositorio propuesta
 
