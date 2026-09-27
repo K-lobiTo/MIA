@@ -34,6 +34,6 @@ Resumen: una API FastAPI intermedia entre el almacenamiento (Qdrant + SQLite) y 
 
 ## Idioma y convenciones
 
-- Documentación, nombres de dominio/conceptos y mensajes de commit en español.
+- Documentación, nombres de dominio/conceptos en español.
 - Sin atribución de Claude en commits ni PRs (`includeCoAuthoredBy: false` en `.claude/settings.json`).
 - Spec Kit está instalado (`.specify/`, skills `speckit-*`) para uso opcional en flujos de especificación futuros.
