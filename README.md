@@ -1,4 +1,4 @@
-# MIA — Memoria Institucional Académica
+# MIA: Memoria Institucional Académica
 
 Herramienta de almacenamiento y consulta multi-dominio con RAG, para la memoria institucional de la Unidad.
 

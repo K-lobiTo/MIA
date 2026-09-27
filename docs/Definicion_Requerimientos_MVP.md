@@ -1,4 +1,4 @@
-# MIA — Definición de Requerimientos y Diseño Técnico del MVP
+# MIA: Definición de Requerimientos y Diseño Técnico del MVP
 
 **Qué es este documento:** traduce la definición conceptual de MIA (ver [Definicion_Conceptual_Prototipo.md](../../Digital_Transformation_Framework/docs/propuestas/Definicion_Conceptual_Prototipo.md) y [Prototipos_Seleccionados.md](../../Digital_Transformation_Framework/docs/propuestas/Prototipos_Seleccionados.md) en el repo `Digital_Transformation_Framework`) en requerimientos concretos y una arquitectura técnica para la primera versión implementable. Resuelve los puntos que quedaban pendientes en la sección 7 de esa definición, en lo que aplica al MVP.
 
@@ -9,7 +9,7 @@ Decisiones tomadas para arrancar (2026-09-25):
 | Decisión | Elegido | Por qué |
 |---|---|---|
 | Dominio(s) | **Memoria del Consejo** (solo actas) | Un único tipo de fuente, caso de uso claro y ya evidenciado (casos 1 y 6 del documento conceptual), valida el pipeline completo sin la complejidad de fuentes heterogéneas de Currículum ni la sensibilidad de datos de Docentes. |
-| Artefacto | **Ninguno todavía** — solo API + cliente de prueba | Prioriza validar almacenamiento + RAG antes de invertir en UI de chat. La API queda diseñada para que cualquier artefacto futuro (Coordinación, WhatsApp, web) se conecte sin cambios en el backend. |
+| Artefacto | **Ninguno todavía**: solo API + cliente de prueba | Prioriza validar almacenamiento + RAG antes de invertir en UI de chat. La API queda diseñada para que cualquier artefacto futuro (Coordinación, WhatsApp, web) se conecte sin cambios en el backend. |
 | Stack backend | **Python + FastAPI** | Ecosistema natural para RAG (loaders de PDF/DOCX, clientes de Qdrant, orquestación LLM), coherente con el benchmark de LLMs ya hecho en el objetivo específico 3. |
 | LLM / embeddings | **Híbrido, configurable por variable de entorno** | Cumple el requerimiento explícito de "poder cambiar el LLM intermediario" y permite prototipar rápido con una API comercial mientras se valida migrar a un modelo local/auto-hospedado para producción (evitar depender de una API de pago, según sección 4 del documento conceptual). |
 
@@ -22,7 +22,7 @@ Quedan **fuera del MVP** (no bloquean el arranque, pero deben resolverse antes d
 
 ## 2. Requerimientos funcionales del MVP
 
-1. **Crear un dominio** con nombre y descripción (aunque el MVP solo use "Memoria del Consejo", la creación debe ser genérica desde el inicio — es requerimiento explícito del documento conceptual).
+1. **Crear un dominio** con nombre y descripción (aunque el MVP solo use "Memoria del Consejo", la creación debe ser genérica desde el inicio, es requerimiento explícito del documento conceptual).
 2. **Ingerir un documento** (PDF o DOCX de un acta) a un dominio existente, sin detener ni afectar el resto del sistema mientras se procesa.
 3. **Consultar en lenguaje natural** indicando uno o más dominios a considerar, y recibir una respuesta generada por RAG con referencia a las fuentes (documento y fragmento) usadas.
 4. **Listar dominios y documentos** existentes, con su estado de ingesta (pendiente / procesando / listo / error).
@@ -33,7 +33,7 @@ Quedan **fuera del MVP** (no bloquean el arranque, pero deben resolverse antes d
 - **Idempotencia de ingesta:** volver a subir el mismo documento no debe duplicar información (deduplicar por hash del archivo).
 - **Modularidad de pipeline:** cada etapa de ingesta (carga de archivo → chunking → embeddings → guardado en vectorial) debe ser una interfaz intercambiable, para poder añadir CSV o web scraping después sin tocar las demás etapas.
 - **Intercambiabilidad del LLM/embeddings:** el proveedor de LLM y el de embeddings se seleccionan por configuración (variable de entorno), no por código hardcodeado.
-- **Extensibilidad de dominios:** crear un dominio nuevo no debe requerir cambios de esquema ni despliegue distinto — es una operación de datos, no de código.
+- **Extensibilidad de dominios:** crear un dominio nuevo no debe requerir cambios de esquema ni despliegue distinto: es una operación de datos, no de código.
 - **Idioma:** el contenido fuente (actas) y las consultas son en español; el modelo de embeddings y el LLM elegidos deben tener soporte sólido de español.
 - **Reproducibilidad local:** todo el stack (API + base vectorial) debe levantar con un solo comando (`docker compose up`) para desarrollo y demo.
 - **Trazabilidad:** toda respuesta del RAG debe poder citar de qué documento(s) y dominio(s) salió la información (requerido para que Coordinación confíe en la respuesta).
@@ -76,7 +76,7 @@ flowchart LR
     LLM --> A1
 ```
 
-**Por qué una API intermediaria única:** es el requerimiento explícito del documento conceptual — desacopla el Almacenamiento de los Artefactos, de modo que agregar un chatbot de WhatsApp o web más adelante no implica tocar el pipeline de ingesta ni el motor RAG, solo consumir la misma API.
+**Por qué una API intermediaria única:** es el requerimiento explícito del documento conceptual: desacopla el Almacenamiento de los Artefactos, de modo que agregar un chatbot de WhatsApp o web más adelante no implica tocar el pipeline de ingesta ni el motor RAG, solo consumir la misma API.
 
 ## 5. Modelo de dominio (datos)
 
@@ -88,9 +88,9 @@ flowchart LR
 
 **Estrategia de colección en Qdrant:** una sola colección (`mia_chunks`) con `domain` como campo de payload filtrable, en lugar de una colección por dominio. Esto permite:
 - Consultas multi-dominio nativas (caso de uso 6 del documento conceptual: "Currículum" + "Memoria del Consejo" a la vez) con un simple filtro `domain in [...]`.
-- Agregar dominios nuevos sin crear infraestructura nueva — es solo un valor de payload distinto.
+- Agregar dominios nuevos sin crear infraestructura nueva: es solo un valor de payload distinto.
 
-Trade-off aceptado: si en el futuro se cambia de modelo de embeddings con otra dimensionalidad, se necesita una migración o una colección nueva versionada — se documenta como riesgo conocido, no bloquea el MVP.
+Trade-off aceptado: si en el futuro se cambia de modelo de embeddings con otra dimensionalidad, se necesita una migración o una colección nueva versionada. Se documenta como riesgo conocido, no bloquea el MVP.
 
 **Metadata store para el MVP:** SQLite vía SQLAlchemy (un archivo, cero infraestructura adicional). Migrable a Postgres cuando haya más de un dominio/artefacto en producción, sin cambiar el código de la capa de acceso a datos (se usa el ORM como frontera).
 
@@ -105,7 +105,7 @@ Trade-off aceptado: si en el futuro se cambia de modelo de embeddings con otra d
 | `GET` | `/domains/{domain_id}/documents` | Lista documentos del dominio con su `status`. |
 | `POST` | `/query` | Body: `{domains: [id, ...], question: str}` → `{answer, sources: [{domain, document, excerpt}]}`. |
 
-La documentación interactiva de FastAPI (`/docs`, Swagger UI) sirve como **cliente de prueba** para el MVP — cumple la decisión de no construir un artefacto de chat todavía.
+La documentación interactiva de FastAPI (`/docs`, Swagger UI) sirve como **cliente de prueba** para el MVP: cumple la decisión de no construir un artefacto de chat todavía.
 
 ## 7. Componentes modulares e interfaces de extensión
 
@@ -122,7 +122,7 @@ Para cumplir el requerimiento de "cambiar partes del pipeline sin que interfiera
 - **Base vectorial:** Qdrant (ya definida en el documento conceptual).
 - **Metadata store:** SQLite + SQLAlchemy (MVP), migrable a Postgres.
 - **Procesamiento de documentos:** `pypdf`/`pdfplumber` (PDF), `python-docx` (DOCX).
-- **Orquestación RAG:** por definir en implementación — evaluar LangChain/LlamaIndex vs. implementación directa y ligera (a decidir al iniciar el código, no bloquea este documento).
+- **Orquestación RAG:** por definir en implementación: evaluar LangChain/LlamaIndex vs. implementación directa y ligera (a decidir al iniciar el código, no bloquea este documento).
 - **Contenedores:** Docker + docker-compose (API + Qdrant, para desarrollo local).
 - **Configuración:** variables de entorno vía `.env` (`pydantic-settings`).
 - **Despliegue (demo compartida/producción):** API en [Render](https://render.com) (Blueprint `render.yaml`, plan free) + base vectorial en [Qdrant Cloud](https://cloud.qdrant.io) (clúster free tier), en vez de Railway. Decisión (2026-09-26): separar API y base vectorial en el proveedor gratuito que mejor ajusta a cada una, en lugar de forzar ambas al mismo proveedor (ver comparación de hosting en la conversación de definición del MVP). Trade-off aceptado: el servicio de Render en plan free se duerme tras 15 min sin tráfico (primera respuesta tarda 30-60s tras despertar); el clúster de Qdrant Cloud free se suspende tras 1 semana de inactividad.

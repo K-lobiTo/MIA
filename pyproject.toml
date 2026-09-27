@@ -1,7 +1,7 @@
 [project]
 name = "mia"
 version = "0.1.0"
-description = "MIA — Memoria Institucional Académica: almacenamiento y consulta multi-dominio con RAG"
+description = "MIA, Memoria Institucional Académica: almacenamiento y consulta multi-dominio con RAG"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
