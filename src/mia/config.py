@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     query_similarity_threshold: float = 0.8
     query_search_limit: int = 5
 
+    # En Render free (512 MB) ingerir actas grandes agota la memoria: allí se desactiva y la ingesta
+    # se hace desde una instancia local apuntando a las mismas bases (ver docs/OPERACION.md).
+    ingestion_enabled: bool = True
+
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 

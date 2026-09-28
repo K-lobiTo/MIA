@@ -28,9 +28,9 @@ ruff check src tests
 
 ## Arquitectura
 
-Documentación completa y viva en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md): mantenerla actualizada cuando cambie algo relevante de cómo está implementado el sistema. El "por qué" de las decisiones de alcance y requerimientos está en [docs/Definicion_Requerimientos_MVP.md](docs/Definicion_Requerimientos_MVP.md).
+Documentación completa y viva en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md): mantenerla actualizada cuando cambie algo relevante de cómo está implementado el sistema. El "por qué" de las decisiones de alcance y requerimientos está en [docs/Definicion_Requerimientos_MVP.md](docs/Definicion_Requerimientos_MVP.md). Despliegue, ingesta y límites del entorno gratuito en [docs/OPERACION.md](docs/OPERACION.md); camino a producción y alternativas descartadas en [docs/ESCALABILIDAD.md](docs/ESCALABILIDAD.md).
 
-Resumen: una API FastAPI intermedia entre el almacenamiento (Qdrant + SQLite) y los futuros "artefactos" de consulta (chatbots, interfaces internas). El patrón central es interfaz + factory por nombre (`DocumentLoader`, `EmbeddingProvider`, `LLMProvider`, `VectorStore`), seleccionable por variable de entorno, para poder cambiar cualquier pieza del pipeline sin tocar el resto.
+Resumen: una API FastAPI intermedia entre el almacenamiento (Qdrant + SQL: SQLite en desarrollo, Postgres en producción) y los futuros "artefactos" de consulta (chatbots, interfaces internas). El patrón central es interfaz + factory por nombre (`DocumentLoader`, `EmbeddingProvider`, `LLMProvider`, `VectorStore`), seleccionable por variable de entorno, para poder cambiar cualquier pieza del pipeline sin tocar el resto.
 
 ## Idioma y convenciones
 

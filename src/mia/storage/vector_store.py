@@ -59,6 +59,14 @@ class QdrantVectorStore(VectorStore):
                 collection_name=self.collection,
                 vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
             )
+            return
+        existing_size = self.client.get_collection(self.collection).config.params.vectors.size
+        if existing_size != vector_size:
+            raise RuntimeError(
+                f"La colección '{self.collection}' tiene vectores de dimensión {existing_size}, "
+                f"pero el proveedor de embeddings genera {vector_size}. Usar otra colección "
+                "(QDRANT_COLLECTION) o reindexar."
+            )
 
     def upsert(self, chunks: list[Chunk]) -> None:
         points = [

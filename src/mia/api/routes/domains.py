@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from mia.config import settings
 from mia.ingestion.pipeline import UPLOAD_DIR, ingest_document
 from mia.storage.db import get_session
 from mia.storage.models import Document, Domain
@@ -57,6 +58,15 @@ def upload_document(
     background_tasks: BackgroundTasks,
     session: Session = Depends(get_session),
 ) -> Document:
+    if not settings.ingestion_enabled:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "La ingesta de documentos está desactivada en esta instancia. "
+                "Ingerir desde una instancia local (ver docs/OPERACION.md)."
+            ),
+        )
+
     domain = session.get(Domain, domain_id)
     if domain is None:
         raise HTTPException(status_code=404, detail="Dominio no encontrado")

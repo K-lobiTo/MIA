@@ -1,18 +1,18 @@
----
-title: MIA
-emoji: 📚
-colorFrom: blue
-colorTo: green
-sdk: docker
-app_port: 8000
-pinned: false
----
-
 # MIA: Memoria Institucional Académica
 
 Herramienta de almacenamiento y consulta multi-dominio con RAG, para la memoria institucional de la Unidad.
 
 Ver la definición conceptual completa en [Digital_Transformation_Framework/docs/propuestas/Definicion_Conceptual_Prototipo.md](../Digital_Transformation_Framework/docs/propuestas/Definicion_Conceptual_Prototipo.md), y los requerimientos técnicos y alcance del MVP en [docs/Definicion_Requerimientos_MVP.md](docs/Definicion_Requerimientos_MVP.md).
+
+## Documentación
+
+| Documento | Para qué |
+|---|---|
+| [docs/Definicion_Requerimientos_MVP.md](docs/Definicion_Requerimientos_MVP.md) | Alcance, requerimientos y decisiones del MVP (el "por qué"). |
+| [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) | Cómo está implementado el sistema hoy. |
+| [docs/OPERACION.md](docs/OPERACION.md) | Despliegue, ingesta de documentos, variables de entorno, límites conocidos y problemas frecuentes. |
+| [docs/ESCALABILIDAD.md](docs/ESCALABILIDAD.md) | Qué cambiar para llevar el prototipo a producción, y qué se probó y descartó. |
+| [specs/001-pipeline-ingesta-rag/](specs/001-pipeline-ingesta-rag/) | Spec, plan, research y tareas de la feature de ingesta + RAG. |
 
 ## Desarrollo local
 
@@ -26,20 +26,18 @@ docker compose up -d qdrant
 uvicorn mia.api.main:app --reload
 ```
 
-La API queda en `http://localhost:8000/docs` (Swagger UI, cliente de prueba del MVP).
+La API queda en `http://localhost:8000/docs` (Swagger UI, cliente de prueba del MVP). También se puede levantar todo el stack con `docker compose up`.
 
 ## Tests
 
 ```bash
 pytest
+ruff check src tests
 ```
 
-## Despliegue (Hugging Face Spaces + Qdrant Cloud)
+## Despliegue
 
-En producción/demo compartida, la API corre en un [Space de Hugging Face](https://huggingface.co/docs/hub/spaces-sdks-docker) (SDK Docker, usa el mismo `Dockerfile`; la configuración del Space es el bloque YAML al inicio de este README) y Qdrant en [Qdrant Cloud](https://cloud.qdrant.io) (clúster free tier) en vez de la instancia local de `docker-compose.yml`.
-
-- Variables en *Settings → Variables and secrets* del Space: `QDRANT_URL`, `QDRANT_API_KEY` y `GEMINI_API_KEY` como secretos; `EMBEDDING_PROVIDER=local` y `LLM_PROVIDER=gemini` como variables.
-- Para desplegar: `git push hf main` (remoto `hf` apuntando al repositorio git del Space).
+Prototipo de costo cero: API en [Render](https://render.com) (plan free, `render.yaml`), metadata en Postgres de [Neon](https://neon.tech) (free), vectores en [Qdrant Cloud](https://cloud.qdrant.io) (free) y LLM Gemini (tier gratuito). Los documentos grandes se ingieren desde una instancia local apuntando a esas mismas bases. Pasos completos en [docs/OPERACION.md](docs/OPERACION.md).
 
 ## Spec-driven development
 

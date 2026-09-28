@@ -149,6 +149,9 @@ activemq-data/
 
 # Environments
 .env
+# Variantes con credenciales (p. ej. .env.produccion); solo se versiona la plantilla
+.env.*
+!.env.example
 .envrc
 .venv
 env/

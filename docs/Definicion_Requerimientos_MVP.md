@@ -120,12 +120,15 @@ Para cumplir el requerimiento de "cambiar partes del pipeline sin que interfiera
 
 - **Backend/API:** Python 3.12 + FastAPI + Uvicorn.
 - **Base vectorial:** Qdrant (ya definida en el documento conceptual).
-- **Metadata store:** SQLite + SQLAlchemy (MVP), migrable a Postgres.
+- **Metadata store:** SQLAlchemy; SQLite en desarrollo y Postgres (Neon free) en la demo compartida, porque el disco de Render free se borra en cada reinicio.
 - **Procesamiento de documentos:** `pypdf`/`pdfplumber` (PDF), `python-docx` (DOCX).
 - **Orquestación RAG:** por definir en implementación: evaluar LangChain/LlamaIndex vs. implementación directa y ligera (a decidir al iniciar el código, no bloquea este documento).
 - **Contenedores:** Docker + docker-compose (API + Qdrant, para desarrollo local).
 - **Configuración:** variables de entorno vía `.env` (`pydantic-settings`).
-- **Despliegue (demo compartida/producción):** API en un [Space de Hugging Face](https://huggingface.co/spaces) (SDK Docker, CPU basic gratuito, ~16 GB de RAM) + base vectorial en [Qdrant Cloud](https://cloud.qdrant.io) (clúster free tier). Decisión (2026-09-27): se migró desde Render porque el plan free (512 MB) no alcanzaba para el modelo de embeddings local al ingerir actas reales; Spaces permite mantener embeddings auto-hospedados sin recalibrar el umbral. Trade-off aceptado: el Space gratuito se duerme tras ~48 h sin uso y su disco no es persistente (SQLite y `uploads/` se pierden al reiniciar). Historial: antes, API en [Render](https://render.com) (Blueprint `render.yaml`, plan free) + base vectorial en [Qdrant Cloud](https://cloud.qdrant.io) (clúster free tier), en vez de Railway. Decisión (2026-09-26): separar API y base vectorial en el proveedor gratuito que mejor ajusta a cada una, en lugar de forzar ambas al mismo proveedor (ver comparación de hosting en la conversación de definición del MVP). Trade-off aceptado: el servicio de Render en plan free se duerme tras 15 min sin tráfico (primera respuesta tarda 30-60s tras despertar); el clúster de Qdrant Cloud free se suspende tras 1 semana de inactividad.
+- **Despliegue (demo compartida):** API en [Render](https://render.com) (Blueprint `render.yaml`, plan free) + metadata en [Neon](https://neon.tech) (Postgres free) + base vectorial en [Qdrant Cloud](https://cloud.qdrant.io) (clúster free tier) + LLM Gemini (tier gratuito). Detalle operativo en [OPERACION.md](OPERACION.md).
+  - Decisión (2026-09-26): separar API y base vectorial en el proveedor gratuito que mejor ajusta a cada una, en lugar de forzar ambas al mismo proveedor (Railway descartado).
+  - Decisión (2026-09-27): el prototipo tiene una vigencia de aproximadamente dos meses, así que se prioriza costo cero sobre robustez, y que todo quede documentado para que otra persona pueda continuar. Como Render free (512 MB) no alcanza para ingerir actas reales con el modelo de embeddings local, la ingesta se hace desde una instancia local que escribe en las mismas bases (Neon y Qdrant Cloud), y en Render queda desactivada (`INGESTION_ENABLED=false`). Se evaluaron y descartaron Hugging Face Spaces (ya no es gratuito para Docker) y embeddings de Gemini (tier gratuito de 1000 textos por día); el registro completo está en [ESCALABILIDAD.md](ESCALABILIDAD.md), junto con la arquitectura recomendada para producción.
+  - Trade-offs aceptados: Render free se duerme tras 15 min sin tráfico (primera respuesta tarda 30-60 s); Qdrant Cloud free se suspende tras 1 semana de inactividad; cargar documentos requiere acceso a una máquina local con las credenciales de producción.
 
 ## 9. Estructura de repositorio propuesta
 
@@ -150,7 +153,7 @@ MIA/
 
 - **Control de acceso por artefacto/rol:** ¿la Consulta de Coordinación queda restringida a Coordinación/Consejo, o también accesible a Asistencia Administrativa? (sección 7 del documento conceptual)
 - **Métricas de éxito:** qué se mide en la evaluación con usuarios (objetivo específico 5) para confirmar que se redujo el tiempo o el riesgo descritos en la sección 4 del documento conceptual.
-- **Proveedor final de LLM/embeddings para producción:** una vez validado el híbrido, decidir si se fija en local/auto-hospedado (alineado con "no depender de una API comercial de pago") o se mantiene configurable permanentemente.
+- **Proveedor final de LLM/embeddings para producción:** una vez validado el híbrido, decidir si se fija en local/auto-hospedado (alineado con "no depender de una API comercial de pago") o se mantiene configurable permanentemente. Recomendación y alternativas en [ESCALABILIDAD.md](ESCALABILIDAD.md).
 
 ## 11. Criterio de aceptación del MVP
 

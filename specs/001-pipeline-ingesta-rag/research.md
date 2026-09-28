@@ -4,6 +4,10 @@
 
 **Decision**: `intfloat/multilingual-e5-small` vía `sentence-transformers`.
 
+**Actualización (2026-09-27)**: se mantiene el modelo, pero se ejecuta exportado a ONNX y cuantizado a
+int8 con `onnxruntime` + `sentencepiece`, porque con `sentence-transformers` (PyTorch) la API ocupaba
+~1.2 GB y no cabía en Render free (512 MB). Detalle y mediciones en `docs/ESCALABILIDAD.md`.
+
 **Rationale**: soporta español de forma nativa (multilingüe), es pequeño (~118M parámetros, corre
 aceptablemente en CPU sin GPU, requisito de la restricción técnica de esta feature) y tiene buen
 desempeño de recuperación semántica en benchmarks públicos (MTEB) para su tamaño. Es la opción que
@@ -88,6 +92,26 @@ sin relación alguna con el documento indexado obtuvo 0.72 de similitud coseno c
 relevante real que obtuvo 0.91; es decir, este modelo comprime las similitudes hacia arriba (0.5 como
 umbral resultaba demasiado permisivo). El valor por defecto quedó en `0.8`. Es un valor de partida, no
 definitivo: debe recalibrarse con preguntas y documentos reales una vez haya más contenido indexado.
+
+**Recalibración con actas reales (2026-09-28)**: con las actas 3436, 3437 y 3438 del Consejo
+Institucional del TEC indexadas (1189 fragmentos, modelo e5-small en ONNX int8), se midió la
+similitud del mejor fragmento (top-1) para dos grupos de preguntas:
+
+| Grupo | Preguntas | Top-1 |
+|---|---|---|
+| Con respuesta en las actas (programa de inglés, conformación del Consejo, Premio Nacional de Tecnología, dietas estudiantiles, Plan Táctico, nombre del CONARE, Comisión de Evaluación Profesional, creación de plazas, evaluación del PAO) | 9 | 0.872 a 0.924 |
+| Sin respuesta pero del mismo ámbito (casos de uso 1 a 6 del documento conceptual) | 5 | 0.838 a 0.868 |
+| Totalmente ajenas (receta, fútbol) | 2 | 0.78 a 0.79 |
+
+Con el umbral anterior (0.8) toda pregunta del ámbito institucional pasaba el filtro: el LLM
+respondía "no hay información" pero la API igual listaba 5 fuentes, lo que confunde la
+trazabilidad. El umbral se subió a **0.87** en la configuración de despliegue (`render.yaml`,
+`.env.example`), que separa ambos grupos en esta muestra. El margen es muy chico (0.868 frente a
+0.872) y la muestra es pequeña: con 0.87 algunas preguntas con respuesta pueden quedar sin contexto,
+y algunas sin respuesta pueden colarse. Debe recalibrarse con actas del Consejo de Unidad (el dominio
+real del MVP) y cada vez que cambie el modelo de embeddings. El script de medición es simple: embeber
+todos los fragmentos, embeber las preguntas con `is_query=True` y comparar el producto punto máximo
+de cada una.
 
 **Alternatives considered**: confiar solo en que el LLM diga "no lo sé" vía prompting: rechazado como
 único mecanismo, es menos verificable y más caro (siempre llama al LLM aunque no haya contexto real).

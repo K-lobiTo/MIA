@@ -18,6 +18,10 @@ def get_embedding_provider(name: str) -> EmbeddingProvider:
         from mia.rag.providers.local_embeddings import LocalEmbeddingProvider
 
         return LocalEmbeddingProvider()
+    if name == "gemini":
+        from mia.rag.providers.gemini_embeddings import GeminiEmbeddingProvider
+
+        return GeminiEmbeddingProvider()
     if name == "openai":
         from mia.rag.providers.openai_embeddings import OpenAIEmbeddingProvider
 

@@ -1,0 +1,30 @@
+# Despliegue de la API en Render (plan free, 512 MB). Ver docs/OPERACION.md.
+services:
+  - type: web
+    name: mia-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: QDRANT_COLLECTION
+        value: mia_chunks
+      # Postgres administrado (Neon free): el disco de Render free se borra en cada reinicio.
+      - key: DATABASE_URL
+        sync: false
+      - key: EMBEDDING_PROVIDER
+        value: local
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false
+      # Calibrado con actas reales, ver specs/001-pipeline-ingesta-rag/research.md
+      - key: QUERY_SIMILARITY_THRESHOLD
+        value: "0.87"
+      # 512 MB no alcanzan para ingerir actas grandes: la ingesta se hace desde una instancia local.
+      - key: INGESTION_ENABLED
+        value: "false"

@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-# Hugging Face Spaces ejecuta el contenedor con el usuario de uid 1000, no con root.
+# Usuario sin privilegios (uid 1000, también el que exigen plataformas como Hugging Face Spaces).
 RUN useradd -m -u 1000 user
 
 WORKDIR /app
