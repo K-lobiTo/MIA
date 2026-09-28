@@ -223,3 +223,6 @@ __marimo__/
 # Uploads locales de documentos (MVP)
 uploads/
 mia.db
+
+# Documentos de prueba locales (actas reales, no versionar)
+tmp/

@@ -1,3 +1,13 @@
+---
+title: MIA
+emoji: 📚
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 8000
+pinned: false
+---
+
 # MIA: Memoria Institucional Académica
 
 Herramienta de almacenamiento y consulta multi-dominio con RAG, para la memoria institucional de la Unidad.
@@ -24,9 +34,12 @@ La API queda en `http://localhost:8000/docs` (Swagger UI, cliente de prueba del 
 pytest
 ```
 
-## Despliegue (Render + Qdrant Cloud)
+## Despliegue (Hugging Face Spaces + Qdrant Cloud)
 
-En producción/demo compartida, la API corre en [Render](https://render.com) (Blueprint en `render.yaml`) y Qdrant en [Qdrant Cloud](https://cloud.qdrant.io) (clúster free tier) en vez de la instancia local de `docker-compose.yml`. Pasos en [docs/Definicion_Requerimientos_MVP.md](docs/Definicion_Requerimientos_MVP.md#8-stack-tecnológico).
+En producción/demo compartida, la API corre en un [Space de Hugging Face](https://huggingface.co/docs/hub/spaces-sdks-docker) (SDK Docker, usa el mismo `Dockerfile`; la configuración del Space es el bloque YAML al inicio de este README) y Qdrant en [Qdrant Cloud](https://cloud.qdrant.io) (clúster free tier) en vez de la instancia local de `docker-compose.yml`.
+
+- Variables en *Settings → Variables and secrets* del Space: `QDRANT_URL`, `QDRANT_API_KEY` y `GEMINI_API_KEY` como secretos; `EMBEDDING_PROVIDER=local` y `LLM_PROVIDER=gemini` como variables.
+- Para desplegar: `git push hf main` (remoto `hf` apuntando al repositorio git del Space).
 
 ## Spec-driven development
 

@@ -1,4 +1,5 @@
 import logging
+import threading
 import uuid
 from pathlib import Path
 
@@ -11,11 +12,23 @@ from mia.storage.models import Document
 from mia.storage.vector_store import Chunk, get_vector_store
 
 UPLOAD_DIR = Path("uploads")
+# Fragmentos por lote de embeddings + upsert: acota la memoria con documentos largos.
+INGEST_BATCH_SIZE = 64
+
+# Las BackgroundTasks síncronas corren en el threadpool, así que varias subidas seguidas
+# ingerirían en paralelo y multiplicarían la memoria del modelo de embeddings (con 3 actas
+# grandes se superaban los 512 MB de Render). Se ingiere un documento a la vez.
+_ingest_lock = threading.Lock()
 
 logger = logging.getLogger(__name__)
 
 
 def ingest_document(document_id: str) -> None:
+    with _ingest_lock:
+        _ingest_document(document_id)
+
+
+def _ingest_document(document_id: str) -> None:
     with SessionLocal() as session:
         document = session.get(Document, document_id)
         if document is None:
@@ -32,20 +45,25 @@ def ingest_document(document_id: str) -> None:
 
             texts = chunk_text(text)
             embedding_provider = get_embedding_provider(settings.embedding_provider)
-            embeddings = embedding_provider.embed(texts, is_query=False)
-
-            chunks = [
-                Chunk(
-                    id=str(uuid.uuid4()),
-                    document_id=document.id,
-                    domain=document.domain_id,
-                    text=chunk_text_value,
-                    chunk_index=index,
-                    embedding=embedding,
+            vector_store = get_vector_store()
+            for start in range(0, len(texts), INGEST_BATCH_SIZE):
+                batch = texts[start : start + INGEST_BATCH_SIZE]
+                embeddings = embedding_provider.embed(batch, is_query=False)
+                vector_store.upsert(
+                    [
+                        Chunk(
+                            id=str(uuid.uuid4()),
+                            document_id=document.id,
+                            domain=document.domain_id,
+                            text=chunk_text_value,
+                            chunk_index=start + offset,
+                            embedding=embedding,
+                        )
+                        for offset, (chunk_text_value, embedding) in enumerate(
+                            zip(batch, embeddings)
+                        )
+                    ]
                 )
-                for index, (chunk_text_value, embedding) in enumerate(zip(texts, embeddings))
-            ]
-            get_vector_store().upsert(chunks)
         except Exception:
             logger.exception("Fallo indexando documento %s", document.id)
             document.status = "error"
