@@ -132,6 +132,15 @@ no para decidir si las actas responden una pregunta del mismo ámbito.
    responder con la información parcial disponible y usar la marca solo si ningún fragmento trata el
    tema.
 
+**Validación en producción (2026-09-28, Render + Neon + Qdrant Cloud + Gemini):** 9 de 9 preguntas
+correctas. Las 5 con respuesta (programa de inglés, Plan Táctico, dietas estudiantiles, aprobación
+del acta 3435, conformación del Consejo) respondieron citando el acta correcta; las 4 sin respuesta
+(casos de uso 1 y 6, matrícula de Computación, receta) devolvieron "sin información" y sin fuentes,
+una por el umbral y tres por la marca del LLM. Observación: en la pregunta del programa de inglés el
+fragmento con la parte resolutiva del acuerdo no quedó entre los 5 recuperados, y la respuesta fue
+parcial (el LLM lo aclara). Subir `QUERY_SEARCH_LIMIT` (p. ej. a 8 o 10) es la primera mejora a
+probar si esto se repite.
+
 Pendiente: recalibrar con actas del Consejo de Unidad (el dominio real del MVP) y cada vez que
 cambie el modelo de embeddings o el LLM. Para medir: embeber todos los fragmentos, embeber las
 preguntas con `is_query=True` y comparar el producto punto máximo de cada una; y revisar a mano las
