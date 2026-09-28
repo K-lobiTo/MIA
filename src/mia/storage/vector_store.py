@@ -8,9 +8,14 @@ from qdrant_client.models import (
     FieldCondition,
     Filter,
     MatchAny,
+    PayloadSchemaType,
     PointStruct,
     VectorParams,
 )
+
+# Campos del payload por los que se filtra: `domain` en las consultas, `document_id` para ubicar
+# o borrar los fragmentos de un documento.
+FILTERABLE_FIELDS = ("domain", "document_id")
 
 
 @dataclass
@@ -59,13 +64,22 @@ class QdrantVectorStore(VectorStore):
                 collection_name=self.collection,
                 vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
             )
-            return
-        existing_size = self.client.get_collection(self.collection).config.params.vectors.size
-        if existing_size != vector_size:
-            raise RuntimeError(
-                f"La colección '{self.collection}' tiene vectores de dimensión {existing_size}, "
-                f"pero el proveedor de embeddings genera {vector_size}. Usar otra colección "
-                "(QDRANT_COLLECTION) o reindexar."
+        else:
+            existing_size = self.client.get_collection(self.collection).config.params.vectors.size
+            if existing_size != vector_size:
+                raise RuntimeError(
+                    f"La colección '{self.collection}' tiene vectores de dimensión "
+                    f"{existing_size}, pero el proveedor de embeddings genera {vector_size}. "
+                    "Usar otra colección (QDRANT_COLLECTION) o reindexar."
+                )
+
+        # Qdrant Cloud rechaza filtrar por un campo del payload sin índice (el Qdrant local no).
+        # Crear un índice que ya existe no hace nada, así que se asegura en cada arranque.
+        for field in FILTERABLE_FIELDS:
+            self.client.create_payload_index(
+                collection_name=self.collection,
+                field_name=field,
+                field_schema=PayloadSchemaType.KEYWORD,
             )
 
     def upsert(self, chunks: list[Chunk]) -> None:

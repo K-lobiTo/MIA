@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from mia.config import settings
 from mia.rag.embeddings import get_embedding_provider
-from mia.rag.llm import RagContext, get_llm_provider
+from mia.rag.llm import RagContext, get_llm_provider, is_no_info_answer
 from mia.storage.db import get_session
 from mia.storage.models import Document, Domain
 from mia.storage.vector_store import get_vector_store
@@ -62,5 +62,8 @@ def query(payload: QueryRequest, session: Session = Depends(get_session)) -> Que
         raise HTTPException(
             status_code=502, detail="El proveedor de LLM no está disponible en este momento."
         ) from exc
+
+    if is_no_info_answer(answer):
+        return QueryResponse(answer=NO_INFO_ANSWER, sources=[])
 
     return QueryResponse(answer=answer, sources=sources)

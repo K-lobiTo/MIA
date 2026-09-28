@@ -46,12 +46,14 @@ source .venv/bin/activate
 # .env.produccion (ignorado por git) con las credenciales de producción:
 #   DATABASE_URL=<Neon>, QDRANT_URL=<Qdrant Cloud>, QDRANT_API_KEY=<...>,
 #   EMBEDDING_PROVIDER=local, QDRANT_COLLECTION=mia_chunks, INGESTION_ENABLED=true
-# Las variables exportadas tienen prioridad sobre las de .env.
-set -a && source .env.produccion && set +a
-uvicorn mia.api.main:app
+# --env-file carga esas variables antes de arrancar y tienen prioridad sobre las de .env.
+# (No usar `source .env.produccion`: la URL de Neon contiene "&" y el shell la corta.)
+uvicorn mia.api.main:app --env-file .env.produccion --port 8010
 ```
 
-Luego, en `http://localhost:8000/docs`:
+Ojo al copiar la URL de Neon en `DATABASE_URL`: debe empezar con `postgresql://` (si se editó la línea de SQLite, verificar que no quede un prefijo `sqlite:`). Con `Connection pooling` desactivado en el diálogo *Connect* de Neon.
+
+Luego, en `http://localhost:8010/docs`:
 
 1. `GET /domains` para ver si el dominio ya existe; si no, `POST /domains` con `{"name": "Memoria del Consejo", "description": "..."}`. Guardar el `id`.
 2. `POST /domains/{id}/documents` con cada archivo (PDF, DOCX o TXT). Responde enseguida con estado `pending`.
@@ -70,8 +72,9 @@ Si un documento queda en `error`, ver el log de la API local (el mensaje empieza
 | La primera consulta tarda ~1 min | Render free se durmió tras 15 min sin tráfico | Normal. Opcional: un monitor gratuito (UptimeRobot, cron-job.org) que llame a `/health` cada 10 min |
 | La API no arranca: "La colección ... tiene vectores de dimensión X" | Se cambió `EMBEDDING_PROVIDER` sin cambiar `QDRANT_COLLECTION` | Usar la colección que corresponde al proveedor, o reindexar |
 | Error de conexión a Qdrant | El clúster free se suspendió tras 1 semana sin uso | Reactivarlo desde el panel de Qdrant Cloud |
-| `/query` responde 502 | Gemini no disponible o cuota agotada | Esperar o revisar la cuota en Google AI Studio |
-| Las respuestas dicen "no hay información" pero listan fuentes | El umbral de similitud deja pasar fragmentos poco relevantes | Ajustar `QUERY_SIMILARITY_THRESHOLD` (ver `specs/001-pipeline-ingesta-rag/research.md`) |
+| `/query` responde 502 tras ~2 min | Gemini saturado (503 "high demand", frecuente en el tier gratuito) o cuota agotada | Esperar unos minutos y reintentar; revisar la cuota en Google AI Studio. El proveedor corta tras 3 intentos para no dejar la consulta colgada |
+| `/query` responde 500 y el log de Qdrant dice "Index required but not found for \"domain\"" | La colección se creó sin índices de payload (Qdrant Cloud los exige para filtrar) | Reiniciar la API: `ensure_collection()` crea los índices al arrancar |
+| Responde "no encontré información" a preguntas que sí tienen respuesta | El umbral es demasiado alto, o la instrucción del LLM es demasiado estricta | Revisar `QUERY_SIMILARITY_THRESHOLD` y `RAG_SYSTEM_PROMPT` (ver `specs/001-pipeline-ingesta-rag/research.md`) |
 
 ## Datos y privacidad
 

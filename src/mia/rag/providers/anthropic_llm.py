@@ -1,16 +1,9 @@
 import anthropic
 
 from mia.config import settings
-from mia.rag.llm import LLMProvider, RagContext
+from mia.rag.llm import RAG_SYSTEM_PROMPT, LLMProvider, RagContext
 
 MODEL = "claude-sonnet-5"
-
-SYSTEM_PROMPT = (
-    "Eres un asistente que responde preguntas únicamente con base en los fragmentos de "
-    "documentos institucionales que se te entregan a continuación. No uses conocimiento "
-    "externo ni inventes información que no esté en esos fragmentos. Responde en español, "
-    "de forma clara y concisa."
-)
 
 
 class AnthropicLLMProvider(LLMProvider):
@@ -24,7 +17,7 @@ class AnthropicLLMProvider(LLMProvider):
         message = self._client.messages.create(
             model=MODEL,
             max_tokens=16000,
-            system=SYSTEM_PROMPT,
+            system=RAG_SYSTEM_PROMPT,
             output_config={"effort": settings.anthropic_effort},
             messages=[{"role": "user", "content": f"Contexto:\n{context_block}\n\nPregunta: {question}"}],
         )

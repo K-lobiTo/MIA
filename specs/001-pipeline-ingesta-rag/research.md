@@ -105,13 +105,38 @@ similitud del mejor fragmento (top-1) para dos grupos de preguntas:
 
 Con el umbral anterior (0.8) toda pregunta del ámbito institucional pasaba el filtro: el LLM
 respondía "no hay información" pero la API igual listaba 5 fuentes, lo que confunde la
-trazabilidad. El umbral se subió a **0.87** en la configuración de despliegue (`render.yaml`,
-`.env.example`), que separa ambos grupos en esta muestra. El margen es muy chico (0.868 frente a
-0.872) y la muestra es pequeña: con 0.87 algunas preguntas con respuesta pueden quedar sin contexto,
-y algunas sin respuesta pueden colarse. Debe recalibrarse con actas del Consejo de Unidad (el dominio
-real del MVP) y cada vez que cambie el modelo de embeddings. El script de medición es simple: embeber
-todos los fragmentos, embeber las preguntas con `is_query=True` y comparar el producto punto máximo
-de cada una.
+trazabilidad. Un primer intento fue subir el umbral a 0.87, que separaba ambos grupos en esa
+muestra, pero al probar formulaciones más naturales los grupos se solapan por completo:
 
-**Alternatives considered**: confiar solo en que el LLM diga "no lo sé" vía prompting: rechazado como
-único mecanismo, es menos verificable y más caro (siempre llama al LLM aunque no haya contexto real).
+| Pregunta | Tiene respuesta | Top-1 |
+|---|---|---|
+| ¿Cuándo abre la matrícula de la maestría en Computación? | No | 0.873 |
+| programa de inglés | Sí | 0.870 |
+| ¿Qué informó la Rectoría? | Sí | 0.868 |
+| ¿Qué se acordó sobre el programa de inglés? | Sí | 0.853 |
+| ¿Quién es el coordinador de la Unidad? | No | 0.849 |
+| ¿Se aprobó el acta 3435? | Sí | 0.847 |
+
+Conclusión: con este modelo, la similitud sirve para descartar preguntas totalmente ajenas, pero
+no para decidir si las actas responden una pregunta del mismo ámbito.
+
+**Decisión actual (2026-09-28), dos capas:**
+
+1. Umbral bajo, **0.82** (`render.yaml`, `.env.example`): solo descarta lo claramente ajeno, sin
+   llamar al LLM.
+2. El LLM decide si hay respuesta: la instrucción de sistema (`RAG_SYSTEM_PROMPT` en
+   `src/mia/rag/llm.py`) le pide responder exactamente `SIN_INFORMACION` si ningún fragmento trata el
+   tema. La API convierte esa marca en la respuesta fija "sin información suficiente" y **sin
+   fuentes**. Una primera redacción ("si los fragmentos no contienen información suficiente")
+   hacía que Gemini se negara incluso con fragmentos relevantes; la redacción actual le pide
+   responder con la información parcial disponible y usar la marca solo si ningún fragmento trata el
+   tema.
+
+Pendiente: recalibrar con actas del Consejo de Unidad (el dominio real del MVP) y cada vez que
+cambie el modelo de embeddings o el LLM. Para medir: embeber todos los fragmentos, embeber las
+preguntas con `is_query=True` y comparar el producto punto máximo de cada una; y revisar a mano las
+respuestas de `/query` para un conjunto de preguntas con y sin respuesta.
+
+**Alternatives considered**: confiar solo en que el LLM diga "no lo sé" vía prompting, sin umbral:
+rechazado como único mecanismo, es más caro (siempre llama al LLM aunque la pregunta sea ajena). Subir
+el umbral hasta separar los grupos: rechazado por el solapamiento descrito arriba.

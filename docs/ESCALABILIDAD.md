@@ -13,7 +13,7 @@ La escala esperada es la de una Unidad académica: cientos o pocos miles de acta
 | Ingesta dentro del proceso de la API (`BackgroundTasks` + lock) | Solo funciona con una instancia; un reinicio a mitad de ingesta deja documentos en `processing` sin reintento. |
 | Archivos originales solo en la máquina de quien ingiere | Reindexar (p. ej. al cambiar de modelo) requiere conseguir de nuevo los archivos. |
 | Qdrant Cloud free se suspende tras 1 semana sin uso | Requiere reactivarlo a mano. |
-| Gemini free como LLM | Cuotas diarias, y Google puede usar los datos enviados. No apto para actas no públicas. |
+| Gemini free como LLM | Cuotas diarias, saturación frecuente del modelo (503 "high demand", observado el 2026-09-28 durante más de 10 minutos), y Google puede usar los datos enviados. No apto para actas no públicas. |
 | Sin autenticación | Cualquiera con la URL puede consultar. |
 | Sin migraciones de base (`create_all`) | Cambiar el esquema de `Domain`/`Document` requiere intervención manual. |
 
