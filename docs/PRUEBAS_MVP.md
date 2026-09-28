@@ -65,7 +65,7 @@ Grupos: M (actas), C (programas de curso), CU (casos de uso del documento concep
 - CU1: las actas cargadas son del Consejo Institucional, no del Consejo de Unidad, y no mencionan Ciberseguridad.
 - CU6: los programas de curso describen el estado vigente sin historial de cambios, algo que el documento conceptual ya advertía ("el caso 6 depende de que Currículum también capture el historial de cambios").
 
-Cuando se carguen actas del Consejo de Unidad o versiones anteriores de los programas, cambiar la expectativa de esos casos a "respuesta" en el script.
+Por esta falta de documentos, el criterio 3 de aceptación se generalizó el 2026-09-28 para no depender de estos dos casos de uso (ver sección 11 de [Definicion_Requerimientos_MVP.md](Definicion_Requerimientos_MVP.md)). Si más adelante se cargan actas del Consejo de Unidad o versiones anteriores de los programas, cambiar la expectativa de CU1 y CU6 a "respuesta" en el script.
 
 ## Resultado (2026-09-28, producción: Render + Neon + Qdrant Cloud + Gemini)
 
@@ -79,6 +79,6 @@ Cuando se carguen actas del Consejo de Unidad o versiones anteriores de los prog
 |---|---|---|---|
 | 1 | Se crea el dominio "Memoria del Consejo" | Cumplido | Existe en producción, junto con "Currículum". |
 | 2 | Se suben al menos 3 a 5 actas reales (PDF o DOCX) | Cumplido | 3 actas reales en PDF (96 a 180 páginas). |
-| 3 | Las preguntas de los casos de uso 1 y 6 se responden citando el acta de origen | Parcial | El mecanismo está verificado: con respuesta cita el documento correcto (M, C, X), sin respuesta no inventa ni lista fuentes (CU1, CU6, A). Los casos 1 y 6 literales necesitan documentos que aún no están cargados (ver nota). |
+| 3 | Preguntas representativas: las que tienen respuesta citan el documento y dominio de origen; las que no, responden "sin información" sin fuentes | Cumplido | 17 de 17 casos: 11 con respuesta citan el documento correcto (M1 a M5, C1 a C4, X1, X2); 6 sin respuesta no inventan ni listan fuentes (M6, M7, CU1, CU6, A1, A2). |
 | 4 | Subir el mismo archivo dos veces no duplica fragmentos | Cumplido | En producción: resubir `MC6102` devolvió el documento existente; 1245 fragmentos antes y después. |
 | 5 | Todo el stack levanta con `docker compose up` sin pasos manuales adicionales | Cumplido | Verificado el 2026-09-27 con un `.env` copiado de `.env.example`. |

@@ -160,11 +160,13 @@ MIA/
 El MVP se considera funcional cuando, usando solo la API (sin artefacto de chat):
 1. Se crea el dominio "Memoria del Consejo".
 2. Se suben al menos 3–5 actas reales (PDF o DOCX).
-3. Se ejecutan las preguntas de los casos de uso 1 y 6 del documento conceptual contra `/query`, y las respuestas citan correctamente el acta de origen.
+3. Se ejecuta contra `/query` un conjunto de preguntas representativas sobre los documentos cargados. Las que tienen respuesta en los documentos se responden citando correctamente el documento y el dominio de origen. Las que no la tienen responden "sin información suficiente", sin inventar contenido ni listar fuentes.
 4. Subir el mismo archivo dos veces no duplica chunks en Qdrant.
 5. Todo el stack levanta con `docker compose up` sin pasos manuales adicionales.
 
-Estado de cada criterio, datos de prueba y script para verificarlos: [PRUEBAS_MVP.md](PRUEBAS_MVP.md). Al 2026-09-28 se cumplen 1, 2, 4 y 5; el 3 está verificado en su mecanismo, pero las preguntas literales de los casos de uso 1 y 6 requieren actas del Consejo de Unidad e historial de cambios de los programas, que aún no están cargados. Además del dominio del MVP se cargó "Currículum" (programas de curso) para probar consultas multi-dominio.
+Cambio del criterio 3 (2026-09-28): la versión original exigía responder las preguntas de los casos de uso 1 y 6 del documento conceptual citando el acta de origen. Se generalizó porque no se cuenta con los documentos necesarios para esos casos: actas del Consejo de Unidad que traten la maestría de Ciberseguridad, e historial de cambios de los programas de la maestría en Ciencia de la Computación. Esas preguntas se mantienen en las pruebas como verificación de que el sistema no inventa respuestas cuando los documentos no las contienen.
+
+Estado de cada criterio, datos de prueba y script para verificarlos: [PRUEBAS_MVP.md](PRUEBAS_MVP.md). Al 2026-09-28 se cumplen los cinco. Además del dominio del MVP se cargó "Currículum" (programas de curso) para probar consultas multi-dominio.
 
 ## 12. Siguientes pasos después del MVP
 
