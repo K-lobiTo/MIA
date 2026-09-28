@@ -16,4 +16,6 @@ services:
       - key: EMBEDDING_PROVIDER
         value: local
       - key: LLM_PROVIDER
-        value: local
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false

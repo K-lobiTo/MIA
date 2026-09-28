@@ -42,7 +42,7 @@ src/mia/
 - `PdfLoader`, `DocxLoader`, `TxtLoader`: extracción real de texto.
 - `chunk_text()`: chunking con overlap.
 - Metadata store (SQLite + SQLAlchemy), inicializado automáticamente al arrancar la API.
-- `LocalEmbeddingProvider`: embeddings con `sentence-transformers` (`intfloat/multilingual-e5-small`), corre en CPU.
+- `LocalEmbeddingProvider`: embeddings con `intfloat/multilingual-e5-small` exportado a ONNX y cuantizado a int8 (`Xenova/multilingual-e5-small`), ejecutado con `onnxruntime` + `sentencepiece` en CPU. Se reemplazó `sentence-transformers` (PyTorch) porque la API superaba los 512 MB del plan free de Render (~1.2 GB); con ONNX el pico medido es ~415 MB. Los vectores son prácticamente iguales a los del modelo original (similitud coseno ~0.995), así que el umbral calibrado sigue siendo válido. El Dockerfile descarga el modelo en el build.
 - `QdrantVectorStore.ensure_collection()` / `.upsert()` / `.search()`: colección `mia_chunks` bootstrapeada en el `lifespan`, filtro por dominio funcional.
 - `src/mia/ingestion/pipeline.py`: orquesta loader → chunker → embeddings → upsert, disparado en segundo plano (`BackgroundTasks`) desde la subida de documentos, con transición de estado `pending → processing → done`/`error`.
 - `AnthropicLLMProvider`: modelo fijo `claude-sonnet-5` (nunca `claude-opus-5`), esfuerzo configurable (`ANTHROPIC_EFFORT`, default `medium`).

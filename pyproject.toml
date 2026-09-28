@@ -12,7 +12,10 @@ dependencies = [
     "pypdf>=4.3",
     "python-docx>=1.1",
     "python-multipart>=0.0.9",
-    "sentence-transformers>=3.0",
+    "onnxruntime>=1.18",
+    "sentencepiece>=0.2",
+    "huggingface-hub>=0.24",
+    "numpy>=1.26",
     "anthropic>=0.40",
     "google-genai>=1.0",
 ]
