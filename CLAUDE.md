@@ -23,7 +23,7 @@ pytest
 pytest tests/unit/test_health.py::test_health   # un solo test
 
 # Lint
-ruff check src tests
+ruff check src tests scripts
 ```
 
 ## Arquitectura

@@ -12,6 +12,7 @@ Ver la definición conceptual completa en [Digital_Transformation_Framework/docs
 | [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) | Cómo está implementado el sistema hoy. |
 | [docs/OPERACION.md](docs/OPERACION.md) | Despliegue, ingesta de documentos, variables de entorno, límites conocidos y problemas frecuentes. |
 | [docs/ESCALABILIDAD.md](docs/ESCALABILIDAD.md) | Qué cambiar para llevar el prototipo a producción, y qué se probó y descartó. |
+| [docs/PRUEBAS_MVP.md](docs/PRUEBAS_MVP.md) | Criterios de aceptación del MVP, datos de prueba y `scripts/pruebas_mvp.py` para verificarlos. |
 | [specs/001-pipeline-ingesta-rag/](specs/001-pipeline-ingesta-rag/) | Spec, plan, research y tareas de la feature de ingesta + RAG. |
 
 ## Desarrollo local
@@ -32,7 +33,10 @@ La API queda en `http://localhost:8000/docs` (Swagger UI, cliente de prueba del 
 
 ```bash
 pytest
-ruff check src tests
+ruff check src tests scripts
+
+# Pruebas de aceptación contra una instancia con los datos de prueba cargados
+python scripts/pruebas_mvp.py --url https://mia-api-5qgh.onrender.com
 ```
 
 ## Despliegue

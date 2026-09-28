@@ -164,6 +164,8 @@ El MVP se considera funcional cuando, usando solo la API (sin artefacto de chat)
 4. Subir el mismo archivo dos veces no duplica chunks en Qdrant.
 5. Todo el stack levanta con `docker compose up` sin pasos manuales adicionales.
 
+Estado de cada criterio, datos de prueba y script para verificarlos: [PRUEBAS_MVP.md](PRUEBAS_MVP.md). Al 2026-09-28 se cumplen 1, 2, 4 y 5; el 3 está verificado en su mecanismo, pero las preguntas literales de los casos de uso 1 y 6 requieren actas del Consejo de Unidad e historial de cambios de los programas, que aún no están cargados. Además del dominio del MVP se cargó "Currículum" (programas de curso) para probar consultas multi-dominio.
+
 ## 12. Siguientes pasos después del MVP
 
 1. Agregar dominio "Apertura de promoción" (segundo tipo de fuente, valida heterogeneidad de dominios).
