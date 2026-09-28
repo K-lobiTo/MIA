@@ -29,6 +29,11 @@ uvicorn mia.api.main:app --reload
 
 La API queda en `http://localhost:8000/docs` (Swagger UI, cliente de prueba del MVP). También se puede levantar todo el stack con `docker compose up`.
 
+## Consultar la API
+
+- **Cliente de terminal:** `python scripts/cliente.py` (usa la API de Render; `--url http://localhost:8000` para otra instancia). Muestra un menú para elegir uno o varios dominios y luego permite hacer preguntas en un ciclo: `:d` cambia de dominios, `:f` muestra los fragmentos citados, `:s` sale. Solo usa la biblioteca estándar de Python.
+- **Swagger UI:** `https://mia-api-5qgh.onrender.com/docs` (o `/docs` en la instancia local). En `POST /query` se envían los ids de dominio, que se obtienen con `GET /domains`.
+
 ## Tests
 
 ```bash
