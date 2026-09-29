@@ -70,8 +70,9 @@ Por esta falta de documentos, el criterio 3 de aceptación se generalizó el 202
 
 ## Resultado (2026-09-28, producción: Render + Neon + Qdrant Cloud + Gemini)
 
-**18 de 18 casos correctos** (17 en la corrida del 2026-09-28 más C5, agregado ese mismo día tras incorporar los fragmentos vecinos). Observaciones:
-- **M5 (programa de inglés):** la respuesta es parcial. El fragmento con la parte resolutiva del acuerdo no quedó entre los 5 recuperados, y el LLM lo aclara. Primera mejora a probar: `QUERY_SEARCH_LIMIT` en 8 o 10.
+**18 de 18 casos correctos** en una sola corrida contra Render, después de incorporar los fragmentos vecinos al contexto. Observaciones:
+- **M5 (programa de inglés) y C5 (contenidos de Diseño de Experimentos):** antes quedaban incompletas porque la parte final de la sección no estaba entre los fragmentos recuperados. Se resolvió sumando los fragmentos vecinos (ver `specs/001-pipeline-ingesta-rag/research.md`, sección "Contexto para el LLM").
+- **Fuentes:** con más contexto, la lista de fuentes puede incluir algún documento que se pasó al LLM pero que no aportó a la respuesta (p. ej. C1 lista MC6004 además de MC6102).
 - **Gemini saturado:** en corridas anteriores, algunas consultas devolvieron 502 por saturación de Gemini y funcionaron al reintentar.
 
 ## Estado de los criterios de aceptación
@@ -80,6 +81,6 @@ Por esta falta de documentos, el criterio 3 de aceptación se generalizó el 202
 |---|---|---|---|
 | 1 | Se crea el dominio "Memoria del Consejo" | Cumplido | Existe en producción, junto con "Currículum". |
 | 2 | Se suben al menos 3 a 5 actas reales (PDF o DOCX) | Cumplido | 3 actas reales en PDF (96 a 180 páginas). |
-| 3 | Preguntas representativas: las que tienen respuesta citan el documento y dominio de origen; las que no, responden "sin información" sin fuentes | Cumplido | 17 de 17 casos: 11 con respuesta citan el documento correcto (M1 a M5, C1 a C4, X1, X2); 6 sin respuesta no inventan ni listan fuentes (M6, M7, CU1, CU6, A1, A2). |
+| 3 | Preguntas representativas: las que tienen respuesta citan el documento y dominio de origen; las que no, responden "sin información" sin fuentes | Cumplido | 18 de 18 casos: 12 con respuesta citan el documento correcto (M1 a M5, C1 a C5, X1, X2); 6 sin respuesta no inventan ni listan fuentes (M6, M7, CU1, CU6, A1, A2). |
 | 4 | Subir el mismo archivo dos veces no duplica fragmentos | Cumplido | En producción: resubir `MC6102` devolvió el documento existente; 1245 fragmentos antes y después. |
 | 5 | Todo el stack levanta con `docker compose up` sin pasos manuales adicionales | Cumplido | Verificado el 2026-09-27 con un `.env` copiado de `.env.example`. |
