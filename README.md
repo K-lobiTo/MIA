@@ -31,6 +31,7 @@ La API queda en `http://localhost:8000/docs` (Swagger UI, cliente de prueba del 
 
 ## Consultar la API
 
+- **Cliente web tipo chat:** `cd web && npm install && npm run dev` abre `http://localhost:3000` (contra la API de Render; `MIA_API_URL=http://localhost:8000 npm run dev` para una local). Detalle en [web/README.md](web/README.md).
 - **Cliente de terminal:** `python scripts/cliente.py` (usa la API de Render; `--url http://localhost:8000` para otra instancia). Muestra un menú para elegir uno o varios dominios y luego permite hacer preguntas en un ciclo: `:d` cambia de dominios, `:f` muestra los fragmentos citados, `:s` sale. Solo usa la biblioteca estándar de Python.
 - **Swagger UI:** `https://mia-api-5qgh.onrender.com/docs` (o `/docs` en la instancia local). En `POST /query` se envían los ids de dominio, que se obtienen con `GET /domains`.
 

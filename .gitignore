@@ -229,3 +229,7 @@ mia.db
 
 # Documentos de prueba locales (actas reales, no versionar)
 tmp/
+
+# Cliente web (web/)
+web/node_modules/
+web/dist/
