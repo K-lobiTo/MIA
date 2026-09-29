@@ -43,6 +43,16 @@ Trade-off aceptado: cambiar de modelo de embeddings con otra dimensionalidad req
 - **Ingesta** (`POST /domains/{id}/documents`): guarda el archivo en `uploads/`, crea el `Document` en estado `pending` (deduplicado por hash dentro del dominio) y dispara `ingest_document()` en segundo plano (`BackgroundTasks`). La ingesta procesa un documento a la vez (lock) y en lotes de 64 fragmentos, para acotar la memoria del modelo de embeddings. Estados: `pending → processing → done`/`error`. Se puede desactivar con `INGESTION_ENABLED=false` (responde 503); así está en Render, ver [OPERACION.md](OPERACION.md).
 - **Consulta** (`POST /query`): embebe la pregunta, busca en Qdrant filtrando por dominio, descarta los resultados bajo `QUERY_SIMILARITY_THRESHOLD`, y si no queda ninguno responde "sin información suficiente" sin llamar al LLM. Si hay contexto, lo pasa al LLM con `RAG_SYSTEM_PROMPT` (`rag/llm.py`). Si el LLM responde la marca `SIN_INFORMACION` (ningún fragmento trata el tema), la API devuelve "sin información suficiente" sin fuentes; si no, devuelve la respuesta con las fuentes (nombre del documento y del dominio, leídos de la metadata SQL). El umbral solo filtra lo claramente ajeno: con actas reales, la similitud de preguntas con y sin respuesta se solapa (detalle en `specs/001-pipeline-ingesta-rag/research.md`).
 
+## Clientes de prueba
+
+Todavía no hay artefactos reales (el bot de WhatsApp vía Kapso quedó para después). Para consultar la API existen tres clientes, todos fuera del paquete `mia`:
+
+- **Swagger UI** (`/docs` de la API).
+- **`scripts/cliente.py`:** cliente de terminal con menú de dominios. Solo usa la biblioteca estándar.
+- **`web/`:** chat en TypeScript (Vite, sin framework) en el puerto 3000. El servidor de Vite hace de proxy a la API porque esta no tiene CORS configurado; ver [web/README.md](../web/README.md).
+
+`scripts/pruebas_mvp.py` usa la misma API para las pruebas de aceptación ([PRUEBAS_MVP.md](PRUEBAS_MVP.md)).
+
 ## Qué funciona hoy vs. qué es interfaz sin implementar
 
 **Funciona (probado con tests unitarios y manualmente contra Qdrant y Gemini reales):**
