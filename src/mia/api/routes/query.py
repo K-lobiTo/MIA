@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from mia.config import settings
+from mia.rag.context import build_passages
 from mia.rag.embeddings import get_embedding_provider
 from mia.rag.llm import RagContext, get_llm_provider, is_no_info_answer
 from mia.storage.db import get_session
@@ -37,7 +38,8 @@ def query(payload: QueryRequest, session: Session = Depends(get_session)) -> Que
     embedding_provider = get_embedding_provider(settings.embedding_provider)
     question_embedding = embedding_provider.embed([payload.question], is_query=True)[0]
 
-    results = get_vector_store().search(
+    vector_store = get_vector_store()
+    results = vector_store.search(
         question_embedding, domains=payload.domains, limit=settings.query_search_limit
     )
     relevant = [r for r in results if r.score >= settings.query_similarity_threshold]
@@ -45,15 +47,19 @@ def query(payload: QueryRequest, session: Session = Depends(get_session)) -> Que
     if not relevant:
         return QueryResponse(answer=NO_INFO_ANSWER, sources=[])
 
+    passages = build_passages(relevant, vector_store, settings.query_context_neighbors)
+
     sources: list[Source] = []
     context: list[RagContext] = []
-    for result in relevant:
-        document = session.get(Document, result.document_id)
-        domain = session.get(Domain, result.domain)
-        document_label = document.filename if document else result.document_id
-        domain_label = domain.name if domain else result.domain
-        sources.append(Source(domain=domain_label, document=document_label, excerpt=result.text))
-        context.append(RagContext(domain=domain_label, document=document_label, excerpt=result.text))
+    for passage in passages:
+        document = session.get(Document, passage.document_id)
+        domain = session.get(Domain, passage.domain)
+        document_label = document.filename if document else passage.document_id
+        domain_label = domain.name if domain else passage.domain
+        sources.append(Source(domain=domain_label, document=document_label, excerpt=passage.text))
+        context.append(
+            RagContext(domain=domain_label, document=document_label, excerpt=passage.text)
+        )
 
     llm_provider = get_llm_provider(settings.llm_provider)
     try:

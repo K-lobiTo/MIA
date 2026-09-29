@@ -8,14 +8,19 @@ from qdrant_client.models import (
     FieldCondition,
     Filter,
     MatchAny,
+    MatchValue,
     PayloadSchemaType,
     PointStruct,
     VectorParams,
 )
 
-# Campos del payload por los que se filtra: `domain` en las consultas, `document_id` para ubicar
-# o borrar los fragmentos de un documento.
-FILTERABLE_FIELDS = ("domain", "document_id")
+# Campos del payload por los que se filtra: `domain` en las consultas; `document_id` y
+# `chunk_index` para traer fragmentos vecinos de un documento (o ubicarlos para borrarlos).
+FILTERABLE_FIELDS = {
+    "domain": PayloadSchemaType.KEYWORD,
+    "document_id": PayloadSchemaType.KEYWORD,
+    "chunk_index": PayloadSchemaType.INTEGER,
+}
 
 
 @dataclass
@@ -35,6 +40,7 @@ class SearchResult:
     domain: str
     text: str
     score: float
+    chunk_index: int = 0
 
 
 class VectorStore(ABC):
@@ -48,6 +54,10 @@ class VectorStore(ABC):
     def search(
         self, query_embedding: list[float], domains: list[str], limit: int = 5
     ) -> list[SearchResult]: ...
+
+    @abstractmethod
+    def get_chunks(self, document_id: str, chunk_indexes: list[int]) -> list[SearchResult]:
+        """Fragmentos de un documento por posición (sin puntaje de similitud, `score=0`)."""
 
 
 class QdrantVectorStore(VectorStore):
@@ -75,11 +85,9 @@ class QdrantVectorStore(VectorStore):
 
         # Qdrant Cloud rechaza filtrar por un campo del payload sin índice (el Qdrant local no).
         # Crear un índice que ya existe no hace nada, así que se asegura en cada arranque.
-        for field in FILTERABLE_FIELDS:
+        for field, schema in FILTERABLE_FIELDS.items():
             self.client.create_payload_index(
-                collection_name=self.collection,
-                field_name=field,
-                field_schema=PayloadSchemaType.KEYWORD,
+                collection_name=self.collection, field_name=field, field_schema=schema
             )
 
     def upsert(self, chunks: list[Chunk]) -> None:
@@ -107,16 +115,34 @@ class QdrantVectorStore(VectorStore):
             query_filter=Filter(must=[FieldCondition(key="domain", match=MatchAny(any=domains))]),
             limit=limit,
         )
-        return [
-            SearchResult(
-                chunk_id=str(point.id),
-                document_id=point.payload["document_id"],
-                domain=point.payload["domain"],
-                text=point.payload["text"],
-                score=point.score,
-            )
-            for point in response.points
-        ]
+        return [_to_result(point, point.score) for point in response.points]
+
+    def get_chunks(self, document_id: str, chunk_indexes: list[int]) -> list[SearchResult]:
+        if not chunk_indexes:
+            return []
+        points, _ = self.client.scroll(
+            collection_name=self.collection,
+            scroll_filter=Filter(
+                must=[
+                    FieldCondition(key="document_id", match=MatchValue(value=document_id)),
+                    FieldCondition(key="chunk_index", match=MatchAny(any=chunk_indexes)),
+                ]
+            ),
+            limit=len(chunk_indexes),
+            with_payload=True,
+        )
+        return [_to_result(point, 0.0) for point in points]
+
+
+def _to_result(point, score: float) -> SearchResult:
+    return SearchResult(
+        chunk_id=str(point.id),
+        document_id=point.payload["document_id"],
+        domain=point.payload["domain"],
+        text=point.payload["text"],
+        score=score,
+        chunk_index=point.payload.get("chunk_index", 0),
+    )
 
 
 @lru_cache

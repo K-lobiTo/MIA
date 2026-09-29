@@ -40,6 +40,9 @@ class Caso:
     espera: str
     # Fragmento del nombre de archivo que debe aparecer entre las fuentes (solo para "respuesta").
     documento: str = ""
+    # Texto que debe aparecer en la respuesta (sin distinguir mayúsculas), p. ej. el último punto
+    # de una lista larga, para detectar respuestas cortadas.
+    contiene: str = ""
 
 
 CASOS = [
@@ -90,6 +93,15 @@ CASOS = [
         [CURRICULUM],
         "respuesta",
         "MC7201",
+    ),
+    # Lista larga repartida en varios fragmentos (secciones A a H): exige unir fragmentos vecinos.
+    Caso(
+        "C5",
+        '¿Cuáles son los contenidos del curso "Diseño de Experimentos"?',
+        [CURRICULUM],
+        "respuesta",
+        "MC6104",
+        contiene="fraccional",
     ),
     # Casos de uso 1 y 6 del documento conceptual.
     Caso(
@@ -187,6 +199,8 @@ def _evaluar(caso: Caso, status: int, body: dict) -> tuple[bool, str]:
         return False, "se esperaba una respuesta y devolvió 'sin información'"
     if caso.documento and not any(caso.documento in f for f in fuentes):
         return False, f"no cita un documento con '{caso.documento}' (fuentes: {fuentes})"
+    if caso.contiene and caso.contiene.lower() not in body["answer"].lower():
+        return False, f"la respuesta no menciona '{caso.contiene}' (¿quedó incompleta?)"
     return True, f"fuentes: {fuentes}"
 
 

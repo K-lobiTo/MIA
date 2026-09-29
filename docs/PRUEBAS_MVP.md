@@ -31,7 +31,7 @@ python scripts/pruebas_mvp.py --url http://localhost:8000               # local
 python scripts/pruebas_mvp.py --url <url> --solo C1,CU6                 # algunos casos
 ```
 
-El script solo usa la biblioteca estándar de Python. Busca los dominios por nombre y, para cada caso, verifica una de dos cosas:
+El script solo usa la biblioteca estándar de Python. Algunos casos verifican además que la respuesta contenga un texto (p. ej. el último punto de una lista), para detectar respuestas cortadas. Busca los dominios por nombre y, para cada caso, verifica una de dos cosas:
 - que la API responda con contenido y cite el documento esperado;
 - o que responda "sin información" sin listar fuentes.
 
@@ -52,6 +52,7 @@ Reintenta hasta 3 veces ante un 502 (Gemini gratuito se satura seguido). Termina
 | C2 | Currículum | ¿Qué requisitos tiene el curso Diseño de Experimentos? | Respuesta, cita MC6104 |
 | C3 | Currículum | ¿De qué curso es requisito Sistemas Operativos Avanzados? | Respuesta, cita MC6004 |
 | C4 | Currículum | ¿Cuántos créditos tiene el curso Introducción a la Investigación? | Respuesta, cita MC7201 |
+| C5 | Currículum | ¿Cuáles son los contenidos del curso "Diseño de Experimentos"? | Respuesta, cita MC6104 y llega hasta la última sección ("Diseños fraccionales") |
 | CU1 | Memoria | Caso de uso 1: acuerdos del Consejo de Unidad sobre la maestría de Ciberseguridad | Sin información (ver nota) |
 | CU6 | Currículum + Memoria | Caso de uso 6: cambios al programa de la maestría en Ciencia de la Computación | Sin información (ver nota) |
 | X1 | Currículum + Memoria | ¿Cómo se evalúa el curso Análisis y Diseño de Algoritmos? | Respuesta, cita MC6102 |
@@ -69,7 +70,7 @@ Por esta falta de documentos, el criterio 3 de aceptación se generalizó el 202
 
 ## Resultado (2026-09-28, producción: Render + Neon + Qdrant Cloud + Gemini)
 
-**17 de 17 casos correctos.** Observaciones:
+**18 de 18 casos correctos** (17 en la corrida del 2026-09-28 más C5, agregado ese mismo día tras incorporar los fragmentos vecinos). Observaciones:
 - **M5 (programa de inglés):** la respuesta es parcial. El fragmento con la parte resolutiva del acuerdo no quedó entre los 5 recuperados, y el LLM lo aclara. Primera mejora a probar: `QUERY_SEARCH_LIMIT` en 8 o 10.
 - **Gemini saturado:** en corridas anteriores, algunas consultas devolvieron 502 por saturación de Gemini y funcionaron al reintentar.
 

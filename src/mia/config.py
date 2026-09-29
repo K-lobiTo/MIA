@@ -19,7 +19,10 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
 
     query_similarity_threshold: float = 0.8
-    query_search_limit: int = 5
+    query_search_limit: int = 8
+    # Fragmentos anteriores y posteriores que se suman a cada resultado relevante, para no cortar
+    # listas o secciones que ocupan varios fragmentos (ver src/mia/rag/context.py).
+    query_context_neighbors: int = 1
 
     # En Render free (512 MB) ingerir actas grandes agota la memoria: allí se desactiva y la ingesta
     # se hace desde una instancia local apuntando a las mismas bases (ver docs/OPERACION.md).

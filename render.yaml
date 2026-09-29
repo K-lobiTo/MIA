@@ -25,6 +25,10 @@ services:
       # Calibrado con actas reales, ver specs/001-pipeline-ingesta-rag/research.md
       - key: QUERY_SIMILARITY_THRESHOLD
         value: "0.82"
+      - key: QUERY_SEARCH_LIMIT
+        value: "8"
+      - key: QUERY_CONTEXT_NEIGHBORS
+        value: "1"
       # 512 MB no alcanzan para ingerir actas grandes: la ingesta se hace desde una instancia local.
       - key: INGESTION_ENABLED
         value: "false"

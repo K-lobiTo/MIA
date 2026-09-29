@@ -26,7 +26,7 @@ def test_ensure_collection_crea_indices_de_payload_para_filtrar():
 
     client.create_collection.assert_called_once()
     indexed = {c.kwargs["field_name"] for c in client.create_payload_index.call_args_list}
-    assert indexed == {"domain", "document_id"}
+    assert indexed == {"domain", "document_id", "chunk_index"}
 
 
 def test_ensure_collection_existente_tambien_asegura_indices():
@@ -37,7 +37,7 @@ def test_ensure_collection_existente_tambien_asegura_indices():
     _store(client).ensure_collection(384)
 
     client.create_collection.assert_not_called()
-    assert client.create_payload_index.call_count == 2
+    assert client.create_payload_index.call_count == 3
 
 
 def test_ensure_collection_falla_si_la_dimension_no_coincide():

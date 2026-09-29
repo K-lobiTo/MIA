@@ -149,3 +149,26 @@ respuestas de `/query` para un conjunto de preguntas con y sin respuesta.
 **Alternatives considered**: confiar solo en que el LLM diga "no lo sé" vía prompting, sin umbral:
 rechazado como único mecanismo, es más caro (siempre llama al LLM aunque la pregunta sea ajena). Subir
 el umbral hasta separar los grupos: rechazado por el solapamiento descrito arriba.
+
+## Contexto para el LLM: fragmentos vecinos (2026-09-28)
+
+**Problema**: la pregunta "¿Cuáles son los contenidos del curso Diseño de Experimentos?" se
+respondía correcta pero incompleta. Los contenidos (secciones A a H) ocupan los fragmentos 4 a 7 del
+programa; el 5 quedaba sexto por similitud (fuera de los 5 recuperados) y el 6, una lista de temas,
+ni siquiera entre los 12 primeros. El mismo síntoma tenía la pregunta del programa de inglés (M5).
+
+**Decision**: (1) subir `QUERY_SEARCH_LIMIT` de 5 a 8; (2) sumar a cada fragmento relevante sus
+`QUERY_CONTEXT_NEIGHBORS` (1) vecinos anterior y posterior del mismo documento, y unir los
+consecutivos en pasajes continuos quitando la superposición de 200 caracteres del chunker
+(`src/mia/rag/context.py`). Requiere el índice de payload `chunk_index` (entero) en Qdrant, que
+`ensure_collection()` crea al arrancar.
+
+**Resultado**: la respuesta pasó de cortarse en "D. Experimentos Monofactoriales" a cubrir A a H, y
+M5 pasó de parcial a incluir la parte resolutiva del acuerdo. Las pruebas de aceptación siguieron en
+18 de 18 (con el caso nuevo C5). Costo: el contexto al LLM crece (unos 10 000 caracteres en vez de
+5 000), sin impacto notable en Gemini Flash-Lite.
+
+**Alternatives considered**: solo subir el límite (con 8 igual faltaba el fragmento 6, que se
+parece poco a la pregunta); fragmentos más grandes (obliga a reindexar y empeora la precisión de
+la búsqueda); dos vecinos por lado (más contexto del necesario para los documentos actuales,
+queda como ajuste por configuración).
