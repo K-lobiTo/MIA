@@ -174,3 +174,5 @@ Estado de cada criterio, datos de prueba y script para verificarlos: [PRUEBAS_MV
 2. Construir el primer artefacto real (recomendado: Consulta de Coordinación, por ser interno y de menor riesgo antes de exponer algo a estudiantes).
 3. Definir y medir las métricas de éxito pendientes (sección 10).
 4. Resolver control de acceso antes de habilitar el chatbot web/WhatsApp (dominios públicos vs. internos).
+
+Qué documentos pedir para cada dominio nuevo, su visibilidad (pública, interna o restringida) y en qué orden está en la sección 4 de [Diseno_Tecnico_MIA.md](../../Digital_Transformation_Framework/docs/propuestas/Diseno_Tecnico_MIA.md), en el repo `Digital_Transformation_Framework`. El prototipo evita la información sensible; si se llegara a incluir, antes hay que cambiar a un LLM que no use los datos enviados (ver "Datos y privacidad" en [OPERACION.md](OPERACION.md)).
