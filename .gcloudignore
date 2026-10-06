@@ -1,0 +1,9 @@
+# Archivos que no se suben al construir la imagen en Cloud Run (gcloud run deploy --source).
+#!include:.gitignore
+.git
+docs/
+specs/
+tests/
+web/
+scripts/
+deploy/

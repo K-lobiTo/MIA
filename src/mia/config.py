@@ -18,6 +18,11 @@ class Settings(BaseSettings):
 
     gemini_api_key: str = ""
 
+    glm_api_key: str = ""
+    # Razonamiento antes de responder: mejora preguntas que combinan datos (p. ej. sumar créditos
+    # de varios cursos) a cambio de más latencia y tokens de salida.
+    glm_thinking: bool = True
+
     query_similarity_threshold: float = 0.8
     query_search_limit: int = 8
     # Fragmentos anteriores y posteriores que se suman a cada resultado relevante, para no cortar
@@ -27,6 +32,9 @@ class Settings(BaseSettings):
     # En Render free (512 MB) ingerir actas grandes agota la memoria: allí se desactiva y la ingesta
     # se hace desde una instancia local apuntando a las mismas bases (ver docs/OPERACION.md).
     ingestion_enabled: bool = True
+    # Ingerir dentro de la misma petición en vez de en segundo plano. Necesario en Cloud Run con
+    # cobro por petición: al responder se frena la CPU y una tarea en segundo plano no avanza.
+    ingestion_sync: bool = False
 
     api_host: str = "0.0.0.0"
     api_port: int = 8000

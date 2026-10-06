@@ -101,7 +101,11 @@ def upload_document(
     session.commit()
     session.refresh(document)
 
-    background_tasks.add_task(ingest_document, document.id)
+    if settings.ingestion_sync:
+        ingest_document(document.id)
+        session.refresh(document)
+    else:
+        background_tasks.add_task(ingest_document, document.id)
 
     return document
 

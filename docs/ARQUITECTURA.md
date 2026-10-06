@@ -68,6 +68,9 @@ Todavía no hay artefactos reales (el bot de WhatsApp vía Kapso quedó para des
 - Los tests no dependen del `.env` de quien los corre: `tests/conftest.py` fija una base SQLite temporal y un Qdrant local antes de importar la configuración.
 - `POST /query`: búsqueda semántica filtrada por dominio, umbral de similitud configurable (`QUERY_SIMILARITY_THRESHOLD`, calibración en `specs/001-pipeline-ingesta-rag/research.md`) y respuesta citando documento y dominio de origen.
 
+- `GLMLLMProvider`: modelo fijo `glm-5.3` de Z.ai, con el SDK de OpenAI apuntando a la API de Z.ai (compatible con la de OpenAI). Razonamiento configurable (`GLM_THINKING`, activado por defecto), timeout de 120 s por intento y 2 reintentos. Implementado con test unitario; falta probarlo contra la API real. Es el LLM previsto para el despliegue en Cloud Run.
+- `INGESTION_SYNC=true` ingiere dentro de la petición de subida en vez de en segundo plano, para Cloud Run con cobro por petición (la CPU se frena al responder).
+
 **Interfaz definida, implementación pendiente (lanzan `NotImplementedError` a propósito, no es un bug):**
 - `OpenAIEmbeddingProvider`, `OpenAILLMProvider`, `LocalLLMProvider` (LLM local, sigue esperando hardware propio).
 
@@ -88,4 +91,5 @@ flowchart LR
 - **Desarrollo local:** `docker-compose.yml` levanta Qdrant local + la API. Dentro de compose la API siempre usa el Qdrant de compose, aunque `.env` apunte a Qdrant Cloud.
 - **Demo compartida (prototipo, costo cero):** API en Render free (`render.yaml`), metadata en Neon Postgres free, vectores en Qdrant Cloud free (región N. Virginia en AWS), LLM Gemini free. La API es la misma en todos los entornos; solo cambian las variables de entorno.
 - **Ingesta en producción:** Render free tiene 512 MB y la ingesta de actas reales llega a 460-520 MB, así que allí está desactivada. Las actas se ingieren levantando la API en la máquina de quien opera, con `DATABASE_URL`, `QDRANT_URL` y `QDRANT_API_KEY` de producción: escribe en las mismas bases que lee Render. Pasos en [OPERACION.md](OPERACION.md).
+- **Cloud Run (en preparación):** reemplazo previsto de Render, con ingesta en el servidor y tope de gasto. Archivos en `deploy/cloudrun/`, pasos en [OPERACION.md](OPERACION.md).
 - **Persistencia:** la metadata vive en Neon y los vectores en Qdrant Cloud, así que sobreviven a reinicios y redeploys de Render. Los archivos originales (`uploads/`) quedan solo en la máquina de quien ingirió; si se necesita reindexar, hay que tener los archivos.

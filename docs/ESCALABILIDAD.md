@@ -43,6 +43,25 @@ Antes de elegir proveedor conviene consultar con TI de la institución si ya exi
 5. LLM con plan pago o local, según la sensibilidad de los dominios que se agreguen.
 6. Recalibrar `QUERY_SIMILARITY_THRESHOLD` cada vez que se agregue un dominio o cambie el modelo de embeddings.
 
+## Migración a Cloud Run (decisión del 2026-10-06, en preparación)
+
+Con un presupuesto chico disponible se volvió a comparar el hosting de la API, ya sin la restricción de costo cero y sin tarjeta que llevó a Render free. Precios consultados en octubre de 2026:
+
+| Opción | Costo/mes aprox. | Por qué no / por qué sí |
+|---|---|---|
+| Render Starter / Standard | 7 / 25 USD fijos | Lo más simple, pero Starter mantiene 512 MB (sin ingesta en el servidor). |
+| Railway Hobby | 5 a 10 USD según uso | Despliegue simple; cobro por uso de RAM y CPU. |
+| Fly.io | 6 a 11 USD | Similar a Railway, con precio fijo por máquina. |
+| Hetzner VPS | ~5.50 EUR fijos | El más barato con 4 GB, pero hay que administrar el servidor: peor para el traspaso. |
+| Vercel Hobby | 0 USD | Serverless: la ingesta en segundo plano requiere reescribirse y FastAPI necesita adaptar el despliegue. Encaja mejor para el cliente web. |
+| **Google Cloud Run** | **~0 USD con el uso del piloto** | **Elegido.** Mismo Dockerfile, ingesta en el servidor, sin la espera de 30-60 s de Render. |
+
+El riesgo de Cloud Run es el cobro variable: no tiene tope directo. Se acota con un máximo de 1 instancia (peor caso ~2 USD por día) y un corte automático de la facturación al llegar a un presupuesto de 3 USD. Detalle y pasos en [OPERACION.md](OPERACION.md), sección "Despliegue en Cloud Run".
+
+En la misma decisión se eligió **GLM 5.3** (Z.ai) como LLM: 1.40 / 4.40 USD por millón de tokens de entrada / salida, más barato que Claude Sonnet 5.5 (2 / 10), con razonamiento y llamadas a herramientas. La API de Z.ai es compatible con la de OpenAI (`GLMLLMProvider`). Con el volumen del piloto (cientos de consultas al mes) el gasto esperado es de pocos dólares.
+
+Pendiente aparte del hosting: las preguntas de agregación sobre muchos documentos (p. ej. "¿cuántos créditos suman todos los cursos?") hoy responden "sin información" porque la búsqueda no recupera fragmentos de todos los documentos, no por el LLM. Resolverlas requiere recuperación con herramientas (el LLM decide qué buscar) o extraer al ingerir datos estructurados como créditos y horas.
+
 ## Qué se probó y se descartó (2026-09-27)
 
 Registro para no repetir caminos ya recorridos. Mediciones hechas con las actas 3436, 3437 y 3438 del Consejo Institucional del TEC (96, 180 y 113 páginas; 1189 fragmentos en total).
