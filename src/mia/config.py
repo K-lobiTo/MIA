@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     # Fragmentos anteriores y posteriores que se suman a cada resultado relevante, para no cortar
     # listas o secciones que ocupan varios fragmentos (ver src/mia/rag/context.py).
     query_context_neighbors: int = 1
+    # Documentos de hasta esta cantidad de fragmentos (~800 caracteres nuevos cada uno) se pasan
+    # completos al LLM si alguno de sus fragmentos es relevante. 0 lo desactiva.
+    query_full_document_max_chunks: int = 12
 
     # En Render free (512 MB) ingerir actas grandes agota la memoria: allí se desactiva y la ingesta
     # se hace desde una instancia local apuntando a las mismas bases (ver docs/OPERACION.md).

@@ -10,6 +10,7 @@ from mia.storage.vector_store import SearchResult
 
 def test_sin_resultados_por_encima_del_umbral_no_llama_al_llm():
     fake_vector_store = MagicMock()
+    fake_vector_store.count_chunks.return_value = 100
     fake_vector_store.search.return_value = [
         SearchResult(chunk_id="c1", document_id="doc-1", domain="dom-1", text="irrelevante", score=0.2),
     ]
@@ -36,6 +37,7 @@ def test_sin_resultados_por_encima_del_umbral_no_llama_al_llm():
 
 def test_si_el_llm_indica_que_no_hay_informacion_no_se_listan_fuentes():
     fake_vector_store = MagicMock()
+    fake_vector_store.count_chunks.return_value = 100
     fake_vector_store.search.return_value = [
         SearchResult(chunk_id="c1", document_id="doc-1", domain="dom-1", text="otro tema", score=0.95),
     ]

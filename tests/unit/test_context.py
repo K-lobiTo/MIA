@@ -69,3 +69,27 @@ def test_build_passages_sin_vecinos_no_consulta_el_vector_store():
 
     vector_store.get_chunks.assert_not_called()
     assert [p.text for p in passages] == ["cero"]
+
+
+def test_build_passages_incluye_completo_un_documento_corto():
+    relevant = [_chunk(1, "uno", score=0.9)]
+    vector_store = MagicMock()
+    vector_store.count_chunks.return_value = 4
+    vector_store.get_chunks.return_value = [_chunk(0, "cero"), _chunk(2, "dos"), _chunk(3, "tres")]
+
+    passages = build_passages(relevant, vector_store, neighbors=1, full_document_max_chunks=12)
+
+    vector_store.get_chunks.assert_called_once_with("doc-1", [0, 2, 3])
+    assert len(passages) == 1
+    assert passages[0].text == "cero\nuno\ndos\ntres"
+
+
+def test_build_passages_documento_largo_solo_suma_vecinos():
+    relevant = [_chunk(10, "diez", score=0.9)]
+    vector_store = MagicMock()
+    vector_store.count_chunks.return_value = 200
+    vector_store.get_chunks.return_value = []
+
+    build_passages(relevant, vector_store, neighbors=1, full_document_max_chunks=12)
+
+    vector_store.get_chunks.assert_called_once_with("doc-1", [9, 11])

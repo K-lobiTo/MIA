@@ -42,6 +42,8 @@ def test_sources_solo_incluye_fragmentos_por_encima_del_umbral(tmp_path):
     app.dependency_overrides[get_session] = _override_get_session(tmp_path)
 
     fake_vector_store = MagicMock()
+    # Documento largo: no se incluye completo, solo los fragmentos relevantes y sus vecinos.
+    fake_vector_store.count_chunks.return_value = 100
     fake_vector_store.search.return_value = [
         SearchResult(chunk_id="c1", document_id="doc-1", domain="dom-1", text="fragmento relevante", score=0.9),
         SearchResult(chunk_id="c2", document_id="doc-1", domain="dom-1", text="fragmento irrelevante", score=0.1),

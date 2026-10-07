@@ -4,7 +4,9 @@ La búsqueda por similitud devuelve fragmentos sueltos de ~1000 caracteres. Cuan
 una lista o sección larga (p. ej. los contenidos de un programa de curso), sus partes quedan en
 fragmentos consecutivos y las del final se parecen poco a la pregunta, así que no se recuperan y la
 respuesta queda incompleta. Por eso a cada fragmento relevante se le suman sus vecinos del mismo
-documento y los fragmentos consecutivos se unen en un solo pasaje.
+documento y los fragmentos consecutivos se unen en un solo pasaje. Si el documento es corto (p. ej.
+un programa de curso o una lista de líneas de TFG), se pasa completo: una lista que ocupa casi todo
+el documento no cabe en un fragmento y sus vecinos.
 """
 
 from dataclasses import dataclass
@@ -71,18 +73,28 @@ def merge_into_passages(chunks: list[SearchResult]) -> list[Passage]:
 
 
 def build_passages(
-    relevant: list[SearchResult], vector_store: VectorStore, neighbors: int
+    relevant: list[SearchResult],
+    vector_store: VectorStore,
+    neighbors: int,
+    full_document_max_chunks: int = 0,
 ) -> list[Passage]:
     """Suma a cada resultado relevante sus `neighbors` fragmentos anteriores y posteriores del
-    mismo documento, y une todo en pasajes continuos."""
+    mismo documento, y une todo en pasajes continuos. Los documentos de hasta
+    `full_document_max_chunks` fragmentos se incluyen completos (0 lo desactiva)."""
+    wanted: dict[str, set[int]] = {}
+    for result in relevant:
+        around = range(result.chunk_index - neighbors, result.chunk_index + neighbors + 1)
+        wanted.setdefault(result.document_id, set()).update(i for i in around if i >= 0)
+    if full_document_max_chunks > 0:
+        for document_id in wanted:
+            total = vector_store.count_chunks(document_id)
+            if total <= full_document_max_chunks:
+                wanted[document_id] = set(range(total))
+    for result in relevant:
+        wanted[result.document_id].discard(result.chunk_index)
+
     chunks = list(relevant)
-    if neighbors > 0:
-        wanted: dict[str, set[int]] = {}
-        for result in relevant:
-            around = range(result.chunk_index - neighbors, result.chunk_index + neighbors + 1)
-            wanted.setdefault(result.document_id, set()).update(i for i in around if i >= 0)
-        for result in relevant:
-            wanted[result.document_id].discard(result.chunk_index)
-        for document_id, indexes in wanted.items():
+    for document_id, indexes in wanted.items():
+        if indexes:
             chunks.extend(vector_store.get_chunks(document_id, sorted(indexes)))
     return merge_into_passages(chunks)

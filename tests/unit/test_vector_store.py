@@ -47,3 +47,13 @@ def test_ensure_collection_falla_si_la_dimension_no_coincide():
 
     with pytest.raises(RuntimeError, match="dimensión 768"):
         _store(client).ensure_collection(384)
+
+
+def test_count_chunks_filtra_por_documento():
+    client = MagicMock()
+    client.count.return_value = SimpleNamespace(count=9)
+
+    assert _store(client).count_chunks("doc-1") == 9
+    filtro = client.count.call_args.kwargs["count_filter"]
+    assert filtro.must[0].key == "document_id"
+    assert filtro.must[0].match.value == "doc-1"

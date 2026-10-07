@@ -59,6 +59,10 @@ class VectorStore(ABC):
     def get_chunks(self, document_id: str, chunk_indexes: list[int]) -> list[SearchResult]:
         """Fragmentos de un documento por posición (sin puntaje de similitud, `score=0`)."""
 
+    @abstractmethod
+    def count_chunks(self, document_id: str) -> int:
+        """Cantidad de fragmentos de un documento."""
+
 
 class QdrantVectorStore(VectorStore):
     """Implementación sobre Qdrant. Colección única (`domain` como payload filtrable),
@@ -132,6 +136,15 @@ class QdrantVectorStore(VectorStore):
             with_payload=True,
         )
         return [_to_result(point, 0.0) for point in points]
+
+    def count_chunks(self, document_id: str) -> int:
+        return self.client.count(
+            collection_name=self.collection,
+            count_filter=Filter(
+                must=[FieldCondition(key="document_id", match=MatchValue(value=document_id))]
+            ),
+            exact=True,
+        ).count
 
 
 def _to_result(point, score: float) -> SearchResult:

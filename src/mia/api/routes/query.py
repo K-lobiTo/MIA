@@ -47,7 +47,12 @@ def query(payload: QueryRequest, session: Session = Depends(get_session)) -> Que
     if not relevant:
         return QueryResponse(answer=NO_INFO_ANSWER, sources=[])
 
-    passages = build_passages(relevant, vector_store, settings.query_context_neighbors)
+    passages = build_passages(
+        relevant,
+        vector_store,
+        settings.query_context_neighbors,
+        settings.query_full_document_max_chunks,
+    )
 
     sources: list[Source] = []
     context: list[RagContext] = []

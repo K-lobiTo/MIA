@@ -72,7 +72,7 @@ Para redesplegar después de un cambio, repetir el paso 6 (no hay despliegue aut
 - Si el corte por presupuesto se activa, la API deja de responder hasta reactivar la facturación del proyecto desde la consola (*Facturación > Administrar cuenta de facturación*). Antes de reactivarla, revisar en *Cloud Run > Métricas* qué consumió.
 - Cada despliegue guarda una imagen en Artifact Registry. El plan gratuito incluye 0.5 GB: borrar las imágenes viejas desde la consola si se acumulan (cuestan centavos por GB al mes).
 
-## Cargar actas (ingesta)
+## Cargar documentos (ingesta)
 
 La ingesta no se hace en Render (512 MB no alcanzan para actas de más de ~100 páginas; `POST /domains/{id}/documents` responde 503 allí). Se hace desde una máquina local con la misma API:
 
@@ -83,12 +83,25 @@ source .venv/bin/activate
 #   EMBEDDING_PROVIDER=local, QDRANT_COLLECTION=mia_chunks, INGESTION_ENABLED=true
 # --env-file carga esas variables antes de arrancar y tienen prioridad sobre las de .env.
 # (No usar `source .env.produccion`: la URL de Neon contiene "&" y el shell la corta.)
-uvicorn mia.api.main:app --env-file .env.produccion --port 8010
+# INGESTION_SYNC=true: cada subida responde cuando el documento terminó de indexarse, así una carga
+# masiva no acumula ingestas en espera dentro de la API.
+INGESTION_SYNC=true uvicorn mia.api.main:app --env-file .env.produccion --port 8010
 ```
 
 Ojo al copiar la URL de Neon en `DATABASE_URL`: debe empezar con `postgresql://` (si se editó la línea de SQLite, verificar que no quede un prefijo `sqlite:`). Con `Connection pooling` desactivado en el diálogo *Connect* de Neon.
 
-Luego, en `http://localhost:8010/docs`:
+**Carga de una carpeta completa (recomendado):** `scripts/cargar_carpeta.py` crea el dominio si no existe y sube todos los PDF, DOCX y TXT de una o varias carpetas (con subcarpetas), uno a la vez, informando el estado de cada uno:
+
+```bash
+python scripts/cargar_carpeta.py --url http://localhost:8010 \
+  --dominio "Analítica de Negocios: Consejo de Área" \
+  --descripcion "Actas del Consejo de Área Académica" \
+  "tmp/Información_analítica_de_negocios/ACTAS"
+```
+
+`--excluir <texto>` omite los archivos cuyo nombre contenga ese texto (p. ej. un PDF escaneado sin texto). Los comandos exactos de la carga actual están en "Datos cargados" ([PRUEBAS_MVP.md](PRUEBAS_MVP.md)).
+
+**Carga manual de un documento**, en `http://localhost:8010/docs`:
 
 1. `GET /domains` para ver si el dominio ya existe; si no, `POST /domains` con `{"name": "Memoria del Consejo", "description": "..."}`. Guardar el `id`.
 2. `POST /domains/{id}/documents` con cada archivo (PDF, DOCX o TXT). Responde enseguida con estado `pending`.
@@ -114,6 +127,7 @@ Si un documento queda en `error`, ver el log de la API local (el mensaje empieza
 
 ## Datos y privacidad
 
-- Las actas cargadas en la prueba del MVP (sesiones 3436 a 3438 del Consejo Institucional del TEC) son públicas. Los archivos de prueba viven en `tmp/`, que está en `.gitignore`: **no se versionan documentos en el repositorio**.
+- Desde el 2026-10-06 MIA tiene documentos reales entregados por la Unidad de Posgrado en Computación (Mauricio Arroyo) y la Maestría en Analítica de Negocios (Martín Solís), en lugar de los datos de prueba del MVP (actas públicas del Consejo Institucional). Los archivos viven en `tmp/`, que está en `.gitignore`: **no se versionan documentos en el repositorio**.
+- **No se cargaron las actas del Consejo de la Unidad de Posgrado en Computación** (20 actas de 2025): incluyen nombres de estudiantes con número de carné, cédulas, notas, becas y temas de salud, y con el LLM gratuito esos fragmentos se enviarían a Google. Quedan pendientes de un LLM que no use los datos o de una autorización explícita. Las actas de Analítica de Negocios sí se cargaron: tratan temas del programa (becas como política, presupuesto, admisión), sin datos de estudiantes; la única cédula es la de su coordinador en su designación ante FUNDATEC.
 - El LLM recibe fragmentos de las actas en cada consulta. En el tier gratuito de Gemini, Google puede usar esos datos; antes de cargar actas no públicas, pasar a un plan pago o a un LLM local (ver [ESCALABILIDAD.md](ESCALABILIDAD.md)).
 - La API no tiene autenticación: cualquiera con la URL de Render puede consultar. No publicar la URL fuera del equipo.

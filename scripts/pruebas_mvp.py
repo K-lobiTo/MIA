@@ -2,12 +2,12 @@
 
 Corre un conjunto fijo de preguntas contra POST /query y verifica, para cada una, si la API
 respondió con contenido citando el documento esperado, o si respondió "sin información" sin
-fuentes. Requiere que los dominios "Memoria del Consejo" y "Currículum" existan y tengan cargados
-los documentos de prueba descritos en docs/PRUEBAS_MVP.md.
+fuentes. Requiere los dominios con los documentos reales descritos en docs/PRUEBAS_MVP.md
+(entregados por la Unidad de Posgrado en Computación y la Maestría en Analítica de Negocios).
 
 Uso:
     python scripts/pruebas_mvp.py --url https://mia-api-5qgh.onrender.com
-    python scripts/pruebas_mvp.py --url http://localhost:8000 --solo C1,CU6
+    python scripts/pruebas_mvp.py --url http://localhost:8000 --solo U1,I1
 
 Solo usa la biblioteca estándar, para poder correrlo sin instalar el proyecto.
 """
@@ -21,8 +21,10 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 
-MEMORIA = "Memoria del Consejo"
-CURRICULUM = "Currículum"
+AN_CONSEJO = "Analítica de Negocios: Consejo de Área"
+AN_CURRICULUM = "Analítica de Negocios: Currículum"
+CO_PLANES = "Computación: Planes de estudio"
+CO_PROYECTOS = "Computación: Proyectos de graduación"
 
 NO_INFO_PREFIX = "No encontré información suficiente"
 
@@ -40,113 +42,128 @@ class Caso:
     espera: str
     # Fragmento del nombre de archivo que debe aparecer entre las fuentes (solo para "respuesta").
     documento: str = ""
-    # Texto que debe aparecer en la respuesta (sin distinguir mayúsculas), p. ej. el último punto
-    # de una lista larga, para detectar respuestas cortadas.
+    # Texto que debe aparecer en la respuesta (sin distinguir mayúsculas), p. ej. un dato concreto
+    # o el último punto de una lista larga, para detectar respuestas incorrectas o cortadas.
     contiene: str = ""
 
 
 CASOS = [
-    # Memoria del Consejo: actas 3436, 3437 y 3438 del Consejo Institucional del TEC.
-    Caso("M1", "¿Cuánto se pagará de dietas a los estudiantes?", [MEMORIA], "respuesta", "3437"),
-    Caso("M2", "¿Se aprobó el acta 3435?", [MEMORIA], "respuesta", "3438"),
-    Caso("M3", "¿Cómo está conformado el Consejo Institucional?", [MEMORIA], "respuesta", "3437"),
-    Caso(
-        "M4",
-        "¿Qué se aprobó sobre el Plan Táctico Institucional 2026-2028?",
-        [MEMORIA],
-        "respuesta",
-        "3438",
-    ),
-    Caso("M5", "¿Qué se acordó sobre el programa de inglés?", [MEMORIA], "respuesta", "3438"),
-    Caso(
-        "M6",
-        "¿Cuándo abre la matrícula de la maestría en Computación?",
-        [MEMORIA],
-        "sin_informacion",
-    ),
-    Caso("M7", "¿Cuál es la receta del gallo pinto?", [MEMORIA], "sin_informacion"),
-    # Currículum: programas de curso de la Maestría en Computación.
-    Caso(
-        "C1",
-        "¿Cómo se evalúa el curso Análisis y Diseño de Algoritmos?",
-        [CURRICULUM],
-        "respuesta",
-        "MC6102",
-    ),
-    Caso(
-        "C2",
-        "¿Qué requisitos tiene el curso Diseño de Experimentos?",
-        [CURRICULUM],
-        "respuesta",
-        "MC6104",
-    ),
-    Caso(
-        "C3",
-        "¿De qué curso es requisito Sistemas Operativos Avanzados?",
-        [CURRICULUM],
-        "respuesta",
-        "MC6004",
-    ),
-    Caso(
-        "C4",
-        "¿Cuántos créditos tiene el curso Introducción a la Investigación?",
-        [CURRICULUM],
-        "respuesta",
-        "MC7201",
-    ),
-    # Lista larga repartida en varios fragmentos (secciones A a H): exige unir fragmentos vecinos.
-    Caso(
-        "C5",
-        '¿Cuáles son los contenidos del curso "Diseño de Experimentos"?',
-        [CURRICULUM],
-        "respuesta",
-        "MC6104",
-        contiene="fraccional",
-    ),
-    # Casos de uso 1 y 6 del documento conceptual.
-    Caso(
-        "CU1",
-        "¿Qué se acordó en el Consejo de Unidad sobre la maestría de Ciberseguridad en los "
-        "últimos dos años?",
-        [MEMORIA],
-        "sin_informacion",
-    ),
-    # Con los datos de prueba, CU1 y CU6 no tienen respuesta: las actas son del Consejo
-    # Institucional (no del Consejo de Unidad) y los programas de curso describen el estado vigente
-    # sin historial de cambios. Cuando se carguen esos documentos, cambiar a "respuesta".
-    Caso(
-        "CU6",
-        "¿Qué cambios se le han hecho al programa de la maestría en Ciencia de la Computación "
-        "y cuándo?",
-        [CURRICULUM, MEMORIA],
-        "sin_informacion",
-    ),
-    # Consultas multi-dominio con respuesta en uno solo de los dominios.
-    Caso(
-        "X1",
-        "¿Cómo se evalúa el curso Análisis y Diseño de Algoritmos?",
-        [CURRICULUM, MEMORIA],
-        "respuesta",
-        "MC6102",
-    ),
-    Caso(
-        "X2",
-        "¿Desde cuándo está vigente el programa del curso Diseño de Experimentos?",
-        [CURRICULUM, MEMORIA],
-        "respuesta",
-        "MC6104",
-    ),
-    # Aislamiento: una pregunta de un dominio no debe responderse consultando el otro.
+    # Analítica de Negocios, Consejo de Área: actas de las sesiones 01 a 06 de 2026.
     Caso(
         "A1",
-        "¿Cómo se evalúa el curso Análisis y Diseño de Algoritmos?",
-        [MEMORIA],
-        "sin_informacion",
+        "¿Qué se discutió sobre becas en caso de superar los 25 estudiantes admitidos?",
+        [AN_CONSEJO],
+        "respuesta",
+        "04-2026",
     ),
     Caso(
         "A2",
-        "¿Qué se acordó sobre el programa de inglés?",
-        [CURRICULUM],
+        "¿Quién fue designado coordinador específico del proyecto ante FUNDATEC?",
+        [AN_CONSEJO],
+        "respuesta",
+        "01-2026",
+        contiene="Martín Solís",
+    ),
+    Caso(
+        "A3",
+        "¿Qué se discutió sobre becas y descuentos para funcionarios del TEC?",
+        [AN_CONSEJO],
+        "respuesta",
+        "03-2026",
+    ),
+    # Analítica de Negocios, Currículum: programas de curso (DOCX con tablas), reglamentos y TFG.
+    Caso(
+        "U1",
+        "¿Cuántas horas extraclase por semana tiene el curso Big Data para Negocios?",
+        [AN_CURRICULUM],
+        "respuesta",
+        "Big Data para Negocios",
+        contiene="14",
+    ),
+    Caso(
+        "U2",
+        "¿De qué curso es requisito Big Data para Negocios?",
+        [AN_CURRICULUM],
+        "respuesta",
+        "Big Data para Negocios",
+        contiene="Big Data",
+    ),
+    Caso(
+        "U3",
+        "¿Cada cuánto se abre el proceso de admisión al programa?",
+        [AN_CURRICULUM],
+        "respuesta",
+        "Reglamento del Programa",
+        contiene="año",
+    ),
+    Caso(
+        "U4",
+        "¿Cuáles son las líneas de TFG de la maestría?",
+        [AN_CURRICULUM],
+        "respuesta",
+        "Líneas de TFG",
+        # Última de las seis líneas: exige el documento completo (es corto, ver rag/context.py).
+        contiene="Analítica de Texto",
+    ),
+    # Computación, Planes de estudio: MCC, Ciberseguridad y Gerencia de TI.
+    Caso(
+        "P1",
+        "¿Cuántas horas extraclase por semana tiene el curso Cibercrimen?",
+        [CO_PLANES],
+        "respuesta",
+        "MC3010",
+        contiene="14",
+    ),
+    Caso(
+        "P2",
+        "¿Cuántos créditos tiene el curso Cibercrimen y en qué área del plan de estudios se ubica?",
+        [CO_PLANES],
+        "respuesta",
+        "MC3010",
+        contiene="4",
+    ),
+    # Computación, Proyectos de graduación.
+    Caso(
+        "G1",
+        "¿Qué trabajo de graduación trata sobre drones en aeropuertos?",
+        [CO_PROYECTOS],
+        "respuesta",
+        "Drones",
+    ),
+    Caso(
+        "G2",
+        "¿Qué compara el análisis de modelos centralizados y descentralizados en sistemas de pagos?",
+        [CO_PROYECTOS],
+        "respuesta",
+        "Luis Alvarado",
+    ),
+    # Sin respuesta en ningún dominio.
+    Caso(
+        "N1",
+        "¿Cuál es la receta del gallo pinto?",
+        [AN_CONSEJO, AN_CURRICULUM, CO_PLANES, CO_PROYECTOS],
+        "sin_informacion",
+    ),
+    # Multi-dominio con respuesta en uno solo de los dominios.
+    Caso(
+        "X1",
+        "¿Cuántas horas extraclase por semana tiene el curso Cibercrimen?",
+        [AN_CURRICULUM, CO_PLANES],
+        "respuesta",
+        "MC3010",
+        contiene="14",
+    ),
+    # Aislamiento: una pregunta de un dominio no debe responderse consultando otro.
+    Caso(
+        "I1",
+        "¿Cuántas horas extraclase por semana tiene el curso Cibercrimen?",
+        [AN_CURRICULUM],
+        "sin_informacion",
+    ),
+    Caso(
+        "I2",
+        "¿Qué se discutió sobre becas en caso de superar los 25 estudiantes admitidos?",
+        [CO_PROYECTOS],
         "sin_informacion",
     ),
 ]
@@ -213,11 +230,11 @@ def main() -> int:
     solo = {c.strip() for c in args.solo.split(",") if c.strip()}
 
     dominios = _dominios_por_nombre(base_url)
-    faltantes = {MEMORIA, CURRICULUM} - dominios.keys()
+    casos = [c for c in CASOS if not solo or c.id in solo]
+    faltantes = {d for c in casos for d in c.dominios} - dominios.keys()
     if faltantes:
         sys.exit(f"Faltan dominios en la instancia: {sorted(faltantes)}")
 
-    casos = [c for c in CASOS if not solo or c.id in solo]
     fallidos = []
     for caso in casos:
         status, body = _consultar(base_url, caso.pregunta, [dominios[d] for d in caso.dominios])
