@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import event
 
 from mia.api.routes import domains as domain_routes
 from mia.config import settings
@@ -122,3 +123,31 @@ def test_la_lista_de_documentos_incluye_la_carpeta(client, admin, base):
     documentos = client.get("/domains/d1/documents").json()
 
     assert documentos[0]["folder_id"] == "f1" and documentos[0]["status"] == "pending"
+
+
+def test_carpeta_borrada_durante_la_subida_responde_404_y_no_deja_archivo(client, admin, base, db, tmp_path, monkeypatch):
+    engine = db.kw["bind"]
+    # SQLite no aplica claves foráneas por defecto; Postgres sí.
+    event.listen(engine, "connect", lambda conn, _: conn.execute("PRAGMA foreign_keys=ON"))
+    engine.dispose()
+
+    destino = tmp_path / "uploads"
+
+    class CarpetaQueSeBorra(type(destino)):
+        # Simula que otra petición borra la carpeta justo después de validarla.
+        def mkdir(self, *args, **kwargs):
+            super().mkdir(*args, **kwargs)
+            with db() as session:
+                session.delete(session.get(Folder, "f1"))
+                session.commit()
+
+    monkeypatch.setattr(domain_routes, "UPLOAD_DIR", CarpetaQueSeBorra(destino))
+
+    response = _subir(client, admin, carpeta="f1")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "La carpeta ya no existe."
+    assert list(destino.iterdir()) == []
+    with db() as session:
+        assert session.query(Document).count() == 0
+    base.assert_not_called()

@@ -307,3 +307,11 @@ Como Railway despliega desde `main` y todo se trabaja en `dev`, cada historia se
 - Cada historia se puede completar y probar sola en su checkpoint.
 - No borrar ni reprocesar documentos en ninguna tarea; la reorganización solo mueve referencias.
 - La reorganización contra producción y el merge a `main` los ejecuta el usuario (T089).
+
+---
+
+## Phase 9: Convergence
+
+**Purpose**: cerrar los vacíos que /speckit-converge encontró entre el código y la especificación.
+
+- [X] T090 Manejar en `POST /domains/{domain_id}/documents` de `src/mia/api/routes/domains.py` la carpeta borrada entre la validación y el guardado: capturar `IntegrityError` al confirmar el `Document`, hacer `rollback`, borrar el archivo ya escrito en `UPLOAD_DIR` y responder 404 `"La carpeta ya no existe."` en vez de un 500 que deje el archivo huérfano; agregar la prueba en `tests/unit/test_upload.py` (activar `PRAGMA foreign_keys=ON` en la prueba o simular el error de integridad) per Edge Cases del spec: carpeta borrada mientras se sube un archivo (partial)

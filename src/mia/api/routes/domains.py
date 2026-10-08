@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Response, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from mia.access.permissions import allowed_domain_ids
@@ -174,7 +175,15 @@ def upload_document(
         status="pending",
     )
     session.add(document)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError as exc:
+        # La carpeta pudo borrarse entre la validación y el guardado: no deja el archivo huérfano.
+        session.rollback()
+        dest.unlink(missing_ok=True)
+        if folder_id is not None and session.get(Folder, folder_id) is None:
+            raise HTTPException(status_code=404, detail="La carpeta ya no existe.") from exc
+        raise
     session.refresh(document)
 
     if settings.ingestion_sync:
