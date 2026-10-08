@@ -182,7 +182,7 @@ los tests en SQLite; tablas resumen por día: innecesarias a esta escala (se pue
 - **TanStack Query** para pedidos, caché y el sondeo del estado de documentos en proceso (INV-5).
 - **React Router** con `HashRouter` (un módulo por ruta: `#/inventario`, `#/artefactos`, `#/uso`),
   que funciona en un sitio estático sin configurar reescrituras.
-- **Recharts** para la gráfica de barras apiladas de Uso.
+- **SVG propio** (sin biblioteca de gráficas) para las barras apiladas de Uso. Se decidió al implementar: la especificación de marcas (barras de hasta 24 px, extremo redondeado de 4 px con base recta, 2 px de aire entre segmentos, tooltip y vista de tabla) es difícil de cumplir con Recharts, y prescindir de la biblioteca ahorra peso. La paleta categórica se validó con `validate_palette.js` sobre las superficies reales del panel, en claro y oscuro.
 - CSS propio con variables (modo claro y oscuro con `prefers-color-scheme`), sin biblioteca de
   componentes.
 - Proxy de Vite en desarrollo (como `web/`), y CORS en la API para publicar como sitio estático.

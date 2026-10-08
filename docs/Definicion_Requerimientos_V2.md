@@ -225,7 +225,7 @@ Uso                     [ Hoy | 7 días | 30 días | Rango ]   Artefacto: [ Todo
   08/10 10:31  Postgrados Administración Empresas  literal       -                  -          -           -    rechazada (tope)
 ```
 
-Las gráficas usan una biblioteca de gráficas para React (p. ej. Recharts), con los colores del modo claro y oscuro del panel.
+Las gráficas se dibujan en SVG, con una paleta categórica validada para el modo claro y el oscuro del panel.
 
 ## 3. Artefacto 2: Consulta administrativa
 

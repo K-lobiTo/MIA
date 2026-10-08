@@ -63,3 +63,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .topbar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
   .content { padding: 16px; }
 }
+
+/* Texto solo para lectores de pantalla */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

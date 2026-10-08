@@ -20,7 +20,7 @@ script de una sola vez reorganiza los datos ya cargados en la estructura nueva s
 
 **Primary Dependencies**: FastAPI, SQLAlchemy 2, Alembic (nueva), `tzdata` (nueva), cliente de
 OpenAI (para OpenRouter), `qdrant-client`; en el panel Vite 6, TanStack Query 5, React Router 7
-(`HashRouter`) y Recharts
+(`HashRouter`) y gráficas en SVG propio
 
 **Storage**: SQLite (desarrollo y tests) y Postgres en Neon (producción) para metadatos, ahora con
 migraciones Alembic; Qdrant para vectores, sin cambios de estructura

@@ -14,6 +14,11 @@
   --warn-soft: #fbeedf;
   --danger: #a12626;
   --danger-soft: #fbe6e6;
+  /* Serie categórica en orden fijo (azul, naranja, aqua, amarillo, magenta, verde, violeta, rojo). Validada
+     con validate_palette.js sobre #ffffff (claro) y #18212d (oscuro); los pasos oscuros son propios. */
+  --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100;
+  --series-5: #e87ba4; --series-6: #008300; --series-7: #4a3aa7; --series-8: #e34948;
+  --series-other: #8c96a3;
   --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
   color-scheme: light;
@@ -36,6 +41,9 @@
     --warn-soft: #3a2716;
     --danger: #f2a0a0;
     --danger-soft: #3a1c1c;
+    --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
+    --series-5: #d55181; --series-6: #008300; --series-7: #9085e9; --series-8: #e66767;
+    --series-other: #7d8795;
     color-scheme: dark;
   }
 }

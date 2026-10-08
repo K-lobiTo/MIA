@@ -102,6 +102,29 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   return data as T;
 }
 
+/** Descarga un archivo de la API (p. ej. el CSV del registro) con la clave de administración. */
+export async function apiDownload(path: string, filename: string): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(`${BASE}${path}`, { headers: currentKey ? { "X-Admin-Key": currentKey } : {} });
+  } catch {
+    throw new ApiError(0, "No se pudo conectar con la API. Revisa la conexión e intenta de nuevo.");
+  }
+  if (!response.ok) {
+    if (response.status === 401 && currentKey) {
+      setAdminKey("");
+      onInvalidKey();
+    }
+    throw new ApiError(response.status, response.status === 401 ? "Clave de administración inválida." : `Error ${response.status}`);
+  }
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export function apiUrl(path: string): string {
   return `${BASE}${path}`;
 }
