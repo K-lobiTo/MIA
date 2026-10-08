@@ -22,7 +22,11 @@ class Settings(BaseSettings):
     # Id del modelo en OpenRouter (openrouter.ai/models), p. ej. el de Gemini Flash-Lite o GLM 5.3.
     openrouter_model: str = ""
     # Esfuerzo de razonamiento: none, minimal, low, medium, high (vacío: el del modelo).
+    # Algunos modelos razonan siempre y rechazan "none": para el modo sin razonamiento usar "low".
     openrouter_reasoning_effort: str = ""
+    # Máximo de tokens de respuesta (incluido el razonamiento). Acota el costo de cada consulta; sin
+    # él OpenRouter reserva saldo para la salida máxima del modelo y rechaza consultas con poco saldo.
+    openrouter_max_tokens: int = 8000
     # Solo proveedores de retención cero de datos (necesario con información sensible).
     openrouter_zdr: bool = False
 

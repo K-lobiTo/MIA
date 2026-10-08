@@ -41,6 +41,7 @@ def test_envia_modelo_contexto_y_excluye_proveedores_que_entrenan():
     assert answer == "Tiene 14 horas."
     kwargs = client.chat.completions.create.call_args.kwargs
     assert kwargs["model"] == "proveedor/modelo"
+    assert kwargs["max_tokens"] == openrouter_llm.settings.openrouter_max_tokens
     assert "MC3010.docx" in kwargs["messages"][1]["content"]
     assert kwargs["extra_body"] == {"provider": {"data_collection": "deny", "zdr": False}}
 

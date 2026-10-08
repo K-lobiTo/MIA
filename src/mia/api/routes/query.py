@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -11,6 +13,7 @@ from mia.storage.models import Document, Domain
 from mia.storage.vector_store import get_vector_store
 
 router = APIRouter(tags=["query"])
+logger = logging.getLogger(__name__)
 
 NO_INFO_ANSWER = (
     "No encontré información suficiente en los dominios consultados para responder esta pregunta."
@@ -70,6 +73,8 @@ def query(payload: QueryRequest, session: Session = Depends(get_session)) -> Que
     try:
         answer = llm_provider.answer(payload.question, context)
     except Exception as exc:
+        # Sin esto el motivo real (clave inválida, modelo inexistente, timeout...) no queda en el log.
+        logger.exception("Falló el proveedor de LLM (%s)", settings.llm_provider)
         raise HTTPException(
             status_code=502, detail="El proveedor de LLM no está disponible en este momento."
         ) from exc

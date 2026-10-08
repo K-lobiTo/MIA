@@ -40,6 +40,7 @@ class OpenRouterLLMProvider(LLMProvider):
                 {"role": "system", "content": RAG_SYSTEM_PROMPT},
                 {"role": "user", "content": f"Contexto:\n{context_block}\n\nPregunta: {question}"},
             ],
+            max_tokens=settings.openrouter_max_tokens,
             extra_body=extra_body,
         )
         return completion.choices[0].message.content or ""
