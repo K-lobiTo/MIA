@@ -51,6 +51,34 @@ class Settings(BaseSettings):
     # cobro por petición: al responder se frena la CPU y una tarea en segundo plano no avanza.
     ingestion_sync: bool = False
 
+    # Clave de administración (panel, crear dominios y subir documentos). Sin ella, esas operaciones
+    # responden 503 en vez de quedar abiertas por olvido.
+    admin_key: str = ""
+    # Tope diario de gasto de toda la API, en USD. Solo se cambia por configuración, no desde el panel.
+    daily_cap_usd: float = 3.0
+    # Zona horaria en la que el día de los topes se reinicia a medianoche.
+    cap_timezone: str = "America/Costa_Rica"
+    # Orígenes (separados por comas) de los sitios estáticos que consultan la API. Vacío: sin CORS.
+    cors_origins: str = ""
+    max_upload_mb: int = 25
+    # Opcional: permite leer el saldo de toda la cuenta de OpenRouter. Puede crear claves sin límite,
+    # por lo que no se recomienda en producción (ver specs/002-panel-administracion/research.md).
+    openrouter_management_key: str = ""
+
+    # Modelo por modo de respuesta. Si el modo literal no define el suyo, usa LLM_PROVIDER y las
+    # variables OPENROUTER_*. El modo con razonamiento queda no disponible sin proveedor. Los
+    # precios (USD por millón de tokens) solo sirven para estimar el costo si el proveedor no lo informa.
+    llm_provider_literal: str = ""
+    llm_model_literal: str = ""
+    llm_reasoning_effort_literal: str = ""
+    llm_price_in_literal: float = 0.0
+    llm_price_out_literal: float = 0.0
+    llm_provider_razonamiento: str = ""
+    llm_model_razonamiento: str = ""
+    llm_reasoning_effort_razonamiento: str = ""
+    llm_price_in_razonamiento: float = 0.0
+    llm_price_out_razonamiento: float = 0.0
+
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
