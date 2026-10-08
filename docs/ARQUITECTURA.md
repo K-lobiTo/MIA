@@ -81,16 +81,16 @@ Detalle completo de esta feature en `specs/001-pipeline-ingesta-rag/` (spec, pla
 
 ```mermaid
 flowchart LR
-    U[Cliente / artefacto] -->|/query| R[API en Render free<br/>512 MB, INGESTION_ENABLED=false]
-    L[API local del operador<br/>INGESTION_ENABLED=true] -->|ingesta de actas| Q
+    U[Cliente / artefacto] -->|/query, subida de documentos| R[API en Railway Hobby<br/>INGESTION_ENABLED=true]
+    L[API local del operador<br/>cargas masivas] -->|ingesta| Q
     L --> N
     R --> Q[(Qdrant Cloud free<br/>vectores)]
     R --> N[(Neon Postgres free<br/>dominios y documentos)]
-    R --> G[Gemini API<br/>LLM]
+    R --> G[OpenRouter<br/>LLM, saldo prepagado]
 ```
 
 - **Desarrollo local:** `docker-compose.yml` levanta Qdrant local + la API. Dentro de compose la API siempre usa el Qdrant de compose, aunque `.env` apunte a Qdrant Cloud.
-- **Demo compartida (prototipo, costo cero):** API en Render free (`render.yaml`), metadata en Neon Postgres free, vectores en Qdrant Cloud free (región N. Virginia en AWS), LLM Gemini free. La API es la misma en todos los entornos; solo cambian las variables de entorno.
-- **Ingesta en producción:** Render free tiene 512 MB y la ingesta de actas reales llega a 460-520 MB, así que allí está desactivada. Las actas se ingieren levantando la API en la máquina de quien opera, con `DATABASE_URL`, `QDRANT_URL` y `QDRANT_API_KEY` de producción: escribe en las mismas bases que lee Render. Pasos en [OPERACION.md](OPERACION.md).
-- **Railway (en preparación):** reemplazo decidido de Render, con ingesta en el servidor y límite duro de gasto (`railway.json`, `deploy/railway/`); el LLM pasa a OpenRouter. Pasos en [OPERACION.md](OPERACION.md). Cloud Run quedó preparado pero descartado (`deploy/cloudrun/`).
+- **Producción (prototipo):** API en Railway Hobby (`railway.json`), metadata en Neon Postgres free, vectores en Qdrant Cloud free (región N. Virginia en AWS), LLM por OpenRouter con saldo prepagado. La API es la misma en todos los entornos; solo cambian las variables de entorno. Hasta el 2026-10-07 la API estuvo en Render free (`render.yaml`, hoy suspendido) con Gemini gratuito.
+- **Ingesta en producción:** en Railway no hay límite de 512 MB, así que la API ingiere en el propio servidor. Para cargas masivas también se puede levantar la API en la máquina de quien opera, con `DATABASE_URL`, `QDRANT_URL` y `QDRANT_API_KEY` de producción: escribe en las mismas bases que lee Railway. Pasos en [OPERACION.md](OPERACION.md). (En Render free, con 512 MB, la ingesta de actas llegaba a 460-520 MB y estaba desactivada.)
+- **Railway (en producción desde 2026-10-07):** reemplazó a Render free (suspendido), con ingesta en el servidor y límite duro de gasto (`railway.json`, `deploy/railway/`); el LLM pasa a OpenRouter. Pasos en [OPERACION.md](OPERACION.md). Cloud Run quedó preparado pero descartado (`deploy/cloudrun/`).
 - **Persistencia:** la metadata vive en Neon y los vectores en Qdrant Cloud, así que sobreviven a reinicios y redeploys de Render. Los archivos originales (`uploads/`) quedan solo en la máquina de quien ingirió; si se necesita reindexar, hay que tener los archivos.

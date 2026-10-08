@@ -77,6 +77,24 @@ Grupos: A (actas), U y P (currículum de cada programa), G (proyectos de graduac
 
 U1, U2, P1 y P2 dependen de que el lector de DOCX lea tablas: en los programas de curso, créditos, horas y requisitos están en tablas (ver [ARQUITECTURA.md](ARQUITECTURA.md)). U4 depende de que los documentos cortos se pasen completos al LLM.
 
+## Resultado en producción (2026-10-07, Railway + OpenRouter)
+
+**15 de 15 casos correctos** contra `https://mia-production-3a08.up.railway.app`, con `z-ai/glm-5.3-flash` y razonamiento bajo (`OPENROUTER_REASONING_EFFORT=low`).
+
+**Comparación de modelos** (misma batería, API local con los datos de producción, mismo día):
+
+| Modelo | Razonamiento | Correctos | Tiempo de las 15 consultas |
+|---|---|---|---|
+| `z-ai/glm-5.3-flash` | bajo | 15 de 15 | 76 s |
+| `google/gemini-3.8-flash` (con 50 % de descuento temporal) | bajo | 15 de 15 | 50 s |
+| `z-ai/glm-5.3` | medio | 15 de 15 | 44 s |
+
+- Las respuestas de los tres son correctas y de calidad parecida. GLM 5.3 a veces arranca con un título en Markdown (`# ...`), que el cliente web actual no da formato.
+- Los tiempos dependen del proveedor que elige OpenRouter en cada consulta (con retención cero obligatoria), así que varían entre corridas; no son una medida de velocidad del modelo.
+- Esta batería no prueba preguntas que combinan datos de varios documentos (sumar, comparar), que es para lo que se pensó el modo con razonamiento de la versión 2. Hay que agregar casos de ese tipo antes de elegir el modelo de ese modo.
+- Costo: todas las consultas del día (unas 80, incluidas las tres corridas completas) sumaron 0.06 USD de saldo.
+- Dos errores encontrados al configurar OpenRouter, ya corregidos: `OPENROUTER_REASONING_EFFORT=none` hace que los modelos que razonan siempre respondan error 400, y sin `OPENROUTER_MAX_TOKENS` OpenRouter reserva saldo para la salida máxima del modelo (65 536 tokens) y rechaza consultas con poco saldo (error 402).
+
 ## Resultado (2026-10-06, API local con los datos de producción + Gemini)
 
 **15 de 15 casos correctos.** Observaciones:

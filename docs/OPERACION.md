@@ -2,33 +2,33 @@
 
 Guía práctica para desplegar, cargar documentos y mantener funcionando el prototipo. Pensada para quien retome el proyecto sin haber participado en su desarrollo. Cómo está construido el sistema: [ARQUITECTURA.md](ARQUITECTURA.md). Qué cambiar para producción: [ESCALABILIDAD.md](ESCALABILIDAD.md).
 
-## Resumen del despliegue actual (costo cero)
+## Resumen del despliegue actual (desde 2026-10-07)
 
 | Pieza | Servicio | Plan | Límite relevante |
 |---|---|---|---|
-| API (consultas) | [Render](https://render.com), `render.yaml` | Free | 512 MB de RAM; se duerme tras 15 min sin tráfico (primera respuesta tarda 30-60 s); disco no persistente |
+| API (consultas e ingesta) | [Railway](https://railway.com), `railway.json` | Hobby (5 USD/mes) | Límite duro de gasto configurado en Railway (10 USD); disco no persistente. Hasta el 2026-10-07 la API estaba en Render free (`render.yaml`), hoy suspendido |
 | Metadata (dominios, documentos) | [Neon](https://neon.tech) Postgres | Free | 0.5 GB; la base se suspende sin uso y despierta sola al conectarse |
 | Vectores | [Qdrant Cloud](https://cloud.qdrant.io) | Free | 1 GB; el clúster se suspende tras 1 semana sin uso (se reactiva desde el panel) |
-| LLM | Gemini (`gemini-3.5-flash-lite`, Google AI Studio) | Free | Cuota diaria de solicitudes; los datos del tier gratuito pueden usarse para mejorar los modelos de Google |
+| LLM | [OpenRouter](https://openrouter.ai), modelo `z-ai/glm-5.3-flash` con razonamiento bajo | Saldo prepagado | Al agotarse el saldo, las consultas fallan (502). La cuenta exige proveedores de retención cero y que no entrenen con los datos |
 | Embeddings | Modelo local e5-small (ONNX), dentro de la imagen | Sin costo | Ninguno externo |
-| Ingesta de actas | API corriendo en la máquina de quien opera | Sin costo | Requiere que esa máquina tenga los archivos |
+| Ingesta de documentos | La propia API en Railway, o una API local contra producción (cargas masivas con `scripts/cargar_carpeta.py`) | Sin costo adicional | Los archivos originales no quedan guardados en el servidor |
 
 ## Variables de entorno
 
-| Variable | Desarrollo (`.env`) | Render | Ingesta local a producción |
+| Variable | Desarrollo (`.env`) | Producción (Railway) | Ingesta local a producción |
 |---|---|---|---|
 | `DATABASE_URL` | `sqlite:///./mia.db` | URL de Neon (secreto) | URL de Neon |
 | `QDRANT_URL` / `QDRANT_API_KEY` | `http://localhost:6333` / vacío | Qdrant Cloud (secretos) | Qdrant Cloud |
 | `QDRANT_COLLECTION` | `mia_chunks` | `mia_chunks` | `mia_chunks` |
-| `EMBEDDING_PROVIDER` | `local` | `local` | `local` (debe coincidir con Render) |
-| `LLM_PROVIDER` / `GEMINI_API_KEY` | `gemini` / clave | `gemini` / clave (secreto) | no se usa al ingerir |
+| `EMBEDDING_PROVIDER` | `local` | `local` | `local` (debe coincidir con producción) |
+| `LLM_PROVIDER` / `GEMINI_API_KEY` | `gemini` / clave | `openrouter` / no se usa | no se usa al ingerir |
 | `OPENROUTER_API_KEY` / `OPENROUTER_MODEL` / `OPENROUTER_REASONING_EFFORT` / `OPENROUTER_ZDR` | solo si `LLM_PROVIDER=openrouter` | no se usa | no se usa al ingerir (en Railway: clave, id del modelo, `low`, `false`) |
 | `GLM_API_KEY` / `GLM_THINKING` | solo si `LLM_PROVIDER=glm` | no se usa | no se usa al ingerir (en Cloud Run: clave de Z.ai / `true`) |
-| `INGESTION_ENABLED` | `true` | `false` | `true` |
+| `INGESTION_ENABLED` | `true` | `true` | `true` |
 | `INGESTION_SYNC` | `false` | `false` | `false` (en Cloud Run: `true`) |
 | `QUERY_SIMILARITY_THRESHOLD` | ver `.env.example` | igual | no se usa al ingerir |
 
-Regla importante: **Render y la instancia que ingiere deben usar el mismo `EMBEDDING_PROVIDER` y la misma `QDRANT_COLLECTION`**. Si no, las preguntas se embeben con un modelo distinto al de los documentos y la búsqueda devuelve basura (o la API no arranca por diferencia de dimensión).
+Regla importante: **producción y la instancia que ingiere deben usar el mismo `EMBEDDING_PROVIDER` y la misma `QDRANT_COLLECTION`**. Si no, las preguntas se embeben con un modelo distinto al de los documentos y la búsqueda devuelve basura (o la API no arranca por diferencia de dimensión).
 
 ## Puesta en marcha desde cero
 
@@ -40,9 +40,9 @@ Regla importante: **Render y la instancia que ingiere deben usar el mismo `EMBED
 
 Cada push a `main` redeploya Render automáticamente.
 
-## Despliegue en Railway con OpenRouter (en preparación, 2026-10-07)
+## Despliegue en Railway con OpenRouter (en producción desde 2026-10-07)
 
-Reemplazo decidido de Render free: la API en [Railway](https://railway.com) (plan Hobby) y el LLM a través de [OpenRouter](https://openrouter.ai). Neon y Qdrant Cloud no cambian. Motivos y alternativas comparadas en [ESCALABILIDAD.md](ESCALABILIDAD.md), sección "Railway y OpenRouter".
+Reemplazó a Render free: la API en [Railway](https://railway.com) (plan Hobby) y el LLM a través de [OpenRouter](https://openrouter.ai). Neon y Qdrant Cloud no cambian. Motivos y alternativas comparadas en [ESCALABILIDAD.md](ESCALABILIDAD.md), sección "Railway y OpenRouter".
 
 **Costo y tope de gasto:**
 
@@ -165,4 +165,4 @@ Si un documento queda en `error`, ver el log de la API local (el mensaje empieza
 - Desde el 2026-10-06 MIA tiene documentos reales entregados por la Unidad de Posgrado en Computación (Mauricio Arroyo) y la Maestría en Analítica de Negocios (Martín Solís), en lugar de los datos de prueba del MVP (actas públicas del Consejo Institucional). Los archivos viven en `tmp/`, que está en `.gitignore`: **no se versionan documentos en el repositorio**.
 - **No se cargaron las actas del Consejo de la Unidad de Posgrado en Computación** (20 actas de 2025): incluyen nombres de estudiantes con número de carné, cédulas, notas, becas y temas de salud, y con el LLM gratuito esos fragmentos se enviarían a Google. Quedan pendientes de un LLM que no use los datos o de una autorización explícita. Las actas de Analítica de Negocios sí se cargaron: tratan temas del programa (becas como política, presupuesto, admisión), sin datos de estudiantes; la única cédula es la de su coordinador en su designación ante FUNDATEC.
 - El LLM recibe fragmentos de las actas en cada consulta. En el tier gratuito de Gemini, Google puede usar esos datos; antes de cargar actas no públicas, pasar a un plan pago o a un LLM local (ver [ESCALABILIDAD.md](ESCALABILIDAD.md)).
-- La API no tiene autenticación: cualquiera con la URL de Render puede consultar. No publicar la URL fuera del equipo.
+- La API no tiene autenticación: cualquiera con la URL de la API puede consultar. No publicar la URL fuera del equipo.
