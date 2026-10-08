@@ -177,4 +177,4 @@ Estado de cada criterio, datos de prueba y script para verificarlos: [PRUEBAS_MV
 
 Qué documentos pedir para cada dominio nuevo, su visibilidad (pública, interna o restringida) y en qué orden está en la sección 4 de [Diseno_Tecnico_MIA.md](../../Digital_Transformation_Framework/docs/propuestas/Diseno_Tecnico_MIA.md), en el repo `Digital_Transformation_Framework`. El prototipo evita la información sensible; si se llegara a incluir, antes hay que cambiar a un LLM que no use los datos enviados (ver "Datos y privacidad" en [OPERACION.md](OPERACION.md)).
 
-La versión 2 (inventario de información y consulta administrativa con modos literal y con razonamiento) está definida en [Definicion_Requerimientos_V2.md](Definicion_Requerimientos_V2.md).
+La versión 2 (panel de administración, con el inventario de información y la configuración de acceso de cada artefacto, y consulta administrativa con modos literal y con razonamiento) está definida en [Definicion_Requerimientos_V2.md](Definicion_Requerimientos_V2.md).
