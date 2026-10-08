@@ -22,4 +22,5 @@ ENV HF_HUB_OFFLINE=1
 RUN chown -R user:user /app
 USER user
 
-CMD ["uvicorn", "mia.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Railway y Render asignan el puerto en la variable PORT; sin ella (local, docker compose) se usa 8000.
+CMD ["sh", "-c", "uvicorn mia.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

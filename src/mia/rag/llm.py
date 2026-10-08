@@ -49,6 +49,10 @@ def get_llm_provider(name: str) -> LLMProvider:
         from mia.rag.providers.anthropic_llm import AnthropicLLMProvider
 
         return AnthropicLLMProvider()
+    if name == "openrouter":
+        from mia.rag.providers.openrouter_llm import OpenRouterLLMProvider
+
+        return OpenRouterLLMProvider()
     if name == "glm":
         from mia.rag.providers.glm_llm import GLMLLMProvider
 

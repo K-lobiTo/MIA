@@ -11,6 +11,7 @@ cd web
 npm install
 npm run dev                                    # http://localhost:3000, contra la API de Render
 MIA_API_URL=http://localhost:8000 npm run dev  # contra una API local
+MIA_API_URL=https://<servicio>.up.railway.app npm run dev  # contra Railway
 ```
 
 ## Cómo funciona

@@ -43,7 +43,15 @@ Antes de elegir proveedor conviene consultar con TI de la institución si ya exi
 5. LLM con plan pago o local, según la sensibilidad de los dominios que se agreguen.
 6. Recalibrar `QUERY_SIMILARITY_THRESHOLD` cada vez que se agregue un dominio o cambie el modelo de embeddings.
 
-## Migración a Cloud Run (decisión del 2026-10-06, en preparación)
+## Railway y OpenRouter (decisión del 2026-10-07)
+
+Reemplaza a la decisión de Cloud Run de la sección siguiente, que quedó descartada porque Google Cloud pidió un prepago de 30 USD.
+
+- **Hosting: Railway Hobby.** 5 USD al mes con 5 USD de uso incluido, cobro por segundo (unos 10 USD por GB de RAM al mes). MIA consume unos 4 a 4.5 USD, así que en la práctica cuesta 5 USD fijos. Sin límite de 512 MB (la ingesta vuelve al servidor), no se duerme, y tiene un límite duro de gasto que apaga los servicios al alcanzarlo, que era la condición para aceptar un cobro por uso. Frente a Render Standard (25 USD por 2 GB) resuelve lo mismo por la quinta parte; frente a Hetzner (precio fijo similar) evita administrar un servidor, que importa para el traspaso.
+- **Modelos: OpenRouter.** Una sola cuenta de saldo prepagado (el saldo es el tope) y una sola clave para Gemini, GLM y otros, con la API compatible con OpenAI (`OpenRouterLLMProvider`). No recarga el precio de los modelos; cobra 5.5 % al cargar saldo. Frente a contratar directo (p. ej. GLM 5.3 en DeepInfra, algo más barato) suma esa comisión y un intermediario más en el camino de los datos, a cambio de tener modelos cerrados y abiertos en la misma cuenta. Cada consulta excluye proveedores que entrenan con los datos (`data_collection: deny`); con información sensible hay que activar además `OPENROUTER_ZDR=true` (solo proveedores de retención cero) y contar con la aprobación institucional.
+- **Presupuesto de un mes de evaluación con usuarios:** unos 15 a 17 USD (5 de Railway y 10 a 12 de modelos para unas 1000 consultas).
+
+## Migración a Cloud Run (decisión del 2026-10-06, descartada el 2026-10-07)
 
 Con un presupuesto chico disponible se volvió a comparar el hosting de la API, ya sin la restricción de costo cero y sin tarjeta que llevó a Render free. Precios consultados en octubre de 2026:
 
@@ -77,4 +85,4 @@ Registro para no repetir caminos ya recorridos. Mediciones hechas con las actas 
 | `gemini-embedding-001` en tier gratuito | Descartado para el despliegue | Límite de 1000 textos por día (`embed_content_free_tier_requests`); cada fragmento cuenta como uno aunque se envíen en lotes. Las 3 actas de prueba ya superan un día de cuota. Con facturación habilitada costaría centavos, por lo que es viable en producción si se prefiere no alojar el modelo. |
 | `gemini-embedding-2` | Descartado | Es multimodal: combina todos los textos de una llamada en un único embedding, en lugar de devolver uno por texto. |
 
-Otras alternativas evaluadas sin probar: Google Cloud Run y Oracle Cloud Always Free (requieren tarjeta), Koyeb free (mismo límite de 512 MB), Railway (solo crédito de prueba).
+Otras alternativas evaluadas sin probar: Google Cloud Run y Oracle Cloud Always Free (requieren tarjeta), Koyeb free (mismo límite de 512 MB), Railway (solo crédito de prueba; adoptada el 2026-10-07 al aceptar un gasto acotado, ver arriba).

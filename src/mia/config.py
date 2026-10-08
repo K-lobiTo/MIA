@@ -18,6 +18,14 @@ class Settings(BaseSettings):
 
     gemini_api_key: str = ""
 
+    openrouter_api_key: str = ""
+    # Id del modelo en OpenRouter (openrouter.ai/models), p. ej. el de Gemini Flash-Lite o GLM 5.3.
+    openrouter_model: str = ""
+    # Esfuerzo de razonamiento: none, minimal, low, medium, high (vacío: el del modelo).
+    openrouter_reasoning_effort: str = ""
+    # Solo proveedores de retención cero de datos (necesario con información sensible).
+    openrouter_zdr: bool = False
+
     glm_api_key: str = ""
     # Razonamiento antes de responder: mejora preguntas que combinan datos (p. ej. sumar créditos
     # de varios cursos) a cambio de más latencia y tokens de salida.

@@ -22,6 +22,7 @@ Guía práctica para desplegar, cargar documentos y mantener funcionando el prot
 | `QDRANT_COLLECTION` | `mia_chunks` | `mia_chunks` | `mia_chunks` |
 | `EMBEDDING_PROVIDER` | `local` | `local` | `local` (debe coincidir con Render) |
 | `LLM_PROVIDER` / `GEMINI_API_KEY` | `gemini` / clave | `gemini` / clave (secreto) | no se usa al ingerir |
+| `OPENROUTER_API_KEY` / `OPENROUTER_MODEL` / `OPENROUTER_REASONING_EFFORT` / `OPENROUTER_ZDR` | solo si `LLM_PROVIDER=openrouter` | no se usa | no se usa al ingerir (en Railway: clave, id del modelo, `none`, `false`) |
 | `GLM_API_KEY` / `GLM_THINKING` | solo si `LLM_PROVIDER=glm` | no se usa | no se usa al ingerir (en Cloud Run: clave de Z.ai / `true`) |
 | `INGESTION_ENABLED` | `true` | `false` | `true` |
 | `INGESTION_SYNC` | `false` | `false` | `false` (en Cloud Run: `true`) |
@@ -39,9 +40,43 @@ Regla importante: **Render y la instancia que ingiere deben usar el mismo `EMBED
 
 Cada push a `main` redeploya Render automáticamente.
 
-## Despliegue en Cloud Run (en preparación, 2026-10-06)
+## Despliegue en Railway con OpenRouter (en preparación, 2026-10-07)
 
-Reemplazo previsto de Render free. Motivos y alternativas comparadas en [ESCALABILIDAD.md](ESCALABILIDAD.md), sección "Migración a Cloud Run". Neon y Qdrant Cloud no cambian.
+Reemplazo decidido de Render free: la API en [Railway](https://railway.com) (plan Hobby) y el LLM a través de [OpenRouter](https://openrouter.ai). Neon y Qdrant Cloud no cambian. Motivos y alternativas comparadas en [ESCALABILIDAD.md](ESCALABILIDAD.md), sección "Railway y OpenRouter".
+
+**Costo y tope de gasto:**
+
+| Pieza | Costo esperado | Tope duro |
+|---|---|---|
+| Railway Hobby | 5 USD al mes, que incluyen 5 USD de uso; MIA consume unos 4 a 4.5 USD (unos 340 MB de RAM en reposo, cobro por segundo) | Límite de uso (*Usage limits*): al alcanzarlo, Railway apaga los servicios en vez de seguir cobrando. Avisa por correo al 75 %, 90 % y 100 %. Los datos se conservan. |
+| OpenRouter | Según consultas: unos 10 a 12 USD por 1000 consultas con un modelo sin razonamiento y GLM 5.3 (ver ESCALABILIDAD.md) | Saldo prepagado: al agotarse, las consultas fallan. Además, cada clave puede tener su propio límite de crédito. |
+
+**Qué cambia frente a Render free:** la API no se duerme, y con memoria suficiente la ingesta se hace en el propio servidor (`INGESTION_ENABLED=true`, en segundo plano como en local), así que se pueden subir documentos desde Swagger o desde el futuro inventario sin levantar una API local. Railway redespliega solo con los push a `main` que cambian el código (`src/`, `Dockerfile`, `pyproject.toml` o `railway.json`, ver `watchPatterns` en `railway.json`); un cambio de documentación no reinicia la API.
+
+**Pasos, OpenRouter (una sola vez):**
+
+1. Crear la cuenta en OpenRouter.
+2. En *Settings > Privacy*, desactivar el uso de proveedores que pueden guardar o entrenar con los datos. La API ya lo pide en cada consulta (`data_collection: deny`), pero a nivel de cuenta protege también a cualquier otra clave.
+3. En *Credits*, cargar saldo (10 a 15 USD alcanzan para un mes de piloto; comisión de 5.5 %). Dejar desactivada la recarga automática: el saldo es el tope.
+4. En *Keys*, crear una clave para la API (p. ej. `mia-railway`) con un límite de crédito.
+5. En [openrouter.ai/models](https://openrouter.ai/models), copiar el id exacto del modelo a usar (p. ej. el de Gemini 3.5 Flash-Lite o el de GLM-5.3-Flash).
+6. Antes de desplegar, probarlo en local: en `.env`, `LLM_PROVIDER=openrouter`, `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` y `OPENROUTER_REASONING_EFFORT=none`; levantar la API con `--env-file .env.produccion` como en "Cargar documentos" y correr `scripts/pruebas_mvp.py` contra ella. Así se comparan modelos (p. ej. Gemini Flash-Lite contra GLM-5.3-Flash) con las 15 preguntas de aceptación, por unos centavos.
+
+**Pasos, Railway (una sola vez):**
+
+1. Crear la cuenta y pasar al plan Hobby.
+2. **Antes de desplegar**, en la configuración del espacio de trabajo, *Usage > Set usage limits*: alerta por correo en 6 USD y límite duro en 10 USD.
+3. *New Project > Deploy from GitHub repo* y elegir este repositorio. Railway lee `railway.json`: construye con el `Dockerfile` y usa `/health` como chequeo de salud.
+4. En el servicio, *Variables > Raw Editor*: pegar `deploy/railway/variables.example.env` y completar las credenciales de Neon, Qdrant Cloud y OpenRouter, y el `OPENROUTER_MODEL` elegido.
+5. En *Settings*, elegir la región más cercana a Qdrant Cloud (este de Estados Unidos).
+6. En *Settings > Networking*, *Generate Domain* para obtener la URL pública.
+7. Verificar: `GET <url>/health` debe responder `{"status":"ok"}`, y `python scripts/pruebas_mvp.py --url <url>` debe dar 15 de 15.
+8. Apuntar el cliente web a Railway: `MIA_API_URL=<url> npm run dev` en `web/`.
+9. Con Railway verificado, suspender el servicio de Render (*Settings > Suspend*) para que no haya dos APIs publicadas. Ambas leen las mismas bases, así que no hay datos que migrar.
+
+## Despliegue en Cloud Run (alternativa, no adoptada)
+
+Se preparó el 2026-10-06 y quedó descartado al requerir Google Cloud un prepago de 30 USD; los archivos quedan en `deploy/cloudrun/` por si se retoma. Motivos y alternativas comparadas en [ESCALABILIDAD.md](ESCALABILIDAD.md), sección "Migración a Cloud Run". Neon y Qdrant Cloud no cambian.
 
 **Cómo se acota el gasto.** Cloud Run cobra por uso y Google no permite fijar un tope directo, así que se combinan dos cosas:
 - Límites del servicio (`deploy/cloudrun/desplegar.sh`): como máximo 1 instancia de 1 vCPU y 1 GiB, cobro solo mientras se responde una petición y nada encendido sin tráfico. El peor caso (la API ocupada las 24 horas, p. ej. por un ataque) ronda los 2 USD por día. Con el uso del piloto queda dentro del plan gratuito.

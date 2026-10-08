@@ -169,7 +169,7 @@ La API mantiene un proveedor de LLM por modo, configurado por variables de entor
 ## 9. Decisiones pendientes
 
 1. **Nivel de tipo de fuente en el árbol** (p. ej. Currículum > Programas de curso > documento). Recomendado: sí, como un campo opcional del documento, porque es la organización del documento conceptual y la de las carpetas de prueba. Requiere agregar una columna en la base de Neon; como no hay migraciones, conviene incorporar Alembic en esta versión (ya estaba pendiente en ESCALABILIDAD.md).
-2. **Dónde se cargan documentos.** Recomendado para el prototipo: seguir cargando desde la API local, con el inventario apuntando a ella (costo cero). Habilitar la carga en el servidor requiere una instancia con al menos 1 GB (Render Standard, 25 USD al mes, o Cloud Run, que pide un prepago de 30 USD).
+2. ~~**Dónde se cargan documentos.**~~ Resuelto el 2026-10-07: en el servidor. La API pasa a Railway Hobby (5 USD al mes, sin el límite de 512 MB de Render free), así que el inventario puede cargar documentos en producción y lo puede usar el personal, no solo quien opera el sistema. Los modelos de los dos modos (literal y con razonamiento) se contratan por OpenRouter. Ver [OPERACION.md](OPERACION.md).
 3. **Una aplicación o dos.** Este documento propone dos sitios separados. Alternativa: una sola aplicación con dos secciones, más simple de publicar pero que mezcla los permisos de administrar y de consultar.
 
 ## 10. Fuera de la versión 2 (candidatos para la versión 3)

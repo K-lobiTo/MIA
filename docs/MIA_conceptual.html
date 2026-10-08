@@ -1,0 +1,512 @@
+<title>MIA en una imagen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: una columna de lectura con figuras numeradas en tarjetas de ancho fijo, listas para capturar. */
+:root {
+  --bg: #F3F5F8;
+  --surface: #FFFFFF;
+  --ink: #18212E;
+  --muted: #4D5868;
+  --line: #D5DCE6;
+  --memoria: #1F4E8C;
+  --memoria-soft: #E3ECF8;
+  --razon: #A04A06;
+  --razon-soft: #FBEEDF;
+  --fuente: #2D6A4F;
+  --fuente-soft: #E2F0E8;
+  --pronto: #6B7380;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10161F; --surface: #18212D; --ink: #E7ECF3; --muted: #A8B3C2; --line: #2E3A4A;
+    --memoria: #8DB4EC; --memoria-soft: #1D2D45; --razon: #F0A964; --razon-soft: #3A2716;
+    --fuente: #86CBA6; --fuente-soft: #173326; --pronto: #8E97A4; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10161F; --surface: #18212D; --ink: #E7ECF3; --muted: #A8B3C2; --line: #2E3A4A;
+  --memoria: #8DB4EC; --memoria-soft: #1D2D45; --razon: #F0A964; --razon-soft: #3A2716;
+  --fuente: #86CBA6; --fuente-soft: #173326; --pronto: #8E97A4; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.6; }
+.pagina { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 64px; display: flex; flex-direction: column; gap: 56px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(2rem, 5vw, 3.1rem); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 1.7rem; font-weight: 600; }
+h3 { font-size: 1.15rem; font-weight: 600; }
+p { margin: 0; max-width: 65ch; }
+.etiqueta { font-family: var(--font-body); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--memoria); }
+
+/* Barra de controles */
+.controles { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+.boton { font: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer; min-height: 40px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); display: inline-flex; align-items: center; gap: 8px; }
+.boton:hover { border-color: var(--memoria); }
+.boton:focus-visible, a:focus-visible { outline: 3px solid var(--memoria); outline-offset: 2px; }
+.boton[aria-pressed="true"] { background: var(--memoria); color: var(--surface); border-color: var(--memoria); }
+
+/* Portada */
+.portada { display: flex; flex-direction: column; gap: 18px; }
+.portada .bajada { font-size: 1.2rem; color: var(--muted); max-width: 60ch; }
+.sigla { font-family: var(--font-display); font-weight: 700; color: var(--memoria); }
+
+/* Problema */
+.problemas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.problema { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.problema p { color: var(--muted); font-size: 0.97rem; }
+.seccion { display: flex; flex-direction: column; gap: 20px; }
+
+/* Figuras: cada tarjeta se puede capturar completa */
+.figura { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 28px; display: flex; flex-direction: column; gap: 20px; scroll-margin-top: 16px; }
+.figura-cabecera { display: flex; flex-direction: column; gap: 6px; }
+.figura-numero { font-family: var(--font-data); font-size: 0.8rem; color: var(--muted); letter-spacing: 0.04em; }
+.figura figcaption { color: var(--muted); font-size: 0.95rem; border-top: 1px solid var(--line); padding-top: 14px; max-width: none; }
+.lienzo { overflow-x: auto; }
+.lienzo svg { display: block; width: 100%; min-width: 720px; height: auto; }
+
+/* Clases para el SVG de la figura 1 (los colores vienen de los tokens, así cambian con el tema) */
+.s-texto { fill: var(--ink); font-family: var(--font-body); }
+.s-suave { fill: var(--muted); font-family: var(--font-body); }
+.s-titulo { fill: var(--muted); font-family: var(--font-body); font-weight: 600; letter-spacing: 0.08em; }
+.s-caja { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+.s-caja-pronto { fill: var(--bg); stroke: var(--pronto); stroke-width: 1.2; stroke-dasharray: 5 4; }
+.s-doc { fill: var(--fuente-soft); stroke: var(--fuente); stroke-width: 1.4; }
+.s-puerta { fill: var(--razon-soft); stroke: var(--razon); stroke-width: 1.4; }
+.s-mia { fill: var(--memoria-soft); stroke: var(--memoria); stroke-width: 2; }
+.s-estante { stroke: var(--memoria); stroke-width: 1.2; opacity: 0.5; }
+.s-mia-texto { fill: var(--memoria); font-family: var(--font-display); font-weight: 700; }
+.s-flecha { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+.s-flecha-pronto { stroke: var(--pronto); stroke-width: 1.2; fill: none; stroke-dasharray: 4 4; }
+.s-punta { fill: var(--muted); }
+.s-acento-razon { fill: var(--razon); font-family: var(--font-body); font-weight: 600; }
+
+/* Figura 2: pasos */
+.pasos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; position: relative; }
+.paso { border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; background: var(--bg); position: relative; }
+.paso-num { width: 34px; height: 34px; border-radius: 50%; background: var(--memoria); color: var(--surface); font-family: var(--font-display); font-weight: 700; display: grid; place-items: center; font-size: 1.05rem; }
+.paso p { font-size: 0.95rem; color: var(--muted); }
+.paso .ejemplo { font-family: var(--font-data); font-size: 0.8rem; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; line-height: 1.45; }
+.paso:not(:last-child)::after { content: ""; position: absolute; right: -12px; top: 32px; width: 10px; height: 10px; border-top: 2px solid var(--muted); border-right: 2px solid var(--muted); transform: rotate(45deg); }
+.desenlaces { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.desenlace { border-radius: 12px; padding: 16px 18px; display: flex; gap: 12px; align-items: flex-start; min-width: 0; }
+.desenlace p { font-size: 0.95rem; }
+.desenlace-si { background: var(--fuente-soft); }
+.desenlace-no { background: var(--bg); border: 1px dashed var(--line); }
+.desenlace strong { display: block; }
+.fuente-chip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-data); font-size: 0.78rem; background: var(--surface); border: 1px solid var(--fuente); color: var(--fuente); border-radius: 6px; padding: 2px 8px; margin-top: 6px; }
+
+/* Figura 3: dos maneras de responder */
+.maneras { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.manera { border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; border: 1.5px solid var(--line); }
+.manera-literal { border-color: var(--memoria); }
+.manera-razon { border-color: var(--razon); }
+.manera h3 { display: flex; align-items: center; gap: 10px; }
+.manera-literal h3 { color: var(--memoria); }
+.manera-razon h3 { color: var(--razon); }
+.manera .para { font-size: 0.95rem; color: var(--muted); }
+.mini { display: block; width: 100%; height: auto; }
+.mini .m-doc { fill: var(--fuente-soft); stroke: var(--fuente); stroke-width: 1.4; }
+.mini .m-linea { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+.mini .m-punta { fill: var(--muted); }
+.mini .m-texto { fill: var(--ink); font-family: var(--font-body); }
+.mini .m-suave { fill: var(--muted); font-family: var(--font-body); }
+.mini .m-resp-lit { fill: var(--memoria-soft); stroke: var(--memoria); stroke-width: 1.6; }
+.mini .m-resp-raz { fill: var(--razon-soft); stroke: var(--razon); stroke-width: 1.6; }
+.mini .m-une { fill: var(--surface); stroke: var(--razon); stroke-width: 1.6; }
+.mini .m-une-texto { fill: var(--razon); font-family: var(--font-data); font-weight: 500; }
+.dialogo { display: flex; flex-direction: column; gap: 8px; }
+.burbuja-p { align-self: flex-end; background: var(--memoria); color: var(--surface); border-radius: 12px 12px 4px 12px; padding: 9px 13px; font-size: 0.92rem; max-width: 92%; }
+.burbuja-r { align-self: flex-start; background: var(--bg); border: 1px solid var(--line); border-radius: 12px 12px 12px 4px; padding: 10px 13px; font-size: 0.92rem; max-width: 92%; }
+.cuenta { font-family: var(--font-data); color: var(--razon); font-weight: 500; }
+
+/* Figura 4: personas */
+.personas { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.persona { border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; background: var(--bg); }
+.persona-cab { display: flex; align-items: center; gap: 12px; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--memoria-soft); color: var(--memoria); display: grid; place-items: center; flex: none; }
+.persona .pregunta { font-size: 0.95rem; font-style: italic; }
+.persona .gana { font-size: 0.9rem; color: var(--muted); }
+.puerta-chip { align-self: flex-start; font-size: 0.78rem; font-weight: 600; color: var(--razon); background: var(--razon-soft); border-radius: 999px; padding: 3px 10px; }
+
+/* Figura 5: estantes */
+.estantes { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+.estante { border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; border: 1.5px solid var(--memoria); background: var(--memoria-soft); }
+.estante p { font-size: 0.9rem; color: var(--muted); }
+.estante-pronto { border: 1.5px dashed var(--pronto); background: var(--bg); }
+.estante-nuevo { border: 1.5px dashed var(--line); background: transparent; align-items: center; justify-content: center; text-align: center; color: var(--muted); }
+.lomos { display: flex; gap: 4px; align-items: flex-end; height: 34px; }
+.lomo { width: 9px; border-radius: 2px; background: var(--memoria); opacity: 0.75; }
+.estante-pronto .lomo { background: var(--pronto); opacity: 0.35; }
+.estado { align-self: flex-start; font-size: 0.75rem; font-weight: 600; border-radius: 999px; padding: 2px 9px; }
+.estado-disponible { background: var(--fuente-soft); color: var(--fuente); }
+.estado-desarrollo { background: var(--memoria-soft); color: var(--memoria); }
+.estado-proximamente { background: var(--bg); color: var(--pronto); border: 1px solid var(--line); }
+
+/* Promesas */
+.promesas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.promesa { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 3px solid var(--memoria); min-width: 0; }
+.promesa p { color: var(--muted); font-size: 0.97rem; }
+.pie { color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+/* Modo para capturas: tema claro, sin controles, figuras centradas con aire alrededor */
+body.captura .controles .boton:not(#btn-captura) { display: none; }
+body.captura .figura { max-width: 960px; width: 100%; margin-inline: auto; box-shadow: none; padding: 36px; }
+body.captura .pagina { gap: 72px; }
+
+@media (max-width: 760px) {
+  .problemas, .promesas, .maneras, .desenlaces { grid-template-columns: minmax(0, 1fr); }
+  .pasos { grid-template-columns: minmax(0, 1fr); }
+  .paso:not(:last-child)::after { right: auto; left: 28px; top: auto; bottom: -12px; transform: rotate(135deg); }
+  .figura { padding: 18px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="pagina">
+  <div class="controles">
+    <button class="boton" id="btn-tema" type="button" aria-label="Cambiar entre tema claro y oscuro">Tema claro u oscuro</button>
+    <button class="boton" id="btn-captura" type="button" aria-pressed="false">Modo para capturas</button>
+  </div>
+
+  <header class="portada">
+    <span class="etiqueta">Memoria Institucional Académica</span>
+    <h1><span class="sigla">MIA</span>: la memoria de los posgrados, a una pregunta de distancia</h1>
+    <p class="bajada">MIA guarda los documentos de los posgrados y responde preguntas escritas con palabras de todos los días. Cada respuesta dice de qué documento sale, y si la información no está, lo dice.</p>
+  </header>
+
+  <section class="seccion" aria-labelledby="t-problema">
+    <h2 id="t-problema">El problema que resuelve</h2>
+    <div class="problemas">
+      <div class="problema">
+        <h3>La información existe, pero está dispersa</h3>
+        <p>Acuerdos, programas de curso, reglamentos y trabajos de graduación viven en carpetas, correos y documentos sueltos.</p>
+      </div>
+      <div class="problema">
+        <h3>Depende de pocas personas</h3>
+        <p>Saber qué se decidió y cuándo suele depender de la memoria de quien estuvo ahí. Si esa persona cambia de puesto, ese conocimiento se pierde.</p>
+      </div>
+      <div class="problema">
+        <h3>Las mismas preguntas, una y otra vez</h3>
+        <p>Horarios, requisitos, fechas: cada duda se responde a mano, y una sola conversación puede tomar una hora.</p>
+      </div>
+    </div>
+  </section>
+
+  <figure class="figura" id="figura-1" aria-labelledby="f1-titulo">
+    <div class="figura-cabecera">
+      <span class="figura-numero">Figura 1</span>
+      <h2 id="f1-titulo">MIA en una imagen</h2>
+    </div>
+    <div class="lienzo" id="dibujo-general"></div>
+    <figcaption>Los documentos de cada área se guardan en una sola memoria. Las personas no entran directo a esa memoria: lo hacen por distintas puertas, cada una pensada para un público. Las áreas y puertas con borde punteado vienen en camino.</figcaption>
+  </figure>
+
+  <figure class="figura" id="figura-2" aria-labelledby="f2-titulo">
+    <div class="figura-cabecera">
+      <span class="figura-numero">Figura 2</span>
+      <h2 id="f2-titulo">El camino de una pregunta</h2>
+    </div>
+    <ol class="pasos" role="list" style="list-style: none; margin: 0; padding: 0;">
+      <li class="paso">
+        <span class="paso-num" aria-hidden="true">1</span>
+        <h3>Elige dónde buscar</h3>
+        <p>La persona marca las áreas que le interesan, por ejemplo solo los planes de estudio.</p>
+      </li>
+      <li class="paso">
+        <span class="paso-num" aria-hidden="true">2</span>
+        <h3>Pregunta como a un colega</h3>
+        <p>Sin palabras clave ni formularios.</p>
+        <span class="ejemplo">¿Cuántas horas de trabajo fuera de clase pide el curso de Cibercrimen?</span>
+      </li>
+      <li class="paso">
+        <span class="paso-num" aria-hidden="true">3</span>
+        <h3>MIA busca en esas áreas</h3>
+        <p>Revisa solo los documentos de las áreas elegidas y se queda con las partes que tratan el tema.</p>
+      </li>
+      <li class="paso">
+        <span class="paso-num" aria-hidden="true">4</span>
+        <h3>Responde con su fuente</h3>
+        <p>Redacta la respuesta usando únicamente lo que encontró.</p>
+      </li>
+    </ol>
+    <div class="desenlaces">
+      <div class="desenlace desenlace-si">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--fuente); flex: none; margin-top: 2px;"><path d="M5 12l5 5 9-10"></path></svg>
+        <div>
+          <strong>Si la información está</strong>
+          <p>"El curso pide 14 horas por semana de trabajo fuera de clase."</p>
+          <span class="fuente-chip">Fuente: Programa del curso Cibercrimen</span>
+        </div>
+      </div>
+      <div class="desenlace desenlace-no">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" style="color: var(--muted); flex: none; margin-top: 2px;"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5M12 16.5v.01"></path></svg>
+        <div>
+          <strong>Si la información no está</strong>
+          <p>"No encontré información suficiente en las áreas consultadas." MIA no inventa una respuesta para salir del paso.</p>
+        </div>
+      </div>
+    </div>
+    <figcaption>Una pregunta recorre siempre los mismos cuatro pasos. El final tiene dos salidas posibles, y las dos son honestas: una respuesta con su fuente, o un aviso de que no hay información.</figcaption>
+  </figure>
+
+  <figure class="figura" id="figura-3" aria-labelledby="f3-titulo">
+    <div class="figura-cabecera">
+      <span class="figura-numero">Figura 3</span>
+      <h2 id="f3-titulo">Dos maneras de responder</h2>
+    </div>
+    <div class="maneras">
+      <div class="manera manera-literal">
+        <h3>Respuesta literal</h3>
+        <p class="para">Para saber qué dice exactamente un documento: un acuerdo, un requisito, una fecha. Es la más rápida.</p>
+        <svg class="mini" viewBox="0 0 300 96" role="img" aria-label="Un documento lleva directo a una respuesta que lo cita">
+          <defs><marker id="pm1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-punta"></path></marker></defs>
+          <rect x="16" y="22" width="62" height="52" rx="6" class="m-doc"></rect>
+          <text x="47" y="53" text-anchor="middle" font-size="12" class="m-texto">Documento</text>
+          <line x1="84" y1="48" x2="182" y2="48" class="m-linea" marker-end="url(#pm1)"></line>
+          <text x="133" y="40" text-anchor="middle" font-size="11" class="m-suave">lo cita tal cual</text>
+          <rect x="190" y="26" width="96" height="44" rx="8" class="m-resp-lit"></rect>
+          <text x="238" y="53" text-anchor="middle" font-size="12" class="m-texto">Respuesta</text>
+        </svg>
+        <div class="dialogo">
+          <span class="burbuja-p">¿Cada cuánto se abre la admisión al programa?</span>
+          <span class="burbuja-r">Cada año, salvo que el área decida otra fecha por una situación especial.</span>
+        </div>
+      </div>
+      <div class="manera manera-razon">
+        <h3>Respuesta con razonamiento</h3>
+        <p class="para">Para preguntas que combinan datos de varios documentos: sumar, comparar o contar. Tarda un poco más y muestra sus cuentas.</p>
+        <svg class="mini" viewBox="0 0 300 96" role="img" aria-label="Tres documentos se combinan en un cálculo que lleva a una respuesta">
+          <defs><marker id="pm2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-punta"></path></marker></defs>
+          <rect x="10" y="6" width="54" height="24" rx="5" class="m-doc"></rect>
+          <text x="37" y="22" text-anchor="middle" font-size="11" class="m-texto">Curso A</text>
+          <rect x="10" y="36" width="54" height="24" rx="5" class="m-doc"></rect>
+          <text x="37" y="52" text-anchor="middle" font-size="11" class="m-texto">Curso B</text>
+          <rect x="10" y="66" width="54" height="24" rx="5" class="m-doc"></rect>
+          <text x="37" y="82" text-anchor="middle" font-size="11" class="m-texto">Curso C</text>
+          <path d="M64 18 C 92 18, 92 48, 112 48" class="m-linea"></path>
+          <path d="M64 48 L 112 48" class="m-linea"></path>
+          <path d="M64 78 C 92 78, 92 48, 112 48" class="m-linea"></path>
+          <rect x="114" y="30" width="78" height="36" rx="8" class="m-une"></rect>
+          <text x="153" y="53" text-anchor="middle" font-size="12" class="m-une-texto">4 + 4 + 4</text>
+          <line x1="196" y1="48" x2="210" y2="48" class="m-linea" marker-end="url(#pm2)"></line>
+          <rect x="216" y="26" width="76" height="44" rx="8" class="m-resp-raz"></rect>
+          <text x="254" y="53" text-anchor="middle" font-size="12" class="m-texto">12 créditos</text>
+        </svg>
+        <div class="dialogo">
+          <span class="burbuja-p">¿Cuántos créditos suman los tres cursos que voy a llevar?</span>
+          <span class="burbuja-r">Cada curso tiene 4 créditos según su programa: <span class="cuenta">4 + 4 + 4 = 12</span>. La suma la hice yo; los créditos de cada curso salen de los documentos.</span>
+        </div>
+      </div>
+    </div>
+    <figcaption>La persona elige cómo quiere la respuesta. La literal se apega al texto de un documento; la de razonamiento une datos de varios y separa lo que dicen los documentos de lo que MIA calculó.</figcaption>
+  </figure>
+
+  <figure class="figura" id="figura-4" aria-labelledby="f4-titulo">
+    <div class="figura-cabecera">
+      <span class="figura-numero">Figura 4</span>
+      <h2 id="f4-titulo">Quién la usa y para qué</h2>
+    </div>
+    <div class="personas" id="lista-personas"></div>
+    <figcaption>Cada persona entra por la puerta que le corresponde y pregunta lo que necesita para su trabajo. La misma memoria sirve a todas.</figcaption>
+  </figure>
+
+  <figure class="figura" id="figura-5" aria-labelledby="f5-titulo">
+    <div class="figura-cabecera">
+      <span class="figura-numero">Figura 5</span>
+      <h2 id="f5-titulo">Una memoria que crece</h2>
+    </div>
+    <div class="estantes" id="lista-estantes"></div>
+    <figcaption>La memoria se organiza como un estante por área. Se pueden sumar áreas nuevas y documentos nuevos en cualquier momento, sin que deje de funcionar lo que ya estaba.</figcaption>
+  </figure>
+
+  <section class="seccion" aria-labelledby="t-promesas">
+    <h2 id="t-promesas">Lo que MIA garantiza</h2>
+    <div class="promesas">
+      <div class="promesa">
+        <h3>Siempre dice de dónde sale</h3>
+        <p>Cada respuesta muestra el documento y el área de origen, para que cualquiera pueda verificarla.</p>
+      </div>
+      <div class="promesa">
+        <h3>Si no sabe, lo dice</h3>
+        <p>Cuando los documentos no tienen la respuesta, MIA lo reconoce en vez de inventar.</p>
+      </div>
+      <div class="promesa">
+        <h3>Cada puerta ve lo suyo</h3>
+        <p>Un estudiante no ve información interna: cada puerta consulta solo las áreas que le corresponden.</p>
+      </div>
+    </div>
+  </section>
+
+  <p class="pie">MIA, Memoria Institucional Académica. Unidad de Posgrado en Computación y Maestría en Analítica de Negocios, Tecnológico de Costa Rica. Octubre de 2026.</p>
+</div>
+
+<script>
+/* ============================================================
+   PARA EDITAR LA PÁGINA: cambie solo estas tres listas.
+   Las figuras 1, 4 y 5 se dibujan solas a partir de ellas.
+   estado: "disponible", "desarrollo" (en desarrollo) o "proximamente".
+   ============================================================ */
+
+// Áreas de información de la memoria (figuras 1 y 5).
+const AREAS = [
+  { nombre: "Actas del Consejo", detalle: "Acuerdos y decisiones de cada sesión", estado: "disponible" },
+  { nombre: "Planes de estudio y cursos", detalle: "Programas, créditos, horarios y requisitos", estado: "disponible" },
+  { nombre: "Reglamentos", detalle: "Normas de funcionamiento de cada programa", estado: "disponible" },
+  { nombre: "Proyectos de graduación", detalle: "Tesis y artículos finales de estudiantes", estado: "disponible" },
+  { nombre: "Apertura de promoción", detalle: "Fechas, requisitos y costos de admisión", estado: "proximamente" },
+  { nombre: "Docentes", detalle: "Investigación y publicaciones del profesorado", estado: "proximamente" },
+];
+
+// Puertas de entrada a la memoria (figuras 1 y 4).
+const PUERTAS = [
+  { nombre: "Consulta del personal", publico: "Personal de la Unidad", estado: "desarrollo" },
+  { nombre: "Administración de la memoria", publico: "Quien mantiene la información", estado: "desarrollo" },
+  { nombre: "Chat web", publico: "Interesados y estudiantes", estado: "proximamente" },
+  { nombre: "Chat de WhatsApp", publico: "Estudiantes", estado: "proximamente" },
+];
+
+// Personas que usan MIA, con la puerta por la que entran (figura 4).
+const PERSONAS = [
+  { rol: "Coordinación", puerta: "Consulta del personal", pregunta: "¿Qué se acordó en el Consejo sobre las becas cuando hay más de 25 admitidos?", gana: "Encuentra decisiones pasadas sin depender de la memoria de nadie." },
+  { rol: "Consejo", puerta: "Consulta del personal", pregunta: "¿Ya se había discutido antes una propuesta parecida?", gana: "Decide con el historial a mano, en vez de empezar de cero." },
+  { rol: "Asistencia Administrativa", puerta: "Consulta del personal", pregunta: "¿Qué requisitos tiene el curso de Big Data para Negocios?", gana: "Responde dudas en segundos, sin revisar carpeta por carpeta." },
+  { rol: "Profesores", puerta: "Consulta del personal", pregunta: "¿Qué trabajos de graduación se han hecho sobre seguridad en sistemas de pago?", gana: "Conoce lo que ya se investigó antes de proponer un tema." },
+  { rol: "Mantenimiento de la información", puerta: "Administración de la memoria", pregunta: "Agregar las actas de este mes al área del Consejo.", gana: "Sube documentos nuevos y ve al instante qué contiene cada área." },
+  { rol: "Interesados y estudiantes", puerta: "Chat web", pregunta: "¿Cuáles son los requisitos para postular este año?", gana: "Reciben respuesta de inmediato, también fuera de horario." },
+];
+
+/* ---------------- A partir de aquí, el dibujo ---------------- */
+
+const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const ETIQUETA_ESTADO = { disponible: "Disponible", desarrollo: "En desarrollo", proximamente: "Próximamente" };
+
+function dibujarGeneral() {
+  const n = Math.max(AREAS.length, PUERTAS.length);
+  const fila = 58, alto = 46, arriba = 64;
+  const H = arriba + n * fila + 24;
+  const W = 960;
+  const colA = 24, anchoA = 250;      // áreas
+  const miaX = 380, miaW = 200;       // memoria
+  const colP = 686, anchoP = 250;     // puertas
+  const yFila = (i, total) => arriba + (n - total) * fila / 2 + i * fila;
+  const miaY = arriba - 6, miaH = n * fila - 6;
+  const centroY = miaY + miaH / 2;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Las áreas de documentos se guardan en MIA, y las personas la consultan por distintas puertas">`;
+  s += `<defs><marker id="punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="s-punta"></path></marker></defs>`;
+  s += `<text x="${colA}" y="30" font-size="12" class="s-titulo">DOCUMENTOS POR ÁREA</text>`;
+  s += `<text x="${miaX + miaW / 2}" y="30" font-size="12" text-anchor="middle" class="s-titulo">LA MEMORIA</text>`;
+  s += `<text x="${colP}" y="30" font-size="12" class="s-titulo">PUERTAS DE ENTRADA</text>`;
+
+  // Memoria con un estante por área
+  s += `<rect x="${miaX}" y="${miaY}" width="${miaW}" height="${miaH}" rx="16" class="s-mia"></rect>`;
+  s += `<text x="${miaX + miaW / 2}" y="${centroY - 8}" font-size="44" text-anchor="middle" class="s-mia-texto">MIA</text>`;
+  s += `<text x="${miaX + miaW / 2}" y="${centroY + 18}" font-size="12" text-anchor="middle" class="s-suave">un estante por área</text>`;
+  const est = Math.min(AREAS.length, 8);
+  for (let k = 0; k < est; k++) {
+    const y = centroY + 38 + k * 9;
+    if (y > miaY + miaH - 14) break;
+    s += `<line x1="${miaX + 40}" y1="${y}" x2="${miaX + miaW - 40}" y2="${y}" class="s-estante"></line>`;
+  }
+
+  // Áreas y sus flechas hacia la memoria
+  AREAS.forEach((a, i) => {
+    const y = yFila(i, AREAS.length), cy = y + alto / 2;
+    const pronto = a.estado !== "disponible";
+    s += `<rect x="${colA}" y="${y}" width="${anchoA}" height="${alto}" rx="9" class="${pronto ? "s-caja-pronto" : "s-caja"}"></rect>`;
+    s += `<rect x="${colA + 12}" y="${y + 11}" width="18" height="24" rx="3" class="s-doc"${pronto ? ' opacity="0.45"' : ""}></rect>`;
+    s += `<text x="${colA + 42}" y="${cy + 5}" font-size="14" class="${pronto ? "s-suave" : "s-texto"}">${esc(a.nombre)}</text>`;
+    const yMia = miaY + 24 + (i + 0.5) * ((miaH - 48) / AREAS.length);
+    s += `<path d="M${colA + anchoA + 4} ${cy} C ${colA + anchoA + 60} ${cy}, ${miaX - 60} ${yMia}, ${miaX - 4} ${yMia}" class="${pronto ? "s-flecha-pronto" : "s-flecha"}" marker-end="url(#punta)"></path>`;
+  });
+  s += `<text x="${(colA + anchoA + miaX) / 2}" y="${arriba - 14}" font-size="11" text-anchor="middle" class="s-suave">se guardan en</text>`;
+
+  // Puertas y sus flechas desde la memoria
+  PUERTAS.forEach((p, i) => {
+    const y = yFila(i, PUERTAS.length), cy = y + alto / 2;
+    const pronto = p.estado === "proximamente";
+    const yMia = miaY + 24 + (i + 0.5) * ((miaH - 48) / PUERTAS.length);
+    s += `<path d="M${miaX + miaW + 4} ${yMia} C ${miaX + miaW + 60} ${yMia}, ${colP - 60} ${cy}, ${colP - 4} ${cy}" class="${pronto ? "s-flecha-pronto" : "s-flecha"}" marker-end="url(#punta)"></path>`;
+    s += `<rect x="${colP}" y="${y}" width="${anchoP}" height="${alto}" rx="9" class="${pronto ? "s-caja-pronto" : "s-caja"}"></rect>`;
+    s += `<rect x="${colP + 12}" y="${y + 10}" width="16" height="26" rx="3" class="s-puerta"${pronto ? ' opacity="0.45"' : ""}></rect>`;
+    s += `<circle cx="${colP + 24}" cy="${cy + 1}" r="1.8" class="s-punta"></circle>`;
+    s += `<text x="${colP + 40}" y="${cy - 3}" font-size="14" class="${pronto ? "s-suave" : "s-texto"}">${esc(p.nombre)}</text>`;
+    s += `<text x="${colP + 40}" y="${cy + 14}" font-size="11" class="s-suave">${esc(p.publico)}</text>`;
+  });
+  s += `<text x="${(miaX + miaW + colP) / 2}" y="${arriba - 14}" font-size="11" text-anchor="middle" class="s-suave">se consulta desde</text>`;
+  s += `</svg>`;
+  document.getElementById("dibujo-general").innerHTML = s;
+}
+
+const ICONO_PERSONA = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"></path></svg>';
+
+function dibujarPersonas() {
+  document.getElementById("lista-personas").innerHTML = PERSONAS.map((p) => `
+    <div class="persona">
+      <div class="persona-cab"><span class="avatar">${ICONO_PERSONA}</span><h3>${esc(p.rol)}</h3></div>
+      <span class="puerta-chip">Entra por: ${esc(p.puerta)}</span>
+      <p class="pregunta">"${esc(p.pregunta)}"</p>
+      <p class="gana">${esc(p.gana)}</p>
+    </div>`).join("");
+}
+
+function dibujarEstantes() {
+  const lomos = (k) => Array.from({ length: k }, (_, i) => `<span class="lomo" style="height:${18 + ((i * 7) % 16)}px"></span>`).join("");
+  const tarjetas = AREAS.map((a, i) => {
+    const pronto = a.estado !== "disponible";
+    return `
+    <div class="estante${pronto ? " estante-pronto" : ""}">
+      <div class="lomos" aria-hidden="true">${lomos(pronto ? 3 : 6 + (i % 3))}</div>
+      <h3>${esc(a.nombre)}</h3>
+      <p>${esc(a.detalle)}</p>
+      <span class="estado estado-${a.estado}">${ETIQUETA_ESTADO[a.estado] || a.estado}</span>
+    </div>`;
+  });
+  tarjetas.push(`<div class="estante estante-nuevo"><strong style="font-size:1.6rem;line-height:1">+</strong><span>Un área nueva, cuando haga falta</span></div>`);
+  document.getElementById("lista-estantes").innerHTML = tarjetas.join("");
+}
+
+/* Controles: tema y modo para capturas (se recuerdan en este navegador si es posible) */
+const raiz = document.documentElement;
+function guardar(clave, valor) { try { localStorage.setItem(clave, valor); } catch (e) {} }
+function leer(clave) { try { return localStorage.getItem(clave); } catch (e) { return null; } }
+
+function temaActual() {
+  const t = raiz.getAttribute("data-theme");
+  if (t) return t;
+  return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+document.getElementById("btn-tema").addEventListener("click", () => {
+  const nuevo = temaActual() === "dark" ? "light" : "dark";
+  raiz.setAttribute("data-theme", nuevo);
+  guardar("mia-tema", nuevo);
+});
+
+let temaAntesDeCaptura = null;
+function ponerCaptura(activo) {
+  document.body.classList.toggle("captura", activo);
+  const b = document.getElementById("btn-captura");
+  b.setAttribute("aria-pressed", String(activo));
+  b.textContent = activo ? "Salir del modo para capturas" : "Modo para capturas";
+  if (activo) {
+    temaAntesDeCaptura = raiz.getAttribute("data-theme");
+    raiz.setAttribute("data-theme", "light");
+  } else if (temaAntesDeCaptura) {
+    raiz.setAttribute("data-theme", temaAntesDeCaptura);
+  } else {
+    raiz.removeAttribute("data-theme");
+  }
+  guardar("mia-captura", activo ? "1" : "0");
+}
+document.getElementById("btn-captura").addEventListener("click", () => ponerCaptura(!document.body.classList.contains("captura")));
+
+const temaGuardado = leer("mia-tema");
+if (temaGuardado === "dark" || temaGuardado === "light") raiz.setAttribute("data-theme", temaGuardado);
+dibujarGeneral();
+dibujarPersonas();
+dibujarEstantes();
+if (leer("mia-captura") === "1") ponerCaptura(true);
+</script>
