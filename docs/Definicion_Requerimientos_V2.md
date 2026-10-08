@@ -7,8 +7,9 @@
 | Decisión | Elegido | Por qué |
 |---|---|---|
 | Artefactos | Dos aplicaciones web separadas: Panel de administración y Consulta administrativa | Tienen usuarios y permisos distintos (administrar vs. consultar), que es justamente la idea de "artefacto" del documento conceptual. |
+| Instancias de la Consulta administrativa | Dos: **Posgrado en Computación** y **Analítica de Negocios**, con el mismo código y configuraciones distintas | Cada unidad ve solo su propia información (las actas del Consejo de Computación tienen datos personales de estudiantes que no corresponde mostrar a otra unidad) y su gasto se controla y se mide por separado. |
 | Panel de administración | Un solo artefacto de gestión, organizado en módulos: Inventario de información, Artefactos y accesos, y Uso | Toda la configuración y el seguimiento de MIA se hacen desde un mismo lugar. Un tipo de configuración nuevo (usuarios, parámetros de búsqueda) se agrega como un módulo más, sin crear otro artefacto. |
-| Acceso de los artefactos | Cada artefacto se registra en el panel con su propia clave, los dominios que puede consultar y los modos de respuesta que puede usar | La Consulta administrativa accede a todo, pero un futuro chatbot web debe ver solo la información pertinente a su público y usar solo los modos más baratos. La restricción la aplica la API, no el artefacto. |
+| Acceso de los artefactos | Cada artefacto se registra en el panel con su propia clave, los dominios que puede consultar y los modos de respuesta que puede usar | Cada instancia de la Consulta administrativa accede solo a los dominios de su unidad, y un futuro chatbot web debe ver solo la información pertinente a su público y usar solo los modos más baratos. La restricción la aplica la API, no el artefacto. |
 | Tope de gasto | Un tope diario en USD por artefacto, ajustable desde el panel, más un tope diario de toda la API fijado por variable de entorno como red de seguridad | Con varios artefactos, uno no puede agotar el presupuesto de los demás. Es indispensable antes de un artefacto público, cuya clave no se puede mantener en secreto (ver 2.5). |
 | Tecnología de los artefactos | React + TypeScript + Vite, publicadas como sitios estáticos | Pedido explícito para el panel; se usa lo mismo en ambos para compartir el cliente de la API. Un sitio estático se publica gratis (Render Static Sites, Vercel). |
 | Modos de respuesta | **Literal** (modelo sin razonamiento) y **Con razonamiento** (GLM 5.3), ambos por OpenRouter | Dos necesidades distintas: una respuesta fiel al texto de los documentos, o una inferencia que combine datos (sumar, comparar, contar). |
@@ -88,6 +89,8 @@ Borrar o renombrar dominios y documentos, borrar carpetas con contenido, reinten
 
 Un **artefacto** es cualquier aplicación que consulta a MIA (la Consulta administrativa, un futuro chatbot web para estudiantes). Cada uno se registra en este módulo y recibe su propia clave de consulta; con esa clave la API sabe qué artefacto pregunta y le aplica su configuración de acceso. El panel de administración no es un artefacto registrado: usa la clave de administración.
 
+Un mismo producto se puede registrar **varias veces**, una por cada público: cada registro es una **instancia**, con su nombre, clave, dominios, modos y topes, y para la API y el módulo Uso es un artefacto independiente. Así la Consulta administrativa tiene dos instancias (sección 3): una para el Posgrado en Computación y otra para Analítica de Negocios. Agregar una unidad académica más es registrar otra instancia, sin escribir código.
+
 | Id | Requerimiento |
 |---|---|
 | ART-1 | Listar los artefactos registrados con su nombre, descripción, estado (activo o desactivado), dominios y modos permitidos, gasto de hoy frente a su tope (barra de avance) y cantidad de consultas de los últimos 7 días. |
@@ -105,7 +108,8 @@ Ejemplos de configuración:
 
 | Artefacto | Dominios | Modos | Por qué |
 |---|---|---|---|
-| Consulta administrativa | Todos los dominios | Literal y con razonamiento | Lo usa el personal administrativo, que necesita toda la información y preguntas que combinan datos. |
+| Consulta: Posgrado en Computación | Computación: Planes de estudio, Proyectos de graduación y Consejo de Unidad | Literal y con razonamiento | Lo usa el personal administrativo de la Unidad de Posgrado en Computación, con toda la información de su unidad y preguntas que combinan datos. |
+| Consulta: Analítica de Negocios | Analítica de Negocios: Consejo de Área y Currículum | Literal y con razonamiento | Lo mismo para la Maestría en Analítica de Negocios, sin acceso a la información de Computación. |
 | Chatbot web (futuro) | Currículum, Apertura de promoción | Literal | Solo la información pertinente para estudiantes (no las actas del Consejo) y solo el modo más barato, para ahorrar tokens. |
 
 **Cómo lo aplica la API:** la configuración vive en la base (tabla de artefactos) y la API la aplica en cada consulta, no el artefacto, porque el código de un sitio estático se puede modificar. Con la clave de un artefacto:
@@ -124,10 +128,16 @@ Panel de administración de MIA
 
   Inventario            Artefactos y accesos                       [ + Nuevo artefacto ]
 > Artefactos y accesos
-                        Consulta administrativa        activo     mia_k3f9...   212 consultas (7 días)
-                          Dominios: todos
+                        Consulta: Posgrado en Computación   activo  mia_k3f9...   164 consultas (7 días)
+                          Dominios: Computación: Planes de estudio, Proyectos de graduación, Consejo de Unidad
                           Modos:    [x] Literal  [x] Con razonamiento
-                          Tope:     1.20 / 2.00 USD hoy  [######----]   razonamiento: 1.00 / 1.50 USD
+                          Tope:     0.90 / 1.50 USD hoy  [######----]   razonamiento: 0.70 / 1.00 USD
+                          [ Editar ]  [ Regenerar clave ]  [ Desactivar ]
+
+                        Consulta: Analítica de Negocios     activo  mia_7d2a...    48 consultas (7 días)
+                          Dominios: Analítica de Negocios: Consejo de Área, Currículum
+                          Modos:    [x] Literal  [x] Con razonamiento
+                          Tope:     0.30 / 1.00 USD hoy  [###-------]   razonamiento: 0.20 / 0.60 USD
                           [ Editar ]  [ Regenerar clave ]  [ Desactivar ]
 
                         Chatbot web                    activo     mia_p81c...    0 consultas (7 días)
@@ -167,21 +177,21 @@ Uso                     [ Hoy | 7 días | 30 días | Rango ]   Artefacto: [ Todo
 
   Gasto por día, por artefacto            [ Gasto | Consultas | Tokens ]  [ Artefacto | Modo | Modelo ]
   0.80 |            ##
-       |       ##   ##   ##               ## Consulta administrativa
-  0.40 |  ##   ##   ##   ##   ..          .. Chatbot web
+       |       ##   ##   ##               ## Consulta: Posgrado en Computación
+  0.40 |  ##   ##   ##   ##   ..          .. Consulta: Analítica de Negocios
        +--------------------------
          2/10 3/10 4/10 5/10 6/10
 
   Por artefacto                 Hoy / tope                 Gasto    Consultas   Tiempo medio
-  Consulta administrativa       1.20 / 2.00  [######----]  3.10     212         7.0 s
-  Chatbot web                   0.05 / 0.50  [#---------]  0.32      36         2.4 s
+  Consulta: Posgrado en Computación  0.90 / 1.50  [######----]  2.60     164         7.2 s
+  Consulta: Analítica de Negocios    0.30 / 1.00  [###-------]  0.82      48         5.1 s
 
   Saldo OpenRouter: 11.40 USD, alcanza para unos 23 días al ritmo actual
 
   Consultas recientes
-  08/10 10:42  Consulta administrativa  razonamiento  glm-5.3        3 812 tokens  0.021 USD  18.4 s  respondida   útil
-  08/10 10:39  Chatbot web              literal       flash-lite     2 140 tokens  0.001 USD   2.1 s  sin inform.  -
-  08/10 10:31  Chatbot web              literal       -                  -          -           -    rechazada (tope)
+  08/10 10:42  Consulta: Computación   razonamiento  glm-5.3        3 812 tokens  0.021 USD  18.4 s  respondida   útil
+  08/10 10:39  Consulta: Analítica     literal       flash-lite     2 140 tokens  0.001 USD   2.1 s  sin inform.  -
+  08/10 10:31  Consulta: Analítica     literal       -                  -          -           -    rechazada (tope)
 ```
 
 Las gráficas usan una biblioteca de gráficas para React (p. ej. Recharts), con los colores del modo claro y oscuro del panel.
@@ -192,11 +202,20 @@ Las gráficas usan una biblioteca de gráficas para React (p. ej. Recharts), con
 
 Cliente de consulta para el personal administrativo (Coordinación y Asistencia Administrativa): preguntar en lenguaje natural sobre los dominios elegidos y decidir si se quiere una respuesta literal o una con razonamiento. Es también el artefacto con el que se hará la evaluación con usuarios (objetivo específico 5).
 
+Se publican **dos instancias** del mismo producto, cada una registrada en el panel con su propia configuración (ver ejemplos en 2.5):
+
+| Instancia | Usuarios | Dominios |
+|---|---|---|
+| Consulta: Posgrado en Computación | Personal de la Unidad de Posgrado en Computación | Los de Computación |
+| Consulta: Analítica de Negocios | Personal de la Maestría en Analítica de Negocios | Los de Analítica de Negocios |
+
+Las dos usan el mismo código y la misma compilación; lo que cambia es la clave con que se abren. El nombre, los dominios y los modos que muestra cada una vienen de la API según esa clave (CON-10), así que una persona de Analítica de Negocios no puede ver dominios de Computación aunque modifique el sitio.
+
 ### 3.2 Requerimientos funcionales
 
 | Id | Requerimiento |
 |---|---|
-| CON-1 | Mostrar los dominios que el artefacto tiene permitidos (ART-3; para la Consulta administrativa, todos) con una casilla para seleccionarlos o deseleccionarlos, más "todos" y "ninguno". No se puede preguntar sin al menos un dominio seleccionado. La selección se recuerda en el navegador. |
+| CON-1 | Mostrar los dominios que el artefacto tiene permitidos (ART-3) con una casilla para seleccionarlos o deseleccionarlos, más "todos" y "ninguno". No se puede preguntar sin al menos un dominio seleccionado. La selección se recuerda en el navegador. |
 | CON-2 | Elegir el modo de respuesta antes de cada pregunta, entre los que el artefacto tiene permitidos (ART-4): **Literal** o **Con razonamiento** (ver 3.3), con una explicación corta de cada uno junto al selector. El modo elegido se recuerda. Si solo tiene un modo permitido, no se muestra el selector. |
 | CON-3 | Si la API no tiene configurado el modo con razonamiento, o el artefacto ya alcanzó su tope diario de ese modo (ART-8), mostrar esa opción deshabilitada y el motivo. Si alcanzó su tope total, o la API alcanzó el suyo, deshabilitar el envío de preguntas hasta la medianoche, con el motivo. Un modo no permitido para el artefacto no se muestra. |
 | CON-4 | Mostrar las respuestas como conversación, con formato (negritas y listas) y, debajo de cada una, las fuentes citadas (dominio y documento) con los fragmentos desplegables. |
@@ -204,7 +223,8 @@ Cliente de consulta para el personal administrativo (Coordinación y Asistencia 
 | CON-6 | Distinguir visualmente la respuesta "sin información suficiente" del resto. |
 | CON-7 | Ante un error (LLM saturado, sin conexión, tope alcanzado), mostrar un mensaje claro y un botón para reintentar, y en el caso del razonamiento ofrecer reintentar en modo literal. |
 | CON-8 | Calificar cada respuesta como útil o no útil, con un comentario opcional. Es el insumo para las métricas de la evaluación con usuarios, hoy pendientes. |
-| CON-9 | Pedir la clave de consulta la primera vez y recordarla en el navegador. Es la clave del artefacto Consulta administrativa, generada en el panel (ART-2). |
+| CON-9 | Pedir la clave de consulta la primera vez y recordarla en el navegador. Es la clave de la instancia, generada en el panel (ART-2). |
+| CON-10 | Mostrar en el encabezado y en el título de la pestaña el nombre de la instancia (p. ej. "Consulta: Analítica de Negocios"), que la API devuelve según la clave. |
 
 Cada pregunta se responde por separado: el sistema no recuerda las preguntas anteriores de la conversación (ver sección 10).
 
@@ -269,7 +289,8 @@ Limitación conocida: el modo con razonamiento mejora lo que el modelo hace con 
 flowchart LR
     subgraph Artefactos["Artefactos (sitios estáticos React)"]
         ADM[Panel de administración]
-        CON[Consulta administrativa]
+        CONC["Consulta: Posgrado en Computación"]
+        CONA["Consulta: Analítica de Negocios"]
     end
 
     subgraph API["API (FastAPI)"]
@@ -284,7 +305,7 @@ flowchart LR
     end
 
     ADM -->|clave admin| CFG & DOM & ART & USO
-    CON -->|clave del artefacto| ACC
+    CONC & CONA -->|clave de la instancia| ACC
     ACC -->|dominios y modos permitidos| CFG & Q
     Q --> TOPE --> MODOS
     MODOS -->|literal| LIT["Modelo sin razonamiento (OpenRouter)"]
@@ -295,17 +316,17 @@ flowchart LR
     DOM & Q & ART & USO --> PG[(Postgres: dominios, carpetas, documentos, artefactos, consultas)]
 ```
 
-La API mantiene un proveedor de LLM por modo, configurado por variables de entorno (`LLM_PROVIDER_LITERAL=gemini`, `LLM_PROVIDER_RAZONAMIENTO=glm`), en lugar del único `LLM_PROVIDER` actual. Cada modo tiene su propia instrucción al modelo y su cantidad de fragmentos.
+La API mantiene un modelo por modo, configurado por variables de entorno (p. ej. `OPENROUTER_MODEL_LITERAL` y `OPENROUTER_MODEL_RAZONAMIENTO`), en lugar del único `OPENROUTER_MODEL` actual. Cada modo tiene su propia instrucción al modelo y su cantidad de fragmentos.
 
 ## 7. Stack y despliegue
 
 - **Artefactos:** React + TypeScript + Vite, en `web/admin/` (Panel de administración) y `web/consulta/`, con el cliente de la API compartido entre ambos. La Consulta administrativa reemplaza al cliente actual de `web/`.
-- **Publicación:** sitios estáticos gratuitos (Render Static Sites o Vercel), apuntando a la URL de la API.
+- **Publicación:** sitios estáticos gratuitos (Render Static Sites o Vercel), apuntando a la URL de la API. La Consulta administrativa se compila una vez y se publica dos veces, con una dirección por instancia (p. ej. `mia-computacion` y `mia-analitica`). Con direcciones separadas, cada instancia recuerda su propia clave en el navegador (el almacenamiento del navegador es por dirección) y cada unidad tiene un enlace propio. Una tercera unidad sería otra publicación de la misma compilación.
 - **API:** en Railway Hobby con OpenRouter (decisión 9.2, [OPERACION.md](OPERACION.md)). Contra una instancia con la carga desactivada (como Render free), el inventario se usa en modo lectura.
 
 ## 8. Criterios de aceptación
 
-1. Desde el panel se crea un dominio nuevo y aparece en el árbol y en la Consulta administrativa (configurada con "todos los dominios") sin reiniciar la API.
+1. Desde el panel se crea un dominio nuevo de Computación, se habilita en la instancia del Posgrado en Computación y aparece en ella sin reiniciar la API; en la de Analítica de Negocios no aparece.
 2. Contra una instancia con carga activa, se suben dos documentos a ese dominio; su estado avanza solo hasta "listo", y una pregunta sobre su contenido se responde citándolos.
 3. Subir de nuevo uno de esos archivos avisa que ya existía y no duplica fragmentos.
 4. Contra Render (carga desactivada), el árbol se ve completo y los botones de agregar aparecen deshabilitados con su explicación.
@@ -321,6 +342,7 @@ La API mantiene un proveedor de LLM por modo, configurado por variables de entor
 14. Al alcanzar `TOPE_DIARIO_USD`, todos los artefactos responden 429 hasta la medianoche, aunque no hayan alcanzado su propio tope.
 15. Tras una serie de consultas de prueba desde dos artefactos, el módulo Uso muestra el gasto, las consultas y los tokens de cada uno, y el gasto total coincide (con diferencia menor al 5 %) con el que muestra OpenRouter para el mismo período.
 16. El registro de consultas muestra las rechazadas por tope o por permisos, con su motivo.
+17. Con la clave de la instancia de Analítica de Negocios, la Consulta muestra su nombre y solo los dominios de Analítica de Negocios, y una consulta a un dominio de Computación (enviada directamente a la API) responde 403. Lo mismo al revés.
 
 ## 9. Decisiones pendientes
 
