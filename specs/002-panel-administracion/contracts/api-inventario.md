@@ -11,6 +11,7 @@ Los errores tienen la forma `{"detail": "<mensaje en español>"}`.
 ```json
 {
   "ingestion_enabled": true,
+  "max_upload_mb": 25,
   "units": [
     {
       "id": "u-1", "name": "Computación", "description": "...", "document_count": 133,
@@ -36,7 +37,7 @@ Los errores tienen la forma `{"detail": "<mensaje en español>"}`.
 - `document_count` de una unidad, dominio o carpeta incluye lo que está en sus carpetas internas.
 - `unassigned_domains`: dominios sin unidad (antes de la reorganización), con la misma forma que
   `domains`.
-- `ingestion_enabled` alimenta el modo solo lectura (INV-7).
+- `ingestion_enabled` alimenta el modo solo lectura (INV-7) y `max_upload_mb` el rechazo previo de archivos grandes en el panel (también está en `GET /config`).
 
 ## GET /units (sin clave)
 

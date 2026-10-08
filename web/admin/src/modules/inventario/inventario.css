@@ -18,3 +18,8 @@
 .doc-type { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); width: 44px; }
 .doc-date { color: var(--muted); font-size: 0.85rem; }
 .empty { padding: 4px 8px 4px 32px; color: var(--muted); font-size: 0.9rem; }
+.drop-over { outline: 2px dashed var(--accent); background: var(--accent-soft); }
+.uploads { display: flex; flex-direction: column; gap: 6px; }
+.upload-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 10px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); }
+.upload-row .name { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+.upload-row .dest { color: var(--muted); font-size: 0.85rem; }

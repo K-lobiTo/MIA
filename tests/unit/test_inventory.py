@@ -90,6 +90,11 @@ def test_inventario_indica_si_la_ingesta_esta_activa(client, db, monkeypatch):
     assert client.get("/inventory").json()["ingestion_enabled"] is True
 
 
+def test_inventario_informa_el_tamano_maximo_de_archivo(client, db, monkeypatch):
+    monkeypatch.setattr(settings, "max_upload_mb", 12)
+    assert client.get("/inventory").json()["max_upload_mb"] == 12
+
+
 def test_inventario_vacio(client, db):
     body = client.get("/inventory").json()
     assert body["units"] == [] and body["unassigned_domains"] == []

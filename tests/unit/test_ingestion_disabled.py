@@ -1,17 +1,14 @@
 from unittest.mock import patch
 
-from fastapi.testclient import TestClient
-
-from mia.api.main import app
 from mia.api.routes import domains as domain_routes
 
 
-def test_subir_documento_con_ingesta_desactivada_responde_503():
+def test_subir_documento_con_ingesta_desactivada_responde_503(client, admin):
     with patch.object(domain_routes.settings, "ingestion_enabled", False):
-        client = TestClient(app)
         response = client.post(
             "/domains/dom-1/documents",
             files={"file": ("acta.txt", b"contenido", "text/plain")},
+            headers=admin,
         )
 
     assert response.status_code == 503

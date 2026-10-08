@@ -39,6 +39,7 @@ export interface UnitNode {
 
 export interface Inventory {
   ingestion_enabled: boolean;
+  max_upload_mb: number;
   units: UnitNode[];
   unassigned_domains: DomainNode[];
 }

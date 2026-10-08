@@ -13,6 +13,7 @@ const doc = (id: string, filename: string): DocumentItem => ({
 
 const inventory: Inventory = {
   ingestion_enabled: true,
+  max_upload_mb: 25,
   unassigned_domains: [],
   units: [
     {
