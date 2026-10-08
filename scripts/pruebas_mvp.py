@@ -25,6 +25,7 @@ AN_CONSEJO = "Analítica de Negocios: Consejo de Área"
 AN_CURRICULUM = "Analítica de Negocios: Currículum"
 CO_PLANES = "Computación: Planes de estudio"
 CO_PROYECTOS = "Computación: Proyectos de graduación"
+CO_CONSEJO = "Computación: Consejo de Unidad"
 
 NO_INFO_PREFIX = "No encontré información suficiente"
 
@@ -122,6 +123,30 @@ CASOS = [
         "MC3010",
         contiene="4",
     ),
+    # Computación, Consejo de Unidad: actas de 2025 (contienen datos personales de estudiantes;
+    # las preguntas de prueba tratan solo temas académicos).
+    Caso(
+        "K1",
+        "¿Qué se aprobó sobre impartir el curso Deep Learning por tutoría?",
+        [CO_CONSEJO],
+        "respuesta",
+        "CUP_002",
+    ),
+    Caso(
+        "K2",
+        "¿Qué se acordó sobre el cambio de nombre de la Maestría en Computación?",
+        [CO_CONSEJO],
+        "respuesta",
+        "06-2025",
+    ),
+    # Caso de uso 1 del documento conceptual: sin estas actas respondía "sin información".
+    Caso(
+        "CU1",
+        "¿Qué se acordó en el Consejo de Unidad sobre la maestría de Ciberseguridad?",
+        [CO_CONSEJO],
+        "respuesta",
+        "Acta",
+    ),
     # Computación, Proyectos de graduación.
     Caso(
         "G1",
@@ -141,7 +166,7 @@ CASOS = [
     Caso(
         "N1",
         "¿Cuál es la receta del gallo pinto?",
-        [AN_CONSEJO, AN_CURRICULUM, CO_PLANES, CO_PROYECTOS],
+        [AN_CONSEJO, AN_CURRICULUM, CO_PLANES, CO_PROYECTOS, CO_CONSEJO],
         "sin_informacion",
     ),
     # Multi-dominio con respuesta en uno solo de los dominios.
@@ -158,6 +183,12 @@ CASOS = [
         "I1",
         "¿Cuántas horas extraclase por semana tiene el curso Cibercrimen?",
         [AN_CURRICULUM],
+        "sin_informacion",
+    ),
+    Caso(
+        "I3",
+        "¿Qué se acordó sobre el cambio de nombre de la Maestría en Computación?",
+        [AN_CONSEJO],
         "sin_informacion",
     ),
     Caso(

@@ -12,11 +12,11 @@ Documentos reales entregados por Mauricio Arroyo (Unidad de Posgrado en Computac
 | Analítica de Negocios: Currículum | `Información_analítica_de_negocios/` `PROGRAMAS CURSO`, `DOCUMENTOS GENERALES PROGRAMA`, `LINEAS TFG`, `REGLAMENTOS DEL PROGRAMA` | 23: 17 programas de curso, documento del programa, enlace a la página web, líneas de TFG, 3 reglamentos | 505 |
 | Computación: Planes de estudio | `Información_unidad_postgrados_computación/Planes de estudio` (MCC, MCSg, MGTI) | 83: planes, programas de curso, reformas y acuerdos curriculares | 1723 |
 | Computación: Proyectos de graduación | `Información_unidad_postgrados_computación/Proyectos Finales de Graduación` | 30 tesis, informes y artículos (PDF) | 3526 |
+| Computación: Consejo de Unidad (cargado el 2026-10-07) | `Información_unidad_postgrados_computación/Memorias del consejo` | 20 actas de 2025 (PDF), con datos personales de estudiantes | 429 |
 
-Total: 142 documentos y 5810 fragmentos.
+Total: 162 documentos y 6239 fragmentos.
 
-**Lo que no se cargó:**
-- **Actas del Consejo de la Unidad de Posgrado en Computación** (`Memorias del consejo/2025`, 20 actas): contienen datos personales de estudiantes. Ver "Datos y privacidad" en [OPERACION.md](OPERACION.md).
+**Lo que no se cargó** (las actas del Consejo de Computación se cargaron un día después que el resto, al quedar el LLM con retención cero; ver "Datos y privacidad" en [OPERACION.md](OPERACION.md)):
 - **Afiches de apertura y promoción** (`Aperturas_promoción`, 39 imágenes JPG y PNG): MIA solo lee PDF, DOCX y TXT. Requieren reconocimiento de texto (OCR) o un modelo con visión.
 - **`Planes de estudio/MCC/Electivas.pdf`**: es un escaneo sin capa de texto (mismo motivo).
 - **`Docentes`**: la carpeta llegó vacía.
@@ -37,6 +37,9 @@ python scripts/cargar_carpeta.py --url $U --dominio "Computación: Planes de est
 python scripts/cargar_carpeta.py --url $U --dominio "Computación: Proyectos de graduación" \
   --descripcion "Tesis, informes y artículos finales de graduación de estudiantes de la Unidad de Posgrado en Computación" \
   "$C/Proyectos Finales de Graduación"
+python scripts/cargar_carpeta.py --url $U --dominio "Computación: Consejo de Unidad" \
+  --descripcion "Actas de 2025 del Consejo de la Unidad de Posgrado en Computación (sesiones ordinarias y consultas formales)" \
+  "$C/Memorias del consejo"
 ```
 
 ## Cómo correr las pruebas
@@ -66,20 +69,26 @@ Reintenta hasta 3 veces ante un 502 (Gemini gratuito se satura seguido). Termina
 | U4 | AN Currículum | ¿Cuáles son las líneas de TFG de la maestría? | Las seis líneas, hasta "Analítica de Texto"; cita Líneas de TFG |
 | P1 | CO Planes | ¿Cuántas horas extraclase por semana tiene el curso Cibercrimen? | Respuesta "14", cita MC3010 |
 | P2 | CO Planes | ¿Cuántos créditos tiene el curso Cibercrimen y en qué área del plan de estudios se ubica? | Respuesta "4", cita MC3010 |
+| K1 | CO Consejo | ¿Qué se aprobó sobre impartir el curso Deep Learning por tutoría? | Respuesta, cita acta CUP_002 |
+| K2 | CO Consejo | ¿Qué se acordó sobre el cambio de nombre de la Maestría en Computación? | Respuesta, cita acta 06-2025 |
+| CU1 | CO Consejo | Caso de uso 1 del documento conceptual: acuerdos del Consejo de Unidad sobre la maestría de Ciberseguridad | Respuesta, cita actas |
 | G1 | CO Proyectos | ¿Qué trabajo de graduación trata sobre drones en aeropuertos? | Respuesta, cita el trabajo de César Jiménez |
 | G2 | CO Proyectos | ¿Qué compara el análisis de modelos centralizados y descentralizados en sistemas de pagos? | Respuesta, cita el trabajo de Luis Alvarado |
-| N1 | Los cuatro | ¿Cuál es la receta del gallo pinto? | Sin información |
+| N1 | Los cinco | ¿Cuál es la receta del gallo pinto? | Sin información |
 | X1 | AN Currículum + CO Planes | La pregunta de P1 | Respuesta "14", cita MC3010 |
 | I1 | AN Currículum | La pregunta de P1, en el dominio equivocado | Sin información |
+| I3 | AN Consejo | La pregunta de K2, en el dominio equivocado | Sin información |
 | I2 | CO Proyectos | La pregunta de A1, en el dominio equivocado | Sin información |
 
-Grupos: A (actas), U y P (currículum de cada programa), G (proyectos de graduación), N (sin respuesta en ningún dominio), X (multi-dominio), I (aislamiento entre dominios).
+Grupos: A y K (actas de cada consejo), CU (caso de uso del documento conceptual), U y P (currículum de cada programa), G (proyectos de graduación), N (sin respuesta en ningún dominio), X (multi-dominio), I (aislamiento entre dominios).
 
 U1, U2, P1 y P2 dependen de que el lector de DOCX lea tablas: en los programas de curso, créditos, horas y requisitos están en tablas (ver [ARQUITECTURA.md](ARQUITECTURA.md)). U4 depende de que los documentos cortos se pasen completos al LLM.
 
 ## Resultado en producción (2026-10-07, Railway + OpenRouter)
 
-**15 de 15 casos correctos** contra `https://mia-production-3a08.up.railway.app`, con `z-ai/glm-5.3-flash` y razonamiento bajo (`OPENROUTER_REASONING_EFFORT=low`).
+**19 de 19 casos correctos** después de cargar las actas del Consejo de Computación (casos K1, K2, CU1 e I3 nuevos). Las preguntas de prueba sobre esas actas tratan solo temas académicos, no casos de estudiantes.
+
+Antes de esa carga: **15 de 15 casos correctos** contra `https://mia-production-3a08.up.railway.app`, con `z-ai/glm-5.3-flash` y razonamiento bajo (`OPENROUTER_REASONING_EFFORT=low`).
 
 **Comparación de modelos** (misma batería, API local con los datos de producción, mismo día):
 
