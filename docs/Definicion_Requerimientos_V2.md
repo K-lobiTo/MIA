@@ -7,7 +7,7 @@
 | Decisión | Elegido | Por qué |
 |---|---|---|
 | Artefactos | Dos aplicaciones web separadas: Panel de administración y Consulta administrativa | Tienen usuarios y permisos distintos (administrar vs. consultar), que es justamente la idea de "artefacto" del documento conceptual. |
-| Organización de la información | Tres niveles: **unidad académica** (Computación, Administración de Empresas) > **dominio** (Memoria del Consejo, Currículum, Apertura de promoción, Docentes, Proyectos de graduación) > **carpetas** por tipo de fuente (Actas, Programas de curso...) | Es la organización del documento conceptual, repetida por cada unidad. La unidad agrupa y da permisos; el dominio es lo que se elige al consultar; las carpetas solo ordenan (ver 2.3). |
+| Organización de la información | Tres niveles: **unidad académica** (Computación, Administración de Empresas) > **dominio** (Memoria del Consejo, Currículum, Apertura de promoción, Docentes, y Proyectos de graduación separados por tipo: Tesis, Informes de IPA, Artículos) > **carpetas** por tipo de fuente (Actas, Programas de curso...) | Es la organización del documento conceptual, repetida por cada unidad. La unidad agrupa y da permisos; el dominio es lo que se elige al consultar; las carpetas solo ordenan (ver 2.3). |
 | Instancias de la Consulta administrativa | Dos, una por unidad académica: **Consulta administrativa Postgrados Computación** y **Consulta administrativa Postgrados Administración Empresas**, con el mismo código y configuraciones distintas | Siguen la misma jerarquía que la información (una instancia por unidad). Cada unidad ve solo su propia información (las actas del Consejo de Computación tienen datos personales de estudiantes que no corresponde mostrar a otra unidad) y su gasto se controla y se mide por separado. |
 | Panel de administración | Un solo artefacto de gestión, organizado en módulos: Inventario de información, Artefactos y accesos, y Uso | Toda la configuración y el seguimiento de MIA se hacen desde un mismo lugar. Un tipo de configuración nuevo (usuarios, parámetros de búsqueda) se agrega como un módulo más, sin crear otro artefacto. |
 | Acceso de los artefactos | Cada artefacto se registra en el panel con su propia clave, los dominios que puede consultar y los modos de respuesta que puede usar | Cada instancia de la Consulta administrativa accede solo a los dominios de su unidad, y un futuro chatbot web debe ver solo la información pertinente a su público y usar solo los modos más baratos. La restricción la aplica la API, no el artefacto. |
@@ -73,7 +73,9 @@ v Computación  (133 documentos)                     Posgrados en Computación: 
         > MGTI  (26 documentos)
     > Apertura de promoción  (0 documentos)
     > Docentes  (0 documentos)
-    > Proyectos de graduación  (30 documentos)
+    > Proyectos de graduación: Artículos  (14 documentos)
+    > Proyectos de graduación: Informes de IPA  (4 documentos)
+    > Proyectos de graduación: Tesis  (12 documentos)
     [ + Nuevo dominio ]
 v Administración de Empresas  (29 documentos)       Maestría en Analítica de Negocios
     > Memoria del Consejo  (6 documentos)
@@ -94,17 +96,21 @@ v Administración de Empresas  (29 documentos)       Maestría en Analítica de 
 
 Las carpetas cubren el nivel de "tipo de fuente" del documento conceptual (Currículum > Programas de curso > documento) creando una carpeta "Programas de curso", y además admiten otras organizaciones (por año, por programa).
 
-**Reorganización de los datos ya cargados:** los cinco dominios actuales pasan a la nueva estructura. Como Qdrant identifica cada dominio por su id y no por su nombre, renombrarlos, asignarles unidad y ordenar sus documentos en carpetas se hace solo en la base SQL, sin volver a procesar ningún documento. Las carpetas se derivan de la ruta de cada archivo en las carpetas de origen (`tmp/`), con un script de una sola vez.
+**Reorganización de los datos ya cargados:** los cinco dominios actuales pasan a la nueva estructura. Como Qdrant identifica cada dominio por su id y no por su nombre, renombrarlos, asignarles unidad y ordenar sus documentos en carpetas se hace solo en la base SQL, sin volver a procesar ningún documento. La única excepción son los proyectos de graduación de Computación, que se reparten en tres dominios nuevos: además de la base SQL hay que cambiar el dominio en los fragmentos de esos 30 documentos en Qdrant (una actualización del payload filtrando por `document_id`, sin volver a calcular embeddings). Las carpetas se derivan de la ruta de cada archivo en las carpetas de origen (`tmp/`), con un script de una sola vez.
 
 | Dominio actual | Unidad | Dominio nuevo | Carpetas |
 |---|---|---|---|
 | Computación: Consejo de Unidad | Computación | Memoria del Consejo | Actas > 2025 |
 | Computación: Planes de estudio | Computación | Currículum | MCC, MCSg y MGTI, cada una con su carpeta de programas de curso (como en el origen) |
-| Computación: Proyectos de graduación | Computación | Proyectos de graduación | Documento final de tesis |
+| Computación: Proyectos de graduación (12 documentos) | Computación | Proyectos de graduación: Tesis | Ninguna. Tesis de la Maestría en Computación y de la Maestría en Ciberseguridad (76 a 112 páginas) |
+| Computación: Proyectos de graduación (4 documentos) | Computación | Proyectos de graduación: Informes de IPA | Ninguna. Informes de Investigación de Práctica Aplicada de la Maestría en Ciberseguridad (62 a 137 páginas) |
+| Computación: Proyectos de graduación (14 documentos) | Computación | Proyectos de graduación: Artículos | Ninguna. Artículos científicos de graduación, la mayoría derivados de una IPA (6 a 14 páginas) |
 | Analítica de Negocios: Consejo de Área | Administración de Empresas | Memoria del Consejo | Actas |
 | Analítica de Negocios: Currículum | Administración de Empresas | Currículum | Programas de curso, Documento constitutivo del programa, Líneas de trabajos finales de graduación y Reglamentos |
 
-Los dominios del documento conceptual que todavía no tienen documentos (Apertura de promoción y Docentes en Computación; Apertura de promoción, Docentes y Proyectos de graduación en Administración de Empresas) se crean vacíos, para que la estructura quede completa. Las aperturas de promoción de Computación existen, pero son imágenes (ver sección 10).
+Los dominios del documento conceptual que todavía no tienen documentos (Apertura de promoción y Docentes en Computación; Apertura de promoción y Docentes en Administración de Empresas) se crean vacíos, para que la estructura quede completa. Los proyectos de graduación de Administración de Empresas no se crean todavía: cuando haya documentos se crea un dominio por cada tipo que tengan, como en Computación.
+
+**Proyectos de graduación separados por tipo:** cada tipo de proyecto de graduación es un dominio propio, con el prefijo "Proyectos de graduación:" para que aparezcan juntos. Como el dominio es lo que se elige al consultar, se puede preguntar solo sobre tesis, solo sobre artículos o sobre los tres tipos a la vez. La clasificación de los 30 documentos actuales se hizo leyendo la portada de cada uno; la lista por archivo está en el anexo A. Las aperturas de promoción de Computación existen, pero son imágenes (ver sección 10).
 
 ### 2.4 Inventario: fuera de alcance de esta versión
 
@@ -154,13 +160,13 @@ Panel de administración de MIA
   Inventario            Artefactos y accesos                       [ + Nuevo artefacto ]
 > Artefactos y accesos
                         Consulta administrativa Postgrados Computación               activo  mia_k3f9...   164 consultas (7 días)
-                          Dominios: unidad Computación (5 dominios)
+                          Dominios: unidad Computación (7 dominios)
                           Modos:    [x] Literal  [x] Con razonamiento
                           Tope:     0.90 / 1.50 USD hoy  [######----]   razonamiento: 0.70 / 1.00 USD
                           [ Editar ]  [ Regenerar clave ]  [ Desactivar ]
 
                         Consulta administrativa Postgrados Administración Empresas   activo  mia_7d2a...    48 consultas (7 días)
-                          Dominios: unidad Administración de Empresas (5 dominios)
+                          Dominios: unidad Administración de Empresas (4 dominios)
                           Modos:    [x] Literal  [x] Con razonamiento
                           Tope:     0.30 / 1.00 USD hoy  [###-------]   razonamiento: 0.20 / 0.60 USD
                           [ Editar ]  [ Regenerar clave ]  [ Desactivar ]
@@ -369,7 +375,7 @@ La API mantiene un modelo por modo, configurado por variables de entorno (p. ej.
 15. Tras una serie de consultas de prueba desde dos artefactos, el módulo Uso muestra el gasto, las consultas y los tokens de cada uno, y el gasto total coincide (con diferencia menor al 5 %) con el que muestra OpenRouter para el mismo período.
 16. El registro de consultas muestra las rechazadas por tope o por permisos, con su motivo.
 17. Con la clave de Consulta administrativa Postgrados Administración Empresas, la Consulta muestra su nombre y solo los dominios de la unidad Administración de Empresas, y una consulta a un dominio de Computación (enviada directamente a la API) responde 403. Lo mismo al revés.
-18. Tras la reorganización, el árbol del inventario coincide con la tabla de 2.3, los 162 documentos conservan su estado "listo" sin haberse reprocesado, y `scripts/pruebas_mvp.py` sigue dando 19 de 19 con los dominios nuevos.
+18. Tras la reorganización, el árbol del inventario coincide con la tabla de 2.3, los 162 documentos conservan su estado "listo" sin haberse reprocesado, una pregunta en el dominio "Proyectos de graduación: Tesis" cita solo tesis, y `scripts/pruebas_mvp.py` sigue dando 19 de 19 con los dominios nuevos.
 
 ## 9. Decisiones pendientes
 
@@ -386,3 +392,46 @@ La API mantiene un modelo por modo, configurado por variables de entorno (p. ej.
 - **Administración completa del inventario:** borrar, renombrar, mover y reintentar documentos, con los archivos originales en almacenamiento persistente.
 - **Consulta y permisos por carpeta:** buscar solo en una carpeta de un dominio, o habilitar a un artefacto solo algunas carpetas. Requiere guardar la carpeta en la metadata de los fragmentos en Qdrant.
 - **Nuevas fuentes:** CSV, XLSX y páginas web (ACM, repositorio Orion).
+
+## Anexo A. Clasificación de los proyectos de graduación de Computación
+
+Archivos de `tmp/Información_unidad_postgrados_computación/Proyectos Finales de Graduación`, clasificados el 2026-10-08 según su portada y extensión. Es la entrada del script de reorganización (2.3).
+
+**Proyectos de graduación: Tesis** (12):
+
+- `english_thesis_VOA.pdf`
+- `Luis Alvarado Gómez Análisis cualitativo de modelos centralizados y descentralizados en sistemas de pagos 2024.12.15 (fd ITZ).pdf`
+- `Msc_Thesis_Esteban_Villalobos_Gomez.pdf`
+- `MScThesis-Joseph.pdf`
+- `Tesis_Danny_Xie.pdf`
+- `Tesis___Maestria___Jose_Medrano.pdf`
+- `Tesis_Maestria-Valeria_Calderon.pdf`
+- `tesis_marco_torres.pdf`
+- `Thesis_Document___Daniel.pdf`
+- `Thesis_Javier_Cordero.pdf`
+- `Thesis_MSc_Sebastián_Gamboa.pdf`
+- `VADAS_Thesis.pdf`
+
+**Proyectos de graduación: Informes de IPA** (4):
+
+- `IPA avanzada - NataliaSotoSolís.pdf`
+- `IPA Avanzado Joel Brenes Jarquín.pdf`
+- `Informe de investigación - Danny Paco Guevara.pdf`
+- `Propuesta de un Plan de Mejora Continua en la gestión de Incidencias de los Servicios de Microsoft para el SOC de la empresa Forsyte IT Solutions.pdf`
+
+**Proyectos de graduación: Artículos** (14):
+
+- `Drones__Aeropuerto__Seguridad_Cesar_Jiménez.pdf`
+- `IPA Joseph Obando Sandi.pdf`
+- `IPA Paper.pdf`
+- `IPAA Paper - Lenin Chacón.pdf`
+- `LUIS DIEGO CUBILLO GUEVARA PAPER IPA.pdf`
+- `Paper_DanielGurreck.pdf`
+- `Paper-FiorellaArias.pdf`
+- `Paper_IngridMoraMeza.pdf`
+- `Paper IPA_4 Mario Arguello Borge.pdf`
+- `Paper_IPA_Avanzado___Geovanny_Fernández_Zeledón.pdf`
+- `Paper_IPA_CiberSeguridad-Emerson Miranda.pdf`
+- `PAPER IPA IV Daniel Retana Ruiz.pdf`
+- `Paper_Maestria-Valeria_Calderon.pdf`
+- `PAPER_YONATTAN_SERRANO_TORRES_2014005692.pdf`
