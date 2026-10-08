@@ -1,0 +1,181 @@
+{
+  "_comentario": "Mapeo de la reorganización v2 (docs/Definicion_Requerimientos_V2.md, sección 2.3 y anexo A). 'ruta' es relativa a --raiz (por defecto tmp/); 'carpeta' es la carpeta de destino y las subcarpetas del origen se replican debajo de ella. 'archivos' reparte los documentos de un dominio en varios.",
+  "unidades": [
+    {
+      "nombre": "Computación",
+      "descripcion": "Posgrados de la Unidad de Posgrado en Computación: Ciencia de la Computación, Ciberseguridad y Gerencia de Tecnologías de la Información"
+    },
+    {
+      "nombre": "Administración de Empresas",
+      "descripcion": "Posgrados de Administración de Empresas (hoy, la Maestría en Analítica de Negocios, compartida con Computación)"
+    }
+  ],
+  "dominios": [
+    {
+      "actual": "Computación: Consejo de Unidad",
+      "unidad": "Computación",
+      "nombre": "Memoria del Consejo",
+      "descripcion": "Actas del Consejo de la Unidad de Posgrado en Computación (sesiones ordinarias y consultas formales)",
+      "origenes": [
+        {
+          "ruta": "Información_unidad_postgrados_computación/Memorias del consejo",
+          "carpeta": [
+            "Actas"
+          ]
+        }
+      ]
+    },
+    {
+      "actual": "Computación: Planes de estudio",
+      "unidad": "Computación",
+      "nombre": "Currículum",
+      "descripcion": "Planes de estudio, programas de curso, reformas y acuerdos curriculares de las maestrías en Ciencia de la Computación, Ciberseguridad y Gerencia de Tecnologías de la Información",
+      "origenes": [
+        {
+          "ruta": "Información_unidad_postgrados_computación/Planes de estudio",
+          "carpeta": []
+        }
+      ]
+    },
+    {
+      "actual": "Computación: Proyectos de graduación",
+      "unidad": "Computación",
+      "nombre": "Proyectos de graduación: Tesis",
+      "descripcion": "Tesis completas de maestría de la Unidad de Posgrado en Computación",
+      "archivos": [
+        "english_thesis_VOA.pdf",
+        "Luis Alvarado Gómez Análisis cualitativo de modelos centralizados y descentralizados en sistemas de pagos 2024.12.15 (fd ITZ).pdf",
+        "Msc_Thesis_Esteban_Villalobos_Gomez.pdf",
+        "MScThesis-Joseph.pdf",
+        "Tesis_Danny_Xie.pdf",
+        "Tesis___Maestria___Jose_Medrano.pdf",
+        "Tesis_Maestria-Valeria_Calderon.pdf",
+        "tesis_marco_torres.pdf",
+        "Thesis_Document___Daniel.pdf",
+        "Thesis_Javier_Cordero.pdf",
+        "Thesis_MSc_Sebastián_Gamboa.pdf",
+        "VADAS_Thesis.pdf"
+      ],
+      "origenes": [
+        {
+          "ruta": "Información_unidad_postgrados_computación/Proyectos Finales de Graduación",
+          "carpeta": []
+        }
+      ]
+    },
+    {
+      "actual": "Computación: Proyectos de graduación",
+      "unidad": "Computación",
+      "nombre": "Proyectos de graduación: Informes de IPA",
+      "descripcion": "Informes de Investigación de Práctica Aplicada de la Maestría en Ciberseguridad",
+      "archivos": [
+        "IPA avanzada - NataliaSotoSolís.pdf",
+        "IPA Avanzado Joel Brenes Jarquín.pdf",
+        "Informe de investigación - Danny Paco Guevara.pdf",
+        "Propuesta de un Plan de Mejora Continua en la gestión de Incidencias de los Servicios de Microsoft para el SOC de la empresa Forsyte IT Solutions.pdf"
+      ],
+      "origenes": [
+        {
+          "ruta": "Información_unidad_postgrados_computación/Proyectos Finales de Graduación",
+          "carpeta": []
+        }
+      ]
+    },
+    {
+      "actual": "Computación: Proyectos de graduación",
+      "unidad": "Computación",
+      "nombre": "Proyectos de graduación: Artículos",
+      "descripcion": "Artículos científicos finales de graduación, la mayoría derivados de una IPA",
+      "archivos": [
+        "Drones__Aeropuerto__Seguridad_Cesar_Jiménez.pdf",
+        "IPA Joseph Obando Sandi.pdf",
+        "IPA Paper.pdf",
+        "IPAA Paper - Lenin Chacón.pdf",
+        "LUIS DIEGO CUBILLO GUEVARA PAPER IPA.pdf",
+        "Paper_DanielGurreck.pdf",
+        "Paper-FiorellaArias.pdf",
+        "Paper_IngridMoraMeza.pdf",
+        "Paper IPA_4 Mario Arguello Borge.pdf",
+        "Paper_IPA_Avanzado___Geovanny_Fernández_Zeledón.pdf",
+        "Paper_IPA_CiberSeguridad-Emerson Miranda.pdf",
+        "PAPER IPA IV Daniel Retana Ruiz.pdf",
+        "Paper_Maestria-Valeria_Calderon.pdf",
+        "PAPER_YONATTAN_SERRANO_TORRES_2014005692.pdf"
+      ],
+      "origenes": [
+        {
+          "ruta": "Información_unidad_postgrados_computación/Proyectos Finales de Graduación",
+          "carpeta": []
+        }
+      ]
+    },
+    {
+      "actual": "Analítica de Negocios: Consejo de Área",
+      "unidad": "Administración de Empresas",
+      "nombre": "Memoria del Consejo",
+      "descripcion": "Actas de las sesiones 2026 del Consejo de Área Académica de la Maestría en Analítica de Negocios",
+      "origenes": [
+        {
+          "ruta": "Información_analítica_de_negocios/ACTAS",
+          "carpeta": [
+            "Actas"
+          ]
+        }
+      ]
+    },
+    {
+      "actual": "Analítica de Negocios: Currículum",
+      "unidad": "Administración de Empresas",
+      "nombre": "Currículum",
+      "descripcion": "Programas de curso, documento del programa, líneas de trabajos finales de graduación y reglamentos de la Maestría en Analítica de Negocios",
+      "origenes": [
+        {
+          "ruta": "Información_analítica_de_negocios/PROGRAMAS CURSO",
+          "carpeta": [
+            "Programas de curso"
+          ]
+        },
+        {
+          "ruta": "Información_analítica_de_negocios/DOCUMENTOS GENERALES PROGRAMA",
+          "carpeta": [
+            "Documento constitutivo del programa"
+          ]
+        },
+        {
+          "ruta": "Información_analítica_de_negocios/LINEAS TFG",
+          "carpeta": [
+            "Líneas de trabajos finales de graduación"
+          ]
+        },
+        {
+          "ruta": "Información_analítica_de_negocios/REGLAMENTOS DEL PROGRAMA",
+          "carpeta": [
+            "Reglamentos"
+          ]
+        }
+      ]
+    }
+  ],
+  "dominios_vacios": [
+    {
+      "unidad": "Computación",
+      "nombre": "Apertura de promoción",
+      "descripcion": "Fechas, requisitos y costos de admisión"
+    },
+    {
+      "unidad": "Computación",
+      "nombre": "Docentes",
+      "descripcion": "Información y evaluaciones del profesorado"
+    },
+    {
+      "unidad": "Administración de Empresas",
+      "nombre": "Apertura de promoción",
+      "descripcion": "Fechas, requisitos y costos de admisión"
+    },
+    {
+      "unidad": "Administración de Empresas",
+      "nombre": "Docentes",
+      "descripcion": "Información y evaluaciones del profesorado"
+    }
+  ]
+}

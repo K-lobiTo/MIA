@@ -63,6 +63,11 @@ class VectorStore(ABC):
     def count_chunks(self, document_id: str) -> int:
         """Cantidad de fragmentos de un documento."""
 
+    @abstractmethod
+    def set_domain(self, document_id: str, domain_id: str) -> None:
+        """Cambia el dominio de todos los fragmentos de un documento, sin recalcular embeddings
+        (al mover un documento de dominio)."""
+
 
 class QdrantVectorStore(VectorStore):
     """Implementación sobre Qdrant. Colección única (`domain` como payload filtrable),
@@ -145,6 +150,15 @@ class QdrantVectorStore(VectorStore):
             ),
             exact=True,
         ).count
+
+    def set_domain(self, document_id: str, domain_id: str) -> None:
+        self.client.set_payload(
+            collection_name=self.collection,
+            payload={"domain": domain_id},
+            points=Filter(
+                must=[FieldCondition(key="document_id", match=MatchValue(value=document_id))]
+            ),
+        )
 
 
 def _to_result(point, score: float) -> SearchResult:

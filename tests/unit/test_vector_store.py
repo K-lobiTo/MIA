@@ -57,3 +57,17 @@ def test_count_chunks_filtra_por_documento():
     filtro = client.count.call_args.kwargs["count_filter"]
     assert filtro.must[0].key == "document_id"
     assert filtro.must[0].match.value == "doc-1"
+
+
+def test_set_domain_cambia_el_dominio_de_los_fragmentos_de_un_documento_sin_tocar_vectores():
+    client = MagicMock()
+
+    _store(client).set_domain("doc-1", "dominio-nuevo")
+
+    client.set_payload.assert_called_once()
+    kwargs = client.set_payload.call_args.kwargs
+    assert kwargs["collection_name"] == "mia_chunks"
+    assert kwargs["payload"] == {"domain": "dominio-nuevo"}
+    condition = kwargs["points"].must[0]
+    assert condition.key == "document_id" and condition.match.value == "doc-1"
+    client.upsert.assert_not_called()

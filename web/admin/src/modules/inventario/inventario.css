@@ -1,0 +1,20 @@
+.inv-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.inv-search { flex: 1 1 260px; max-width: 420px; min-height: 36px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); }
+.tree { display: flex; flex-direction: column; gap: 10px; }
+.branch-children { margin-left: 18px; padding-left: 12px; border-left: 2px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+.branch-head { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; min-height: 36px; }
+.branch-head:hover { background: var(--bg); }
+.branch-toggle { border: none; background: none; cursor: pointer; width: 24px; height: 24px; display: grid; place-items: center; color: var(--muted); padding: 0; flex: none; }
+.branch-toggle[aria-expanded="true"] .chevron { transform: rotate(90deg); }
+.chevron { display: inline-block; transition: transform 0.12s; }
+.branch-title { font-weight: 600; }
+.branch-title.unit { font-size: 1.05rem; }
+.branch-meta { color: var(--muted); font-size: 0.85rem; }
+.branch-desc { color: var(--muted); font-size: 0.85rem; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.branch-actions { margin-left: auto; display: flex; gap: 6px; flex: none; }
+.unit-card { padding: 8px; }
+.doc-row { display: flex; align-items: center; gap: 10px; padding: 4px 8px 4px 32px; min-height: 30px; flex-wrap: wrap; }
+.doc-name { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }
+.doc-type { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); width: 44px; }
+.doc-date { color: var(--muted); font-size: 0.85rem; }
+.empty { padding: 4px 8px 4px 32px; color: var(--muted); font-size: 0.9rem; }
