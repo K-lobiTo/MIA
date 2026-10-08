@@ -6,6 +6,7 @@ import { useInventory } from "../../api/inventory";
 import type { Artifact } from "../../api/types";
 import { ArtifactCard } from "./ArtifactCard";
 import { ArtifactForm } from "./ArtifactForm";
+import { formatUsd } from "./capMath";
 import { KeyReveal } from "./KeyReveal";
 import "./artefactos.css";
 
@@ -76,6 +77,20 @@ export function ArtefactosPage() {
         Los cambios rigen desde la consulta siguiente.
       </p>
 
+      {artifacts.data && (
+        <div className="notice" role="status">
+          <strong>Tope diario de toda la API:</strong> {formatUsd(artifacts.data.global.daily_cap_usd)}. Hoy se han gastado{" "}
+          {formatUsd(artifacts.data.global.spent_today_usd)}. Este tope se fija en la configuración de la instancia y no se
+          cambia desde el panel.
+        </div>
+      )}
+      {artifacts.data?.global.caps_exceed_global && (
+        <div className="notice notice-warn" role="alert">
+          <strong>Los topes de los artefactos suman {formatUsd(artifacts.data.global.sum_of_artifact_caps_usd)}</strong>, más que
+          el tope de toda la API. Un artefacto puede quedarse sin servicio por el gasto de otros aunque no haya alcanzado el
+          suyo: baja algún tope, o sube el de la API en la configuración de la instancia.
+        </div>
+      )}
       {actionError && (
         <div className="notice notice-danger" role="alert">
           {actionError}

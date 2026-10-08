@@ -14,6 +14,9 @@ export interface ArtifactInput {
   description: string;
   access: ArtifactAccess;
   modes: ModeId[];
+  daily_cap_usd: number;
+  // null quita el tope propio del modo con razonamiento.
+  reasoning_daily_cap_usd: number | null;
 }
 
 function useArtifactMutation<TVariables, TResult>(fn: (variables: TVariables) => Promise<TResult>) {

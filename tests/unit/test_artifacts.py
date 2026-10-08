@@ -4,6 +4,7 @@ from decimal import Decimal
 import pytest
 
 from mia.access.keys import hash_key
+from mia.config import settings
 from mia.storage.models import Artifact, Domain, QueryLog, Unit
 
 
@@ -206,3 +207,64 @@ def test_el_listado_informa_los_modos_y_su_costo_medio(client, admin, base, db):
     assert modos["razonamiento"]["avg_cost_usd_7d"] == pytest.approx(0.03)
     assert modos["literal"]["avg_cost_usd_7d"] is None
     assert modos["literal"]["name"] == "Literal" and modos["razonamiento"]["name"] == "Con razonamiento"
+
+
+# ----- Gasto de hoy frente a los topes (US4) -----
+
+
+def _gasto(db, artefacto_id, costo, modo="literal"):
+    with db() as session:
+        session.add(QueryLog(id=f"g-{artefacto_id}-{modo}-{costo}", artifact_id=artefacto_id, mode=modo, outcome="answered",
+                             model="m", cost_usd=Decimal(str(costo))))
+        session.commit()
+
+
+def test_el_listado_muestra_el_gasto_de_hoy_frente_a_los_topes(client, admin, base, db):
+    artefacto = _crear(client, admin, daily_cap_usd=1.0, reasoning_daily_cap_usd=0.5).json()
+    _gasto(db, artefacto["id"], 0.25, "literal")
+    _gasto(db, artefacto["id"], 0.50, "razonamiento")
+
+    hoy = client.get("/artifacts", headers=admin).json()["artifacts"][0]["today"]
+
+    assert hoy["spent_usd"] == pytest.approx(0.75) and hoy["reasoning_spent_usd"] == pytest.approx(0.50)
+    assert hoy["cap_reached"] is False and hoy["reasoning_cap_reached"] is True
+
+
+def test_el_listado_marca_el_tope_total_alcanzado(client, admin, base, db):
+    artefacto = _crear(client, admin, daily_cap_usd=0.5).json()
+    _gasto(db, artefacto["id"], 0.5)
+
+    hoy = client.get("/artifacts", headers=admin).json()["artifacts"][0]["today"]
+
+    assert hoy["cap_reached"] is True and hoy["reasoning_cap_reached"] is False
+
+
+def test_bloque_global_con_el_tope_de_la_api_y_la_suma_de_topes(client, admin, base, db, monkeypatch):
+    monkeypatch.setattr(settings, "daily_cap_usd", 3.0)
+    uno = _crear(client, admin, name="Uno", daily_cap_usd=1.0).json()
+    _crear(client, admin, name="Dos", daily_cap_usd=1.5)
+    _gasto(db, uno["id"], 0.4)
+
+    bloque = client.get("/artifacts", headers=admin).json()["global"]
+
+    assert bloque == {"daily_cap_usd": 3.0, "spent_today_usd": pytest.approx(0.4),
+                      "sum_of_artifact_caps_usd": pytest.approx(2.5), "caps_exceed_global": False}
+
+
+def test_avisa_cuando_la_suma_de_topes_supera_el_de_la_api(client, admin, base, monkeypatch):
+    monkeypatch.setattr(settings, "daily_cap_usd", 2.0)
+    _crear(client, admin, name="Uno", daily_cap_usd=1.5)
+    _crear(client, admin, name="Dos", daily_cap_usd=1.0)
+
+    assert client.get("/artifacts", headers=admin).json()["global"]["caps_exceed_global"] is True
+
+
+def test_un_artefacto_desactivado_no_cuenta_en_la_suma_de_topes(client, admin, base, monkeypatch):
+    monkeypatch.setattr(settings, "daily_cap_usd", 2.0)
+    _crear(client, admin, name="Uno", daily_cap_usd=1.5)
+    apagado = _crear(client, admin, name="Dos", daily_cap_usd=1.0).json()
+    client.patch(f"/artifacts/{apagado['id']}", json={"active": False}, headers=admin)
+
+    bloque = client.get("/artifacts", headers=admin).json()["global"]
+
+    assert bloque["sum_of_artifact_caps_usd"] == pytest.approx(1.5) and bloque["caps_exceed_global"] is False

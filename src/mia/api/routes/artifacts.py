@@ -8,10 +8,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from mia.access.caps import artifact_status, spent_today
 from mia.access.keys import generate_key, hash_key, key_prefix
 from mia.access.permissions import allowed_modes, configured_domain_ids
 from mia.api.routes.inventory import Name
 from mia.api.security import require_admin
+from mia.config import settings
 from mia.rag.modes import MODE_IDS, MODES, mode_available
 from mia.storage.db import get_session
 from mia.storage.models import Artifact, ArtifactDomain, ArtifactUnit, Domain, QueryLog, Unit
@@ -46,6 +48,22 @@ class ArtifactUpdate(BaseModel):
     active: bool | None = None
 
 
+class TodayOut(BaseModel):
+    spent_usd: float
+    reasoning_spent_usd: float
+    cap_reached: bool
+    reasoning_cap_reached: bool
+
+
+class GlobalOut(BaseModel):
+    daily_cap_usd: float
+    spent_today_usd: float
+    sum_of_artifact_caps_usd: float
+    # La suma de topes de los artefactos activos supera el de toda la API (ART-10): uno puede quedarse
+    # sin servicio por el gasto de otros aunque no haya alcanzado el suyo.
+    caps_exceed_global: bool
+
+
 class ArtifactOut(BaseModel):
     id: str
     name: str
@@ -57,6 +75,7 @@ class ArtifactOut(BaseModel):
     modes: list[str]
     daily_cap_usd: float
     reasoning_daily_cap_usd: float | None
+    today: TodayOut
     queries_last_7_days: int
     created_at: str
 
@@ -74,7 +93,11 @@ class ModeOut(BaseModel):
 
 
 class ArtifactsOut(BaseModel):
+    model_config = {"populate_by_name": True}
+
     artifacts: list[ArtifactOut]
+    # "global" es una palabra reservada de Python: en el JSON se llama "global".
+    global_: GlobalOut = Field(alias="global")
     modes: list[ModeOut]
 
 
@@ -98,6 +121,7 @@ def _to_out(session: Session, artifact: Artifact) -> ArtifactOut:
         )
     )
     reasoning_cap = artifact.reasoning_daily_cap_usd
+    state = artifact_status(session, artifact)
     return ArtifactOut(
         id=artifact.id,
         name=artifact.name,
@@ -109,6 +133,12 @@ def _to_out(session: Session, artifact: Artifact) -> ArtifactOut:
         modes=allowed_modes(artifact),
         daily_cap_usd=float(artifact.daily_cap_usd),
         reasoning_daily_cap_usd=float(reasoning_cap) if reasoning_cap is not None else None,
+        today=TodayOut(
+            spent_usd=float(state.spent),
+            reasoning_spent_usd=float(state.reasoning_spent),
+            cap_reached=state.cap_reached,
+            reasoning_cap_reached=state.reasoning_cap_reached,
+        ),
         queries_last_7_days=queries or 0,
         created_at=artifact.created_at.isoformat() + "Z",
     )
@@ -175,7 +205,14 @@ def list_artifacts(session: Session = Depends(get_session)) -> ArtifactsOut:
         )
         for mode in MODE_IDS
     ]
-    return ArtifactsOut(artifacts=[_to_out(session, a) for a in artifacts], modes=modes)
+    cap_sum = sum(float(a.daily_cap_usd) for a in artifacts if a.active)
+    global_block = GlobalOut(
+        daily_cap_usd=settings.daily_cap_usd,
+        spent_today_usd=float(spent_today(session)),
+        sum_of_artifact_caps_usd=cap_sum,
+        caps_exceed_global=cap_sum > settings.daily_cap_usd,
+    )
+    return ArtifactsOut(artifacts=[_to_out(session, a) for a in artifacts], global_=global_block, modes=modes)
 
 
 @router.post("/artifacts", response_model=ArtifactCreatedOut, status_code=201)

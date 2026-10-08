@@ -82,8 +82,7 @@ export interface Artifact {
   modes: ModeId[];
   daily_cap_usd: number;
   reasoning_daily_cap_usd: number | null;
-  // El gasto de hoy frente a los topes llega con los topes de gasto (US4).
-  today?: {
+  today: {
     spent_usd: number;
     reasoning_spent_usd: number;
     cap_reached: boolean;
@@ -107,7 +106,7 @@ export interface ModeInfo {
 
 export interface ArtifactsResponse {
   artifacts: Artifact[];
-  global?: {
+  global: {
     daily_cap_usd: number;
     spent_today_usd: number;
     sum_of_artifact_caps_usd: number;

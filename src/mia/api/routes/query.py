@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from mia.access.caps import CapStatus, check_caps, seconds_until
 from mia.access.permissions import allowed_domain_ids, allowed_modes
 from mia.api.security import require_artifact
 from mia.config import settings
@@ -59,7 +60,13 @@ def _elapsed_ms(started: float) -> int:
 
 
 def _reject(
-    session: Session, log: QueryLog, started: float, status_code: int, outcome: str, reason: str
+    session: Session,
+    log: QueryLog,
+    started: float,
+    status_code: int,
+    outcome: str,
+    reason: str,
+    headers: dict[str, str] | None = None,
 ) -> HTTPException:
     """Registra la consulta rechazada (con costo cero) y devuelve el error HTTP para lanzarlo."""
     log.outcome = outcome
@@ -67,7 +74,20 @@ def _reject(
     log.latency_ms = _elapsed_ms(started)
     session.add(log)
     session.commit()
-    return HTTPException(status_code=status_code, detail=reason)
+    return HTTPException(status_code=status_code, detail=reason, headers=headers)
+
+
+def cap_message(status: CapStatus) -> str:
+    """Mensaje de un tope alcanzado, para el error 429, el registro y la configuración."""
+    reset = f"Se reinicia a la medianoche ({settings.cap_timezone})."
+    if status.scope == "api":
+        return f"Se alcanzó el tope diario de gasto de toda la API ({status.cap:.2f} USD). {reset}"
+    if status.scope == "artifact":
+        return f"Este artefacto alcanzó su tope diario de gasto ({status.cap:.2f} USD). {reset}"
+    return (
+        f"Este artefacto alcanzó su tope diario del modo con razonamiento ({status.cap:.2f} USD); "
+        f"puede seguir usando los otros modos. {reset}"
+    )
 
 
 @router.post("/query", response_model=QueryResponse)
@@ -107,6 +127,15 @@ def query(
         raise _reject(
             session, log, started, 403, "rejected_permission",
             "Este artefacto no tiene acceso a los dominios: " + ", ".join(forbidden) + ".",
+        )
+
+    # Topes de gasto del día. El costo de una consulta se conoce al terminar, así que un tope puede
+    # excederse por el costo de las consultas que estaban en curso (acotado por OPENROUTER_MAX_TOKENS).
+    cap = check_caps(session, artifact, payload.mode)
+    if cap is not None:
+        raise _reject(
+            session, log, started, 429, "rejected_cap", cap_message(cap),
+            headers={"Retry-After": str(seconds_until(cap.resets_at))},
         )
 
     embedding_provider = get_embedding_provider(settings.embedding_provider)

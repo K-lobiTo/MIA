@@ -1,4 +1,6 @@
 import json
+import uuid
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
@@ -245,3 +247,101 @@ def test_no_se_califica_una_consulta_de_otro_artefacto_ni_inexistente(client, db
     assert client.post("/query/no-existe/feedback", json={"rating": "util"}, headers=uno.headers).status_code == 404
     assert client.post(f"/query/{consulta['id']}/feedback", json={"rating": "util"}).status_code == 401
     assert client.post(f"/query/{consulta['id']}/feedback", json={"rating": "regular"}, headers=uno.headers).status_code == 422
+
+
+# ----- Topes de gasto diarios (US4) -----
+
+
+def _gastar(db, artifact_id, costo, modo="literal"):
+    """Deja registrado un gasto de hoy del artefacto, como si ya hubiera consultado."""
+    with db() as session:
+        session.add(
+            QueryLog(id=str(uuid.uuid4()), artifact_id=artifact_id, mode=modo, outcome="answered",
+                     model="m", cost_usd=Decimal(str(costo)))
+        )
+        session.commit()
+
+
+def test_con_el_tope_total_alcanzado_responde_429_con_retry_after(client, db, base, fakes, make_artifact):
+    artefacto = make_artifact(units=["u1"], cap=0.50)
+    _gastar(db, artefacto.id, 0.50)
+
+    response = _consultar(client, artefacto.headers)
+
+    assert response.status_code == 429
+    assert "tope diario" in response.json()["detail"] and "medianoche" in response.json()["detail"]
+    assert 0 < int(response.headers["Retry-After"]) <= 24 * 3600
+    fakes.llm.answer.assert_not_called()
+    rechazada = _registros(db)[-1]
+    assert rechazada.outcome == "rejected_cap" and rechazada.cost_usd == 0
+    assert "artefacto" in rechazada.reject_reason.lower()
+
+
+def test_el_tope_de_un_artefacto_no_afecta_a_los_demas(client, db, base, fakes, make_artifact):
+    agotado = make_artifact("Agotado", units=["u1"], cap=0.50)
+    otro = make_artifact("Otro", units=["u1"], cap=0.50)
+    _gastar(db, agotado.id, 0.60)
+
+    assert _consultar(client, agotado.headers).status_code == 429
+    assert _consultar(client, otro.headers).status_code == 200
+
+
+def test_el_tope_de_razonamiento_bloquea_ese_modo_y_deja_el_literal(client, db, base, fakes, make_artifact):
+    artefacto = make_artifact(units=["u1"], modes="literal,razonamiento", cap=2.0, reasoning_cap=0.30)
+    _gastar(db, artefacto.id, 0.30, modo="razonamiento")
+
+    razonamiento = _consultar(client, artefacto.headers, mode="razonamiento")
+    literal = _consultar(client, artefacto.headers)
+
+    assert razonamiento.status_code == 429 and "razonamiento" in razonamiento.json()["detail"]
+    assert literal.status_code == 200
+    assert _registros(db)[-2].reject_reason and "razonamiento" in _registros(db)[-2].reject_reason
+
+
+def test_el_gasto_literal_no_cuenta_para_el_tope_de_razonamiento(client, db, base, fakes, make_artifact):
+    artefacto = make_artifact(units=["u1"], modes="literal,razonamiento", cap=2.0, reasoning_cap=0.30)
+    _gastar(db, artefacto.id, 1.0, modo="literal")
+
+    assert _consultar(client, artefacto.headers, mode="razonamiento").status_code == 200
+
+
+def test_el_tope_de_toda_la_api_bloquea_a_todos_aunque_no_alcancen_el_suyo(client, db, base, fakes, make_artifact, monkeypatch):
+    monkeypatch.setattr(settings, "daily_cap_usd", 1.0)
+    gastador = make_artifact("Gastador", units=["u1"], cap=5.0)
+    otro = make_artifact("Otro", units=["u1"], cap=5.0)
+    _gastar(db, gastador.id, 1.0)
+
+    response = _consultar(client, otro.headers)
+
+    assert response.status_code == 429 and "toda la API" in response.json()["detail"]
+    assert _registros(db)[-1].reject_reason and "API" in _registros(db)[-1].reject_reason
+
+
+def test_el_gasto_de_ayer_no_cuenta_hoy(client, db, base, fakes, make_artifact):
+    artefacto = make_artifact(units=["u1"], cap=0.50)
+    with db() as session:
+        session.add(
+            QueryLog(id="ayer", artifact_id=artefacto.id, mode="literal", outcome="answered", model="m",
+                     cost_usd=Decimal(9), created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=2))
+        )
+        session.commit()
+
+    assert _consultar(client, artefacto.headers).status_code == 200
+
+
+def test_subir_el_tope_desde_el_panel_permite_la_consulta_siguiente(client, db, base, fakes, make_artifact, admin):
+    artefacto = make_artifact(units=["u1"], cap=0.50)
+    _gastar(db, artefacto.id, 0.50)
+    assert _consultar(client, artefacto.headers).status_code == 429
+
+    cambio = client.patch(f"/artifacts/{artefacto.id}", json={"daily_cap_usd": 2.0}, headers=admin)
+
+    assert cambio.status_code == 200
+    assert _consultar(client, artefacto.headers).status_code == 200
+
+
+def test_un_artefacto_desactivado_o_sin_permiso_se_rechaza_antes_que_por_tope(client, db, base, fakes, make_artifact):
+    artefacto = make_artifact(units=["u1"], cap=0.50, active=False)
+    _gastar(db, artefacto.id, 0.50)
+
+    assert _consultar(client, artefacto.headers).status_code == 403

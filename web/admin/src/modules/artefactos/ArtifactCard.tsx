@@ -1,5 +1,28 @@
 import type { Artifact, UnitNode } from "../../api/types";
 import { describeAccess, describeModes } from "./accessUtils";
+import { formatUsd, meterLevel, percentUsed } from "./capMath";
+
+function Meter({ label, spent, cap }: { label: string; spent: number; cap: number }) {
+  const level = meterLevel(spent, cap);
+  return (
+    <div className="meter-row">
+      <span className="meter-label">{label}</span>
+      <div
+        className={`meter meter-${level}`}
+        role="progressbar"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(percentUsed(spent, cap))}
+      >
+        <div className="meter-fill" style={{ width: `${percentUsed(spent, cap)}%` }} />
+      </div>
+      <span className="meter-text">
+        {formatUsd(spent)} / {formatUsd(cap)}
+      </span>
+    </div>
+  );
+}
 
 interface Props {
   artifact: Artifact;
@@ -21,7 +44,14 @@ export function ArtifactCard({ artifact, units, busy, onEdit, onRegenerate, onTo
         <span className="art-key" title="Comienzo de su clave">
           {artifact.key_prefix}...
         </span>
-        <span className="branch-meta">{artifact.queries_last_7_days} consultas (7 días)</span>
+        {(artifact.today.cap_reached || artifact.today.reasoning_cap_reached) && (
+          <span className="badge badge-danger">
+            {artifact.today.cap_reached ? "Tope alcanzado" : "Tope de razonamiento alcanzado"}
+          </span>
+        )}
+        <span className="branch-meta">
+          {artifact.queries_last_7_days} {artifact.queries_last_7_days === 1 ? "consulta" : "consultas"} (7 días)
+        </span>
       </div>
       {artifact.description && <p className="muted">{artifact.description}</p>}
       <dl className="art-meta">
@@ -32,6 +62,17 @@ export function ArtifactCard({ artifact, units, busy, onEdit, onRegenerate, onTo
         </dd>
         <dt>Modos</dt>
         <dd>{describeModes(artifact.modes)}</dd>
+        <dt>Gasto de hoy</dt>
+        <dd>
+          <Meter label="Tope diario total" spent={artifact.today.spent_usd} cap={artifact.daily_cap_usd} />
+          {artifact.reasoning_daily_cap_usd !== null && (
+            <Meter
+              label="Tope de razonamiento"
+              spent={artifact.today.reasoning_spent_usd}
+              cap={artifact.reasoning_daily_cap_usd}
+            />
+          )}
+        </dd>
       </dl>
       <div className="art-actions">
         <button className="btn btn-small" onClick={onEdit} disabled={busy}>
