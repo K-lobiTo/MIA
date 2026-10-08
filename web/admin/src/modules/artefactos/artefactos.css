@@ -1,0 +1,18 @@
+.art-list { display: flex; flex-direction: column; gap: 12px; }
+.art-card { display: flex; flex-direction: column; gap: 8px; }
+.art-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.art-name { font-size: 1.05rem; font-weight: 700; }
+.art-key { font-family: var(--font-mono); font-size: 0.85rem; color: var(--muted); }
+.art-meta { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: 0.92rem; }
+.art-meta dt { color: var(--muted); }
+.art-meta dd { margin: 0; overflow-wrap: anywhere; }
+.art-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.key-box { font-family: var(--font-mono); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; overflow-wrap: anywhere; user-select: all; margin: 10px 0; }
+.dialog-wide { width: min(640px, 100%); }
+.choice { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; }
+.choice input { margin-top: 4px; }
+.unit-group { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin-top: 8px; }
+.unit-group .domains { margin-left: 24px; }
+.mode-cost { color: var(--muted); font-size: 0.85rem; display: block; }
+fieldset { border: none; padding: 0; margin: 0 0 14px; }
+legend { font-weight: 600; font-size: 0.9rem; padding: 0; margin-bottom: 4px; }

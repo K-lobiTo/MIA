@@ -82,7 +82,8 @@ export interface Artifact {
   modes: ModeId[];
   daily_cap_usd: number;
   reasoning_daily_cap_usd: number | null;
-  today: {
+  // El gasto de hoy frente a los topes llega con los topes de gasto (US4).
+  today?: {
     spent_usd: number;
     reasoning_spent_usd: number;
     cap_reached: boolean;
@@ -90,7 +91,11 @@ export interface Artifact {
   };
   queries_last_7_days: number;
   created_at: string;
-  key?: string;
+}
+
+// Solo al crear: la clave completa se muestra una única vez.
+export interface ArtifactCreated extends Artifact {
+  key: string;
 }
 
 export interface ModeInfo {
@@ -102,7 +107,7 @@ export interface ModeInfo {
 
 export interface ArtifactsResponse {
   artifacts: Artifact[];
-  global: {
+  global?: {
     daily_cap_usd: number;
     spent_today_usd: number;
     sum_of_artifact_caps_usd: number;

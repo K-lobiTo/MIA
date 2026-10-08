@@ -8,8 +8,9 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from mia.access.permissions import allowed_domain_ids
 from mia.api.routes.inventory import Name
-from mia.api.security import require_admin
+from mia.api.security import optional_artifact, require_admin
 from mia.config import settings
 from mia.ingestion.pipeline import UPLOAD_DIR, ingest_document
 from mia.storage.db import get_session
@@ -88,13 +89,18 @@ def create_domain(payload: DomainCreate, session: Session = Depends(get_session)
 
 
 @router.get("/domains", response_model=list[DomainOut])
-def list_domains(session: Session = Depends(get_session)) -> list[DomainOut]:
+def list_domains(
+    artifact: Artifact | None = Depends(optional_artifact), session: Session = Depends(get_session)
+) -> list[DomainOut]:
+    """Sin clave, todos los dominios (como hoy). Con la clave de un artefacto, solo los que puede consultar."""
     units = {u.id: u.name for u in session.scalars(select(Unit))}
+    allowed = allowed_domain_ids(session, artifact) if artifact is not None else None
     return [
         DomainOut(
             id=d.id, unit_id=d.unit_id, unit_name=units.get(d.unit_id), name=d.name, description=d.description
         )
         for d in session.scalars(select(Domain))
+        if allowed is None or d.id in allowed
     ]
 
 

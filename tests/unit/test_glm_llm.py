@@ -19,7 +19,8 @@ def test_glm_envia_contexto_y_pregunta_y_devuelve_el_texto():
             [RagContext(domain="Currículum", document="MC6102.pdf", excerpt="Créditos: 4")],
         )
 
-    assert answer == "Suman 12 créditos."
+    assert answer.text == "Suman 12 créditos."
+    assert answer.model == "glm-5.3"
     kwargs = client.chat.completions.create.call_args.kwargs
     assert kwargs["model"] == "glm-5.3"
     assert kwargs["messages"][0]["role"] == "system"

@@ -1,46 +1,28 @@
-from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+import pytest
 
-from mia.api.main import app
 from mia.api.routes import query as query_routes
-from mia.storage.db import get_session
-from mia.storage.models import Base, Document, Domain
+from mia.rag.llm import LLMAnswer
+from mia.storage.models import Document, Domain, Unit
 from mia.storage.vector_store import SearchResult
 
 
-def _override_get_session(tmp_path):
-    engine = create_engine(f"sqlite:///{tmp_path}/test.db")
-    Base.metadata.create_all(engine)
-    session_factory = sessionmaker(bind=engine)
-
-    with session_factory() as session:
-        session.add(Domain(id="dom-1", name="Memoria del Consejo", description=""))
+@pytest.fixture
+def base(db, modes_config):
+    with db() as session:
+        session.add(Unit(id="u1", name="Computación"))
+        session.flush()
+        session.add(Domain(id="dom-1", unit_id="u1", name="Memoria del Consejo", description=""))
+        session.flush()
         session.add(
-            Document(
-                id="doc-1",
-                domain_id="dom-1",
-                filename="acta.txt",
-                source_type="txt",
-                file_hash="h",
-                status="done",
-            )
+            Document(id="doc-1", domain_id="dom-1", filename="acta.txt", source_type="txt", file_hash="h", status="done")
         )
         session.commit()
 
-    def _get_session() -> Iterator[Session]:
-        with session_factory() as session:
-            yield session
 
-    return _get_session
-
-
-def test_sources_solo_incluye_fragmentos_por_encima_del_umbral(tmp_path):
-    app.dependency_overrides[get_session] = _override_get_session(tmp_path)
-
+def test_sources_solo_incluye_fragmentos_por_encima_del_umbral(client, base, make_artifact):
+    artefacto = make_artifact(units=["u1"])
     fake_vector_store = MagicMock()
     # Documento largo: no se incluye completo, solo los fragmentos relevantes y sus vecinos.
     fake_vector_store.count_chunks.return_value = 100
@@ -51,20 +33,16 @@ def test_sources_solo_incluye_fragmentos_por_encima_del_umbral(tmp_path):
     fake_embedding_provider = MagicMock()
     fake_embedding_provider.embed.return_value = [[0.1, 0.2]]
     fake_llm_provider = MagicMock()
-    fake_llm_provider.answer.return_value = "Respuesta basada en el fragmento relevante."
+    fake_llm_provider.answer.return_value = LLMAnswer(text="Respuesta basada en el fragmento relevante.")
 
-    try:
-        with (
-            patch.object(query_routes, "get_vector_store", return_value=fake_vector_store),
-            patch.object(query_routes, "get_embedding_provider", return_value=fake_embedding_provider),
-            patch.object(query_routes, "get_llm_provider", return_value=fake_llm_provider),
-        ):
-            client = TestClient(app)
-            response = client.post(
-                "/query", json={"domains": ["dom-1"], "question": "¿Qué se aprobó?"}
-            )
-    finally:
-        app.dependency_overrides.clear()
+    with (
+        patch.object(query_routes, "get_vector_store", return_value=fake_vector_store),
+        patch.object(query_routes, "get_embedding_provider", return_value=fake_embedding_provider),
+        patch.object(query_routes, "get_llm_provider", return_value=fake_llm_provider),
+    ):
+        response = client.post(
+            "/query", json={"domains": ["dom-1"], "question": "¿Qué se aprobó?"}, headers=artefacto.headers
+        )
 
     assert response.status_code == 200
     body = response.json()

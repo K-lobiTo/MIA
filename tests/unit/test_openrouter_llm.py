@@ -38,7 +38,8 @@ def test_envia_modelo_contexto_y_excluye_proveedores_que_entrenan():
             "¿Cuántas horas?", [RagContext(domain="Planes", document="MC3010.docx", excerpt="14")]
         )
 
-    assert answer == "Tiene 14 horas."
+    assert answer.text == "Tiene 14 horas."
+    assert answer.model == "proveedor/modelo"
     kwargs = client.chat.completions.create.call_args.kwargs
     assert kwargs["model"] == "proveedor/modelo"
     assert kwargs["max_tokens"] == openrouter_llm.settings.openrouter_max_tokens
@@ -46,16 +47,50 @@ def test_envia_modelo_contexto_y_excluye_proveedores_que_entrenan():
     assert kwargs["extra_body"] == {"provider": {"data_collection": "deny", "zdr": False}}
 
 
-def test_con_esfuerzo_y_zdr_los_envia():
+def test_el_modelo_y_el_esfuerzo_de_cada_modo_tienen_prioridad_sobre_la_configuracion_global():
     client = _client()
+    with (
+        patch.multiple(openrouter_llm.settings, openrouter_model="global/modelo", openrouter_reasoning_effort="low"),
+        patch.object(openrouter_llm, "OpenAI", return_value=client),
+    ):
+        provider = openrouter_llm.OpenRouterLLMProvider(model="z-ai/glm-5.3", reasoning_effort="high")
+        answer = provider.answer("¿?", [])
+
+    kwargs = client.chat.completions.create.call_args.kwargs
+    assert kwargs["model"] == "z-ai/glm-5.3" and kwargs["extra_body"]["reasoning"] == {"effort": "high"}
+    assert answer.model == "z-ai/glm-5.3"
+
+
+def test_devuelve_tokens_y_costo_que_informa_openrouter():
+    client = _client()
+    client.chat.completions.create.return_value.usage = SimpleNamespace(
+        prompt_tokens=1200,
+        completion_tokens=300,
+        completion_tokens_details=SimpleNamespace(reasoning_tokens=220),
+        cost=0.0123,
+    )
     provider = _provider(client)
 
-    with patch.multiple(
-        openrouter_llm.settings,
-        openrouter_model="proveedor/modelo",
-        openrouter_reasoning_effort="medium",
-        openrouter_zdr=True,
-    ):
+    answer = provider.answer("¿?", [])
+
+    assert (answer.prompt_tokens, answer.completion_tokens, answer.reasoning_tokens) == (1200, 300, 220)
+    assert answer.cost_usd == 0.0123
+
+
+def test_sin_uso_en_la_respuesta_los_campos_quedan_vacios():
+    client = _client()
+    client.chat.completions.create.return_value.usage = None
+
+    answer = _provider(client).answer("¿?", [])
+
+    assert answer.prompt_tokens is None and answer.cost_usd is None
+
+
+def test_con_esfuerzo_y_zdr_los_envia():
+    client = _client()
+    provider = _provider(client, openrouter_reasoning_effort="medium")
+
+    with patch.multiple(openrouter_llm.settings, openrouter_model="proveedor/modelo", openrouter_zdr=True):
         provider.answer("¿?", [])
 
     extra = client.chat.completions.create.call_args.kwargs["extra_body"]

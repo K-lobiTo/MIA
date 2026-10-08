@@ -6,14 +6,20 @@ fuentes. Requiere los dominios con los documentos reales descritos en docs/PRUEB
 (entregados por la Unidad de Posgrado en Computación y la Maestría en Analítica de Negocios).
 
 Uso:
-    python scripts/pruebas_mvp.py --url https://mia-api-5qgh.onrender.com
-    python scripts/pruebas_mvp.py --url http://localhost:8000 --solo U1,I1
+    python scripts/pruebas_mvp.py --url https://<servicio>.up.railway.app --clave mia_...
+    python scripts/pruebas_mvp.py --url http://localhost:8000 --clave mia_... --solo U1,I1
+    python scripts/pruebas_mvp.py --url http://localhost:8000 --clave mia_... --modo razonamiento
+
+La clave es la de un artefacto con acceso a las dos unidades (también se puede dar en la variable
+MIA_ARTIFACT_KEY). Los dominios se identifican por "Unidad / Dominio": desde la versión 2 el nombre
+de un dominio solo es único dentro de su unidad.
 
 Solo usa la biblioteca estándar, para poder correrlo sin instalar el proyecto.
 """
 
 import argparse
 import json
+import os
 import sys
 import time
 import unicodedata
@@ -21,11 +27,16 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 
-AN_CONSEJO = "Analítica de Negocios: Consejo de Área"
-AN_CURRICULUM = "Analítica de Negocios: Currículum"
-CO_PLANES = "Computación: Planes de estudio"
-CO_PROYECTOS = "Computación: Proyectos de graduación"
-CO_CONSEJO = "Computación: Consejo de Unidad"
+SEPARADOR = " / "
+AN_CONSEJO = "Administración de Empresas / Memoria del Consejo"
+AN_CURRICULUM = "Administración de Empresas / Currículum"
+CO_PLANES = "Computación / Currículum"
+CO_CONSEJO = "Computación / Memoria del Consejo"
+# Los proyectos de graduación de Computación se reparten por tipo (anexo A de Definicion_Requerimientos_V2.md).
+CO_TESIS = "Computación / Proyectos de graduación: Tesis"
+CO_INFORMES = "Computación / Proyectos de graduación: Informes de IPA"
+CO_ARTICULOS = "Computación / Proyectos de graduación: Artículos"
+CO_PROYECTOS = [CO_TESIS, CO_INFORMES, CO_ARTICULOS]
 
 NO_INFO_PREFIX = "No encontré información suficiente"
 
@@ -151,14 +162,14 @@ CASOS = [
     Caso(
         "G1",
         "¿Qué trabajo de graduación trata sobre drones en aeropuertos?",
-        [CO_PROYECTOS],
+        [CO_ARTICULOS],
         "respuesta",
         "Drones",
     ),
     Caso(
         "G2",
         "¿Qué compara el análisis de modelos centralizados y descentralizados en sistemas de pagos?",
-        [CO_PROYECTOS],
+        [CO_TESIS],
         "respuesta",
         "Luis Alvarado",
     ),
@@ -166,7 +177,7 @@ CASOS = [
     Caso(
         "N1",
         "¿Cuál es la receta del gallo pinto?",
-        [AN_CONSEJO, AN_CURRICULUM, CO_PLANES, CO_PROYECTOS, CO_CONSEJO],
+        [AN_CONSEJO, AN_CURRICULUM, CO_PLANES, *CO_PROYECTOS, CO_CONSEJO],
         "sin_informacion",
     ),
     # Multi-dominio con respuesta en uno solo de los dominios.
@@ -194,7 +205,7 @@ CASOS = [
     Caso(
         "I2",
         "¿Qué se discutió sobre becas en caso de superar los 25 estudiantes admitidos?",
-        [CO_PROYECTOS],
+        [CO_TESIS],
         "sin_informacion",
     ),
 ]
@@ -205,9 +216,16 @@ def _normalizar(texto: str) -> str:
     return unicodedata.normalize("NFC", texto)
 
 
+# Clave del artefacto con que se consulta; se completa en main().
+CLAVE = ""
+
+
 def _request(url: str, payload: dict | None = None, timeout: int = 200) -> tuple[int, dict]:
     data = json.dumps(payload).encode() if payload is not None else None
-    request = urllib.request.Request(url, data=data, headers={"content-type": "application/json"})
+    headers = {"content-type": "application/json"}
+    if CLAVE:
+        headers["X-Artifact-Key"] = CLAVE
+    request = urllib.request.Request(url, data=data, headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             return response.status, json.load(response)
@@ -222,12 +240,14 @@ def _dominios_por_nombre(base_url: str) -> dict[str, str]:
     status, dominios = _request(f"{base_url}/domains")
     if status != 200:
         sys.exit(f"No se pudo listar dominios (HTTP {status})")
-    return {_normalizar(d["name"]): d["id"] for d in dominios}
+    return {_normalizar(f"{d.get('unit_name')}{SEPARADOR}{d['name']}"): d["id"] for d in dominios}
 
 
-def _consultar(base_url: str, pregunta: str, domain_ids: list[str]) -> tuple[int, dict]:
+def _consultar(base_url: str, pregunta: str, domain_ids: list[str], modo: str) -> tuple[int, dict]:
     for intento in range(1, REINTENTOS + 1):
-        status, body = _request(f"{base_url}/query", {"domains": domain_ids, "question": pregunta})
+        status, body = _request(
+            f"{base_url}/query", {"domains": domain_ids, "question": pregunta, "mode": modo}
+        )
         if status != 502 or intento == REINTENTOS:
             return status, body
         time.sleep(ESPERA_REINTENTO)
@@ -256,7 +276,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--url", required=True, help="URL base de la API, sin barra final")
     parser.add_argument("--solo", default="", help="ids de casos separados por coma (opcional)")
+    parser.add_argument("--clave", default=os.environ.get("MIA_ARTIFACT_KEY", ""), help="Clave de un artefacto (o MIA_ARTIFACT_KEY)")
+    parser.add_argument("--modo", default="literal", choices=["literal", "razonamiento"], help="Modo de respuesta (por defecto literal)")
     args = parser.parse_args()
+    global CLAVE
+    CLAVE = args.clave
+    if not CLAVE:
+        sys.exit("Falta la clave de un artefacto: --clave o la variable MIA_ARTIFACT_KEY.")
     base_url = args.url.rstrip("/")
     solo = {c.strip() for c in args.solo.split(",") if c.strip()}
 
@@ -264,11 +290,13 @@ def main() -> int:
     casos = [c for c in CASOS if not solo or c.id in solo]
     faltantes = {d for c in casos for d in c.dominios} - dominios.keys()
     if faltantes:
-        sys.exit(f"Faltan dominios en la instancia: {sorted(faltantes)}")
+        sys.exit(
+            f"Faltan dominios en la instancia, o el artefacto no tiene acceso a ellos: {sorted(faltantes)}"
+        )
 
     fallidos = []
     for caso in casos:
-        status, body = _consultar(base_url, caso.pregunta, [dominios[d] for d in caso.dominios])
+        status, body = _consultar(base_url, caso.pregunta, [dominios[d] for d in caso.dominios], args.modo)
         ok, detalle = _evaluar(caso, status, body)
         print(f"[{'OK   ' if ok else 'FALLA'}] {caso.id:<4} {caso.pregunta}")
         print(f"        dominios: {', '.join(caso.dominios)} | {detalle}")

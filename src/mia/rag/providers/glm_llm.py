@@ -1,7 +1,7 @@
 from openai import OpenAI
 
 from mia.config import settings
-from mia.rag.llm import RAG_SYSTEM_PROMPT, LLMProvider, RagContext
+from mia.rag.llm import RAG_SYSTEM_PROMPT, LLMAnswer, LLMProvider, RagContext
 
 MODEL = "glm-5.3"
 # La API de Z.ai es compatible con la de OpenAI: se usa su SDK cambiando la URL base.
@@ -16,7 +16,7 @@ class GLMLLMProvider(LLMProvider):
             api_key=settings.glm_api_key or None, base_url=BASE_URL, timeout=120, max_retries=2
         )
 
-    def answer(self, question: str, context: list[RagContext]) -> str:
+    def answer(self, question: str, context: list[RagContext]) -> LLMAnswer:
         context_block = "\n\n".join(
             f"[Fuente: dominio={c.domain}, documento={c.document}]\n{c.excerpt}" for c in context
         )
@@ -28,4 +28,12 @@ class GLMLLMProvider(LLMProvider):
             ],
             extra_body={"thinking": {"type": "enabled" if settings.glm_thinking else "disabled"}},
         )
-        return completion.choices[0].message.content or ""
+        usage = getattr(completion, "usage", None)
+        details = getattr(usage, "completion_tokens_details", None)
+        return LLMAnswer(
+            text=completion.choices[0].message.content or "",
+            model=MODEL,
+            prompt_tokens=getattr(usage, "prompt_tokens", None),
+            completion_tokens=getattr(usage, "completion_tokens", None),
+            reasoning_tokens=getattr(details, "reasoning_tokens", None) if details else None,
+        )

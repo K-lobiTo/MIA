@@ -16,6 +16,8 @@ MIA_API_URL=https://<servicio>.up.railway.app npm run dev  # contra Railway
 
 ## Cómo funciona
 
+- **Clave de artefacto:** desde la versión 2 la API exige la clave de un artefacto registrado en el panel de administración (`web/admin/`) para consultar. Se ingresa en la barra lateral, se recuerda en el navegador y se envía en `X-Artifact-Key`. La API solo lista los dominios que ese artefacto tiene permitidos. Este cliente es transitorio: lo reemplaza la Consulta administrativa.
+
 - **Proxy de Vite:** la API no tiene CORS configurado, así que el navegador solo habla con `localhost:3000`, y el servidor de Vite reenvía `/api/*` a `MIA_API_URL` (por defecto la API de Render), con un timeout de 200 s por Render dormido y Gemini lento (`vite.config.ts`). Para publicar el cliente como sitio estático habría que habilitar CORS en la API (`CORSMiddleware` de FastAPI) y apuntar las llamadas directamente a su URL.
 - **Selección de dominios:** se recuerda en el navegador (`localStorage`). La primera vez se marcan todos.
 - **Errores:** un 502 (Gemini saturado) o un fallo de conexión muestran un mensaje con botón "Reintentar".

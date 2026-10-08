@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from mia.api.routes import domains, health, inventory, query
+from mia.api.routes import artifacts, config, domains, health, inventory, query
 from mia.config import settings
 from mia.rag.embeddings import get_embedding_provider
 from mia.storage.db import init_db
@@ -34,5 +34,7 @@ if _cors_origins:
 
 app.include_router(health.router)
 app.include_router(inventory.router)
+app.include_router(artifacts.router)
+app.include_router(config.router)
 app.include_router(domains.router)
 app.include_router(query.router)

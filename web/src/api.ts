@@ -2,8 +2,30 @@
 
 export interface Domain {
   id: string;
+  unit_name: string | null;
   name: string;
   description: string;
+}
+
+// Clave de un artefacto registrado en el panel de administración: la API le muestra solo los
+// dominios y modos que ese artefacto tiene permitidos. Se recuerda en este navegador.
+const KEY_STORAGE = "mia.clave-artefacto";
+
+export function getKey(): string {
+  try {
+    return localStorage.getItem(KEY_STORAGE) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export function setKey(key: string): void {
+  try {
+    if (key) localStorage.setItem(KEY_STORAGE, key);
+    else localStorage.removeItem(KEY_STORAGE);
+  } catch {
+    // Sin almacenamiento (modo privado): la clave solo vale hasta recargar la página.
+  }
 }
 
 export interface Source {
@@ -29,7 +51,11 @@ export class ApiError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, {
     ...init,
-    headers: { "content-type": "application/json", ...init?.headers },
+    headers: {
+      "content-type": "application/json",
+      ...(getKey() ? { "X-Artifact-Key": getKey() } : {}),
+      ...init?.headers,
+    },
   });
   if (!response.ok) {
     let detail = response.statusText;

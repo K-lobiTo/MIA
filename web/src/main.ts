@@ -1,5 +1,5 @@
 import "./style.css";
-import { ApiError, listDomains, query, type Domain, type QueryResponse } from "./api";
+import { ApiError, getKey, listDomains, query, setKey, type Domain, type QueryResponse } from "./api";
 import { escapeHtml, formatAnswer } from "./format";
 
 const NO_INFO_PREFIX = "No encontré información suficiente";
@@ -54,10 +54,11 @@ function renderDomains(): void {
       const description = domain.description
         ? `<span class="description">${escapeHtml(domain.description)}</span>`
         : "";
+      const unit = domain.unit_name ? `<span class="description">${escapeHtml(domain.unit_name)}</span>` : "";
       return `
         <label class="domain">
           <input type="checkbox" value="${domain.id}" ${checked} />
-          <span><span class="name">${escapeHtml(domain.name)}</span>${description}</span>
+          <span>${unit}<span class="name">${escapeHtml(domain.name)}</span>${description}</span>
         </label>`;
     })
     .join("");
@@ -116,8 +117,14 @@ function renderAnswer(response: QueryResponse): string {
 
 function errorText(error: unknown): string {
   if (error instanceof ApiError) {
+    if (error.status === 401) {
+      return "La API no aceptó la clave del artefacto. Ingresa la clave vigente en la barra lateral.";
+    }
+    if (error.status === 403 || error.status === 429) {
+      return error.message;
+    }
     if (error.status === 502) {
-      return "El modelo de lenguaje no está disponible en este momento (Gemini saturado). Intenta de nuevo en unos segundos.";
+      return "El modelo de lenguaje no está disponible en este momento. Intenta de nuevo en unos segundos.";
     }
     if (error.status === 504) {
       return "La API tardó demasiado en responder. Si estaba dormida, intenta de nuevo en un momento.";
@@ -179,7 +186,20 @@ questionEl.addEventListener("input", () => {
   updateComposer();
 });
 
+const keyForm = document.querySelector<HTMLFormElement>("#key-form")!;
+const keyInput = document.querySelector<HTMLInputElement>("#key")!;
+keyInput.value = getKey();
+keyForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  setKey(keyInput.value.trim());
+  void init();
+});
+
 async function init(): Promise<void> {
+  if (!getKey()) {
+    domainsEl.innerHTML = `<p class="muted">Ingresa la clave del artefacto (la entrega quien administra MIA) para ver los dominios.</p>`;
+    return;
+  }
   domainsEl.innerHTML = `<p class="muted">Conectando con la API (si estaba dormida puede tardar hasta un minuto)...</p>`;
   try {
     domains = await listDomains();

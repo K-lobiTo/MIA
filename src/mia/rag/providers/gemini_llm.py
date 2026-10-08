@@ -2,7 +2,7 @@ from google import genai
 from google.genai import types
 
 from mia.config import settings
-from mia.rag.llm import RAG_SYSTEM_PROMPT, LLMProvider, RagContext
+from mia.rag.llm import RAG_SYSTEM_PROMPT, LLMAnswer, LLMProvider, RagContext
 
 MODEL = "gemini-3.5-flash-lite"
 
@@ -21,7 +21,7 @@ class GeminiLLMProvider(LLMProvider):
             api_key=settings.gemini_api_key or None, http_options=HTTP_OPTIONS
         )
 
-    def answer(self, question: str, context: list[RagContext]) -> str:
+    def answer(self, question: str, context: list[RagContext]) -> LLMAnswer:
         context_block = "\n\n".join(
             f"[Fuente: dominio={c.domain}, documento={c.document}]\n{c.excerpt}" for c in context
         )
@@ -30,4 +30,11 @@ class GeminiLLMProvider(LLMProvider):
             system_instruction=RAG_SYSTEM_PROMPT,
             input=f"Contexto:\n{context_block}\n\nPregunta: {question}",
         )
-        return interaction.output_text
+        usage = getattr(interaction, "usage", None)
+        return LLMAnswer(
+            text=interaction.output_text,
+            model=MODEL,
+            prompt_tokens=getattr(usage, "total_input_tokens", None),
+            completion_tokens=getattr(usage, "total_output_tokens", None),
+            reasoning_tokens=getattr(usage, "total_thought_tokens", None),
+        )

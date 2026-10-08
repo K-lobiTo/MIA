@@ -31,7 +31,8 @@ class Base(DeclarativeBase):
 
 
 def _now() -> datetime:
-    return datetime.now(UTC)
+    """Hora actual en UTC, sin zona (así se guardan y se comparan todas las fechas)."""
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 class Unit(Base):

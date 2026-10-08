@@ -30,13 +30,28 @@ class RagContext:
     excerpt: str
 
 
+@dataclass
+class LLMAnswer:
+    """Respuesta del modelo con su uso. Los campos de uso son opcionales: cada proveedor completa los
+    que su API informa (OpenRouter informa también el costo real en USD)."""
+
+    text: str
+    model: str = ""
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    reasoning_tokens: int | None = None
+    cost_usd: float | None = None
+
+
 class LLMProvider(ABC):
     @abstractmethod
-    def answer(self, question: str, context: list[RagContext]) -> str: ...
+    def answer(self, question: str, context: list[RagContext]) -> LLMAnswer: ...
 
 
 @lru_cache
-def get_llm_provider(name: str) -> LLMProvider:
+def get_llm_provider(name: str, model: str = "", reasoning_effort: str = "") -> LLMProvider:
+    """`model` y `reasoning_effort` los usa el proveedor que admite elegirlos por consulta (OpenRouter);
+    los demás tienen un modelo fijo e ignoran estos parámetros."""
     if name == "local":
         from mia.rag.providers.local_llm import LocalLLMProvider
 
@@ -52,7 +67,7 @@ def get_llm_provider(name: str) -> LLMProvider:
     if name == "openrouter":
         from mia.rag.providers.openrouter_llm import OpenRouterLLMProvider
 
-        return OpenRouterLLMProvider()
+        return OpenRouterLLMProvider(model=model, reasoning_effort=reasoning_effort)
     if name == "glm":
         from mia.rag.providers.glm_llm import GLMLLMProvider
 
