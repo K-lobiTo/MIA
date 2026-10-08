@@ -112,17 +112,24 @@ consulta).
 ## 7. Saldo de OpenRouter
 
 **Decision**: `GET /usage/balance` consulta `GET https://openrouter.ai/api/v1/key` con la clave normal
-y usa `limit_remaining` (saldo restante si la clave tiene límite de crédito). Si hay una clave de
-gestión configurada (`OPENROUTER_MANAGEMENT_KEY`, opcional), usa en su lugar `GET /api/v1/credits`
-(`total_credits - total_usage`, saldo de toda la cuenta). Sin ninguna de las dos fuentes, responde
-"no disponible" con el motivo y el panel lo muestra así (caso borde del spec).
+de MIA y usa `limit_remaining`: lo que le queda al **límite de crédito de la clave** (la clave
+`mia-railway` tiene un límite de 30 USD). El panel lo muestra con ese nombre ("Límite restante de la
+clave de MIA") y una nota: el saldo de la cuenta puede ser menor, y MIA deja de responder con el menor
+de los dos. Si además hay una clave de gestión configurada (`OPENROUTER_MANAGEMENT_KEY`, opcional), se
+lee también `GET /api/v1/credits` (`total_credits - total_usage`, saldo de toda la cuenta) y se muestra
+el menor de los dos valores, indicando cuál limita. Sin límite en la clave ni clave de gestión, responde
+"no disponible" con el motivo (caso borde del spec).
 
-**Rationale**: `/credits` exige una clave de gestión (responde 403 con la clave normal), y no conviene
-que la API de producción tenga una clave con permisos de administrar la cuenta. Ponerle un límite de
-crédito a la clave de MIA en OpenRouter es además una buena práctica de seguridad (OPERACION.md ya lo
-sugiere), y con eso `limit_remaining` da el dato sin permisos extra.
+**Rationale**: `/credits` exige una clave de gestión (403 con la clave normal), que opera a nivel de
+cuenta y puede crear claves de inferencia sin límite: si se filtrara desde el servidor, el daño posible
+pasa de "el límite de la clave" a "todo el saldo de la cuenta". Por eso no se recomienda configurarla
+en producción. La práctica recomendada para el prototipo es ajustar el límite de la clave de MIA al
+saldo cargado, así `limit_remaining` coincide con lo que realmente queda.
 Fuentes: [Get current API key](https://openrouter.ai/docs/api/api-reference/api-keys/get-current-api-key),
 [Get credits](https://openrouter.ai/docs/api-reference/get-credits).
+
+**Alternatives considered**: clave de gestión obligatoria (más exactitud a cambio de más riesgo);
+cargar el saldo de la cuenta a mano en el panel (se desactualiza).
 
 ## 8. Topes y día de corte
 

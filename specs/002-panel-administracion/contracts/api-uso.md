@@ -72,8 +72,14 @@ Detalle (USO-6): todo lo anterior más `question`, `domains` (nombres), `sources
 ## GET /usage/balance
 
 ```json
-{"available": true, "remaining_usd": 11.4, "source": "key_limit", "days_left": 23, "avg_daily_spend_usd_7d": 0.49, "warning": false}
+{"available": true, "remaining_usd": 11.4, "source": "key_limit", "key_limit_remaining_usd": 11.4,
+ "account_remaining_usd": null, "days_left": 23, "avg_daily_spend_usd_7d": 0.49, "warning": false}
 ```
+
+- `source`: `key_limit` (solo el límite de la clave) o `account` / `key_limit` según cuál sea menor
+  cuando también hay clave de gestión; `remaining_usd` es siempre el menor de los disponibles.
+- Con `source = key_limit` y sin clave de gestión, el panel aclara que el saldo de la cuenta puede ser
+  menor.
 
 Sin fuente de saldo: `{"available": false, "reason": "La clave de OpenRouter no tiene límite de crédito y no hay clave de gestión configurada."}`.
 `warning` es verdadero si `days_left < 7` (USO-7). Ver [research.md](../research.md), decisión 7.

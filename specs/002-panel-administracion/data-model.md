@@ -145,4 +145,4 @@ Estados del documento sin cambios: `pending` (en cola) → `processing` → `don
 | `CAP_TIMEZONE` | zona horaria del día de los topes | `America/Costa_Rica` |
 | `CORS_ORIGINS` | orígenes permitidos, separados por comas | vacía |
 | `MAX_UPLOAD_MB` | tamaño máximo por archivo | 25 |
-| `OPENROUTER_MANAGEMENT_KEY` | opcional, para leer el saldo de toda la cuenta | vacía |
+| `OPENROUTER_MANAGEMENT_KEY` | opcional, para leer también el saldo de toda la cuenta; no recomendada en producción (research, decisión 7) | vacía |
