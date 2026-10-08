@@ -319,34 +319,50 @@ Limitación conocida: el modo con razonamiento mejora lo que el modelo hace con 
 
 ```mermaid
 flowchart LR
-    subgraph Artefactos["Artefactos (sitios estáticos React)"]
-        ADM[Panel de administración]
+    subgraph Gestion["Administración (no consulta)"]
+        ADM["Panel de administración"]
+    end
+
+    subgraph Consulta["Artefactos de consulta (sitios estáticos React)"]
         CONC["Consulta administrativa Postgrados Computación"]
         CONA["Consulta administrativa Postgrados Administración Empresas"]
+        CHAT["Chat web (futuro)"]
     end
 
     subgraph API["API (FastAPI)"]
-        CFG["/config, /inventory"]
-        DOM["/domains, /folders, /documents"]
-        ART["/artifacts"]
+        subgraph RADM["Rutas de administración"]
+            INV["/inventory, /units, /domains, /folders, /documents"]
+            ART["/artifacts"]
+            USO["/usage"]
+        end
+        CFG["/config, /domains"]
         ACC{Acceso del artefacto}
         Q["/query + feedback"]
-        USO["/usage"]
         TOPE{Topes de gasto}
         MODOS{Modo}
     end
 
-    ADM -->|clave admin| CFG & DOM & ART & USO
-    CONC & CONA -->|clave de la instancia| ACC
+    ADM -->|clave admin| RADM
+    ART -.->|define dominios, modos y topes de cada artefacto| ACC
+    CONC & CONA & CHAT -->|clave de la instancia| ACC
     ACC -->|dominios y modos permitidos| CFG & Q
     Q --> TOPE --> MODOS
     MODOS -->|literal| LIT["Modelo sin razonamiento (OpenRouter)"]
     MODOS -->|razonamiento| GLM["GLM 5.3 (OpenRouter)"]
-    DOM --> ING[Ingesta]
+    INV --> ING[Ingesta]
     ING --> QD[(Qdrant)]
     Q --> QD
-    DOM & Q & ART & USO --> PG[(Postgres: dominios, carpetas, documentos, artefactos, consultas)]
+    INV & Q & ART & USO --> PG[(Postgres: unidades, dominios, carpetas, documentos, artefactos, consultas)]
+
+    classDef admin fill:#F0E8FA,stroke:#6A3FA8,stroke-width:2px,color:#3B1F66
+    classDef futuro stroke-dasharray:5 4
+    class ADM admin
+    class CHAT futuro
+    style Gestion fill:none,stroke:#6A3FA8,stroke-dasharray:4 3
+    style RADM fill:none,stroke:#6A3FA8
 ```
+
+El panel de administración aparece aparte y en otro color porque no consulta a MIA: con la clave de administración gestiona la información y define qué puede hacer cada artefacto de consulta. Los artefactos de consulta solo llegan a la API con su propia clave, que la API traduce en sus dominios, modos y topes.
 
 La API mantiene un modelo por modo, configurado por variables de entorno (p. ej. `OPENROUTER_MODEL_LITERAL` y `OPENROUTER_MODEL_RAZONAMIENTO`), en lugar del único `OPENROUTER_MODEL` actual. Cada modo tiene su propia instrucción al modelo y su cantidad de fragmentos.
 
