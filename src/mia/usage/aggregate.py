@@ -4,12 +4,14 @@ Se agrega en Python y no en SQL: SQLite (desarrollo y pruebas) no tiene percenti
 del prototipo (miles de filas por mes) es inmediato y funciona igual en SQLite y Postgres."""
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
+from functools import lru_cache
 from typing import Literal
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from mia.access.caps import spent_today
@@ -77,18 +79,78 @@ def resolve_period(
     )
 
 
-def load_rows(
-    session: Session, start: datetime, end: datetime, artifact_ids: list[str] | None, mode: str | None
-) -> list[QueryLog]:
+def _statement(
+    start: datetime,
+    end: datetime,
+    artifact_ids: list[str] | None,
+    mode: str | None,
+    outcomes: list[str] | None = None,
+):
     query = select(QueryLog).where(QueryLog.created_at >= start, QueryLog.created_at < end)
     if artifact_ids:
         query = query.where(QueryLog.artifact_id.in_(artifact_ids))
     if mode:
         query = query.where(QueryLog.mode == mode)
+    if outcomes:
+        query = query.where(QueryLog.outcome.in_(outcomes))
+    return query
+
+
+# Columnas que usan los indicadores. Traer solo estas, como filas simples y no como objetos del ORM,
+# es lo que hace rápido agregar decenas de miles de consultas (crear los objetos era lo más caro).
+AGGREGATE_COLUMNS = (
+    QueryLog.created_at,
+    QueryLog.artifact_id,
+    QueryLog.mode,
+    QueryLog.model,
+    QueryLog.prompt_tokens,
+    QueryLog.completion_tokens,
+    QueryLog.reasoning_tokens,
+    QueryLog.cost_usd,
+    QueryLog.latency_ms,
+    QueryLog.outcome,
+    QueryLog.rating,
+)
+
+
+def load_rows(
+    session: Session,
+    start: datetime,
+    end: datetime,
+    artifact_ids: list[str] | None,
+    mode: str | None,
+    outcomes: list[str] | None = None,
+    light: bool = True,
+) -> Sequence:
+    """Consultas del período. Con `light` (por defecto) devuelve filas simples con solo las columnas de los
+    indicadores; sin él, objetos completos (con la pregunta, las fuentes y el motivo de rechazo), para el
+    CSV y el detalle."""
+    query = _statement(start, end, artifact_ids, mode, outcomes)
+    if light:
+        return session.execute(query.with_only_columns(*AGGREGATE_COLUMNS)).all()
     return list(session.scalars(query))
 
 
-def _tokens(row: QueryLog) -> int:
+def page_rows(
+    session: Session,
+    start: datetime,
+    end: datetime,
+    artifact_ids: list[str] | None,
+    mode: str | None,
+    outcomes: list[str] | None,
+    page: int,
+    page_size: int,
+) -> tuple[int, list[QueryLog]]:
+    """Una página del registro (la más reciente primero) paginada en SQL, y el total de filas."""
+    query = _statement(start, end, artifact_ids, mode, outcomes)
+    total = session.scalar(select(func.count()).select_from(query.subquery())) or 0
+    rows = session.scalars(
+        query.order_by(QueryLog.created_at.desc(), QueryLog.id.desc()).offset((page - 1) * page_size).limit(page_size)
+    )
+    return total, list(rows)
+
+
+def _tokens(row) -> int:
     return (row.prompt_tokens or 0) + (row.completion_tokens or 0)
 
 
@@ -122,7 +184,7 @@ class Totals:
     rated: int
 
 
-def totals(rows: list[QueryLog]) -> Totals:
+def totals(rows: Sequence) -> Totals:
     answered = sum(1 for r in rows if r.outcome == "answered")
     no_info = sum(1 for r in rows if r.outcome == "no_info")
     errors = sum(1 for r in rows if r.outcome == "error")
@@ -146,7 +208,7 @@ def totals(rows: list[QueryLog]) -> Totals:
     )
 
 
-def _avg_cost(rows: list[QueryLog], t: Totals) -> float:
+def _avg_cost(rows: Sequence, t: Totals) -> float:
     model_rows = [r for r in rows if r.outcome in ("answered", "no_info") and r.model]
     return float(sum(r.cost_usd or 0 for r in model_rows)) / t.model_queries if t.model_queries else 0.0
 
@@ -158,7 +220,7 @@ def _points(value: float | None, previous: float | None) -> float | None:
     return round(value - previous, 1)
 
 
-def build_kpis(rows: list[QueryLog], previous_rows: list[QueryLog]) -> dict:
+def build_kpis(rows: Sequence, previous_rows: Sequence) -> dict:
     now_t, prev_t = totals(rows), totals(previous_rows)
     now_total = now_t.input_tokens + now_t.output_tokens
     prev_total = prev_t.input_tokens + prev_t.output_tokens
@@ -204,13 +266,25 @@ def _bucket_labels(period: Period) -> list[str]:
     return [(period.first_day + timedelta(days=i)).isoformat() for i in range(days)]
 
 
-def _bucket_of(row: QueryLog, period: Period) -> str:
-    local = row.created_at.replace(tzinfo=UTC).astimezone(_zone())
-    return f"{local.date().isoformat()}T{local.hour:02d}:00" if period.bucket == "hour" else local.date().isoformat()
+@lru_cache(maxsize=16384)
+def _local_hour(block: datetime, zone_name: str) -> tuple[str, int]:
+    """Día y hora locales de un instante. Se guarda en caché por bloques de 15 minutos: todos los
+    desfases horarios son múltiplos de 15 minutos, así que el bloque determina la hora local, y convertir
+    decenas de miles de filas una por una era lo más lento del módulo."""
+    local = block.replace(tzinfo=UTC).astimezone(ZoneInfo(zone_name))
+    return local.date().isoformat(), local.hour
 
 
-def build_series(rows: list[QueryLog], period: Period, group_by: str, artifact_names: dict[str, str]) -> list[dict]:
-    def group_of(row: QueryLog) -> str:
+def _bucket_of(row, period: Period) -> str:
+    created = row.created_at
+    day, hour = _local_hour(
+        created.replace(minute=created.minute // 15 * 15, second=0, microsecond=0), settings.cap_timezone
+    )
+    return f"{day}T{hour:02d}:00" if period.bucket == "hour" else day
+
+
+def build_series(rows: Sequence, period: Period, group_by: str, artifact_names: dict[str, str]) -> list[dict]:
+    def group_of(row) -> str:
         if group_by == "mode":
             return row.mode
         if group_by == "model":
@@ -229,13 +303,13 @@ def build_series(rows: list[QueryLog], period: Period, group_by: str, artifact_n
     return [{"bucket": label, "groups": groups} for label, groups in by_bucket.items()]
 
 
-def _avg_latency(rows: list[QueryLog]) -> float | None:
+def _avg_latency(rows: Sequence) -> float | None:
     values = [r.latency_ms for r in rows if r.outcome not in REJECTED and r.latency_ms is not None]
     return sum(values) / len(values) if values else None
 
 
 def build_by_artifact(
-    session: Session, rows: list[QueryLog], artifacts: list[Artifact]
+    session: Session, rows: Sequence, artifacts: list[Artifact]
 ) -> list[dict]:
     result = []
     for artifact in sorted(artifacts, key=lambda a: a.name.lower()):
@@ -255,8 +329,8 @@ def build_by_artifact(
     return result
 
 
-def build_by_model(rows: list[QueryLog]) -> list[dict]:
-    models: dict[str, list[QueryLog]] = {}
+def build_by_model(rows: Sequence) -> list[dict]:
+    models: dict[str, list] = {}
     for row in rows:
         if row.model:
             models.setdefault(row.model, []).append(row)

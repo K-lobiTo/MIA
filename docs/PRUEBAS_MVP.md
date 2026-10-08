@@ -21,6 +21,22 @@ Total: 162 documentos y 6239 fragmentos.
 - **`Planes de estudio/MCC/Electivas.pdf`**: es un escaneo sin capa de texto (mismo motivo).
 - **`Docentes`**: la carpeta llegó vacía.
 
+**Desde la versión 2 los dominios están organizados por unidad académica** (se pasó de los cinco dominios anteriores a esta estructura con `scripts/reorganizar_v2.py`, sin reprocesar documentos; ver "Panel de administración" en [OPERACION.md](OPERACION.md)). Los nombres de la tabla de arriba son los de la carga original:
+
+| Unidad | Dominio | Documentos | Era |
+|---|---|---|---|
+| Computación | Memoria del Consejo | 20 (carpeta Actas > 2025) | Computación: Consejo de Unidad |
+| Computación | Currículum | 83 (carpetas MCC, MCSg y MGTI, con sus programas) | Computación: Planes de estudio |
+| Computación | Proyectos de graduación: Tesis | 12 | parte de Computación: Proyectos de graduación |
+| Computación | Proyectos de graduación: Informes de IPA | 4 | parte de Computación: Proyectos de graduación |
+| Computación | Proyectos de graduación: Artículos | 14 | parte de Computación: Proyectos de graduación |
+| Computación | Apertura de promoción, Docentes | 0 (vacíos) | nuevos |
+| Administración de Empresas | Memoria del Consejo | 6 (carpeta Actas) | Analítica de Negocios: Consejo de Área |
+| Administración de Empresas | Currículum | 23 (carpetas Programas de curso, Documento constitutivo del programa, Líneas de trabajos finales de graduación y Reglamentos) | Analítica de Negocios: Currículum |
+| Administración de Empresas | Apertura de promoción, Docentes | 0 (vacíos) | nuevos |
+
+La clasificación de los 30 proyectos de graduación por tipo, archivo por archivo, está en el anexo A de [Definicion_Requerimientos_V2.md](Definicion_Requerimientos_V2.md).
+
 **Cómo se cargaron**, con la API local contra producción (ver "Cargar documentos" en [OPERACION.md](OPERACION.md)):
 
 ```bash
@@ -44,13 +60,16 @@ python scripts/cargar_carpeta.py --url $U --dominio "Computación: Consejo de Un
 
 ## Cómo correr las pruebas
 
+Desde la versión 2 las consultas exigen la clave de un artefacto (`--clave` o la variable `MIA_ARTIFACT_KEY`). Para esta batería hace falta un artefacto con acceso a **las dos unidades**; si el script no encuentra algún dominio, el mensaje dice que falta o que el artefacto no tiene acceso a él.
+
 ```bash
-python scripts/pruebas_mvp.py --url https://mia-api-5qgh.onrender.com   # producción
-python scripts/pruebas_mvp.py --url http://localhost:8000               # local
-python scripts/pruebas_mvp.py --url <url> --solo U4,I1                  # algunos casos
+python scripts/pruebas_mvp.py --url https://mia-production-3a08.up.railway.app --clave mia_...   # producción
+python scripts/pruebas_mvp.py --url http://localhost:8000 --clave mia_...                        # local
+python scripts/pruebas_mvp.py --url <url> --clave mia_... --solo U4,I1                          # algunos casos
+python scripts/pruebas_mvp.py --url <url> --clave mia_... --modo razonamiento                    # con el otro modo
 ```
 
-El script solo usa la biblioteca estándar de Python. Busca los dominios por nombre y, para cada caso, verifica una de dos cosas:
+El script solo usa la biblioteca estándar de Python. Identifica cada dominio por "Unidad / Dominio" (el nombre de un dominio solo es único dentro de su unidad: las dos unidades tienen un "Currículum") y, para cada caso, verifica una de dos cosas:
 - que la API responda con contenido y cite el documento esperado (y, en algunos casos, que la respuesta contenga un dato concreto, p. ej. "14" horas o el último punto de una lista, para detectar respuestas incorrectas o cortadas);
 - o que responda "sin información" sin listar fuentes.
 
@@ -58,31 +77,43 @@ Reintenta hasta 3 veces ante un 502 (Gemini gratuito se satura seguido). Termina
 
 ## Casos
 
+(AD = unidad Administración de Empresas, CO = unidad Computación.)
+
 | Id | Dominios | Pregunta | Esperado |
 |---|---|---|---|
-| A1 | AN Consejo | ¿Qué se discutió sobre becas en caso de superar los 25 estudiantes admitidos? | Respuesta, cita acta 04-2026 |
-| A2 | AN Consejo | ¿Quién fue designado coordinador específico del proyecto ante FUNDATEC? | Respuesta, cita acta 01-2026, menciona a Martín Solís |
-| A3 | AN Consejo | ¿Qué se discutió sobre becas y descuentos para funcionarios del TEC? | Respuesta, cita acta 03-2026 |
-| U1 | AN Currículum | ¿Cuántas horas extraclase por semana tiene el curso Big Data para Negocios? | Respuesta "14", cita su programa |
-| U2 | AN Currículum | ¿De qué curso es requisito Big Data para Negocios? | Respuesta, cita su programa |
-| U3 | AN Currículum | ¿Cada cuánto se abre el proceso de admisión al programa? | Respuesta "cada año", cita el Reglamento del Programa |
-| U4 | AN Currículum | ¿Cuáles son las líneas de TFG de la maestría? | Las seis líneas, hasta "Analítica de Texto"; cita Líneas de TFG |
-| P1 | CO Planes | ¿Cuántas horas extraclase por semana tiene el curso Cibercrimen? | Respuesta "14", cita MC3010 |
-| P2 | CO Planes | ¿Cuántos créditos tiene el curso Cibercrimen y en qué área del plan de estudios se ubica? | Respuesta "4", cita MC3010 |
-| K1 | CO Consejo | ¿Qué se aprobó sobre impartir el curso Deep Learning por tutoría? | Respuesta, cita acta CUP_002 |
-| K2 | CO Consejo | ¿Qué se acordó sobre el cambio de nombre de la Maestría en Computación? | Respuesta, cita acta 06-2025 |
-| CU1 | CO Consejo | Caso de uso 1 del documento conceptual: acuerdos del Consejo de Unidad sobre la maestría de Ciberseguridad | Respuesta, cita actas |
-| G1 | CO Proyectos | ¿Qué trabajo de graduación trata sobre drones en aeropuertos? | Respuesta, cita el trabajo de César Jiménez |
-| G2 | CO Proyectos | ¿Qué compara el análisis de modelos centralizados y descentralizados en sistemas de pagos? | Respuesta, cita el trabajo de Luis Alvarado |
-| N1 | Los cinco | ¿Cuál es la receta del gallo pinto? | Sin información |
-| X1 | AN Currículum + CO Planes | La pregunta de P1 | Respuesta "14", cita MC3010 |
-| I1 | AN Currículum | La pregunta de P1, en el dominio equivocado | Sin información |
-| I3 | AN Consejo | La pregunta de K2, en el dominio equivocado | Sin información |
-| I2 | CO Proyectos | La pregunta de A1, en el dominio equivocado | Sin información |
+| A1 | AD Memoria del Consejo | ¿Qué se discutió sobre becas en caso de superar los 25 estudiantes admitidos? | Respuesta, cita acta 04-2026 |
+| A2 | AD Memoria del Consejo | ¿Quién fue designado coordinador específico del proyecto ante FUNDATEC? | Respuesta, cita acta 01-2026, menciona a Martín Solís |
+| A3 | AD Memoria del Consejo | ¿Qué se discutió sobre becas y descuentos para funcionarios del TEC? | Respuesta, cita acta 03-2026 |
+| U1 | AD Currículum | ¿Cuántas horas extraclase por semana tiene el curso Big Data para Negocios? | Respuesta "14", cita su programa |
+| U2 | AD Currículum | ¿De qué curso es requisito Big Data para Negocios? | Respuesta, cita su programa |
+| U3 | AD Currículum | ¿Cada cuánto se abre el proceso de admisión al programa? | Respuesta "cada año", cita el Reglamento del Programa |
+| U4 | AD Currículum | ¿Cuáles son las líneas de TFG de la maestría? | Las seis líneas, hasta "Analítica de Texto"; cita Líneas de TFG |
+| P1 | CO Currículum | ¿Cuántas horas extraclase por semana tiene el curso Cibercrimen? | Respuesta "14", cita MC3010 |
+| P2 | CO Currículum | ¿Cuántos créditos tiene el curso Cibercrimen y en qué área del plan de estudios se ubica? | Respuesta "4", cita MC3010 |
+| K1 | CO Memoria del Consejo | ¿Qué se aprobó sobre impartir el curso Deep Learning por tutoría? | Respuesta, cita acta CUP_002 |
+| K2 | CO Memoria del Consejo | ¿Qué se acordó sobre el cambio de nombre de la Maestría en Computación? | Respuesta, cita acta 06-2025 |
+| CU1 | CO Memoria del Consejo | Caso de uso 1 del documento conceptual: acuerdos del Consejo de Unidad sobre la maestría de Ciberseguridad | Respuesta, cita actas |
+| G1 | CO Proyectos: Artículos | ¿Qué trabajo de graduación trata sobre drones en aeropuertos? | Respuesta, cita el trabajo de César Jiménez |
+| G2 | CO Proyectos: Tesis | ¿Qué compara el análisis de modelos centralizados y descentralizados en sistemas de pagos? | Respuesta, cita el trabajo de Luis Alvarado |
+| N1 | Todos los dominios de las dos unidades | ¿Cuál es la receta del gallo pinto? | Sin información |
+| X1 | AD Currículum + CO Currículum | La pregunta de P1 | Respuesta "14", cita MC3010 |
+| I1 | AD Currículum | La pregunta de P1, en el dominio equivocado | Sin información |
+| I3 | AD Memoria del Consejo | La pregunta de K2, en el dominio equivocado | Sin información |
+| I2 | CO Proyectos: Tesis | La pregunta de A1, en el dominio equivocado | Sin información |
 
 Grupos: A y K (actas de cada consejo), CU (caso de uso del documento conceptual), U y P (currículum de cada programa), G (proyectos de graduación), N (sin respuesta en ningún dominio), X (multi-dominio), I (aislamiento entre dominios).
 
 U1, U2, P1 y P2 dependen de que el lector de DOCX lea tablas: en los programas de curso, créditos, horas y requisitos están en tablas (ver [ARQUITECTURA.md](ARQUITECTURA.md)). U4 depende de que los documentos cortos se pasen completos al LLM.
+
+## Verificación de la versión 2 (2026-10-08)
+
+Lo que se comprobó al implementar el panel de administración, en la rama `dev`:
+
+- **Pruebas automáticas:** 207 de la API (`pytest`) y 45 del panel (`npm test` en `web/admin/`), más `ruff`, `tsc` y `vite build`. Cubren migraciones sobre una base con datos, permisos, topes (incluida la frontera horaria de Costa Rica), registro de consultas, agregaciones del módulo Uso, CSV y saldo.
+- **Reorganización ensayada en local** con 26 documentos reales (al menos uno de cada tipo de proyecto de graduación): la simulación no escribe nada, aplicar hizo 53 cambios, la segunda corrida 0, y los 911 fragmentos quedaron con el dominio de su documento y los 26 documentos en estado "listo".
+- **Panel recorrido en un navegador real** (Chromium) contra una API local, módulo por módulo: crear unidades, dominios y carpetas y subir documentos; registrar artefactos y comprobar con la API que los permisos, topes, regenerar y desactivar se aplican de verdad; y el módulo Uso con diez días de consultas sembradas, comparando cada indicador con lo que calcula la API.
+
+**Pendiente contra producción** (checklist en "Panel de administración" de [OPERACION.md](OPERACION.md)): la migración `0002` solo se probó en SQLite (falta probarla contra una copia de Neon), la reorganización de los 162 documentos reales, y esta batería (19 de 19 en modo literal) con los dominios ya reorganizados. El camino completo de `/query` con un modelo real tampoco se ejercitó con los artefactos nuevos; solo con proveedores simulados. Esta sección se completa con el resultado cuando se haga.
 
 ## Resultado en producción (2026-10-07, Railway + OpenRouter)
 

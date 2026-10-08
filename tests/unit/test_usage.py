@@ -6,6 +6,7 @@ from decimal import Decimal
 import pytest
 
 from mia.access.caps import day_start_utc
+from mia.config import settings
 from mia.storage.models import Artifact, Domain, QueryLog, Unit
 
 
@@ -280,3 +281,26 @@ def test_csv_neutraliza_celdas_que_parecen_formulas(client, admin, datos):
     q6 = next(f for f in filas if f["id"] == "q6")
     # Una celda que empieza con = + - @ se abriría como fórmula en una hoja de cálculo.
     assert q6["question"].startswith("'=") and q6["reject_reason"].startswith("'=")
+
+
+def test_las_horas_se_asignan_en_la_zona_configurada_incluso_con_desfase_de_media_hora(client, admin, db, monkeypatch):
+    # Asia/Kolkata es UTC+5:30: su medianoche cae a las 18:30 UTC. Con la zona ya configurada,
+    # day_start_utc() es esa medianoche local de hoy.
+    monkeypatch.setattr(settings, "cap_timezone", "Asia/Kolkata")
+    medianoche = day_start_utc()
+    assert (medianoche.hour, medianoche.minute) == (18, 30)
+    with db() as session:
+        session.add_all(
+            [
+                QueryLog(id="k1", created_at=medianoche - timedelta(minutes=20), outcome="answered", cost_usd=Decimal("0.1")),
+                QueryLog(id="k2", created_at=medianoche + timedelta(minutes=10), outcome="answered", cost_usd=Decimal("0.2")),
+            ]
+        )
+        session.commit()
+
+    dias = [p for p in _uso(client, admin, period="30d").json()["series"] if p["groups"]]
+    horas = [p for p in _uso(client, admin, period="today").json()["series"] if p["groups"]]
+
+    # 20 minutos antes de la medianoche local es el día anterior; 10 minutos después, hoy.
+    assert len(dias) == 2 and dias[0]["bucket"] < dias[1]["bucket"]
+    assert [p["bucket"][-5:] for p in horas] == ["00:00"]  # la fila de hoy cae en la hora 0 local

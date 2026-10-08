@@ -220,13 +220,13 @@ description: "Tareas de implementación del Panel de administración de MIA"
 
 **Purpose**: documentación viva, puesta en marcha y validación final.
 
-- [ ] T083 [P] Actualizar `docs/ARQUITECTURA.md`: unidades, carpetas, artefactos y registro de consultas en el modelo de datos; Alembic y el arranque con stamp automático; claves y permisos; modos por proveedor; topes; módulo Uso; panel en `web/admin/`
-- [ ] T084 [P] Actualizar `docs/OPERACION.md`: variables nuevas (tabla de variables por entorno), cómo correr la reorganización en local contra producción, cómo registrar las dos instancias de la Consulta administrativa, cómo publicar el panel como sitio estático y configurar `CORS_ORIGINS`, y la recomendación de ajustar el límite de la clave de OpenRouter al saldo cargado
-- [ ] T085 [P] Actualizar `docs/PRUEBAS_MVP.md` con los dominios nuevos y el uso de `--clave` en `scripts/pruebas_mvp.py`
-- [ ] T086 Revisar el rendimiento de `GET /inventory` con los 162 documentos (menos de 3 s con la API activa, SC-008) y del control de permisos y topes (menos de 50 ms por consulta); si hace falta, agregar índices en una migración nueva
-- [ ] T087 Correr la validación completa de [quickstart.md](quickstart.md) en local (pasos 1 a 7) y anotar los resultados
-- [ ] T088 Verificar que no haya guion largo en ningún archivo nuevo o modificado (`grep -rnP "\x{2014}" src tests scripts web/admin docs specs/002-panel-administracion`)
-- [ ] T089 Preparar la puesta en producción en un checklist dentro de `docs/OPERACION.md` (sin ejecutarlo; lo hace el usuario): configurar `ADMIN_KEY`, `DAILY_CAP_USD` y los modelos por modo en Railway; hacer el merge de `dev` a `main` (migraciones al arrancar); correr `scripts/reorganizar_v2.py --simular` y luego sin simular en local contra producción; registrar las dos instancias de la Consulta administrativa desde el panel; actualizar las claves de los clientes; correr `scripts/pruebas_mvp.py` (19 de 19 en literal)
+- [X] T083 [P] Actualizar `docs/ARQUITECTURA.md`: unidades, carpetas, artefactos y registro de consultas en el modelo de datos; Alembic y el arranque con stamp automático; claves y permisos; modos por proveedor; topes; módulo Uso; panel en `web/admin/`
+- [X] T084 [P] Actualizar `docs/OPERACION.md`: variables nuevas (tabla de variables por entorno), cómo correr la reorganización en local contra producción, cómo registrar las dos instancias de la Consulta administrativa, cómo publicar el panel como sitio estático y configurar `CORS_ORIGINS`, y la recomendación de ajustar el límite de la clave de OpenRouter al saldo cargado
+- [X] T085 [P] Actualizar `docs/PRUEBAS_MVP.md` con los dominios nuevos y el uso de `--clave` en `scripts/pruebas_mvp.py`
+- [X] T086 Revisar el rendimiento de `GET /inventory` con los 162 documentos (menos de 3 s con la API activa, SC-008) y del control de permisos y topes (menos de 50 ms por consulta); si hace falta, agregar índices en una migración nueva
+- [X] T087 Correr la validación completa de [quickstart.md](quickstart.md) en local (pasos 1 a 7) y anotar los resultados
+- [X] T088 Verificar que no haya guion largo en ningún archivo nuevo o modificado (`grep -rnP "\x{2014}" src tests scripts web/admin docs specs/002-panel-administracion`)
+- [X] T089 Preparar la puesta en producción en un checklist dentro de `docs/OPERACION.md` (sin ejecutarlo; lo hace el usuario): configurar `ADMIN_KEY`, `DAILY_CAP_USD` y los modelos por modo en Railway; hacer el merge de `dev` a `main` (migraciones al arrancar); correr `scripts/reorganizar_v2.py --simular` y luego sin simular en local contra producción; registrar las dos instancias de la Consulta administrativa desde el panel; actualizar las claves de los clientes; correr `scripts/pruebas_mvp.py` (19 de 19 en literal)
 
 ---
 

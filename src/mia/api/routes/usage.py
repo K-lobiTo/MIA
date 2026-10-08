@@ -10,7 +10,7 @@ from mia.storage.db import get_session
 from mia.storage.models import QueryLog
 from mia.usage import balance as balance_module
 from mia.usage import log as log_module
-from mia.usage.aggregate import Period, compute_usage, load_rows, resolve_period
+from mia.usage.aggregate import Period, compute_usage, load_rows, page_rows, resolve_period
 
 router = APIRouter(tags=["usage"], dependencies=[Depends(require_admin)])
 
@@ -65,26 +65,25 @@ def usage_queries(
     include_questions: bool = False,
     session: Session = Depends(get_session),
 ):
-    rows = [
-        r
-        for r in load_rows(session, filters.period.start, filters.period.end, filters.artifact_ids, filters.mode)
-        if not outcome or r.outcome in outcome
-    ]
-    rows.sort(key=lambda r: (r.created_at, r.id), reverse=True)
+    period = filters.period
     names = log_module.artifact_names(session)
     if format == "csv":
+        rows = load_rows(session, period.start, period.end, filters.artifact_ids, filters.mode, outcome, light=False)
+        rows.sort(key=lambda r: (r.created_at, r.id), reverse=True)
         filename = f"mia-consultas-{filters.period.first_day}-{filters.period.last_day}.csv"
         return Response(
             content=log_module.to_csv(rows, names, include_questions),
             media_type="text/csv; charset=utf-8",
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
-    start = (page - 1) * page_size
+    total, rows = page_rows(
+        session, period.start, period.end, filters.artifact_ids, filters.mode, outcome, page, page_size
+    )
     return {
-        "total": len(rows),
+        "total": total,
         "page": page,
         "page_size": page_size,
-        "items": [log_module.list_item(r, names) for r in rows[start : start + page_size]],
+        "items": [log_module.list_item(r, names) for r in rows],
     }
 
 
