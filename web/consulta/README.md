@@ -29,13 +29,15 @@ Solo la clave, la selección de dominios y el modo, en `localStorage` de la dire
 
 ## Publicar
 
-Se compila una sola vez y se publica una vez por instancia, cada una en su dirección (p. ej. `mia-computacion` y `mia-administracion`). No hay configuración por instancia en la compilación: la única variable es `VITE_API_URL`.
+Se compila una vez por instancia y se publica una vez por instancia, cada una en su dirección (p. ej. `mia-computacion` y `mia-administracion`), como servicios de Railway. No hay configuración por instancia en el código publicado: la única variable de compilación es `VITE_API_URL`.
 
-```bash
-VITE_API_URL=https://<servicio>.up.railway.app npm run build   # genera dist/
-```
+- **`Dockerfile`:** compila con Vite (falla si falta `VITE_API_URL`) y sirve `dist` con `serve`, que devuelve `index.html` para cualquier ruta. Escucha en el `PORT` que da Railway.
+- **`railway.json`:** build con el `Dockerfile`, comprobación de salud en `/` y redespliegue solo cuando cambia `web/consulta/`.
+- **Probar la imagen en local:** `docker build --build-arg VITE_API_URL=<url de la API> -t mia-consulta . && docker run --rm -e PORT=8080 -p 8080:8080 mia-consulta`.
+- **Apagar y encender:** en Railway, *Deployments > Remove* apaga el sitio (sin consumo) y *Redeploy* lo enciende.
+- La API debe permitir el origen de cada sitio (`CORS_ORIGINS`).
 
-La API debe permitir el origen de cada sitio (`CORS_ORIGINS`). Pasos completos en [docs/OPERACION.md](../../docs/OPERACION.md), sección "Consulta administrativa".
+Pasos completos en [docs/OPERACION.md](../../docs/OPERACION.md), sección "Consulta administrativa".
 
 ## Estructura
 

@@ -120,18 +120,21 @@ Publicar `dist/` en un hosting de sitios estáticos (Render Static Sites o Verce
 
 ### Consulta administrativa (publicar las dos instancias)
 
-La Consulta (`web/consulta/`) se compila una vez y se publica **dos veces**, una por unidad, para que cada dirección recuerde su propia clave y cada unidad tenga su enlace. La compilación es idéntica: lo que cambia es la clave con que se abre, que la API traduce en el nombre, los dominios y los modos de la instancia.
+La Consulta (`web/consulta/`) se compila una vez por instancia y se publica **dos veces**, una por unidad, para que cada dirección recuerde su propia clave y cada unidad tenga su enlace. Cada instancia es un servicio de Railway dentro del mismo proyecto que la API. La compilación es idéntica: lo que cambia es la clave con que se abre, que la API traduce en el nombre, los dominios y los modos de la instancia.
 
 1. **Registrar los artefactos** en el panel (si no existen): `Consulta administrativa Postgrados Computación` (unidad Computación completa) y `Consulta administrativa Postgrados Administración Empresas` (unidad Administración de Empresas completa), ambos con los dos modos y su tope diario. Copiar cada clave `mia_...` al crearla: se muestra una sola vez.
-2. **Publicar los sitios** en Render (*New > Static Site*), conectando el repositorio, una vez por instancia:
-   - *Root Directory*: `web/consulta`; *Build Command*: `npm ci && npm run build`; *Publish Directory*: `dist`.
-   - Variable `VITE_API_URL` = URL de Railway (sin barra final). No se necesitan reescrituras.
-   - Nombres sugeridos: `mia-computacion` y `mia-administracion`.
-3. **Permitir los orígenes:** agregar ambas direcciones a `CORS_ORIGINS` en Railway, separadas por coma y sin barra final (junto a la del panel si ya está). Sin eso el navegador bloquea las llamadas.
+2. **Crear los servicios en Railway** (una vez por instancia), en el proyecto de MIA: *New > GitHub Repo* y elegir este repositorio. Nombres sugeridos: `mia-computacion` y `mia-administracion`. En cada servicio:
+   - *Settings > Source > Root Directory*: `web/consulta`. Railway usa el `Dockerfile` de esa carpeta (compila con Vite y sirve `dist` con `serve`).
+   - *Settings > Config-as-code*: ruta `/web/consulta/railway.json` (el repositorio también tiene un `railway.json` en la raíz, que es el de la API).
+   - *Variables*: `VITE_API_URL` = URL de la API (`https://mia-production-3a08.up.railway.app`, sin barra final). Sin esta variable la compilación falla con un mensaje claro. Es una variable de **compilación**: si cambia, hay que volver a desplegar.
+   - *Settings > Networking > Generate Domain*: la dirección pública de esa instancia.
+3. **Permitir los orígenes:** agregar ambas direcciones a `CORS_ORIGINS` en la API (servicio `MIA`), separadas por coma, con `https://` y sin barra final, junto a las demás si ya hay. Sin eso el navegador bloquea las llamadas. Un cambio de variables exige un deploy de la API.
 4. **Entregar a cada equipo** su enlace y su clave por un canal privado. Las claves se pueden regenerar desde el panel (la anterior deja de valer de inmediato).
 5. **Verificar** abriendo cada sitio con su clave: debe mostrar su nombre y solo los dominios de su unidad.
 
-Para probar la Consulta en local contra Railway: `cd web/consulta && MIA_API_URL=<url> npm run dev` (puerto 3000).
+**Apagar y encender un sitio (para compartirlo solo cuando haga falta).** En el servicio, *Deployments*, menú del despliegue activo, **Remove**: el enlace deja de responder y el servicio no consume crédito; su configuración y su dirección se conservan. Para encenderlo de nuevo, *Redeploy* sobre ese despliegue (o `railway redeploy -s mia-computacion` desde la CLI; `railway down -s mia-computacion` lo apaga). Se puede hacer desde el celular. Dos cosas más: la API no se apaga nunca (los sitios la necesitan), y para cortar el uso al instante sin esperar un deploy basta **desactivar el artefacto** en el panel: el sitio sigue publicado, pero la Consulta explica que fue desactivada.
+
+**Costo.** Cada servicio solo gasta mientras está encendido, y un servidor de archivos estáticos consume muy poco; aun así descuenta del crédito del plan Hobby, que la API ya usa casi por completo, y el tope de uso configurado en Railway sigue siendo el límite. Alternativas que no consumen crédito: correr la Consulta en tu computador (`cd web/consulta && MIA_API_URL=<url> npm run dev`) para una demostración, o publicarla en un sitio estático gratuito (Render Static Sites o Vercel, con `VITE_API_URL` en la compilación y `dist` como carpeta publicada).
 
 **Modos de respuesta.** Cada modo trae su instrucción al modelo y su cantidad de resultados de búsqueda. El modo con razonamiento recupera más fragmentos (`QUERY_SEARCH_LIMIT_RAZONAMIENTO`, 16 por defecto) y tarda decenas de segundos; si una instancia no tiene configurado su modelo (`LLM_PROVIDER_RAZONAMIENTO`) la opción aparece deshabilitada con el motivo.
 

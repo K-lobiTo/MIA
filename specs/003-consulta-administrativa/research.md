@@ -138,20 +138,27 @@ borde del modo guardado, sin depender de la red.
 
 ## 11. Publicación de las dos instancias
 
-**Decision**: dos sitios estáticos en Render (Static Sites, gratis), ambos desde este repositorio con
-`rootDir: web/consulta`, el mismo comando de compilación y la misma `VITE_API_URL` apuntando a
-Railway. Nombres sugeridos: `mia-computacion` y `mia-administracion`. Sus direcciones se agregan a
-`CORS_ORIGINS` en Railway. Se documenta en `docs/OPERACION.md`; publicar lo hace quien administra
-MIA.
+**Decision**: dos servicios de Railway dentro del proyecto de la API, ambos desde este repositorio con
+`Root Directory` `web/consulta`, el mismo `Dockerfile` (compila con Vite y sirve `dist` con `serve`) y la
+misma `VITE_API_URL` apuntando a la API. Nombres sugeridos: `mia-computacion` y `mia-administracion`.
+Sus direcciones (`*.up.railway.app`) se agregan a `CORS_ORIGINS`. Se documenta en `docs/OPERACION.md`;
+crear los servicios lo hace quien administra MIA. El panel de administración no se publica: se corre en
+la computadora de quien lo usa.
 
 **Rationale**: la sección 7 pide una compilación publicada dos veces con direcciones separadas, para
-que cada instancia tenga su propio almacenamiento (FR-023). Como no hay configuración por instancia
-en la compilación (FR-003), las dos compilaciones son idénticas. Render ya se usó en el proyecto y su
-plan de sitios estáticos es gratuito.
+que cada instancia tenga su propio almacenamiento (FR-023). Como no hay configuración por instancia en
+la compilación (FR-003), las dos compilaciones son idénticas. Se eligió Railway (cambio del
+2026-10-08, antes se había pensado en Render Static Sites) porque permite apagar un sitio de forma
+remota con *Remove* y volver a encenderlo con *Redeploy* (compartir el enlace solo cuando se necesita)
+sin dejar de gastar mientras está apagado. Un `Dockerfile` en `web/consulta/` funciona tanto si Railway
+toma el `railway.json` de esa carpeta como si toma el de la raíz.
 
-**Alternatives considered**: Vercel (igual de válido; Render evita otra cuenta); una sola dirección
-con la clave en la URL (la clave quedaría en el historial y en los registros del servidor); una sola
-dirección con selector de instancia (mezcla las claves de dos unidades en el mismo navegador).
+**Alternatives considered**: Render Static Sites o Vercel (gratuitos y no consumen crédito, pero no
+se pueden apagar de forma remota con un solo paso sin perder la configuración; siguen siendo válidos si
+se prioriza el costo cero); una sola dirección con la clave en la URL (la clave quedaría en el historial
+y en los registros del servidor); una sola dirección con selector de instancia (mezcla las claves de
+dos unidades en el mismo navegador); App Sleeping de Railway (el sitio se despierta con cualquier
+visita, no es un interruptor).
 
 ## 12. Retiro del cliente anterior
 

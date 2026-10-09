@@ -210,7 +210,7 @@ Quien mantiene MIA publica la misma compilación de la Consulta en dos direccion
 - Las dos instancias (Consulta administrativa Postgrados Computación y Consulta administrativa Postgrados Administración Empresas) se registran desde el panel, cada una con acceso a su unidad completa y a ambos modos, con su tope diario.
 - La cantidad de 16 fragmentos para el modo con razonamiento es un valor inicial ajustable por configuración; la limitación conocida de las preguntas sobre "todos los cursos" de un dominio se mantiene (sección 3.3 y sección 10 del documento de requerimientos).
 - Además de los 16 resultados, cada modo conserva la ampliación actual con fragmentos vecinos y documentos completos cortos.
-- La Consulta se publica como sitio estático gratuito, con una dirección por instancia, y la dirección de cada una se agrega a los orígenes permitidos de la API.
+- La Consulta se publica como sitio estático, con una dirección por instancia (un servicio de bajo consumo cada una, que se puede apagar de forma remota cuando no se comparte), y la dirección de cada una se agrega a los orígenes permitidos de la API.
 - La conversación no se guarda en el navegador porque las preguntas pueden contener datos personales; el registro completo queda en la API, visible solo con la clave de administración.
 - No hay cuentas individuales: todas las personas de una unidad comparten la clave de su instancia (sección 10).
 - Los scripts de línea de comandos que consultan la API se mantienen; solo se retira el cliente web anterior.

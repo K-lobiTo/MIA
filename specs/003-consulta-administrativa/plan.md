@@ -28,8 +28,8 @@ solo la clave, los dominios y el modo
 Consulta; `tsc` y `vite build`; `scripts/pruebas_mvp.py` contra una instancia real (19 de 19 en
 literal)
 
-**Target Platform**: API en Railway (sin cambios de despliegue); Consulta como dos sitios estáticos en
-Render Static Sites; en desarrollo con el proxy de Vite en el puerto 3000
+**Target Platform**: API en Railway (sin cambios de despliegue); Consulta como dos servicios de Railway
+que sirven archivos estáticos, apagables con *Remove*; en desarrollo con el proxy de Vite en el puerto 3000
 
 **Project Type**: web service (API existente) más aplicación web (Consulta nueva)
 
@@ -37,7 +37,7 @@ Render Static Sites; en desarrollo con el proxy de Vite en el puerto 3000
 de cada 10 preguntas (SC-008); primera pregunta en menos de 2 minutos desde que se recibe el enlace
 (SC-001)
 
-**Constraints**: costo cero o casi cero (sitios estáticos gratuitos); la Consulta no guarda la
+**Constraints**: costo cero o casi cero (servicios estáticos mínimos que se apagan cuando no se comparten); la Consulta no guarda la
 conversación (aclaración del 2026-10-08); una consulta a la vez por pestaña y 200 s de espera; nada
 de guion largo en textos (CLAUDE.md)
 
@@ -100,6 +100,7 @@ web/
 ├── admin/                           # sin cambios
 └── consulta/                        # nuevo
     ├── package.json, vite.config.ts, tsconfig.json, index.html, README.md
+    ├── Dockerfile, railway.json, .dockerignore   # publicación como servicio estático de Railway
     └── src/
         ├── api/                     # client.ts (clave, 200 s, ApiError), consulta.ts (hooks), types.ts
         ├── state/                   # selección de dominios y modo guardados; disponibilidad (puras)
@@ -134,7 +135,7 @@ paquete compartido (research, decisión 7). El cliente anterior de `web/` se eli
    variable nueva), validación del quickstart y `pruebas_mvp.py`.
 
 **Despliegue**: todo en `dev`. El merge a `main` despliega la API en Railway (cambios compatibles; la
-variable nueva tiene valor por defecto). Publicar los dos sitios en Render y agregar sus direcciones
+variable nueva tiene valor por defecto). Crear los dos servicios en Railway y agregar sus direcciones
 a `CORS_ORIGINS` lo hace quien administra MIA, siguiendo `docs/OPERACION.md`.
 
 ## Complexity Tracking
