@@ -368,8 +368,8 @@ La API mantiene un modelo por modo, configurado por variables de entorno (p. ej.
 
 ## 7. Stack y despliegue
 
-- **Artefactos:** React + TypeScript + Vite, en `web/admin/` (Panel de administración) y `web/consulta/`, con el cliente de la API compartido entre ambos. La Consulta administrativa reemplaza al cliente actual de `web/`.
-- **Publicación:** sitios estáticos gratuitos (Render Static Sites o Vercel), apuntando a la URL de la API. La Consulta administrativa se compila una vez y se publica dos veces, con una dirección por instancia (p. ej. `mia-computacion` y `mia-administracion`). Con direcciones separadas, cada instancia recuerda su propia clave en el navegador (el almacenamiento del navegador es por dirección) y cada unidad tiene un enlace propio. Una tercera unidad sería otra publicación de la misma compilación.
+- **Artefactos:** React + TypeScript + Vite, en `web/admin/` (Panel de administración) y `web/consulta/`, cada uno con su propio cliente de la API (no se creó un paquete compartido: son unas 40 líneas parecidas). La Consulta administrativa reemplazó al cliente anterior de `web/`, que se eliminó.
+- **Publicación:** servicios estáticos de Railway (decisión del 2026-10-08, que reemplaza a Render Static Sites o Vercel: se pueden apagar y encender de forma remota con *Remove* y *Redeploy*), apuntando a la URL de la API. La Consulta administrativa se compila una vez y se publica dos veces, con una dirección por instancia (p. ej. `mia-computacion` y `mia-administracion`). Con direcciones separadas, cada instancia recuerda su propia clave en el navegador (el almacenamiento del navegador es por dirección) y cada unidad tiene un enlace propio. Una tercera unidad sería otra publicación de la misma compilación.
 - **API:** en Railway Hobby con OpenRouter (decisión 9.2, [OPERACION.md](OPERACION.md)). Contra una instancia con la carga desactivada (como Render free), el inventario se usa en modo lectura.
 
 ## 8. Criterios de aceptación
