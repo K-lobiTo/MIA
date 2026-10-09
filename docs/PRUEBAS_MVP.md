@@ -63,7 +63,7 @@ python scripts/cargar_carpeta.py --url $U --dominio "Computación: Consejo de Un
 Desde la versión 2 las consultas exigen la clave de un artefacto (`--clave` o la variable `MIA_ARTIFACT_KEY`). Para esta batería hace falta un artefacto con acceso a **las dos unidades**; si el script no encuentra algún dominio, el mensaje dice que falta o que el artefacto no tiene acceso a él.
 
 ```bash
-python scripts/pruebas_mvp.py --url https://mia-production-3a08.up.railway.app --clave mia_...   # producción
+python scripts/pruebas_mvp.py --url https://mia-main.up.railway.app --clave mia_...   # producción
 python scripts/pruebas_mvp.py --url http://localhost:8000 --clave mia_...                        # local
 python scripts/pruebas_mvp.py --url <url> --clave mia_... --solo U4,I1                          # algunos casos
 python scripts/pruebas_mvp.py --url <url> --clave mia_... --modo razonamiento                    # con el otro modo
