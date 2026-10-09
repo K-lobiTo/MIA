@@ -114,7 +114,7 @@ La versión 2 agrega el panel de administración (`web/admin/`) y cambia cómo s
 El panel se publica igual que la Consulta: como un servicio de Railway que sirve archivos estáticos (`web/admin/Dockerfile` y `web/admin/railway.json`). Se puede apagar con *Remove* cuando no se use.
 
 1. En el proyecto de MIA: *New > GitHub Repo* y elegir este repositorio. Nombre sugerido: `mia-panel`.
-2. *Settings > Source > Root Directory*: `web/admin`. *Config-as-code* (si existe la opción): `/web/admin/railway.json`.
+2. *Settings > Source > Root Directory*: `web/admin`. **No** poner ruta en *Config-as-code* ni en *Dockerfile Path*: con una ruta fija Railway busca el `Dockerfile` de la raíz (el de la API) y la compilación falla con `"/pyproject.toml": not found`. Sin ruta, usa el `Dockerfile` de la carpeta.
 3. *Variables*:
    - `VITE_API_URL` = URL de la API **con `https://`** y sin barra final (`https://mia-main.up.railway.app`). Es variable de **compilación**: si cambia, hay que volver a desplegar.
    - `PORT` = `3000` (Railway inyecta su propio `PORT`; con este valor el sitio escucha en el mismo puerto que el dominio).
@@ -131,7 +131,7 @@ La Consulta (`web/consulta/`) se compila una vez por instancia y se publica **do
 1. **Registrar los artefactos** en el panel (si no existen): `Consulta administrativa Postgrados Computación` (unidad Computación completa) y `Consulta administrativa Postgrados Administración Empresas` (unidad Administración de Empresas completa), ambos con los dos modos y su tope diario. Copiar cada clave `mia_...` al crearla: se muestra una sola vez.
 2. **Crear los servicios en Railway** (una vez por instancia), en el proyecto de MIA: *New > GitHub Repo* y elegir este repositorio. Nombres sugeridos: `mia-computacion` y `mia-administracion`. En cada servicio:
    - *Settings > Source > Root Directory*: `web/consulta`. Railway usa el `Dockerfile` de esa carpeta (compila con Vite y sirve `dist` con `serve`).
-   - *Settings > Config-as-code*: ruta `/web/consulta/railway.json` (el repositorio también tiene un `railway.json` en la raíz, que es el de la API).
+   - Dejar vacíos *Config-as-code* y *Dockerfile Path*: con una ruta fija Railway busca el `Dockerfile` de la raíz (el de la API) y la compilación falla con `"/pyproject.toml": not found`. Sin ruta, usa el `Dockerfile` de `web/consulta`.
    - *Variables*: `VITE_API_URL` = URL de la API **con `https://`** (`https://mia-main.up.railway.app`, sin barra final). Sin esta variable la compilación falla con un mensaje claro. Es una variable de **compilación**: si cambia, hay que volver a desplegar. Agregar también `PORT` = `3000`: Railway inyecta su propio `PORT` (8080), y el dominio debe apuntar al mismo puerto en que escucha el sitio.
    - *Settings > Networking > Generate Domain*: la dirección pública de esa instancia.
 3. **Permitir los orígenes:** agregar ambas direcciones a `CORS_ORIGINS` en la API (servicio `MIA`), separadas por coma, con `https://` y sin barra final, junto a las demás si ya hay. Sin eso el navegador bloquea las llamadas. Un cambio de variables exige un deploy de la API.

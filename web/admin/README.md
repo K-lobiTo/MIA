@@ -34,7 +34,7 @@ Un módulo nuevo es una entrada más en `MODULES` (`src/App.tsx`) más un grupo 
 Como servicio de Railway que sirve archivos estáticos, igual que la Consulta:
 
 - **`Dockerfile`:** compila con Vite (falla si falta `VITE_API_URL`) y sirve `dist` con `serve`. Escucha en `PORT` (en Railway, definir `PORT=3000` para que coincida con el puerto del dominio).
-- **`railway.json`:** build con el `Dockerfile`, comprobación de salud en `/` y redespliegue solo cuando cambia `web/admin/`.
+- **`railway.json`:** referencia de la configuración de build (Dockerfile y comprobación de salud en `/`). En Railway no hay que apuntar *Config-as-code* a este archivo: una ruta fija hace que se use el `Dockerfile` de la raíz (el de la API). El servicio usa el `Dockerfile` de `web/admin` por su *Root Directory*.
 - **Probar la imagen en local:** `docker build --build-arg VITE_API_URL=<url de la API> -t mia-panel web/admin && docker run --rm -e PORT=3000 -p 3000:3000 mia-panel`.
 - **Apagar y encender:** en Railway, *Deployments > Remove* y *Redeploy*.
 - La API debe permitir el origen del panel (`CORS_ORIGINS`), y `VITE_API_URL` lleva `https://`.
