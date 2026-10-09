@@ -163,7 +163,7 @@ p { margin: 0; max-width: 65ch; }
 .estado-proximamente { background: var(--bg); color: var(--pronto); border: 1px solid var(--line); }
 
 /* Promesas */
-.promesas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.promesas { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; }
 .promesa { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 3px solid var(--memoria); min-width: 0; }
 .promesa p { color: var(--muted); font-size: 0.97rem; }
 .pie { color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--line); padding-top: 16px; }
@@ -218,7 +218,7 @@ body.captura .pagina { gap: 72px; }
       <h2 id="f1-titulo">MIA en una imagen</h2>
     </div>
     <div class="lienzo" id="dibujo-general"></div>
-    <figcaption>Los documentos de cada área se guardan en una sola memoria, ordenada por unidad académica. Las personas no entran directo a esa memoria: lo hacen por distintas puertas, cada una pensada para un público y limitada a la información que le corresponde. El panel de administración no es una puerta para consultar: desde ahí se cargan y ordenan los documentos, y se decide qué ve y cuánto puede gastar cada puerta. Las áreas y puertas con borde punteado vienen en camino.</figcaption>
+    <figcaption>Los documentos de cada área se guardan en una sola memoria, ordenada por unidad académica. Las personas no entran directo a esa memoria: lo hacen por distintas puertas, cada una pensada para un público y limitada a la información que le corresponde. Las dos consultas administrativas (una por unidad) ya están en funcionamiento. El panel de administración no es una puerta para consultar: desde ahí se cargan y ordenan los documentos, se decide qué ve y cuánto puede gastar cada puerta, y se sigue el uso y el gasto de cada una. Las áreas y puertas con borde punteado vienen en camino.</figcaption>
   </figure>
 
   <figure class="figura" id="figura-2" aria-labelledby="f2-titulo">
@@ -246,7 +246,7 @@ body.captura .pagina { gap: 72px; }
       <li class="paso">
         <span class="paso-num" aria-hidden="true">4</span>
         <h3>Responde con su fuente</h3>
-        <p>Redacta la respuesta usando únicamente lo que encontró.</p>
+        <p>Redacta la respuesta usando únicamente lo que encontró, y la persona puede marcarla como útil o no útil.</p>
       </li>
     </ol>
     <div class="desenlaces">
@@ -266,7 +266,7 @@ body.captura .pagina { gap: 72px; }
         </div>
       </div>
     </div>
-    <figcaption>Una pregunta recorre siempre los mismos cuatro pasos. El final tiene dos salidas posibles, y las dos son honestas: una respuesta con su fuente, o un aviso de que no hay información.</figcaption>
+    <figcaption>Una pregunta recorre siempre los mismos cuatro pasos. El final tiene dos salidas posibles, y las dos son honestas: una respuesta con su fuente, o un aviso de que no hay información. Cada pregunta se responde por separado: MIA no guarda la conversación en el navegador.</figcaption>
   </figure>
 
   <figure class="figura" id="figura-3" aria-labelledby="f3-titulo">
@@ -294,8 +294,8 @@ body.captura .pagina { gap: 72px; }
       </div>
       <div class="manera manera-razon">
         <h3>Respuesta con razonamiento</h3>
-        <p class="para">Para preguntas que combinan datos de varios documentos: sumar, comparar o contar. Tarda un poco más y muestra sus cuentas.</p>
-        <svg class="mini" viewBox="0 0 300 96" role="img" aria-label="Tres documentos se combinan en un cálculo que lleva a una respuesta">
+        <p class="para">Para preguntas que combinan datos de varios documentos: sumar, comparar, contar o resumir. Tarda un poco más y muestra los datos que usó y cómo llegó a su conclusión.</p>
+        <svg class="mini" viewBox="0 0 300 96" role="img" aria-label="Tres documentos se combinan en una conclusión que lleva a una respuesta">
           <defs><marker id="pm2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-punta"></path></marker></defs>
           <rect x="10" y="6" width="54" height="24" rx="5" class="m-doc"></rect>
           <text x="37" y="22" text-anchor="middle" font-size="11" class="m-texto">Curso A</text>
@@ -318,7 +318,7 @@ body.captura .pagina { gap: 72px; }
         </div>
       </div>
     </div>
-    <figcaption>La persona elige cómo quiere la respuesta. La literal se apega al texto de un documento; la de razonamiento une datos de varios y separa lo que dicen los documentos de lo que MIA calculó.</figcaption>
+    <figcaption>La persona elige cómo quiere la respuesta. La literal se apega al texto de un documento; la de razonamiento une datos de varios y separa, en dos partes, lo que dicen los documentos de la conclusión que MIA saca de ellos (con la cuenta o la comparación cuando hizo falta).</figcaption>
   </figure>
 
   <figure class="figura" id="figura-4" aria-labelledby="f4-titulo">
@@ -354,6 +354,10 @@ body.captura .pagina { gap: 72px; }
         <h3>Cada puerta ve lo suyo</h3>
         <p>Cada puerta consulta solo las áreas que le corresponden: cada unidad ve su propia información, y un estudiante no ve información interna. Lo define el panel de administración.</p>
       </div>
+      <div class="promesa">
+        <h3>El gasto tiene tope</h3>
+        <p>Cada puerta tiene un tope diario de gasto, y toda MIA tiene otro. Al alcanzarlo, esa puerta se detiene hasta la medianoche sin afectar a las demás.</p>
+      </div>
     </div>
   </section>
 
@@ -384,14 +388,14 @@ const AREAS = [
 
 // Puertas de entrada a la memoria, para consultar (figura 1).
 const PUERTAS = [
-  { nombre: "Consulta administrativa", linea: "Postgrados Computación", estado: "desarrollo" },
-  { nombre: "Consulta administrativa", linea: "Postgrados Administración Empresas", estado: "desarrollo" },
+  { nombre: "Consulta administrativa", linea: "Postgrados Computación", estado: "disponible" },
+  { nombre: "Consulta administrativa", linea: "Postgrados Administración Empresas", estado: "disponible" },
   { nombre: "Chat web", linea: "Interesados y estudiantes", estado: "proximamente" },
   { nombre: "Chat de WhatsApp", linea: "Estudiantes", estado: "proximamente" },
 ];
 
 // El panel de administración no es una puerta: administra la memoria y las puertas (figuras 1 y 4).
-const PANEL = { nombre: "Panel de administración", publico: "Quien mantiene MIA", tareas: ["Carga y ordena los documentos", "Decide qué ve y cuánto gasta cada puerta"] };
+const PANEL = { nombre: "Panel de administración", publico: "Quien mantiene MIA", tareas: ["Carga y ordena los documentos", "Decide qué ve y cuánto gasta cada puerta", "Muestra el uso y el gasto de cada una"] };
 
 // Personas que usan MIA, con la puerta por la que entran (figura 4).
 const PERSONAS = [
@@ -471,7 +475,7 @@ function dibujarGeneral() {
   s += `<text x="${(miaX + miaW + colP) / 2}" y="${arriba - 14}" font-size="11" text-anchor="middle" class="s-suave">se consulta desde</text>`;
 
   // Panel de administración: aparte de las puertas, con su propio color
-  const pY = yPuerta(PUERTAS.length) + 34, pH = 110, pCy = pY + pH / 2;
+  const pY = yPuerta(PUERTAS.length) + 34, pH = 124, pCy = pY + pH / 2;
   s += `<text x="${colP}" y="${pY - 14}" font-size="12" class="s-admin-titulo">ADMINISTRACIÓN</text>`;
   s += `<rect x="${colP}" y="${pY}" width="${anchoP}" height="${pH}" rx="12" class="s-admin"></rect>`;
   // Ícono de controles deslizantes

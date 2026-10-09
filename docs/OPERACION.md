@@ -6,11 +6,12 @@ Guía práctica para desplegar, cargar documentos y mantener funcionando el prot
 
 | Pieza | Servicio | Plan | Límite relevante |
 |---|---|---|---|
-| API (consultas e ingesta) | [Railway](https://railway.com), `railway.json` | Hobby (5 USD/mes) | Límite duro de gasto configurado en Railway (10 USD); disco no persistente. Hasta el 2026-10-07 la API estaba en Render free (`render.yaml`), hoy suspendido |
+| API (consultas e ingesta) | [Railway](https://railway.com), servicio `MIA`, `https://mia-main.up.railway.app` (`railway.json`) | Hobby (5 USD/mes) | Límite duro de gasto configurado en Railway (10 USD); disco no persistente. Hasta el 2026-10-07 la API estaba en Render free (`render.yaml`), hoy suspendido |
 | Metadata (dominios, documentos) | [Neon](https://neon.tech) Postgres | Free | 0.5 GB; la base se suspende sin uso y despierta sola al conectarse |
 | Vectores | [Qdrant Cloud](https://cloud.qdrant.io) | Free | 1 GB; el clúster se suspende tras 1 semana sin uso (se reactiva desde el panel) |
-| LLM | [OpenRouter](https://openrouter.ai), modelo `z-ai/glm-5.3-flash` con razonamiento bajo | Saldo prepagado | Al agotarse el saldo, las consultas fallan (502). La cuenta exige proveedores de retención cero y que no entrenen con los datos |
+| LLM | [OpenRouter](https://openrouter.ai): modo literal con `z-ai/glm-5.3-flash` (razonamiento bajo) y modo con razonamiento con `z-ai/glm-5.3` (esfuerzo medio) | Saldo prepagado | Al agotarse el saldo, las consultas fallan (502). La cuenta exige proveedores de retención cero y que no entrenen con los datos |
 | Embeddings | Modelo local e5-small (ONNX), dentro de la imagen | Sin costo | Ninguno externo |
+| Sitios web (Consulta administrativa y panel) | Tres servicios más de Railway que sirven archivos estáticos: `mia-computacion`, `mia-administracion` y `mia-panel` (`https://<nombre>.up.railway.app`) | Mismo plan Hobby | Cada uno gasta solo mientras está encendido; se apagan con *Remove*. Sin auto-deploy: se despliegan con `railway up` (ver "Desplegar cambios") |
 | Ingesta de documentos | La propia API en Railway, o una API local contra producción (cargas masivas con `scripts/cargar_carpeta.py`) | Sin costo adicional | Los archivos originales no quedan guardados en el servidor |
 
 ## Variables de entorno
@@ -159,7 +160,7 @@ python scripts/reorganizar_v2.py --env-file .env.produccion             # una se
 
 ### Checklist de puesta en producción de la versión 2
 
-Lo ejecuta quien administra MIA, en este orden. Todo el trabajo de la versión 2 está en la rama `dev`; Railway redespliega solo al hacer el merge a `main`.
+**Ejecutado el 2026-10-08 y 2026-10-09** (versión 2 en producción). Se conserva como referencia, por ejemplo para repetirlo en otro entorno. Lo ejecuta quien administra MIA, en este orden. Aviso: en este proyecto Railway **no redespliega solo** al hacer el merge a `main` (ver "Desplegar cambios").
 
 **Antes del merge**
 
@@ -181,7 +182,7 @@ Lo ejecuta quien administra MIA, en este orden. Todo el trabajo de la versión 2
 
 **Merge y despliegue**
 
-4. Hacer el merge de `dev` a `main`. Railway redespliega y la API migra la base al arrancar: en el log debe verse `Running upgrade 0001 -> 0002`. Verificar `GET <url>/health`. **Desde este momento `/query` responde 401 sin clave de artefacto**, y subir documentos o crear dominios pide `X-Admin-Key`.
+4. Hacer el merge de `dev` a `main` y desplegar la API (`railway up -s MIA --detach`). La API migra la base al arrancar: en el log debe verse `Running upgrade 0001 -> 0002`. Verificar `GET <url>/health`. **Desde este momento `/query` responde 401 sin clave de artefacto**, y subir documentos o crear dominios pide `X-Admin-Key`.
 
 **Después del despliegue**
 
@@ -190,10 +191,30 @@ Lo ejecuta quien administra MIA, en este orden. Todo el trabajo de la versión 2
 7. **Registrar las dos instancias** de la Consulta administrativa (tabla de "Artefactos y claves") y copiar cada clave.
 8. **Correr las pruebas de aceptación:** `python scripts/pruebas_mvp.py --url <url> --clave <clave de un artefacto con acceso a las dos unidades>`. Debe dar 19 de 19 en modo literal; ese artefacto debe tener las dos unidades. Si no se registró uno así, registrar uno de prueba y desactivarlo después. Opcional: `--modo razonamiento`.
 9. **Entregar las claves** a quien use cada instancia, y actualizar lo que consultaba sin clave (scripts; el cliente web anterior ya no existe, lo reemplazó la Consulta administrativa).
-10. **Publicar el panel** y agregar su dirección a `CORS_ORIGINS`.
+10. **Publicar el panel** y las dos Consultas (secciones "Publicar el panel como sitio estático" y "Consulta administrativa") y agregar sus direcciones a `CORS_ORIGINS`.
 11. **Mirar el módulo Uso:** que el saldo aparezca (o que explique por qué no) y que las consultas de las pruebas estén en el registro.
 
 **Si algo falla:** volver a desplegar el commit anterior de `main` en Railway es seguro, porque las columnas y tablas nuevas son opcionales para la versión anterior. La reorganización de datos (dominios renombrados, proyectos repartidos) se queda: la versión anterior mostraría los nombres nuevos.
+
+### Desplegar cambios (no hay auto-deploy)
+
+Railway tiene los servicios conectados al repositorio como público, **sin su aplicación de GitHub instalada**, así que un push a `main` no dispara ningún deploy (el aviso es *"This is a public repository without a Railway GitHub App installation"*). Decisión tomada: mantener los deploys manuales. Hay dos formas:
+
+```bash
+cd <raíz del repositorio>           # con el árbol limpio y en la rama que se quiere publicar
+railway up -s MIA --detach                  # API
+railway up -s mia-computacion --detach      # Consulta de Computación
+railway up -s mia-administracion --detach   # Consulta de Administración de Empresas
+railway up -s mia-panel --detach            # panel de administración
+```
+
+`railway up` sube los archivos de la carpeta local (respeta `.gitignore`, así que `.env*`, `tmp/` y `mia.db` no se suben) y respeta el *Root Directory* de cada servicio. El despliegue no muestra commit en el panel de Railway. Alternativas: el botón **Deploy** del servicio, que aplica las variables en espera y el último commit, o instalar la aplicación de GitHub de Railway para activar el auto-deploy (entonces conviene fijar *Watch Paths* por servicio: `/web/consulta/**` y `/web/admin/**`).
+
+**Reglas que dieron problemas:**
+- Los cambios de variables hechos con la CLI (`--skip-deploys`) o en el panel quedan **en espera** hasta un deploy. `PORT`, `CORS_ORIGINS` y los demás se leen al arrancar; `VITE_API_URL` se usa al **compilar**, así que exige un deploy completo, no solo reiniciar.
+- Los sitios estáticos necesitan `PORT=3000` (Railway inyecta 8080 y el dominio apunta al 3000) y `VITE_API_URL` con `https://`.
+- En los servicios estáticos **no** fijar *Config-as-code* ni *Dockerfile Path* (hace que se use el `Dockerfile` de la raíz, el de la API).
+- Para comprobar qué corre: `railway deployment list -s <servicio>` y los logs (`Accepting connections at http://localhost:3000` en los sitios).
 
 ## Despliegue en Cloud Run (alternativa, no adoptada)
 
@@ -274,6 +295,9 @@ Si un documento queda en `error`, ver el log de la API local (el mensaje empieza
 | Síntoma | Causa probable | Qué hacer |
 |---|---|---|
 | Render se reinicia con "Out of memory" | Se ingirió en Render, o se cambió a un modelo más pesado | Mantener `INGESTION_ENABLED=false` en Render e ingerir localmente |
+| Un sitio (Consulta o panel) responde 502 | El puerto del dominio no coincide con el que escucha el sitio (Railway inyecta `PORT=8080`) | Variable `PORT=3000` en el servicio y deploy; el puerto del dominio debe ser 3000 |
+| La Consulta o el panel dicen "No se pudo conectar" | La dirección del sitio no está en `CORS_ORIGINS`, o `VITE_API_URL` no lleva `https://` | Corregir la variable (la de CORS en la API, la otra en el sitio) y desplegar |
+| La compilación de un sitio falla con "Falta VITE_API_URL" o `"/pyproject.toml": not found` | Falta la variable, o se fijó la ruta de *Config-as-code* o del `Dockerfile` | Ver "Desplegar cambios" |
 | La primera consulta tarda ~1 min | Render free se durmió tras 15 min sin tráfico | Normal. Opcional: un monitor gratuito (UptimeRobot, cron-job.org) que llame a `/health` cada 10 min |
 | La API no arranca: "La colección ... tiene vectores de dimensión X" | Se cambió `EMBEDDING_PROVIDER` sin cambiar `QDRANT_COLLECTION` | Usar la colección que corresponde al proveedor, o reindexar |
 | Error de conexión a Qdrant | El clúster free se suspendió tras 1 semana sin uso | Reactivarlo desde el panel de Qdrant Cloud |
