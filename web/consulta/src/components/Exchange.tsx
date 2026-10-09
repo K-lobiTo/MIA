@@ -1,8 +1,9 @@
+import { useState } from "react";
 import type { Rating as RatingValue } from "../api/types";
 import { Answer } from "../format/Answer";
 import { Rating } from "./Rating";
 import { describeError } from "../state/errors";
-import { uniqueDocuments } from "../state/sources";
+import { previewExcerpt, uniqueDocuments } from "../state/sources";
 import { formatLatency, type Exchange as ExchangeData } from "../state/conversation";
 
 interface Props {
@@ -75,12 +76,7 @@ function Sources({ exchange }: { exchange: ExchangeData }) {
       <details>
         <summary>Ver fragmentos ({sources.length})</summary>
         {sources.map((source, index) => (
-          <div className="excerpt" key={index}>
-            <div className="excerpt-title">
-              [{index + 1}] {source.document}
-            </div>
-            <p>{source.excerpt.replace(/\s+/g, " ").trim()}</p>
-          </div>
+          <Excerpt key={index} index={index + 1} document={source.document} text={source.excerpt} />
         ))}
       </details>
     </div>
@@ -105,6 +101,25 @@ function Failure({ exchange, onRetry, literalAvailable, busy }: Pick<Props, "exc
             </button>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Un fragmento citado: solo el comienzo, con "Ver más" para leerlo completo (suelen ser muy largos). */
+function Excerpt({ index, document, text }: { index: number; document: string; text: string }) {
+  const [open, setOpen] = useState(false);
+  const preview = previewExcerpt(text);
+  return (
+    <div className="excerpt">
+      <div className="excerpt-title">
+        [{index}] {document}
+      </div>
+      <p>{open || !preview.truncated ? text.replace(/\s+/g, " ").trim() : preview.text}</p>
+      {preview.truncated && (
+        <button type="button" className="btn-link" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+          {open ? "Ver menos" : "Ver más"}
+        </button>
       )}
     </div>
   );

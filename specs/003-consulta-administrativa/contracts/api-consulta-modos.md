@@ -20,7 +20,7 @@ Respuesta (agrega `no_info`):
 ```json
 {
   "id": "q-1",
-  "answer": "**Lo que dicen los documentos**\n- Sistemas Operativos Avanzados (MC6004): 4 créditos ...\n\n**Cálculo o conclusión**\n4 + 4 + 4 = 12 créditos.",
+  "answer": "**Lo que dicen los documentos**\n- Sistemas Operativos Avanzados (MC6004): 4 créditos ...\n\n**Conclusión**\nLos tres cursos suman 12 créditos (4 + 4 + 4).",
   "sources": [{"domain": "Currículum", "document": "MC6004-Sistemas Operativos Avanzados.pdf", "excerpt": "..."}],
   "mode": "razonamiento",
   "latency_ms": 31840,
@@ -38,7 +38,7 @@ Respuesta (agrega `no_info`):
 | Instrucción al modelo | `RAG_SYSTEM_PROMPT` (la actual) | `REASONING_SYSTEM_PROMPT` |
 | Resultados de la búsqueda | `QUERY_SEARCH_LIMIT` (8) | `QUERY_SEARCH_LIMIT_RAZONAMIENTO` (16) |
 | Vecinos y documentos completos | `QUERY_CONTEXT_NEIGHBORS`, `QUERY_FULL_DOCUMENT_MAX_CHUNKS` | los mismos |
-| Formato de la respuesta con información | libre (negritas y listas) | dos partes fijas: **Lo que dicen los documentos** y **Cálculo o conclusión** |
+| Formato de la respuesta con información | libre (negritas y listas) | dos partes fijas: **Lo que dicen los documentos** y **Conclusión** (con la operación o la comparación solo si hizo falta combinar datos) |
 
 Errores sin cambios: 401, 403, 429 (con `Retry-After`) y 502, con `{"detail": "..."}` legible.
 

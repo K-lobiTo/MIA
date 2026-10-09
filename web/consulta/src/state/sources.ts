@@ -17,3 +17,20 @@ export function uniqueDocuments(sources: Source[]): CitedDocument[] {
   }
   return result;
 }
+
+export const EXCERPT_PREVIEW_CHARS = 260;
+
+export interface ExcerptPreview {
+  text: string;
+  /** El fragmento tiene más texto del que se muestra: se ofrece "Ver más". */
+  truncated: boolean;
+}
+
+/** Texto de un fragmento en una sola línea; si es largo, solo el comienzo, cortado en una palabra completa. */
+export function previewExcerpt(excerpt: string, max = EXCERPT_PREVIEW_CHARS): ExcerptPreview {
+  const clean = excerpt.replace(/\s+/g, " ").trim();
+  if (clean.length <= max) return { text: clean, truncated: false };
+  const cut = clean.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  return { text: `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`, truncated: true };
+}
