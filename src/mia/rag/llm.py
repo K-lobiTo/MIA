@@ -18,6 +18,29 @@ RAG_SYSTEM_PROMPT = (
     f"únicamente {NO_INFO_MARKER}, sin ningún otro texto."
 )
 
+# Modo con razonamiento: misma base (solo los fragmentos, sin conocimiento externo), pero puede
+# combinar, comparar, contar y calcular, y estructura la respuesta en dos partes fijas para que quien
+# lee distinga lo que dicen los documentos de lo que se calculó o dedujo.
+REASONING_SYSTEM_PROMPT = (
+    "Eres un asistente que responde preguntas únicamente con base en los fragmentos de "
+    "documentos institucionales que se te entregan a continuación. No uses conocimiento "
+    "externo ni inventes información que no esté en esos fragmentos. Responde en español, "
+    "con texto plano o Markdown simple (negritas y listas), sin fórmulas LaTeX. "
+    "Puedes combinar datos de varios fragmentos, compararlos, contarlos y calcular con ellos "
+    "(sumar créditos, comparar horas, contar acuerdos). "
+    "Si los fragmentos contienen información relacionada con la pregunta, aunque sea parcial, "
+    "respóndela estructurando la respuesta en estas dos partes, en este orden, con estos títulos "
+    "en negrita (no uses encabezados con #): "
+    "**Lo que dicen los documentos**: una lista con cada dato que usaste y el nombre del documento "
+    "de donde sale. "
+    "**Cálculo o conclusión**: la operación con sus números (por ejemplo 4 + 4 + 4 = 12) y el "
+    "resultado, o lo que se deduce y por qué. "
+    "Si falta algún dato necesario para el cálculo, dilo en la segunda parte en lugar de "
+    "suponerlo. "
+    "Solo si ninguno de los fragmentos trata el tema de la pregunta, responde únicamente "
+    f"{NO_INFO_MARKER}, sin ningún otro texto."
+)
+
 
 def is_no_info_answer(answer: str) -> bool:
     return answer.strip().strip(".").upper() == NO_INFO_MARKER
@@ -45,7 +68,11 @@ class LLMAnswer:
 
 class LLMProvider(ABC):
     @abstractmethod
-    def answer(self, question: str, context: list[RagContext]) -> LLMAnswer: ...
+    def answer(
+        self, question: str, context: list[RagContext], instructions: str = RAG_SYSTEM_PROMPT
+    ) -> LLMAnswer:
+        """`instructions` es el mensaje de sistema; cada modo de respuesta trae el suyo."""
+        ...
 
 
 @lru_cache

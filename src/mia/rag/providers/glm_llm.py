@@ -16,14 +16,16 @@ class GLMLLMProvider(LLMProvider):
             api_key=settings.glm_api_key or None, base_url=BASE_URL, timeout=120, max_retries=2
         )
 
-    def answer(self, question: str, context: list[RagContext]) -> LLMAnswer:
+    def answer(
+        self, question: str, context: list[RagContext], instructions: str = RAG_SYSTEM_PROMPT
+    ) -> LLMAnswer:
         context_block = "\n\n".join(
             f"[Fuente: dominio={c.domain}, documento={c.document}]\n{c.excerpt}" for c in context
         )
         completion = self._client.chat.completions.create(
             model=MODEL,
             messages=[
-                {"role": "system", "content": RAG_SYSTEM_PROMPT},
+                {"role": "system", "content": instructions},
                 {"role": "user", "content": f"Contexto:\n{context_block}\n\nPregunta: {question}"},
             ],
             extra_body={"thinking": {"type": "enabled" if settings.glm_thinking else "disabled"}},

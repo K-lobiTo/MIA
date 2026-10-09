@@ -10,7 +10,7 @@ from sqlalchemy import select
 from mia.api.routes import query as query_routes
 from mia.api.routes.query import NO_INFO_ANSWER
 from mia.config import settings
-from mia.rag.llm import LLMAnswer
+from mia.rag.llm import RAG_SYSTEM_PROMPT, REASONING_SYSTEM_PROMPT, LLMAnswer
 from mia.storage.models import Document, Domain, QueryLog, Unit
 from mia.storage.vector_store import SearchResult
 
@@ -345,3 +345,42 @@ def test_un_artefacto_desactivado_o_sin_permiso_se_rechaza_antes_que_por_tope(cl
     _gastar(db, artefacto.id, 0.50)
 
     assert _consultar(client, artefacto.headers).status_code == 403
+
+
+def test_cada_modo_usa_su_instruccion_y_su_cantidad_de_resultados(client, base, fakes, make_artifact, monkeypatch):
+    monkeypatch.setattr(settings, "query_search_limit", 8)
+    monkeypatch.setattr(settings, "query_search_limit_razonamiento", 16)
+    artefacto = make_artifact(units=["u1"], modes="literal,razonamiento")
+
+    _consultar(client, artefacto.headers)
+    assert fakes.vector_store.search.call_args.kwargs["limit"] == 8
+    assert fakes.llm.answer.call_args.kwargs["instructions"] == RAG_SYSTEM_PROMPT
+
+    _consultar(client, artefacto.headers, mode="razonamiento")
+    assert fakes.vector_store.search.call_args.kwargs["limit"] == 16
+    assert fakes.llm.answer.call_args.kwargs["instructions"] == REASONING_SYSTEM_PROMPT
+
+
+def test_la_respuesta_indica_si_no_hay_informacion(client, base, fakes, make_artifact):
+    artefacto = make_artifact(units=["u1"])
+
+    con_informacion = _consultar(client, artefacto.headers).json()
+    assert con_informacion["no_info"] is False
+
+    fakes.llm.answer.return_value = LLMAnswer(text="SIN_INFORMACION", model="m")
+    del_modelo = _consultar(client, artefacto.headers).json()
+    assert del_modelo["no_info"] is True and del_modelo["sources"] == []
+
+    fakes.vector_store.search.return_value = [
+        SearchResult(chunk_id="c1", document_id="doc-1", domain="d1", text="otro tema", score=0.1)
+    ]
+    sin_fragmentos = _consultar(client, artefacto.headers).json()
+    assert sin_fragmentos["no_info"] is True and sin_fragmentos["answer"] == NO_INFO_ANSWER
+    assert sin_fragmentos["sources"] == []
+
+
+def test_la_pregunta_admite_hasta_2000_caracteres(client, base, fakes, make_artifact):
+    artefacto = make_artifact(units=["u1"])
+
+    assert _consultar(client, artefacto.headers, question="a" * 2000).status_code == 200
+    assert _consultar(client, artefacto.headers, question="a" * 2001).status_code == 422

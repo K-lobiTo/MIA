@@ -38,7 +38,7 @@ class Source(BaseModel):
 
 class QueryRequest(BaseModel):
     domains: list[str] = Field(min_length=1)
-    question: str = Field(min_length=1)
+    question: str = Field(min_length=1, max_length=2000)
     mode: Literal["literal", "razonamiento"] = "literal"
 
 
@@ -48,6 +48,8 @@ class QueryResponse(BaseModel):
     sources: list[Source]
     mode: str
     latency_ms: int
+    # La respuesta es "sin información suficiente": el cliente la distingue sin comparar el texto.
+    no_info: bool = False
 
 
 class Feedback(BaseModel):
@@ -138,12 +140,14 @@ def query(
             headers={"Retry-After": str(seconds_until(cap.resets_at))},
         )
 
+    # Ya se validó que el modo está disponible, así que su configuración existe.
+    config = mode_config(payload.mode)
     embedding_provider = get_embedding_provider(settings.embedding_provider)
     question_embedding = embedding_provider.embed([payload.question], is_query=True)[0]
 
     vector_store = get_vector_store()
     results = vector_store.search(
-        question_embedding, domains=payload.domains, limit=settings.query_search_limit
+        question_embedding, domains=payload.domains, limit=config.search_limit
     )
     relevant = [r for r in results if r.score >= settings.query_similarity_threshold]
 
@@ -154,7 +158,12 @@ def query(
         session.add(log)
         session.commit()
         return QueryResponse(
-            id=log.id, answer=NO_INFO_ANSWER, sources=[], mode=payload.mode, latency_ms=log.latency_ms
+            id=log.id,
+            answer=NO_INFO_ANSWER,
+            sources=[],
+            mode=payload.mode,
+            latency_ms=log.latency_ms,
+            no_info=True,
         )
 
     if not relevant:
@@ -179,10 +188,9 @@ def query(
             RagContext(domain=domain_label, document=document_label, excerpt=passage.text)
         )
 
-    config = mode_config(payload.mode)
     try:
         llm_provider = get_llm_provider(config.provider, config.model, config.reasoning_effort)
-        answer = llm_provider.answer(payload.question, context)
+        answer = llm_provider.answer(payload.question, context, instructions=config.instructions)
     except Exception as exc:
         # Sin esto el motivo real (clave inválida, modelo inexistente, timeout...) no queda en el log.
         logger.exception("Falló el proveedor de LLM (%s, modo %s)", config.provider, payload.mode)

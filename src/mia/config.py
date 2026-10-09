@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -36,7 +37,10 @@ class Settings(BaseSettings):
     glm_thinking: bool = True
 
     query_similarity_threshold: float = 0.8
-    query_search_limit: int = 8
+    query_search_limit: int = Field(default=8, ge=1, le=50)
+    # Resultados de la búsqueda en el modo con razonamiento: más que en literal para que entren datos
+    # de más documentos (ver src/mia/rag/modes.py).
+    query_search_limit_razonamiento: int = Field(default=16, ge=1, le=50)
     # Fragmentos anteriores y posteriores que se suman a cada resultado relevante, para no cortar
     # listas o secciones que ocupan varios fragmentos (ver src/mia/rag/context.py).
     query_context_neighbors: int = 1

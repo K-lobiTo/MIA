@@ -10,14 +10,16 @@ class AnthropicLLMProvider(LLMProvider):
     def __init__(self) -> None:
         self._client = anthropic.Anthropic(api_key=settings.anthropic_api_key or None)
 
-    def answer(self, question: str, context: list[RagContext]) -> LLMAnswer:
+    def answer(
+        self, question: str, context: list[RagContext], instructions: str = RAG_SYSTEM_PROMPT
+    ) -> LLMAnswer:
         context_block = "\n\n".join(
             f"[Fuente: dominio={c.domain}, documento={c.document}]\n{c.excerpt}" for c in context
         )
         message = self._client.messages.create(
             model=MODEL,
             max_tokens=16000,
-            system=RAG_SYSTEM_PROMPT,
+            system=instructions,
             output_config={"effort": settings.anthropic_effort},
             messages=[{"role": "user", "content": f"Contexto:\n{context_block}\n\nPregunta: {question}"}],
         )

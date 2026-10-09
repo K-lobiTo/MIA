@@ -21,13 +21,15 @@ class GeminiLLMProvider(LLMProvider):
             api_key=settings.gemini_api_key or None, http_options=HTTP_OPTIONS
         )
 
-    def answer(self, question: str, context: list[RagContext]) -> LLMAnswer:
+    def answer(
+        self, question: str, context: list[RagContext], instructions: str = RAG_SYSTEM_PROMPT
+    ) -> LLMAnswer:
         context_block = "\n\n".join(
             f"[Fuente: dominio={c.domain}, documento={c.document}]\n{c.excerpt}" for c in context
         )
         interaction = self._client.interactions.create(
             model=MODEL,
-            system_instruction=RAG_SYSTEM_PROMPT,
+            system_instruction=instructions,
             input=f"Contexto:\n{context_block}\n\nPregunta: {question}",
         )
         usage = getattr(interaction, "usage", None)

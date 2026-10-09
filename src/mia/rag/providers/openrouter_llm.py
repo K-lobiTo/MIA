@@ -25,7 +25,9 @@ class OpenRouterLLMProvider(LLMProvider):
             default_headers={"X-Title": "MIA"},
         )
 
-    def answer(self, question: str, context: list[RagContext]) -> LLMAnswer:
+    def answer(
+        self, question: str, context: list[RagContext], instructions: str = RAG_SYSTEM_PROMPT
+    ) -> LLMAnswer:
         context_block = "\n\n".join(
             f"[Fuente: dominio={c.domain}, documento={c.document}]\n{c.excerpt}" for c in context
         )
@@ -40,7 +42,7 @@ class OpenRouterLLMProvider(LLMProvider):
         completion = self._client.chat.completions.create(
             model=self._model,
             messages=[
-                {"role": "system", "content": RAG_SYSTEM_PROMPT},
+                {"role": "system", "content": instructions},
                 {"role": "user", "content": f"Contexto:\n{context_block}\n\nPregunta: {question}"},
             ],
             max_tokens=settings.openrouter_max_tokens,

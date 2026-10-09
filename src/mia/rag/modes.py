@@ -1,10 +1,11 @@
 """Modos de respuesta: cada uno tiene su proveedor, modelo y esfuerzo de razonamiento, definidos por
-configuración de la instancia. Los artefactos piden "literal" o "razonamiento" y nunca ven el modelo."""
+configuración de la instancia, además de su instrucción al modelo y su cantidad de resultados de búsqueda. Los artefactos piden "literal" o "razonamiento" y nunca ven el modelo."""
 
 from dataclasses import dataclass
 from decimal import Decimal
 
 from mia.config import settings
+from mia.rag.llm import RAG_SYSTEM_PROMPT, REASONING_SYSTEM_PROMPT
 
 LITERAL = "literal"
 RAZONAMIENTO = "razonamiento"
@@ -33,6 +34,8 @@ class ModeConfig:
     reasoning_effort: str
     price_in: float  # USD por millón de tokens, solo para estimar si el proveedor no informa el costo
     price_out: float
+    instructions: str  # mensaje de sistema del modelo
+    search_limit: int  # resultados de la búsqueda vectorial
 
 
 def mode_config(mode: str) -> ModeConfig | None:
@@ -42,7 +45,15 @@ def mode_config(mode: str) -> ModeConfig | None:
         provider = settings.llm_provider_literal or settings.llm_provider
         model = settings.llm_model_literal or settings.openrouter_model
         effort = settings.llm_reasoning_effort_literal or settings.openrouter_reasoning_effort
-        return ModeConfig(provider, model, effort, settings.llm_price_in_literal, settings.llm_price_out_literal)
+        return ModeConfig(
+            provider,
+            model,
+            effort,
+            settings.llm_price_in_literal,
+            settings.llm_price_out_literal,
+            RAG_SYSTEM_PROMPT,
+            settings.query_search_limit,
+        )
     if mode == RAZONAMIENTO:
         if not settings.llm_provider_razonamiento:
             return None
@@ -52,6 +63,8 @@ def mode_config(mode: str) -> ModeConfig | None:
             settings.llm_reasoning_effort_razonamiento or settings.openrouter_reasoning_effort,
             settings.llm_price_in_razonamiento,
             settings.llm_price_out_razonamiento,
+            REASONING_SYSTEM_PROMPT,
+            settings.query_search_limit_razonamiento,
         )
     return None
 

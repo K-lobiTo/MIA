@@ -101,3 +101,17 @@ def test_con_esfuerzo_y_zdr_los_envia():
 def test_sin_modelo_configurado_falla_con_mensaje_claro():
     with pytest.raises(ValueError, match="OPENROUTER_MODEL"):
         _provider(_client(), openrouter_model="")
+
+
+def test_el_mensaje_de_sistema_es_la_instruccion_recibida():
+    client = _client("Respuesta.")
+    provider = _provider(client)
+
+    provider.answer(
+        "¿Cuánto?",
+        [RagContext(domain="Planes", document="MC1.docx", excerpt="4")],
+        instructions="Instrucción propia de la prueba.",
+    )
+
+    mensajes = client.chat.completions.create.call_args.kwargs["messages"]
+    assert mensajes[0] == {"role": "system", "content": "Instrucción propia de la prueba."}
