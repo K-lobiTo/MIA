@@ -32,7 +32,7 @@ Solo la clave, la selección de dominios y el modo, en `localStorage` de la dire
 Se compila una vez por instancia y se publica una vez por instancia, cada una en su dirección (p. ej. `mia-computacion` y `mia-administracion`), como servicios de Railway. No hay configuración por instancia en el código publicado: la única variable de compilación es `VITE_API_URL`.
 
 - **`Dockerfile`:** compila con Vite (falla si falta `VITE_API_URL`) y sirve `dist` con `serve`, que devuelve `index.html` para cualquier ruta. Escucha en el `PORT` que da Railway.
-- **`railway.json`:** build con el `Dockerfile`, comprobación de salud en `/` y redespliegue solo cuando cambia `web/consulta/`.
+- **`railway.json`:** referencia de la configuración de build (Dockerfile y comprobación de salud en `/`). En Railway no hay que apuntar *Config-as-code* a este archivo: una ruta fija hace que se use el `Dockerfile` de la raíz (el de la API). El servicio usa el `Dockerfile` de `web/consulta` por su *Root Directory*.
 - **Probar la imagen en local:** `docker build --build-arg VITE_API_URL=<url de la API> -t mia-consulta . && docker run --rm -e PORT=8080 -p 8080:8080 mia-consulta`.
 - **Apagar y encender:** en Railway, *Deployments > Remove* apaga el sitio (sin consumo) y *Redeploy* lo enciende.
 - La API debe permitir el origen de cada sitio (`CORS_ORIGINS`).

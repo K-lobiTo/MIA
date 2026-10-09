@@ -111,12 +111,18 @@ La versión 2 agrega el panel de administración (`web/admin/`) y cambia cómo s
 
 ### Publicar el panel como sitio estático
 
-```bash
-cd web/admin
-VITE_API_URL=https://<servicio>.up.railway.app npm run build    # genera web/admin/dist/
-```
+El panel se publica igual que la Consulta: como un servicio de Railway que sirve archivos estáticos (`web/admin/Dockerfile` y `web/admin/railway.json`). Se puede apagar con *Remove* cuando no se use.
 
-Publicar `dist/` en un hosting de sitios estáticos (Render Static Sites o Vercel; no hace falta configurar reescrituras: usa rutas con `#`). Después, agregar la dirección del sitio a `CORS_ORIGINS` en Railway (varias separadas por coma, p. ej. `https://mia-admin.onrender.com`); sin eso el navegador bloquea las llamadas. En desarrollo no hace falta: `npm run dev` usa el proxy de Vite (`MIA_API_URL=<url> npm run dev`, puerto 3001).
+1. En el proyecto de MIA: *New > GitHub Repo* y elegir este repositorio. Nombre sugerido: `mia-panel`.
+2. *Settings > Source > Root Directory*: `web/admin`. **No** poner ruta en *Config-as-code* ni en *Dockerfile Path*: con una ruta fija Railway busca el `Dockerfile` de la raíz (el de la API) y la compilación falla con `"/pyproject.toml": not found`. Sin ruta, usa el `Dockerfile` de la carpeta.
+3. *Variables*:
+   - `VITE_API_URL` = URL de la API **con `https://`** y sin barra final (`https://mia-main.up.railway.app`). Es variable de **compilación**: si cambia, hay que volver a desplegar.
+   - `PORT` = `3000` (Railway inyecta su propio `PORT`; con este valor el sitio escucha en el mismo puerto que el dominio).
+4. *Settings > Networking > Generate Domain*, con puerto `3000`. *Replica Limits*: 0.5 vCPU y 512 MB bastan.
+5. Agregar la dirección del panel a `CORS_ORIGINS` en la API (junto a las de la Consulta, separadas por coma, con `https://` y sin barra final) y desplegar la API; sin eso el navegador bloquea las llamadas.
+6. Abrir el sitio e ingresar la clave de administración.
+
+**Seguridad.** Un panel publicado es accesible desde internet: lo único que protege la administración es `ADMIN_KEY`, que debe ser larga y aleatoria y no compartirse. El código publicado no contiene ninguna clave; la clave se escribe en el navegador y se guarda solo ahí. Apagar el servicio (*Remove*) cuando no se use reduce la exposición. Para uso ocasional también se puede correr en local: `cd web/admin && MIA_API_URL=<url> npm run dev` (puerto 3001), sin CORS.
 
 ### Consulta administrativa (publicar las dos instancias)
 
@@ -125,8 +131,8 @@ La Consulta (`web/consulta/`) se compila una vez por instancia y se publica **do
 1. **Registrar los artefactos** en el panel (si no existen): `Consulta administrativa Postgrados Computación` (unidad Computación completa) y `Consulta administrativa Postgrados Administración Empresas` (unidad Administración de Empresas completa), ambos con los dos modos y su tope diario. Copiar cada clave `mia_...` al crearla: se muestra una sola vez.
 2. **Crear los servicios en Railway** (una vez por instancia), en el proyecto de MIA: *New > GitHub Repo* y elegir este repositorio. Nombres sugeridos: `mia-computacion` y `mia-administracion`. En cada servicio:
    - *Settings > Source > Root Directory*: `web/consulta`. Railway usa el `Dockerfile` de esa carpeta (compila con Vite y sirve `dist` con `serve`).
-   - *Settings > Config-as-code*: ruta `/web/consulta/railway.json` (el repositorio también tiene un `railway.json` en la raíz, que es el de la API).
-   - *Variables*: `VITE_API_URL` = URL de la API (`https://mia-main.up.railway.app`, sin barra final). Sin esta variable la compilación falla con un mensaje claro. Es una variable de **compilación**: si cambia, hay que volver a desplegar.
+   - Dejar vacíos *Config-as-code* y *Dockerfile Path*: con una ruta fija Railway busca el `Dockerfile` de la raíz (el de la API) y la compilación falla con `"/pyproject.toml": not found`. Sin ruta, usa el `Dockerfile` de `web/consulta`.
+   - *Variables*: `VITE_API_URL` = URL de la API **con `https://`** (`https://mia-main.up.railway.app`, sin barra final). Sin esta variable la compilación falla con un mensaje claro. Es una variable de **compilación**: si cambia, hay que volver a desplegar. Agregar también `PORT` = `3000`: Railway inyecta su propio `PORT` (8080), y el dominio debe apuntar al mismo puerto en que escucha el sitio.
    - *Settings > Networking > Generate Domain*: la dirección pública de esa instancia.
 3. **Permitir los orígenes:** agregar ambas direcciones a `CORS_ORIGINS` en la API (servicio `MIA`), separadas por coma, con `https://` y sin barra final, junto a las demás si ya hay. Sin eso el navegador bloquea las llamadas. Un cambio de variables exige un deploy de la API.
 4. **Entregar a cada equipo** su enlace y su clave por un canal privado. Las claves se pueden regenerar desde el panel (la anterior deja de valer de inmediato).

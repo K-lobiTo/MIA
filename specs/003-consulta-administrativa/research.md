@@ -27,9 +27,13 @@ Markdown simple, la marca `SIN_INFORMACION` cuando ningún fragmento trata el te
 - Puede combinar, comparar, contar y calcular con datos de varios fragmentos.
 - Toda respuesta con información tiene dos partes fijas, en este orden y con estos títulos en negrita
   (no encabezados `#`): **Lo que dicen los documentos** (cada dato usado, con el nombre del documento
-  de donde sale) y **Cálculo o conclusión** (la operación con sus números, por ejemplo
-  `4 + 4 + 4 = 12`, y el resultado, o lo que se deduce y por qué).
-- Si falta un dato para el cálculo, lo dice en la segunda parte en lugar de suponerlo.
+  de donde sale) y **Conclusión** (la respuesta a la pregunta; si hizo falta combinar datos, cómo se llegó: la
+  operación con sus números, por ejemplo `4 + 4 + 4 = 12`, o la comparación; en una síntesis no se
+  inventa una operación, y lo deducido que no está escrito se señala).
+- Si falta un dato para responder con certeza, lo dice en la conclusión en lugar de suponerlo.
+- Ajuste del 2026-10-08: la segunda parte se llamaba "Cálculo o conclusión" y el modelo tendía a
+  forzar una operación incluso en preguntas que no eran numéricas; se renombró y se amplió la
+  instrucción a comparar, contrastar y resumir.
 
 **Rationale**: implementa FR-011 y la aclaración de la sesión 2026-10-08. Títulos en negrita porque
 el formateador de la Consulta ya soporta negritas y listas (sección 3.2, CON-4) y no hace falta

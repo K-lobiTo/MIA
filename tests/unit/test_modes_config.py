@@ -25,9 +25,17 @@ def test_la_instruccion_con_razonamiento_pide_dos_partes_y_prohibe_el_conocimien
     texto = REASONING_SYSTEM_PROMPT
 
     assert NO_INFO_MARKER in texto
-    assert "Lo que dicen los documentos" in texto and "Cálculo o conclusión" in texto
+    assert "Lo que dicen los documentos" in texto and "**Conclusión**" in texto
     assert "conocimiento externo" in texto
     assert "calcular" in texto
+
+
+def test_la_instruccion_con_razonamiento_no_obliga_a_calcular():
+    # La conclusión es la respuesta; la operación se muestra solo si hizo falta combinar datos.
+    texto = REASONING_SYSTEM_PROMPT
+
+    assert "Cálculo o conclusión" not in texto
+    assert "resumir" in texto and "no inventes una operación" in texto
 
 
 @pytest.mark.parametrize("campo", ["query_search_limit", "query_search_limit_razonamiento"])

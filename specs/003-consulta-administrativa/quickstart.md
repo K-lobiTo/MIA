@@ -56,7 +56,7 @@ En Currículum, modo "Con razonamiento":
 > Experimentos?
 
 Esperado: mientras espera, el aviso de que puede tardar más; la respuesta tiene **Lo que dicen los
-documentos** (los créditos de cada curso con su programa) y **Cálculo o conclusión** con
+documentos** (los créditos de cada curso con su programa) y **Conclusión** con
 `4 + 4 + 4 = 12`; cita los tres programas; pie "Con razonamiento · N s".
 
 ## 5. Aislamiento entre instancias (criterio 17)
@@ -135,3 +135,7 @@ Corrida en local: la API nueva (rama `dev`) en el puerto 8010 con los datos real
 | SC-001 (primera pregunta en menos de 2 minutos) | **Pendiente.** Exige a una persona que no conozca la Consulta; se medirá en la evaluación con usuarios. |
 
 Las pruebas en navegador cubrieron además pantalla de celular (375 px, sin desplazamiento horizontal), modo claro y oscuro, y que el HTML que devuelva el modelo se muestra como texto.
+
+### Ajuste de la instrucción con razonamiento (2026-10-08)
+
+Tras probar la Consulta con usuarios reales se renombró la segunda parte de la respuesta con razonamiento a **Conclusión** (antes "Cálculo o conclusión") y se amplió la instrucción a comparar, contrastar y resumir, para que no fuerce una operación cuando la pregunta no es numérica. Validado contra los datos reales: la pregunta de créditos sigue respondiendo **12** (`4 + 4 + 4 = 12` dentro de la conclusión), una síntesis sobre becas en las actas no inventa ninguna operación, y una comparación de horas concluye que son iguales con los datos de cada curso. También se acortó la vista de los fragmentos citados (260 caracteres con "Ver más").
