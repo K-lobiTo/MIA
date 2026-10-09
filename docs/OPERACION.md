@@ -33,6 +33,7 @@ Guía práctica para desplegar, cargar documentos y mantener funcionando el prot
 | `LLM_PROVIDER_RAZONAMIENTO` / `LLM_MODEL_RAZONAMIENTO` / `LLM_REASONING_EFFORT_RAZONAMIENTO` | vacías (modo no disponible) | `openrouter` / `z-ai/glm-5.3` / `medium` | no se usa al ingerir |
 | `LLM_PRICE_IN_*` / `LLM_PRICE_OUT_*` | `0` | USD por millón de tokens; solo estiman el costo si el proveedor no lo informa | no se usa |
 | `CORS_ORIGINS` | vacía (el panel usa el proxy de Vite) | direcciones de los sitios estáticos, separadas por comas | no se usa |
+| `QUERY_SEARCH_LIMIT` / `QUERY_SEARCH_LIMIT_RAZONAMIENTO` | `8` / `16` | resultados de la búsqueda en modo literal y con razonamiento (de 1 a 50) | no se usa al ingerir |
 | `MAX_UPLOAD_MB` | `25` | `25` | `25` |
 | `OPENROUTER_MANAGEMENT_KEY` | vacía | vacía (no recomendada, ver "Topes de gasto y saldo") | no se usa |
 
@@ -79,7 +80,7 @@ Reemplazó a Render free: la API en [Railway](https://railway.com) (plan Hobby) 
 5. En *Settings*, elegir la región más cercana a Qdrant Cloud (este de Estados Unidos).
 6. En *Settings > Networking*, *Generate Domain* para obtener la URL pública.
 7. Verificar: `GET <url>/health` debe responder `{"status":"ok"}`, y `python scripts/pruebas_mvp.py --url <url> --clave <clave de un artefacto>` debe dar 19 de 19 (desde la versión 2 las consultas exigen la clave de un artefacto, ver "Artefactos y claves").
-8. Apuntar el cliente web a Railway: `MIA_API_URL=<url> npm run dev` en `web/`, y escribir la clave del artefacto en su barra lateral.
+8. Apuntar la Consulta a Railway: `MIA_API_URL=<url> npm run dev` en `web/consulta/`, y escribir la clave del artefacto en la pantalla de clave.
 9. Con Railway verificado, suspender el servicio de Render (*Settings > Suspend*) para que no haya dos APIs publicadas. Ambas leen las mismas bases, así que no hay datos que migrar.
 
 ## Panel de administración, artefactos y topes (versión 2)
@@ -116,6 +117,23 @@ VITE_API_URL=https://<servicio>.up.railway.app npm run build    # genera web/adm
 ```
 
 Publicar `dist/` en un hosting de sitios estáticos (Render Static Sites o Vercel; no hace falta configurar reescrituras: usa rutas con `#`). Después, agregar la dirección del sitio a `CORS_ORIGINS` en Railway (varias separadas por coma, p. ej. `https://mia-admin.onrender.com`); sin eso el navegador bloquea las llamadas. En desarrollo no hace falta: `npm run dev` usa el proxy de Vite (`MIA_API_URL=<url> npm run dev`, puerto 3001).
+
+### Consulta administrativa (publicar las dos instancias)
+
+La Consulta (`web/consulta/`) se compila una vez y se publica **dos veces**, una por unidad, para que cada dirección recuerde su propia clave y cada unidad tenga su enlace. La compilación es idéntica: lo que cambia es la clave con que se abre, que la API traduce en el nombre, los dominios y los modos de la instancia.
+
+1. **Registrar los artefactos** en el panel (si no existen): `Consulta administrativa Postgrados Computación` (unidad Computación completa) y `Consulta administrativa Postgrados Administración Empresas` (unidad Administración de Empresas completa), ambos con los dos modos y su tope diario. Copiar cada clave `mia_...` al crearla: se muestra una sola vez.
+2. **Publicar los sitios** en Render (*New > Static Site*), conectando el repositorio, una vez por instancia:
+   - *Root Directory*: `web/consulta`; *Build Command*: `npm ci && npm run build`; *Publish Directory*: `dist`.
+   - Variable `VITE_API_URL` = URL de Railway (sin barra final). No se necesitan reescrituras.
+   - Nombres sugeridos: `mia-computacion` y `mia-administracion`.
+3. **Permitir los orígenes:** agregar ambas direcciones a `CORS_ORIGINS` en Railway, separadas por coma y sin barra final (junto a la del panel si ya está). Sin eso el navegador bloquea las llamadas.
+4. **Entregar a cada equipo** su enlace y su clave por un canal privado. Las claves se pueden regenerar desde el panel (la anterior deja de valer de inmediato).
+5. **Verificar** abriendo cada sitio con su clave: debe mostrar su nombre y solo los dominios de su unidad.
+
+Para probar la Consulta en local contra Railway: `cd web/consulta && MIA_API_URL=<url> npm run dev` (puerto 3000).
+
+**Modos de respuesta.** Cada modo trae su instrucción al modelo y su cantidad de resultados de búsqueda. El modo con razonamiento recupera más fragmentos (`QUERY_SEARCH_LIMIT_RAZONAMIENTO`, 16 por defecto) y tarda decenas de segundos; si una instancia no tiene configurado su modelo (`LLM_PROVIDER_RAZONAMIENTO`) la opción aparece deshabilitada con el motivo.
 
 ### Migraciones y reorganización de los datos
 
@@ -162,7 +180,7 @@ Lo ejecuta quien administra MIA, en este orden. Todo el trabajo de la versión 2
 6. **Abrir el panel** (`MIA_API_URL=<url> npm run dev` en `web/admin`, o publicado) con la clave de administración: el inventario debe mostrar las dos unidades, Computación con 7 dominios y Administración de Empresas con 4, y los 162 documentos en "Listo".
 7. **Registrar las dos instancias** de la Consulta administrativa (tabla de "Artefactos y claves") y copiar cada clave.
 8. **Correr las pruebas de aceptación:** `python scripts/pruebas_mvp.py --url <url> --clave <clave de un artefacto con acceso a las dos unidades>`. Debe dar 19 de 19 en modo literal; ese artefacto debe tener las dos unidades. Si no se registró uno así, registrar uno de prueba y desactivarlo después. Opcional: `--modo razonamiento`.
-9. **Entregar las claves** a quien use cada instancia, y actualizar lo que consultaba sin clave (el cliente web de `web/`, scripts).
+9. **Entregar las claves** a quien use cada instancia, y actualizar lo que consultaba sin clave (scripts; el cliente web anterior ya no existe, lo reemplazó la Consulta administrativa).
 10. **Publicar el panel** y agregar su dirección a `CORS_ORIGINS`.
 11. **Mirar el módulo Uso:** que el saldo aparezca (o que explique por qué no) y que las consultas de las pruebas estén en el registro.
 

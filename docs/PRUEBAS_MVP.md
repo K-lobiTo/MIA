@@ -129,7 +129,7 @@ Antes de esa carga: **15 de 15 casos correctos** contra `https://mia-production-
 | `google/gemini-3.8-flash` (con 50 % de descuento temporal) | bajo | 15 de 15 | 50 s |
 | `z-ai/glm-5.3` | medio | 15 de 15 | 44 s |
 
-- Las respuestas de los tres son correctas y de calidad parecida. GLM 5.3 a veces arranca con un título en Markdown (`# ...`), que el cliente web actual no da formato.
+- Las respuestas de los tres son correctas y de calidad parecida. GLM 5.3 a veces arranca con un título en Markdown (`# ...`), que el cliente web de entonces no daba formato (la Consulta administrativa lo muestra como título en negrita).
 - Los tiempos dependen del proveedor que elige OpenRouter en cada consulta (con retención cero obligatoria), así que varían entre corridas; no son una medida de velocidad del modelo.
 - Esta batería no prueba preguntas que combinan datos de varios documentos (sumar, comparar), que es para lo que se pensó el modo con razonamiento de la versión 2. Hay que agregar casos de ese tipo antes de elegir el modelo de ese modo.
 - Costo: todas las consultas del día (unas 80, incluidas las tres corridas completas) sumaron 0.06 USD de saldo.
@@ -155,3 +155,15 @@ Antes de esa carga: **15 de 15 casos correctos** contra `https://mia-production-
 ## Historial: datos de prueba del MVP (hasta 2026-10-05)
 
 El MVP se validó con 3 actas públicas del Consejo Institucional del TEC (sesiones 3436 a 3438, de 96 a 180 páginas) en el dominio "Memoria del Consejo", y 4 programas de curso de la Maestría en Computación en "Currículum": 1245 fragmentos en total. El 2026-09-28 dio 18 de 18 casos correctos contra Render, después de sumar los fragmentos vecinos al contexto (antes, las respuestas sobre listas largas quedaban incompletas). Esos datos se borraron de producción el 2026-10-06 al cargar los documentos reales; los archivos siguen en `tmp/dominios/`. Las preguntas de esa versión están en el historial de git de `scripts/pruebas_mvp.py`.
+
+
+## Validación de la Consulta administrativa (2026-10-08)
+
+Corrida con la API de la rama `dev` en local contra los datos reales de producción, con un artefacto de prueba con acceso a las dos unidades (ya desactivado):
+
+- **Modo literal:** 19 de 19.
+- **Modo con razonamiento** (informativo): 19 de 19.
+- **Criterio 7:** "¿Cuántos créditos suman Sistemas Operativos Avanzados, Análisis de Algoritmos y Diseño de Experimentos?" responde 12 en modo con razonamiento, con las dos partes (datos con su documento y cálculo `4 + 4 + 4 = 12`). Las fuentes devueltas no incluyen el programa de MC6104, porque el dato lo traen el Catálogo y la Reforma curricular (límite conocido de la recuperación, no de la instrucción al modelo).
+- **Tiempos:** literal con mediana de 3,1 s y razonamiento con mediana de 5,3 s, ambos muy por debajo de las metas (15 s y 90 s).
+
+Detalle en [specs/003-consulta-administrativa/quickstart.md](../specs/003-consulta-administrativa/quickstart.md).

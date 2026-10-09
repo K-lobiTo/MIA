@@ -39,7 +39,7 @@ La API queda en `http://localhost:8000/docs` (Swagger UI). También se puede lev
 
 Desde la versión 2 las consultas exigen la clave de un artefacto, que se registra en el panel y se envía en `X-Artifact-Key`; la API solo muestra y consulta los dominios y modos que ese artefacto tiene permitidos.
 
-- **Cliente web tipo chat (transitorio):** `cd web && npm install && npm run dev` abre `http://localhost:3000` (`MIA_API_URL=<url> npm run dev` para elegir la API). La clave del artefacto se escribe en su barra lateral. Detalle en [web/README.md](web/README.md).
+- **Consulta administrativa (web):** `cd web/consulta && npm install && npm run dev` abre `http://localhost:3000` (`MIA_API_URL=<url> npm run dev` para elegir la API). Pide la clave del artefacto (la de cada instancia, generada en el panel), muestra solo sus dominios y modos, y permite calificar las respuestas. Detalle en [web/consulta/README.md](web/consulta/README.md).
 - **Cliente de terminal:** `python scripts/cliente.py --url <url> --clave mia_...` (o `MIA_ARTIFACT_KEY`). Muestra un menú para elegir uno o varios dominios y luego permite hacer preguntas en un ciclo: `:d` cambia de dominios, `:m` de modo, `:f` muestra los fragmentos citados, `:s` sale. Solo usa la biblioteca estándar de Python.
 - **Swagger UI:** `<url>/docs`. En `POST /query` se envían los ids de dominio (que se obtienen con `GET /domains`) y el encabezado `X-Artifact-Key`.
 
@@ -50,6 +50,7 @@ pytest
 ruff check src tests scripts
 
 cd web/admin && npm test            # pruebas del panel
+cd web/consulta && npm test         # pruebas de la Consulta
 
 # Pruebas de aceptación contra una instancia con los datos reales cargados (clave de un artefacto con acceso a las dos unidades)
 python scripts/pruebas_mvp.py --url https://mia-production-3a08.up.railway.app --clave mia_...

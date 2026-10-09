@@ -39,8 +39,9 @@ src/mia/
     ├── migrations/      Alembic: 0001 (esquema anterior) y 0002 (panel de administración)
     └── vector_store.py  VectorStore (interfaz) + QdrantVectorStore + get_vector_store()
 
-web/                    Cliente de consulta transitorio (lo reemplazará la Consulta administrativa)
+web/                    Aplicaciones web: admin/ (panel de administración) y consulta/ (Consulta administrativa)
 web/admin/              Panel de administración (React + TypeScript + Vite), ver más abajo
+web/consulta/           Consulta administrativa (React + TypeScript + Vite), ver más abajo
 scripts/                cargar_carpeta.py, reorganizar_v2.py, pruebas_mvp.py, cliente.py
 ```
 
@@ -60,7 +61,7 @@ Como Qdrant identifica cada dominio por su id y no por su nombre, renombrar un d
 - **Clave de administración:** variable `ADMIN_KEY`, enviada en `X-Admin-Key`. Protege crear unidades, dominios y carpetas, subir documentos, gestionar artefactos y ver el módulo Uso. Sin `ADMIN_KEY` configurada esas operaciones responden 503, no quedan abiertas por olvido. Leer el inventario no la pide.
 - **Artefactos** (`Artifact`): cada aplicación de consulta se registra con su nombre, una clave propia (`X-Artifact-Key`, generada por la API y mostrada una sola vez; se guarda solo su SHA-256), los dominios que puede consultar (todos, unidades completas incluidos sus dominios futuros, o dominios puntuales), los modos de respuesta permitidos y sus topes de gasto. Un mismo producto se registra una vez por público: las dos instancias de la Consulta administrativa (Postgrados Computación y Postgrados Administración Empresas) son dos artefactos.
 - **Quién aplica los permisos:** la API, en cada consulta, no el artefacto (el código de un sitio estático se puede modificar). Una consulta a un dominio o modo no permitido, o de un artefacto desactivado, responde 403; un cambio hecho en el panel rige desde la consulta siguiente. `GET /domains` y `GET /config` con la clave de un artefacto muestran solo lo que ese artefacto puede usar.
-- **Modos de respuesta** (`rag/modes.py`): `literal` y `razonamiento`. Cada uno tiene su proveedor, modelo y esfuerzo de razonamiento por configuración (`LLM_PROVIDER_<MODO>`, `LLM_MODEL_<MODO>`...); sin variables propias, el literal usa la configuración anterior (`LLM_PROVIDER`, `OPENROUTER_*`). Un modo sin proveedor figura como no disponible. Los artefactos piden un modo y nunca ven el modelo.
+- **Modos de respuesta** (`rag/modes.py`): `literal` y `razonamiento`. Cada uno tiene su proveedor, modelo y esfuerzo de razonamiento por configuración (`LLM_PROVIDER_<MODO>`, `LLM_MODEL_<MODO>`...); sin variables propias, el literal usa la configuración anterior (`LLM_PROVIDER`, `OPENROUTER_*`). Un modo sin proveedor figura como no disponible. Los artefactos piden un modo y nunca ven el modelo. Cada modo trae además su instrucción al modelo y su cantidad de resultados de búsqueda (`QUERY_SEARCH_LIMIT`, 8, en literal; `QUERY_SEARCH_LIMIT_RAZONAMIENTO`, 16, con razonamiento): la instrucción llega al proveedor como parámetro de `LLMProvider.answer`. La del literal pide responder solo con lo que dicen los fragmentos; la del razonamiento permite combinar, comparar y calcular, y estructura la respuesta en dos partes fijas ("Lo que dicen los documentos" y "Cálculo o conclusión"). `POST /query` limita la pregunta a 2000 caracteres y devuelve `no_info` para que el cliente distinga la respuesta "sin información suficiente". Contrato en [specs/003-consulta-administrativa/contracts/api-consulta-modos.md](../specs/003-consulta-administrativa/contracts/api-consulta-modos.md).
 
 ## Registro de consultas, topes de gasto y Uso
 
@@ -75,6 +76,18 @@ El esquema lo versiona Alembic (`src/mia/storage/migrations/`). `init_db()` corr
 ## Panel de administración
 
 `web/admin/`: React 19, TypeScript y Vite, con TanStack Query y `HashRouter` (funciona como sitio estático sin reescrituras). Un menú de módulos (`src/modules/index.tsx`): Inventario de información, Artefactos y accesos, y Uso; agregar uno es sumar una entrada y un grupo de rutas en la API. Las gráficas son SVG propio, con una paleta categórica validada para el modo claro y el oscuro. En desarrollo usa el proxy de Vite (`/api`); publicado como sitio estático llama directo a la API, que debe permitir su origen (`CORS_ORIGINS`). Detalle de uso en [web/admin/README.md](../web/admin/README.md).
+
+## Consulta administrativa
+
+`web/consulta/`: el artefacto de consulta para el personal administrativo (React 19, TypeScript y Vite, con TanStack Query y sin router: es una sola pantalla). Se abre con la clave de un artefacto; el nombre de la instancia, los dominios, los modos y los topes los da la API (`GET /config` y `GET /domains` con `X-Artifact-Key`), así que **una misma compilación se publica dos veces** (Computación y Administración de Empresas) y cada dirección recuerda su propia clave. No hay configuración por instancia en el código publicado.
+
+- **Qué guarda el navegador:** solo la clave, la selección de dominios y el modo. La conversación no se guarda ni se envía de vuelta a la API: cada pregunta se responde por separado y las preguntas pueden tener datos personales.
+- **Lógica sin interfaz** (`src/state/`, con pruebas de Vitest): qué modos mostrar y con cuál preguntar según `/config` (topes alcanzados, modo sin configurar), agrupación y recuerdo de dominios, mensajes y salidas ante cada error. Las respuestas se dibujan con un formateador propio (`src/format/`) que produce bloques de datos y no HTML, así que el texto del modelo nunca se interpreta como código de la página.
+- **Errores y topes:** ante un 403 o un 429 la Consulta vuelve a pedir `/config` y `/domains` para actualizar modos, topes y dominios sin recargar; si el modo con razonamiento falla ofrece reintentar en literal.
+- **Calificación:** `POST /query/{id}/feedback`, con comentario opcional; queda en el registro de consultas que ve el módulo Uso.
+- **Compartir código con el panel:** no hay paquete compartido; cada sitio tiene su propio cliente de la API (unas 40 líneas parecidas) hasta que haya un tercero. Decisión en [specs/003-consulta-administrativa/research.md](../specs/003-consulta-administrativa/research.md).
+
+Detalle de uso y publicación en [web/consulta/README.md](../web/consulta/README.md) y en [OPERACION.md](OPERACION.md).
 
 ## El patrón que se repite: interfaz + factory por nombre
 
@@ -93,11 +106,11 @@ Trade-off aceptado: cambiar de modelo de embeddings con otra dimensionalidad req
 
 ## Clientes de prueba
 
-El panel de administración es el primer artefacto real. La Consulta administrativa (dos instancias) y los chatbots (web, WhatsApp vía Kapso) quedan para después. Mientras tanto, para consultar la API, todos con la clave de un artefacto (`--clave` o `MIA_ARTIFACT_KEY`) y fuera del paquete `mia`:
+El panel de administración y la Consulta administrativa (dos instancias) son los artefactos reales; los chatbots (web, WhatsApp vía Kapso) quedan para después. Para consultar la API sin pasar por ellos, todos con la clave de un artefacto (`--clave` o `MIA_ARTIFACT_KEY`) y fuera del paquete `mia`:
 
 - **Swagger UI** (`/docs` de la API): para probar a mano, con los encabezados `X-Admin-Key` o `X-Artifact-Key`.
 - **`scripts/cliente.py`:** cliente de terminal con menú de dominios y de modos. Solo usa la biblioteca estándar.
-- **`web/`:** chat transitorio en TypeScript (Vite, sin framework) en el puerto 3000, con un campo para la clave del artefacto; ver [web/README.md](../web/README.md).
+- **`web/consulta/`:** la Consulta administrativa (ver "Consulta administrativa" más abajo).
 
 `scripts/pruebas_mvp.py` usa la misma API para las pruebas de aceptación ([PRUEBAS_MVP.md](PRUEBAS_MVP.md)).
 
