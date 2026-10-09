@@ -42,7 +42,7 @@ src/mia/
 web/                    Aplicaciones web: admin/ (panel de administración) y consulta/ (Consulta administrativa)
 web/admin/              Panel de administración (React + TypeScript + Vite), ver más abajo
 web/consulta/           Consulta administrativa (React + TypeScript + Vite), ver más abajo
-scripts/                cargar_carpeta.py, reorganizar_v2.py, pruebas_mvp.py, cliente.py
+scripts/                cargar_carpeta.py, reorganizar_v2.py, pruebas_mvp.py, cliente.py, servicios.py (encender y apagar en Railway)
 ```
 
 ## Cómo se organiza la información

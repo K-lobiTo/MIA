@@ -198,6 +198,8 @@ python scripts/reorganizar_v2.py --env-file .env.produccion             # una se
 
 ### Desplegar cambios (no hay auto-deploy)
 
+**Atajo:** `scripts/servicios.py` enciende, apaga y consulta el estado de los cuatro servicios (`./scripts/servicios.py estado`, `encender [servicio...]`, `apagar [servicio...]`; la API va primero al encender y al final al apagar; espera cada despliegue y comprueba que responda). Apagar equivale a *Remove* y no borra nada. Los comandos de abajo son lo que hace por dentro.
+
 Railway tiene los servicios conectados al repositorio como público, **sin su aplicación de GitHub instalada**, así que un push a `main` no dispara ningún deploy (el aviso es *"This is a public repository without a Railway GitHub App installation"*). Decisión tomada: mantener los deploys manuales. Hay dos formas:
 
 ```bash
