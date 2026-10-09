@@ -11,12 +11,14 @@ interface Props {
   onRetry: (exchange: ExchangeData, mode?: "literal") => void;
   /** El modo literal está disponible: solo entonces se ofrece reintentar en literal. */
   literalAvailable: boolean;
+  /** Hay una consulta en curso: no se puede reintentar otra en paralelo (FR-019). */
+  busy: boolean;
   /** Nombre visible de cada modo, para el pie de la respuesta. */
   modeNames: Record<string, string>;
   onRate: (localId: string, rating: RatingValue, comment?: string) => void;
 }
 
-export function Exchange({ exchange, onRetry, literalAvailable, modeNames, onRate }: Props) {
+export function Exchange({ exchange, onRetry, literalAvailable, busy, modeNames, onRate }: Props) {
   const { question, status, response, error } = exchange;
 
   return (
@@ -36,7 +38,7 @@ export function Exchange({ exchange, onRetry, literalAvailable, modeNames, onRat
         </div>
       )}
 
-      {status === "failed" && error && <Failure exchange={exchange} onRetry={onRetry} literalAvailable={literalAvailable} />}
+      {status === "failed" && error && <Failure exchange={exchange} onRetry={onRetry} literalAvailable={literalAvailable} busy={busy} />}
 
       {(status === "answered" || status === "no_info") && response && (
         <div className={`message${status === "no_info" ? " info" : ""}`}>
@@ -85,7 +87,7 @@ function Sources({ exchange }: { exchange: ExchangeData }) {
   );
 }
 
-function Failure({ exchange, onRetry, literalAvailable }: Pick<Props, "exchange" | "onRetry" | "literalAvailable">) {
+function Failure({ exchange, onRetry, literalAvailable, busy }: Pick<Props, "exchange" | "onRetry" | "literalAvailable" | "busy">) {
   const view = describeError(exchange.error!, exchange.mode, literalAvailable);
   return (
     <div className="message error" role="alert">
@@ -93,12 +95,12 @@ function Failure({ exchange, onRetry, literalAvailable }: Pick<Props, "exchange"
       {(view.canRetry || view.offerLiteral) && (
         <div className="message-actions">
           {view.canRetry && (
-            <button type="button" className="btn btn-small" onClick={() => onRetry(exchange)}>
+            <button type="button" className="btn btn-small" disabled={busy} onClick={() => onRetry(exchange)}>
               Reintentar
             </button>
           )}
           {view.offerLiteral && (
-            <button type="button" className="btn btn-small" onClick={() => onRetry(exchange, "literal")}>
+            <button type="button" className="btn btn-small" disabled={busy} onClick={() => onRetry(exchange, "literal")}>
               Reintentar en modo literal
             </button>
           )}

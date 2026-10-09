@@ -41,8 +41,12 @@ describe("groupByUnit", () => {
 });
 
 describe("restoreSelection", () => {
-  it("sin nada guardado selecciona todos", () => {
-    expect(restoreSelection([], [a, b])).toEqual(["a", "b"]);
+  it("si nunca se guardó nada (null) selecciona todos", () => {
+    expect(restoreSelection(null, [a, b])).toEqual(["a", "b"]);
+  });
+
+  it("una selección guardada vacía (se eligió ninguno) se respeta", () => {
+    expect(restoreSelection([], [a, b])).toEqual([]);
   });
 
   it("si ninguno de los guardados sigue permitido selecciona todos", () => {
@@ -55,6 +59,7 @@ describe("restoreSelection", () => {
 
   it("sin dominios permitidos no selecciona nada", () => {
     expect(restoreSelection(["a"], [])).toEqual([]);
+    expect(restoreSelection(null, [])).toEqual([]);
   });
 });
 
@@ -77,14 +82,18 @@ describe("loadSelection y saveSelection", () => {
     expect(loadSelection()).toEqual(["a", "b"]);
   });
 
-  it("una lista vacía guardada se lee como vacía", () => {
+  it("una lista vacía guardada se lee como vacía, no como ausente", () => {
     saveSelection([]);
     expect(loadSelection()).toEqual([]);
   });
 
-  it("un valor dañado se lee como vacío", () => {
+  it("sin nada guardado se lee como ausente (null)", () => {
+    expect(loadSelection()).toBeNull();
+  });
+
+  it("un valor dañado se lee como ausente", () => {
     localStorage.setItem("mia-consulta-dominios", "{no es json");
-    expect(loadSelection()).toEqual([]);
+    expect(loadSelection()).toBeNull();
   });
 
   it("sin almacenamiento no falla", () => {
@@ -96,7 +105,7 @@ describe("loadSelection y saveSelection", () => {
         throw new Error("bloqueado");
       },
     });
-    expect(loadSelection()).toEqual([]);
+    expect(loadSelection()).toBeNull();
     expect(() => saveSelection(["a"])).not.toThrow();
   });
 });

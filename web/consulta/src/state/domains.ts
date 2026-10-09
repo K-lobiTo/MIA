@@ -27,20 +27,29 @@ export function groupByUnit(domains: Domain[]): DomainGroup[] {
   return groups;
 }
 
-/** La selección guardada limitada a los dominios que siguen permitidos; sin ninguna válida, todos. */
-export function restoreSelection(saved: string[], domains: Domain[]): string[] {
-  const allowed = new Set(domains.map((d) => d.id));
+/**
+ * La selección guardada limitada a los dominios que siguen permitidos. Si nunca se guardó nada (null)
+ * o ya no queda permitido ninguno de los guardados, se seleccionan todos; una lista guardada vacía
+ * significa que se eligió ninguno y se respeta.
+ */
+export function restoreSelection(saved: string[] | null, domains: Domain[]): string[] {
+  const all = domains.map((d) => d.id);
+  if (saved === null) return all;
+  if (saved.length === 0) return [];
+  const allowed = new Set(all);
   const kept = saved.filter((id) => allowed.has(id));
-  return kept.length > 0 ? kept : domains.map((d) => d.id);
+  return kept.length > 0 ? kept : all;
 }
 
 // Almacenamiento: puede fallar o estar vacío (ventana privada, datos bloqueados).
-export function loadSelection(): string[] {
+export function loadSelection(): string[] | null {
   try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
-    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw === null) return null;
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : null;
   } catch {
-    return [];
+    return null;
   }
 }
 

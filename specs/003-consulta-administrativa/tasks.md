@@ -249,3 +249,14 @@ Como Railway despliega desde `main` y todo se trabaja en `dev`, cada historia se
 - Cada historia se puede completar y probar sola en su checkpoint.
 - No se cambia el esquema de la base ni el pipeline de ingesta.
 - Publicar los sitios en Render y cambiar `CORS_ORIGINS` en Railway lo hace el usuario.
+
+---
+
+## Phase 9: Convergence
+
+**Purpose**: cerrar los vacíos que /speckit-converge encontró entre el código y la especificación.
+
+- [X] T046 Deshabilitar "Reintentar" y "Reintentar en modo literal" de `web/consulta/src/components/Exchange.tsx` (propiedad nueva `busy` pasada desde `App.tsx` por `Conversation.tsx`) mientras haya una consulta en curso, para que no se pueda enviar una segunda pregunta en paralelo desde un intercambio fallido anterior, per FR-019 (partial)
+- [X] T047 Conservar lo escrito cuando la API rechaza la pregunta con 422: `web/consulta/src/components/Composer.tsx` debe vaciar el campo solo cuando el envío no es rechazado (por ejemplo, `onSend` devuelve una promesa o `App.tsx` devuelve el texto al campo tras el 422) y agregar una prueba de la regla en `web/consulta/src/state/`, per Edge Cases del spec y contracts/ui-consulta.md, fila 422 (partial)
+- [X] T048 Distinguir "nunca se guardó una selección" de "se eligió ninguno" en `web/consulta/src/state/domains.ts`: `loadSelection` devuelve `null` si no hay nada guardado y `restoreSelection` solo selecciona todos en ese caso (con una lista guardada vacía queda en ninguno; con una lista cuyos dominios ya no están permitidos, sigue seleccionando todos); actualizar `domains.test.ts` y el uso en `App.tsx`, per FR-006 (partial)
+- [X] T049 Mostrar en `web/consulta/src/components/Conversation.tsx` ejemplos de preguntas distintos para cada modo (uno literal sobre un dato exacto y uno con razonamiento sobre una suma o comparación), según el modo elegido, con texto fijo que no se envía, per contracts/ui-consulta.md, "Área de conversación vacía" (partial)

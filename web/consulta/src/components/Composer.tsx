@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export const MAX_QUESTION_LENGTH = 2000;
 const COUNTER_FROM = 1800;
@@ -12,12 +12,19 @@ interface Props {
   blockedReason: string | null;
   /** Mensaje de la API para la última pregunta rechazada por su contenido; no borra lo escrito. */
   rejection: string | null;
+  /** Pregunta que la API rechazó por su contenido: vuelve al campo para no perder lo escrito. */
+  restore: { text: string; n: number } | null;
   onSend: (question: string) => void;
 }
 
-export function Composer({ selectedCount, busy, blockedReason, rejection, onSend }: Props) {
+export function Composer({ selectedCount, busy, blockedReason, rejection, restore, onSend }: Props) {
   const [text, setText] = useState("");
   const areaRef = useRef<HTMLTextAreaElement>(null);
+
+  // `n` cambia en cada rechazo, así que dos rechazos seguidos de la misma pregunta también la restauran.
+  useEffect(() => {
+    if (restore) setText(restore.text);
+  }, [restore]);
 
   const hint = blockedReason ?? (selectedCount === 0 ? "Elige al menos un dominio." : null);
   const canSend = !busy && !hint && text.trim().length > 0;

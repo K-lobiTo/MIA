@@ -16,6 +16,7 @@ import {
   ratedExchange,
   type Exchange,
 } from "./state/conversation";
+import { rejectionOf } from "./state/rejection";
 import { loadSelection, restoreSelection, saveSelection } from "./state/domains";
 import { loadMode, resolveAvailability, saveMode } from "./state/modes";
 
@@ -30,6 +31,7 @@ export function App() {
   const [selected, setSelected] = useState<string[]>([]);
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [rejection, setRejection] = useState<string | null>(null);
+  const [restore, setRestore] = useState<{ text: string; n: number } | null>(null);
   const [savedMode, setSavedMode] = useState<string | null>(() => loadMode());
 
   useEffect(() => {
@@ -91,10 +93,12 @@ export function App() {
               void queryClient.invalidateQueries({ queryKey: ["config"] });
               void queryClient.invalidateQueries({ queryKey: ["domains"] });
             }
-            if (apiError.status === 422) {
-              // La pregunta no es válida: se quita el intercambio y se conserva lo que había escrito.
+            const rejected = rejectionOf({ status: apiError.status, message: apiError.message }, question);
+            if (rejected) {
+              // La pregunta no es válida: se quita el intercambio y vuelve al campo lo que había escrito.
               setExchanges((list) => list.filter((e) => e.localId !== exchange.localId));
-              setRejection("La pregunta no es válida (máximo 2000 caracteres).");
+              setRejection(rejected.message);
+              setRestore((previous) => ({ text: rejected.restore, n: (previous?.n ?? 0) + 1 }));
               return;
             }
             setExchanges((list) =>
@@ -143,6 +147,8 @@ export function App() {
           exchanges={exchanges}
           onRetry={(exchange, forced) => send(exchange.question, forced ?? exchange.mode)}
           literalAvailable={Boolean(config.data.modes.find((m) => m.id === "literal")?.available)}
+          busy={busy}
+          mode={mode}
           modeNames={modeNames}
           onRate={rate}
         />
@@ -151,6 +157,7 @@ export function App() {
           busy={busy}
           blockedReason={availability?.sendBlocked ?? null}
           rejection={rejection}
+          restore={restore}
           onSend={(question) => send(question)}
         />
       </main>
