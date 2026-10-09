@@ -53,7 +53,7 @@ cd web/admin && npm test            # pruebas del panel
 cd web/consulta && npm test         # pruebas de la Consulta
 
 # Pruebas de aceptación contra una instancia con los datos reales cargados (clave de un artefacto con acceso a las dos unidades)
-python scripts/pruebas_mvp.py --url https://mia-production-3a08.up.railway.app --clave mia_...
+python scripts/pruebas_mvp.py --url https://mia-main.up.railway.app --clave mia_...
 ```
 
 ## Despliegue

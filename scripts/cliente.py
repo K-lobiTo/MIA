@@ -27,7 +27,7 @@ import textwrap
 import urllib.error
 import urllib.request
 
-URL_POR_DEFECTO = "https://mia-production-3a08.up.railway.app"
+URL_POR_DEFECTO = "https://mia-main.up.railway.app"
 CLAVE = ""
 TIMEOUT = 200
 ANCHO = 90

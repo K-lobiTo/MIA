@@ -126,7 +126,7 @@ La Consulta (`web/consulta/`) se compila una vez por instancia y se publica **do
 2. **Crear los servicios en Railway** (una vez por instancia), en el proyecto de MIA: *New > GitHub Repo* y elegir este repositorio. Nombres sugeridos: `mia-computacion` y `mia-administracion`. En cada servicio:
    - *Settings > Source > Root Directory*: `web/consulta`. Railway usa el `Dockerfile` de esa carpeta (compila con Vite y sirve `dist` con `serve`).
    - *Settings > Config-as-code*: ruta `/web/consulta/railway.json` (el repositorio también tiene un `railway.json` en la raíz, que es el de la API).
-   - *Variables*: `VITE_API_URL` = URL de la API (`https://mia-production-3a08.up.railway.app`, sin barra final). Sin esta variable la compilación falla con un mensaje claro. Es una variable de **compilación**: si cambia, hay que volver a desplegar.
+   - *Variables*: `VITE_API_URL` = URL de la API (`https://mia-main.up.railway.app`, sin barra final). Sin esta variable la compilación falla con un mensaje claro. Es una variable de **compilación**: si cambia, hay que volver a desplegar.
    - *Settings > Networking > Generate Domain*: la dirección pública de esa instancia.
 3. **Permitir los orígenes:** agregar ambas direcciones a `CORS_ORIGINS` en la API (servicio `MIA`), separadas por coma, con `https://` y sin barra final, junto a las demás si ya hay. Sin eso el navegador bloquea las llamadas. Un cambio de variables exige un deploy de la API.
 4. **Entregar a cada equipo** su enlace y su clave por un canal privado. Las claves se pueden regenerar desde el panel (la anterior deja de valer de inmediato).
