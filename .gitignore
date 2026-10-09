@@ -237,3 +237,5 @@ web/dist/
 # Panel de administración (web/admin/)
 web/admin/node_modules/
 web/admin/dist/
+web/consulta/node_modules/
+web/consulta/dist/
