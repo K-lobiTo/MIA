@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, setInvalidKeyHandler, useKey } from "./api/client";
+import { FIXED_KEY } from "./api/fixedKey";
 import { useAsk, useConfig, useDomains } from "./api/consulta";
 import type { ModeId, Rating } from "./api/types";
 import { Composer } from "./components/Composer";
@@ -128,9 +129,12 @@ export function App() {
     );
   }
   if (config.isError || !config.data?.artifact || domains.isError) {
+    const rejected = FIXED_KEY && config.error instanceof ApiError && config.error.status === 401;
     return (
       <p className="notice notice-danger" style={{ margin: 24 }}>
-        No se pudo cargar la Consulta. Recarga la página.
+        {rejected
+          ? "La clave configurada para esta Consulta no es válida o fue desactivada. Avisa a quien administra MIA."
+          : "No se pudo cargar la Consulta. Recarga la página."}
       </p>
     );
   }

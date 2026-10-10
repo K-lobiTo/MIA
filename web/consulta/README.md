@@ -23,6 +23,10 @@ npm run build                                               # genera dist/
 
 En desarrollo el servidor de Vite hace de proxy de `/api` hacia la API (con 200 s de espera, porque el razonamiento tarda), así que no hace falta CORS.
 
+## Clave fija (opcional)
+
+Si el servicio publicado tiene la variable de entorno `ARTIFACT_KEY`, `docker-entrypoint.sh` la escribe en `dist/config.js` al arrancar y la Consulta usa esa clave sin pedirla (no muestra "Cambiar clave"; si la API la rechaza, avisa que la clave configurada no es válida). En desarrollo (`npm run dev`) no hay clave fija. **`/config.js` es público: cualquiera que abra el sitio puede leer la clave.** Solo para demostraciones con un artefacto sin información sensible; ver [docs/OPERACION.md](../../docs/OPERACION.md).
+
 ## Qué se guarda en el navegador
 
 Solo la clave, la selección de dominios y el modo, en `localStorage` de la dirección de cada instancia (dos direcciones distintas no comparten nada). **La conversación nunca se guarda**: las preguntas pueden contener datos personales y al recargar la página la conversación empieza vacía. El registro completo queda en la API, visible solo con la clave de administración.

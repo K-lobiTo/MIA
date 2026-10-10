@@ -16,6 +16,7 @@ La fuente de verdad de los requerimientos es [docs/Definicion_Requerimientos_V2.
 
 - Q: ¿Qué debe pasar con la conversación cuando la persona recarga la página o cierra la pestaña? → A: No se conserva: al recargar, la conversación empieza vacía; solo se recuerdan la clave, los dominios y el modo.
 - Q: En una respuesta con razonamiento, ¿cómo debe separarse lo que dicen los documentos de lo que el sistema calcula o infiere? → A: Dos partes fijas: primero "Lo que dicen los documentos" (los datos usados, con su documento) y después "Cálculo o conclusión" (la operación y el resultado).
+- Ajuste del 2026-10-10: cada instancia puede tener, de forma opcional, una clave de artefacto fija configurada en el servicio publicado (variable `ARTIFACT_KEY`); con ella la Consulta no pide la clave. Es una decisión consciente para demostraciones del prototipo: la clave queda legible en un archivo público del sitio, por lo que solo debe usarse con artefactos sin acceso a información sensible, con tope bajo y con el sitio apagado cuando no se muestra.
 - Ajuste del 2026-10-08, tras probar la Consulta con usuarios reales: la segunda parte se llama "Conclusión" y no obliga a mostrar un cálculo; la operación o la comparación se muestra solo cuando hizo falta combinar datos, y una síntesis no inventa una operación.
 - Q: ¿Cuánto debe tardar como máximo una respuesta para considerarla aceptable en la evaluación con usuarios? → A: Literal en menos de 15 s y con razonamiento en menos de 90 s, en 9 de cada 10 preguntas.
 - Q: Al publicar la Consulta, ¿qué hacemos con el cliente web actual de la carpeta web/? → A: Se elimina en esta misma entrega; la Consulta es un cliente nuevo y la documentación remite a ella.
@@ -139,7 +140,7 @@ Quien mantiene MIA publica la misma compilación de la Consulta en dos direccion
 
 **Acceso e identidad de la instancia**
 
-- **FR-001**: La Consulta DEBE pedir la clave de consulta la primera vez, recordarla en el navegador, permitir cambiarla, y olvidarla y volver a pedirla cuando la API la rechace como no autorizada [CON-9].
+- **FR-001**: La Consulta DEBE pedir la clave de consulta la primera vez (salvo que la instancia tenga una clave fija configurada, ver Clarifications del 2026-10-10), recordarla en el navegador, permitir cambiarla, y olvidarla y volver a pedirla cuando la API la rechace como no autorizada [CON-9].
 - **FR-002**: La Consulta DEBE mostrar en el encabezado y en el título de la pestaña el nombre del artefacto que la API devuelve para esa clave [CON-10].
 - **FR-003**: Una misma compilación de la Consulta DEBE servir para cualquier instancia: el nombre, los dominios, los modos y los topes se obtienen de la API según la clave, nunca de la configuración de la compilación.
 

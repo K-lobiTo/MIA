@@ -14,6 +14,7 @@ FROM node:20-alpine
 WORKDIR /app
 RUN npm install -g serve@14
 COPY --from=build /app/dist ./dist
+COPY docker-entrypoint.sh ./
 # Railway define PORT; -s devuelve index.html para cualquier ruta (aplicación de una sola página).
 ENV PORT=3000
-CMD ["sh", "-c", "serve -s dist -l ${PORT}"]
+CMD ["sh", "docker-entrypoint.sh"]
