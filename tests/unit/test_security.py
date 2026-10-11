@@ -1,19 +1,12 @@
-import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
 from mia.access.keys import generate_key, hash_key, key_prefix
 from mia.api import security
-from mia.config import settings
 from mia.storage.db import SessionLocal
 from mia.storage.models import Artifact
 
 app = FastAPI()
-
-
-@app.get("/solo-admin", dependencies=[Depends(security.require_admin)])
-def solo_admin() -> dict:
-    return {"ok": True}
 
 
 @app.get("/solo-artefacto")
@@ -22,27 +15,6 @@ def solo_artefacto(artifact: Artifact = Depends(security.require_artifact)) -> d
 
 
 client = TestClient(app)
-
-
-@pytest.fixture
-def admin_key(monkeypatch):
-    monkeypatch.setattr(settings, "admin_key", "clave-de-prueba")
-    return "clave-de-prueba"
-
-
-def test_sin_admin_key_configurada_responde_503(monkeypatch):
-    monkeypatch.setattr(settings, "admin_key", "")
-    response = client.get("/solo-admin", headers={"X-Admin-Key": "lo-que-sea"})
-    assert response.status_code == 503
-
-
-def test_clave_de_administracion_incorrecta_o_ausente_responde_401(admin_key):
-    assert client.get("/solo-admin").status_code == 401
-    assert client.get("/solo-admin", headers={"X-Admin-Key": "otra"}).status_code == 401
-
-
-def test_clave_de_administracion_correcta_da_acceso(admin_key):
-    assert client.get("/solo-admin", headers={"X-Admin-Key": admin_key}).status_code == 200
 
 
 def test_clave_de_artefacto_inexistente_o_ausente_responde_401():

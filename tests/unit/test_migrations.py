@@ -16,7 +16,9 @@ ESQUEMA_ANTERIOR = [
     "INSERT INTO documents VALUES ('doc1', 'd1', 'acta.pdf', 'pdf', 'h1', 'done', '2026-09-26 00:00:00')",
 ]
 
-TABLAS_NUEVAS = {"units", "folders", "artifacts", "artifact_units", "artifact_domains", "queries"}
+TABLAS_NUEVAS = {
+    "units", "folders", "artifacts", "artifact_units", "artifact_domains", "queries", "admins", "admin_units",
+}
 
 
 def _revision(engine) -> str:
@@ -36,7 +38,7 @@ def test_base_anterior_se_migra_sin_perder_datos(tmp_path):
     assert TABLAS_NUEVAS <= set(inspector.get_table_names())
     assert "unit_id" in {c["name"] for c in inspector.get_columns("domains")}
     assert "folder_id" in {c["name"] for c in inspector.get_columns("documents")}
-    assert _revision(engine) == "0002"
+    assert _revision(engine) == "0003"
     with engine.connect() as connection:
         assert connection.execute(text("SELECT name, unit_id FROM domains")).one() == (
             "Memoria del Consejo",
@@ -70,7 +72,7 @@ def test_base_vacia_queda_en_la_ultima_revision(tmp_path):
     init_db(engine)
 
     assert TABLAS_NUEVAS <= set(inspect(engine).get_table_names())
-    assert _revision(engine) == "0002"
+    assert _revision(engine) == "0003"
 
 
 def test_init_db_se_puede_correr_dos_veces(tmp_path):
@@ -79,4 +81,19 @@ def test_init_db_se_puede_correr_dos_veces(tmp_path):
     init_db(engine)
     init_db(engine)
 
-    assert _revision(engine) == "0002"
+    assert _revision(engine) == "0003"
+
+
+def test_migracion_0003_crea_administradores_sin_tocar_datos(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path}/anterior.db")
+    with engine.begin() as connection:
+        for sentencia in ESQUEMA_ANTERIOR:
+            connection.execute(text(sentencia))
+
+    init_db(engine)
+
+    columnas = {c["name"] for c in inspect(engine).get_columns("admins")}
+    assert columnas == {"id", "email", "is_global", "active", "created_at", "updated_at"}
+    assert {c["name"] for c in inspect(engine).get_columns("admin_units")} == {"admin_id", "unit_id"}
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT COUNT(*) FROM documents")).scalar_one() == 1

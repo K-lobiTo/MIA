@@ -55,9 +55,16 @@ class Settings(BaseSettings):
     # cobro por petición: al responder se frena la CPU y una tarea en segundo plano no avanza.
     ingestion_sync: bool = False
 
-    # Clave de administración (panel, crear dominios y subir documentos). Sin ella, esas operaciones
-    # responden 503 en vez de quedar abiertas por olvido.
+    # Clave de automatización para los scripts (cargar documentos, reorganizar): alcance global. El
+    # panel ya no la usa, entra con cuentas del TEC. Vacía, queda desactivada.
     admin_key: str = ""
+    # Inicio de sesión del panel con Microsoft Entra ID. El tenant es el directorio del TEC; el client
+    # ID lo entrega TI al registrar la aplicación (vacío: el inicio de sesión responde 503).
+    entra_tenant_id: str = "1119bb90-88ba-4894-b7f1-de26e129d977"
+    entra_client_id: str = ""
+    # Exigir que el token declare segundo factor (claim amr con "mfa"). Solo se desactiva si la
+    # política del directorio no lo emite.
+    entra_require_mfa: bool = True
     # Tope diario de gasto de toda la API, en USD. Solo se cambia por configuración, no desde el panel.
     daily_cap_usd: float = 3.0
     # Zona horaria en la que el día de los topes se reinicia a medianoche.

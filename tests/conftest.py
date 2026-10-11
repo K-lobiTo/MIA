@@ -53,9 +53,13 @@ def admin(monkeypatch):
     return {"X-Admin-Key": ADMIN_KEY}
 
 
+import time
 import uuid
 from decimal import Decimal
 from types import SimpleNamespace
+
+import jwt
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 from mia.access.keys import generate_key, hash_key, key_prefix
 from mia.storage.models import Artifact, ArtifactDomain, ArtifactUnit
@@ -123,3 +127,116 @@ def modes_config(monkeypatch):
     for nombre, valor in valores.items():
         monkeypatch.setattr(settings, nombre, valor)
     return valores
+
+
+# --- Identidad de prueba: tokens de Microsoft firmados con una clave local (specs/004-acceso-panel-tec) ---
+
+TEST_TENANT = "1119bb90-88ba-4894-b7f1-de26e129d977"
+TEST_CLIENT_ID = "cliente-de-prueba"
+TEST_KID = "clave-de-prueba"
+
+
+@pytest.fixture(scope="session")
+def rsa_key():
+    return rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
+
+class FakeKeySource:
+    """Conjunto de claves falso: solo conoce las que se le dan, sin tocar la red."""
+
+    def __init__(self, keys: dict):
+        self.keys = keys
+
+    def get_key(self, kid):
+        return self.keys.get(kid)
+
+
+@pytest.fixture
+def entra_config(monkeypatch):
+    """La API con inicio de sesión configurado (client ID de prueba, tenant del TEC, MFA exigido)."""
+    monkeypatch.setattr(settings, "entra_client_id", TEST_CLIENT_ID)
+    monkeypatch.setattr(settings, "entra_tenant_id", TEST_TENANT)
+    monkeypatch.setattr(settings, "entra_require_mfa", True)
+
+
+@pytest.fixture
+def key_source(rsa_key):
+    return FakeKeySource({TEST_KID: rsa_key.public_key()})
+
+
+@pytest.fixture
+def key_source_override(key_source, db):
+    """Sustituye el origen de claves de Microsoft por el falso en toda la API."""
+    from mia.api.security import get_key_source
+
+    app.dependency_overrides[get_key_source] = lambda: key_source
+    yield key_source
+    app.dependency_overrides.pop(get_key_source, None)
+
+
+@pytest.fixture
+def token_factory(rsa_key, entra_config):
+    """Fábrica de ID tokens de prueba. Cada claim se puede cambiar; con valor None se quita. Con
+    `signing_key` se firma con otra clave, y con `alg` se prueban algoritmos no admitidos."""
+
+    def _make(email="persona@itcr.ac.cr", *, signing_key=None, alg="RS256", kid=TEST_KID, **overrides) -> str:
+        now = int(time.time())
+        claims = {
+            "iss": f"https://login.microsoftonline.com/{TEST_TENANT}/v2.0",
+            "aud": TEST_CLIENT_ID,
+            "tid": TEST_TENANT,
+            "email": email,
+            "amr": ["pwd", "mfa"],
+            "iat": now - 10,
+            "exp": now + 3600,
+        }
+        claims.update(overrides)
+        claims = {k: v for k, v in claims.items() if v is not None}
+        headers = {"kid": kid} if kid else {}
+        if alg == "none":
+            return jwt.encode(claims, None, algorithm="none", headers=headers)
+        if alg == "HS256":
+            return jwt.encode(claims, "secreto-compartido-de-prueba-0123456789", algorithm="HS256", headers=headers)
+        return jwt.encode(claims, signing_key or rsa_key, algorithm="RS256", headers=headers)
+
+    return _make
+
+
+@pytest.fixture
+def as_user(token_factory, key_source_override):
+    """Encabezados de una persona que inició sesión con Microsoft: `as_user("correo@itcr.ac.cr")`.
+    La persona debe estar en la lista (ver `make_admin`) para que la API la acepte."""
+
+    def _headers(email="persona@itcr.ac.cr", **overrides) -> dict:
+        return {"Authorization": f"Bearer {token_factory(email, **overrides)}"}
+
+    return _headers
+
+
+@pytest.fixture
+def units(db):
+    """Las dos unidades reales: `units.comp` y `units.adm` (ids)."""
+    from mia.storage.models import Unit
+
+    ids = SimpleNamespace(comp=str(uuid.uuid4()), adm=str(uuid.uuid4()))
+    with db() as session:
+        session.add_all(
+            [
+                Unit(id=ids.comp, name="Computación"),
+                Unit(id=ids.adm, name="Administración de Empresas"),
+            ]
+        )
+        session.commit()
+    return ids
+
+
+@pytest.fixture
+def make_admin(db):
+    """Agrega un administrador a la lista: `make_admin("a@itcr.ac.cr", global_=True)` o con `units=[nombres]`."""
+    from mia.access.admins import add_admin
+
+    def _make(email, *, global_=False, units=()):
+        with db() as session:
+            return add_admin(session, email, is_global=global_, unit_names=list(units))
+
+    return _make

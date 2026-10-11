@@ -33,7 +33,7 @@ from sqlalchemy.orm import Session
 from mia.storage.db import BASELINE_REVISION, MIGRATIONS_DIR, _normalize_url, init_db
 from mia.storage.models import Domain, Unit
 
-DESTINO = "0002"
+DESTINO = "0003"
 
 
 @dataclass
