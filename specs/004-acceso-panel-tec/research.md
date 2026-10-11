@@ -33,14 +33,25 @@ flujo OAuth no es el lugar para ahorrar una dependencia. Cumple FR-001, FR-004 y
 - *Redirección en vez de ventana emergente*: funciona en celular y no depende de que el navegador
   permita ventanas. La dirección de redirección es el origen del sitio con barra final, igual a la
   registrada en `docs/REGISTRO_APLICACION_TEC.md`.
-- *Respuesta en la query y no en el fragmento* (`responseMode: "query"`): el panel usa `HashRouter`, y
-  el fragmento `#code=...` chocaría con las rutas. Se verifica en el navegador (quickstart).
+- *Respuesta en el fragmento (valor por defecto) y sesión resuelta antes del router*: el panel usa
+  `HashRouter` y la respuesta de Microsoft llega como `#code=...`. Se resuelve procesando la redirección
+  (`initSession`, que llama a `handleRedirectPromise`) **antes** de montar React y el router: MSAL limpia
+  la dirección y el router la lee ya limpia. Se probó primero cambiar a `response_mode=query`, pero
+  MSAL 4 solo admite esa opción con autoridades OIDC genéricas, y la v5 exige una página puente propia
+  (una segunda dirección de redirección para TI), así que se descartó. Se fija `@azure/msal-browser@4`.
+  Verificado en el navegador: la dirección queda en `#/inventario` sin rastro del código.
+- *El panel no se monta dentro del iframe oculto de MSAL* (`window.self !== window.top`): la renovación
+  en silencio puede abrir esta misma dirección en un iframe y la ventana principal solo necesita leer la
+  respuesta en la dirección.
 - *Cerrar sesión solo en el navegador*: `logoutRedirect` con `onRedirectNavigate: () => false` borra la
   caché local sin cerrar la sesión de Microsoft del navegador (cerrarla en Microsoft no es lo que se
   pide y exigiría registrar otra dirección de salida). El siguiente inicio de sesión suele ser un clic.
 - *Servidor de identidad simulado*: MSAL acepta una autoridad propia con `protocolMode: "OIDC"`,
   `knownAuthorities` y `authorityMetadata` en la configuración; con eso no consulta a Microsoft.
-  `VITE_ENTRA_AUTHORITY` (opcional, solo desarrollo) apunta a ella.
+  `VITE_ENTRA_AUTHORITY` (opcional, solo desarrollo) apunta a ella. MSAL exige que la autoridad sea
+  `https`, así que el IdP simulado usa un certificado autofirmado que genera al arrancar (el navegador
+  de prueba debe aceptarlo). El emisor que se declara en los metadatos sigue siendo el de Microsoft,
+  que es el que la API espera en el token.
 
 **Descartado**: *implementar PKCE a mano* (arriba). *Auth.js/otro proveedor*: pensado para servidores.
 

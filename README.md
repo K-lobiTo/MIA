@@ -29,11 +29,11 @@ docker compose up -d qdrant
 uvicorn mia.api.main:app --reload
 ```
 
-La API queda en `http://localhost:8000/docs` (Swagger UI). También se puede levantar todo el stack con `docker compose up`. Para gestionar la información y los accesos, definir `ADMIN_KEY` en `.env` (sin ella, crear dominios, subir documentos y gestionar artefactos responden 503).
+La API queda en `http://localhost:8000/docs` (Swagger UI). También se puede levantar todo el stack con `docker compose up`. Para gestionar la información y los accesos, los scripts de carga usan `ADMIN_KEY` en `.env` (clave de automatización; vacía, queda desactivada) y el panel usa cuentas del TEC: ver "Acceso al panel con cuentas del TEC" en [docs/OPERACION.md](docs/OPERACION.md) y `python scripts/admin.py --help` para dar y quitar acceso.
 
 ## Panel de administración
 
-`cd web/admin && npm install && npm run dev` abre `http://localhost:3001` contra la API local (`MIA_API_URL=<url> npm run dev` para otra). Gestiona el **inventario** (unidades académicas, dominios, carpetas y documentos), los **artefactos y sus accesos** (clave propia, dominios y modos permitidos, topes de gasto) y el **uso** (gasto, consultas, tokens, registro y saldo). Pide la clave de administración (`ADMIN_KEY`). Detalle en [web/admin/README.md](web/admin/README.md).
+`cd web/admin && npm install && npm run dev` abre `http://localhost:3001` contra la API local (`MIA_API_URL=<url> npm run dev` para otra). Gestiona el **inventario** (unidades académicas, dominios, carpetas y documentos), los **artefactos y sus accesos** (clave propia, dominios y modos permitidos, topes de gasto) y el **uso** (gasto, consultas, tokens, registro y saldo). Pide iniciar sesión con una cuenta del TEC y muestra solo lo de la unidad de cada persona. Detalle en [web/admin/README.md](web/admin/README.md).
 
 ## Consultar la API
 

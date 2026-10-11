@@ -25,7 +25,7 @@ Registrar una aplicación web para que cuatro personas del TEC inicien sesión e
 
 - Ningún *client secret* ni certificado: es una aplicación pública de una sola página (flujo de código con PKCE).
 - Ningún permiso sobre correo, archivos, calendarios ni directorio.
-- Ninguna otra dirección de redirección.
+- Ninguna otra dirección de redirección, ni dirección de cierre de sesión: el panel cierra la sesión solo en el navegador y no manda a Microsoft a cerrarla.
 
 ## Qué devolver al equipo de MIA
 

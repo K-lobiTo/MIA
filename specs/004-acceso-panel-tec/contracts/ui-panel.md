@@ -39,8 +39,8 @@ Motivos de rechazo y su texto (`auth/errors.ts`, función pura que recibe estado
 
 ## Cliente de la API (`api/client.ts`)
 
-- Antes de cada petición pide el token a `auth/session` (que lo renueva en silencio si está por vencer,
-  con margen de 5 minutos) y envía `Authorization: Bearer`. Nunca envía `X-Admin-Key`.
+- Antes de cada petición pide el token a `auth/session` (que guarda en memoria el token vigente y lo
+  renueva en silencio cuando faltan menos de 5 minutos para que venza) y envía `Authorization: Bearer`. Nunca envía `X-Admin-Key`.
 - Ante 401 `token_expired` o `invalid_token`, fuerza una renovación y reintenta **una vez**; si la
   renovación falla pasa a `rechazada("vencida")`. Las subidas de documentos de `useUploads` se
   reintentan con este mismo mecanismo (el reintento solo repite la petición ya fallida).
