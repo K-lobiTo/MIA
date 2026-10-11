@@ -32,9 +32,9 @@ def test_sin_alcance_o_con_alcance_doble_se_rechaza(db, units):
         assert list_admins(session) == []
 
 
-def test_unidad_inexistente_no_guarda_nada(db, units):
+def test_programa_inexistente_no_guarda_nada(db, units):
     with db() as session:
-        with pytest.raises(ValueError, match="No existe la unidad 'Derecho'"):
+        with pytest.raises(ValueError, match="No existe el programa 'Derecho'"):
             add_admin(session, "a@itcr.ac.cr", is_global=False, unit_names=["Computación", "Derecho"])
         assert list_admins(session) == []
 

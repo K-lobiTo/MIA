@@ -26,7 +26,7 @@ export function Conversation({ exchanges, onRetry, literalAvailable, busy, mode,
     <div className="messages">
       {exchanges.length === 0 && (
         <div className="empty">
-          <h2>Pregunta sobre los documentos de tu unidad</h2>
+          <h2>Pregunta sobre los documentos de tu programa</h2>
           <p className="muted">Elige los dominios y escribe tu pregunta. Por ejemplo:</p>
           <ul>
             {examplesFor(mode).map((example) => (

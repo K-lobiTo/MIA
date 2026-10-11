@@ -2,18 +2,18 @@
   "_comentario": "Mapeo de la reorganización v2 (docs/Definicion_Requerimientos_V2.md, sección 2.3 y anexo A). 'ruta' es relativa a --raiz (por defecto tmp/); 'carpeta' es la carpeta de destino y las subcarpetas del origen se replican debajo de ella. 'archivos' reparte los documentos de un dominio en varios.",
   "unidades": [
     {
-      "nombre": "Computación",
+      "nombre": "Unidad de Postgrados de Computación",
       "descripcion": "Posgrados de la Unidad de Posgrado en Computación: Ciencia de la Computación, Ciberseguridad y Gerencia de Tecnologías de la Información"
     },
     {
-      "nombre": "Administración de Empresas",
-      "descripcion": "Posgrados de Administración de Empresas (hoy, la Maestría en Analítica de Negocios, compartida con Computación)"
+      "nombre": "Área académica de Analítica de Negocios",
+      "descripcion": "Maestría en Analítica de Negocios, carrera de computación y administración de empresas"
     }
   ],
   "dominios": [
     {
       "actual": "Computación: Consejo de Unidad",
-      "unidad": "Computación",
+      "unidad": "Unidad de Postgrados de Computación",
       "nombre": "Memoria del Consejo",
       "descripcion": "Actas del Consejo de la Unidad de Posgrado en Computación (sesiones ordinarias y consultas formales)",
       "origenes": [
@@ -27,7 +27,7 @@
     },
     {
       "actual": "Computación: Planes de estudio",
-      "unidad": "Computación",
+      "unidad": "Unidad de Postgrados de Computación",
       "nombre": "Currículum",
       "descripcion": "Planes de estudio, programas de curso, reformas y acuerdos curriculares de las maestrías en Ciencia de la Computación, Ciberseguridad y Gerencia de Tecnologías de la Información",
       "origenes": [
@@ -39,7 +39,7 @@
     },
     {
       "actual": "Computación: Proyectos de graduación",
-      "unidad": "Computación",
+      "unidad": "Unidad de Postgrados de Computación",
       "nombre": "Proyectos de graduación: Tesis",
       "descripcion": "Tesis completas de maestría de la Unidad de Posgrado en Computación",
       "archivos": [
@@ -65,7 +65,7 @@
     },
     {
       "actual": "Computación: Proyectos de graduación",
-      "unidad": "Computación",
+      "unidad": "Unidad de Postgrados de Computación",
       "nombre": "Proyectos de graduación: Informes de IPA",
       "descripcion": "Informes de Investigación de Práctica Aplicada de la Maestría en Ciberseguridad",
       "archivos": [
@@ -83,7 +83,7 @@
     },
     {
       "actual": "Computación: Proyectos de graduación",
-      "unidad": "Computación",
+      "unidad": "Unidad de Postgrados de Computación",
       "nombre": "Proyectos de graduación: Artículos",
       "descripcion": "Artículos científicos finales de graduación, la mayoría derivados de una IPA",
       "archivos": [
@@ -111,7 +111,7 @@
     },
     {
       "actual": "Analítica de Negocios: Consejo de Área",
-      "unidad": "Administración de Empresas",
+      "unidad": "Área académica de Analítica de Negocios",
       "nombre": "Memoria del Consejo",
       "descripcion": "Actas de las sesiones 2026 del Consejo de Área Académica de la Maestría en Analítica de Negocios",
       "origenes": [
@@ -125,7 +125,7 @@
     },
     {
       "actual": "Analítica de Negocios: Currículum",
-      "unidad": "Administración de Empresas",
+      "unidad": "Área académica de Analítica de Negocios",
       "nombre": "Currículum",
       "descripcion": "Programas de curso, documento del programa, líneas de trabajos finales de graduación y reglamentos de la Maestría en Analítica de Negocios",
       "origenes": [
@@ -158,22 +158,22 @@
   ],
   "dominios_vacios": [
     {
-      "unidad": "Computación",
+      "unidad": "Unidad de Postgrados de Computación",
       "nombre": "Apertura de promoción",
       "descripcion": "Fechas, requisitos y costos de admisión"
     },
     {
-      "unidad": "Computación",
+      "unidad": "Unidad de Postgrados de Computación",
       "nombre": "Docentes",
       "descripcion": "Información y evaluaciones del profesorado"
     },
     {
-      "unidad": "Administración de Empresas",
+      "unidad": "Área académica de Analítica de Negocios",
       "nombre": "Apertura de promoción",
       "descripcion": "Fechas, requisitos y costos de admisión"
     },
     {
-      "unidad": "Administración de Empresas",
+      "unidad": "Área académica de Analítica de Negocios",
       "nombre": "Docentes",
       "descripcion": "Información y evaluaciones del profesorado"
     }

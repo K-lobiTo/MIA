@@ -1,6 +1,6 @@
 # Panel de administración de MIA
 
-Artefacto de gestión de MIA, con tres módulos: **Inventario** (unidades académicas, dominios, carpetas y documentos), **Artefactos y accesos** (claves, dominios y modos permitidos, topes de gasto) y **Uso** (métricas, gráficas y registro de consultas). Especificación en [specs/002-panel-administracion/](../../specs/002-panel-administracion/spec.md).
+Artefacto de gestión de MIA, con tres módulos: **Inventario** (programas, dominios, carpetas y documentos), **Artefactos y accesos** (claves, dominios y modos permitidos, topes de gasto) y **Uso** (métricas, gráficas y registro de consultas). Especificación en [specs/002-panel-administracion/](../../specs/002-panel-administracion/spec.md).
 
 ## Uso
 
@@ -16,7 +16,7 @@ npm run typecheck && npm test && npm run build
 
 ## Inicio de sesión
 
-El panel pide iniciar sesión con la cuenta del TEC (Microsoft, `@itcr.ac.cr`, con verificación en dos pasos). Cada persona ve y opera solo lo de su unidad; el operador (alcance global) ve todo. Las personas autorizadas se gestionan con `python scripts/admin.py` (ver [docs/OPERACION.md](../../docs/OPERACION.md), "Acceso al panel con cuentas del TEC"). La sesión vive solo en la pestaña (`sessionStorage`); el token de identidad se renueva en silencio y, si no se puede, se pide iniciar sesión de nuevo. Los scripts de carga no pasan por aquí: usan `ADMIN_KEY` (clave de automatización).
+El panel pide iniciar sesión con la cuenta del TEC (Microsoft, `@itcr.ac.cr`, con verificación en dos pasos). Cada persona ve y opera solo lo de su programa; el operador (alcance global) ve todo. Las personas autorizadas se gestionan con `python scripts/admin.py` (ver [docs/OPERACION.md](../../docs/OPERACION.md), "Acceso al panel con cuentas del TEC"). La sesión vive solo en la pestaña (`sessionStorage`); el token de identidad se renueva en silencio y, si no se puede, se pide iniciar sesión de nuevo. Los scripts de carga no pasan por aquí: usan `ADMIN_KEY` (clave de automatización).
 
 Variables de **compilación** (`.env.local` o en la orden):
 

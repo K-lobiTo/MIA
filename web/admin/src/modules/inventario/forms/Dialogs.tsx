@@ -11,9 +11,9 @@ export function NewUnitDialog({ onClose }: CloseProps) {
   const create = useCreateUnit();
   return (
     <FormDialog
-      title="Nueva unidad académica"
-      intro="Una unidad agrupa los dominios de un área (por ejemplo, Computación)."
-      submitLabel="Crear unidad"
+      title="Nuevo programa"
+      intro="Un programa agrupa los dominios de una unidad o área académica (por ejemplo, la Unidad de Postgrados de Computación)."
+      submitLabel="Crear programa"
       fields={[
         { name: "name", label: "Nombre", required: true },
         { name: "description", label: "Descripción", multiline: true },
@@ -29,7 +29,7 @@ export function NewDomainDialog({ unitId, unitName, onClose }: CloseProps & { un
   return (
     <FormDialog
       title={`Nuevo dominio en ${unitName}`}
-      intro="El dominio es lo que se elige al consultar (por ejemplo, Currículum). Su nombre solo debe ser único dentro de la unidad."
+      intro="El dominio es lo que se elige al consultar (por ejemplo, Currículum). Su nombre solo debe ser único dentro del programa."
       submitLabel="Crear dominio"
       fields={[
         { name: "name", label: "Nombre", required: true },

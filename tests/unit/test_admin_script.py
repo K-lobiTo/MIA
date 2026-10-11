@@ -29,7 +29,7 @@ def test_agregar_global_y_listar(correr):
 
 
 def test_agregar_con_unidades(correr, db):
-    correr("agregar", "a@itcr.ac.cr", "--unidad", "Computación", "--unidad", "Administración de Empresas")
+    correr("agregar", "a@itcr.ac.cr", "--programa", "Computación", "--programa", "Administración de Empresas")
     _, salida, _ = correr("listar")
     assert "Administración de Empresas, Computación" in salida
     with db() as session:
@@ -49,9 +49,9 @@ def test_desactivar_y_reactivar(correr, db):
         assert find_active_admin(session, "a@itcr.ac.cr") is not None
 
 
-def test_unidad_inexistente_se_rechaza_sin_guardar(correr, db):
-    codigo, _, error = correr("agregar", "a@itcr.ac.cr", "--unidad", "Derecho")
-    assert codigo == 1 and "No existe la unidad 'Derecho'" in error
+def test_programa_inexistente_se_rechaza_sin_guardar(correr, db):
+    codigo, _, error = correr("agregar", "a@itcr.ac.cr", "--programa", "Derecho")
+    assert codigo == 1 and "No existe el programa 'Derecho'" in error
     _, salida, _ = correr("listar")
     assert "No hay administradores" in salida
 
@@ -75,3 +75,10 @@ def test_avisa_si_no_queda_ningun_global_activo(correr):
     assert "Aviso" not in salida
     _, salida, _ = correr("desactivar", "g@itcr.ac.cr")
     assert "ya no queda ningún administrador global activo" in salida and "ADMIN_KEY" in salida
+
+
+def test_unidad_sigue_funcionando_como_alias_de_programa(correr, db):
+    codigo, _, _ = correr("agregar", "a@itcr.ac.cr", "--unidad", "Computación")
+    assert codigo == 0
+    with db() as session:
+        assert find_active_admin(session, "a@itcr.ac.cr") is not None

@@ -2,6 +2,12 @@
 
 **Qué es este documento:** requerimientos de la segunda versión de MIA, que agrega los dos primeros artefactos reales sobre la API del MVP: un **panel de administración** para gestionar la información cargada (dominios y documentos) y la configuración de acceso de cada artefacto, y un **cliente de consulta para el personal administrativo** que permite elegir dominios y modo de respuesta (literal o con razonamiento). Parte del estado descrito en [Definicion_Requerimientos_MVP.md](Definicion_Requerimientos_MVP.md) y [ARQUITECTURA.md](ARQUITECTURA.md). Redactado el 2026-10-06 y actualizado el 2026-10-07 (el inventario pasa a ser un módulo del panel de administración); las decisiones abiertas están en la sección 9.
 
+
+> **Actualizaciones posteriores a este documento (se conserva el texto original como registro de las decisiones):**
+>
+> - **Acceso de administración (2026-10-10, feature 004).** Donde este documento dice que el panel se abre con una clave de administración (ADM-1, INV-8 y la sección de claves de acceso), desde la feature 004 la administración usa cuentas del TEC (Microsoft, con segundo factor) con alcance por programa, y `ADMIN_KEY` queda solo como clave de automatización de los scripts. Ver [specs/004-acceso-panel-tec/spec.md](../specs/004-acceso-panel-tec/spec.md) y [OPERACION.md](OPERACION.md).
+> - **Nombres de las divisiones (2026-10-11).** Donde dice "unidad académica", "Computación" y "Administración de Empresas": el término genérico es ahora **programa**, y las dos divisiones se llaman **Unidad de Postgrados de Computación** y **Área académica de Analítica de Negocios** (la Maestría en Analítica de Negocios es una carrera de computación y administración de empresas). En el código y la API el nombre técnico sigue siendo `unit`/`units`. Ver "Nombres de los programas" en [OPERACION.md](OPERACION.md).
+
 ## 1. Alcance
 
 | Decisión | Elegido | Por qué |

@@ -1,7 +1,7 @@
 # Solicitud: registrar la aplicación "MIA, Panel de administración" en el directorio del TEC
 
 **Para:** quien administre el directorio de Microsoft del TEC (Microsoft Entra ID, antes Azure AD).
-**De parte de:** el equipo que mantiene MIA (Memoria Institucional Académica, posgrados de Computación y Administración de Empresas).
+**De parte de:** el equipo que mantiene MIA (Memoria Institucional Académica, la Unidad de Postgrados de Computación y el Área académica de Analítica de Negocios).
 
 ## Qué se pide, en una línea
 

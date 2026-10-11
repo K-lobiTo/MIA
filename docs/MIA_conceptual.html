@@ -218,7 +218,7 @@ body.captura .pagina { gap: 72px; }
       <h2 id="f1-titulo">MIA en una imagen</h2>
     </div>
     <div class="lienzo" id="dibujo-general"></div>
-    <figcaption>Los documentos de cada área se guardan en una sola memoria, ordenada por unidad académica. Las personas no entran directo a esa memoria: lo hacen por distintas puertas, cada una pensada para un público y limitada a la información que le corresponde. Las dos consultas administrativas (una por unidad) ya están en funcionamiento. El panel de administración no es una puerta para consultar: desde ahí se cargan y ordenan los documentos, se decide qué ve y cuánto puede gastar cada puerta, y se sigue el uso y el gasto de cada una. Las áreas y puertas con borde punteado vienen en camino.</figcaption>
+    <figcaption>Los documentos de cada área se guardan en una sola memoria, ordenada en dos programas: la Unidad de Postgrados de Computación y el Área académica de Analítica de Negocios. Las personas no entran directo a esa memoria: lo hacen por distintas puertas, cada una pensada para un público y limitada a la información que le corresponde. Las dos consultas administrativas (una por programa) ya están en funcionamiento. El panel de administración no es una puerta para consultar: desde ahí se cargan y ordenan los documentos, se decide qué ve y cuánto puede gastar cada puerta, y se sigue el uso y el gasto de cada una. Las áreas y puertas con borde punteado vienen en camino.</figcaption>
   </figure>
 
   <figure class="figura" id="figura-2" aria-labelledby="f2-titulo">
@@ -327,7 +327,7 @@ body.captura .pagina { gap: 72px; }
       <h2 id="f4-titulo">Quién la usa y para qué</h2>
     </div>
     <div class="personas" id="lista-personas"></div>
-    <figcaption>Cada persona entra por la puerta que le corresponde y pregunta lo que necesita para su trabajo: el personal de cada unidad, por la consulta de su unidad. La misma memoria sirve a todas, y quien la mantiene trabaja desde el panel de administración.</figcaption>
+    <figcaption>Cada persona entra por la puerta que le corresponde y pregunta lo que necesita para su trabajo: el personal de cada programa, por la consulta de su programa. La misma memoria sirve a todas, y quien la mantiene trabaja desde el panel de administración.</figcaption>
   </figure>
 
   <figure class="figura" id="figura-5" aria-labelledby="f5-titulo">
@@ -336,7 +336,7 @@ body.captura .pagina { gap: 72px; }
       <h2 id="f5-titulo">Una memoria que crece</h2>
     </div>
     <div class="estantes" id="lista-estantes"></div>
-    <figcaption>La memoria se organiza por unidad académica (Computación y Administración de Empresas), y dentro de cada unidad, un estante por área. Los proyectos de graduación tienen un estante por tipo, para poder preguntar solo sobre tesis, informes o artículos. Se pueden sumar unidades, áreas y documentos nuevos en cualquier momento, sin que deje de funcionar lo que ya estaba.</figcaption>
+    <figcaption>La memoria se organiza en dos programas (la Unidad de Postgrados de Computación y el Área académica de Analítica de Negocios), y dentro de cada programa, un estante por área. Los proyectos de graduación tienen un estante por tipo, para poder preguntar solo sobre tesis, informes o artículos. Se pueden sumar programas, áreas y documentos nuevos en cualquier momento, sin que deje de funcionar lo que ya estaba.</figcaption>
   </figure>
 
   <section class="seccion" aria-labelledby="t-promesas">
@@ -352,7 +352,7 @@ body.captura .pagina { gap: 72px; }
       </div>
       <div class="promesa">
         <h3>Cada puerta ve lo suyo</h3>
-        <p>Cada puerta consulta solo las áreas que le corresponden: cada unidad ve su propia información, y un estudiante no ve información interna. Lo define el panel de administración.</p>
+        <p>Cada puerta consulta solo las áreas que le corresponden: cada programa ve su propia información, y un estudiante no ve información interna. Lo define el panel de administración.</p>
       </div>
       <div class="promesa">
         <h3>El gasto tiene tope</h3>
@@ -371,17 +371,17 @@ body.captura .pagina { gap: 72px; }
    estado: "disponible", "desarrollo" (en desarrollo) o "proximamente".
    ============================================================ */
 
-// Unidades académicas: cada una tiene sus propios estantes en la memoria (figuras 1 y 5).
-const UNIDADES = ["Computación", "Administración de Empresas"];
+// Programas: cada uno tiene sus propios estantes en la memoria (figuras 1 y 5).
+const UNIDADES = ["Unidad de Postgrados de Computación", "Área académica de Analítica de Negocios"];
 
 // Áreas de información de la memoria (figuras 1 y 5). "linea" es el texto corto de la figura 1;
-// "unidades", en qué unidades hay documentos de esa área.
+// "unidades", en qué programas hay documentos de esa área.
 const AREAS = [
   { nombre: "Memoria del Consejo", linea: "Actas de cada sesión", detalle: "Acuerdos y decisiones de cada sesión del Consejo", unidades: UNIDADES, estado: "disponible" },
   { nombre: "Currículum", linea: "Planes, cursos y reglamentos", detalle: "Planes de estudio, programas de curso con créditos, horarios y requisitos, reglamentos y líneas de trabajos finales", unidades: UNIDADES, estado: "disponible" },
-  { nombre: "Tesis", linea: "Proyectos de graduación", detalle: "Proyectos de graduación: tesis completas de maestría", unidades: ["Computación"], estado: "disponible" },
-  { nombre: "Informes de IPA", linea: "Proyectos de graduación", detalle: "Proyectos de graduación: informes de Investigación de Práctica Aplicada", unidades: ["Computación"], estado: "disponible" },
-  { nombre: "Artículos", linea: "Proyectos de graduación", detalle: "Proyectos de graduación: artículos científicos finales", unidades: ["Computación"], estado: "disponible" },
+  { nombre: "Tesis", linea: "Proyectos de graduación", detalle: "Proyectos de graduación: tesis completas de maestría", unidades: ["Unidad de Postgrados de Computación"], estado: "disponible" },
+  { nombre: "Informes de IPA", linea: "Proyectos de graduación", detalle: "Proyectos de graduación: informes de Investigación de Práctica Aplicada", unidades: ["Unidad de Postgrados de Computación"], estado: "disponible" },
+  { nombre: "Artículos", linea: "Proyectos de graduación", detalle: "Proyectos de graduación: artículos científicos finales", unidades: ["Unidad de Postgrados de Computación"], estado: "disponible" },
   { nombre: "Apertura de promoción", linea: "Fechas y requisitos de admisión", detalle: "Fechas, requisitos y costos de admisión", unidades: UNIDADES, estado: "proximamente" },
   { nombre: "Docentes", linea: "Información del profesorado", detalle: "Investigación y publicaciones del profesorado", unidades: UNIDADES, estado: "proximamente" },
 ];
@@ -399,10 +399,10 @@ const PANEL = { nombre: "Panel de administración", publico: "Quien mantiene MIA
 
 // Personas que usan MIA, con la puerta por la que entran (figura 4).
 const PERSONAS = [
-  { rol: "Coordinación", puerta: "Consulta de su unidad", pregunta: "¿Qué se acordó en el Consejo sobre las becas cuando hay más de 25 admitidos?", gana: "Encuentra decisiones pasadas sin depender de la memoria de nadie." },
-  { rol: "Consejo", puerta: "Consulta de su unidad", pregunta: "¿Ya se había discutido antes una propuesta parecida?", gana: "Decide con el historial a mano, en vez de empezar de cero." },
-  { rol: "Asistencia Administrativa", puerta: "Consulta de su unidad", pregunta: "¿Qué requisitos tiene el curso de Big Data para Negocios?", gana: "Responde dudas en segundos, sin revisar carpeta por carpeta." },
-  { rol: "Profesores", puerta: "Consulta de su unidad", pregunta: "¿Qué tesis se han hecho sobre seguridad en sistemas de pago?", gana: "Conoce lo que ya se investigó antes de proponer un tema." },
+  { rol: "Coordinación", puerta: "Consulta de su programa", pregunta: "¿Qué se acordó en el Consejo sobre las becas cuando hay más de 25 admitidos?", gana: "Encuentra decisiones pasadas sin depender de la memoria de nadie." },
+  { rol: "Consejo", puerta: "Consulta de su programa", pregunta: "¿Ya se había discutido antes una propuesta parecida?", gana: "Decide con el historial a mano, en vez de empezar de cero." },
+  { rol: "Asistencia Administrativa", puerta: "Consulta de su programa", pregunta: "¿Qué requisitos tiene el curso de Big Data para Negocios?", gana: "Responde dudas en segundos, sin revisar carpeta por carpeta." },
+  { rol: "Profesores", puerta: "Consulta de su programa", pregunta: "¿Qué tesis se han hecho sobre seguridad en sistemas de pago?", gana: "Conoce lo que ya se investigó antes de proponer un tema." },
   { rol: "Mantenimiento de la información", puerta: PANEL.nombre, pregunta: "Agregar las actas de este mes a la Memoria del Consejo de Computación.", gana: "Sube documentos, decide qué ve cada puerta y sigue el uso y el gasto de cada una." },
   { rol: "Interesados y estudiantes", puerta: "Chat web", pregunta: "¿Cuáles son los requisitos para postular este año?", gana: "Reciben respuesta de inmediato, también fuera de horario." },
 ];
@@ -423,25 +423,30 @@ function dibujarGeneral() {
   const yArea = (i) => arriba + (n - AREAS.length) * fila / 2 + i * fila;
   const yPuerta = (i) => arriba + i * fila;
   const miaY = arriba - 6, miaH = n * fila - 6;
-  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Las áreas de documentos se guardan en MIA, ordenada por unidad académica; las personas la consultan por distintas puertas, y el panel de administración organiza la memoria y configura las puertas">`;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Las áreas de documentos se guardan en MIA, ordenada en dos programas; las personas la consultan por distintas puertas, y el panel de administración organiza la memoria y configura las puertas">`;
   s += `<defs><marker id="punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="s-punta"></path></marker>`;
   s += `<marker id="punta-admin" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="s-punta-admin"></path></marker></defs>`;
   s += `<text x="${colA}" y="30" font-size="12" class="s-titulo">DOCUMENTOS POR ÁREA</text>`;
   s += `<text x="${miaX + miaW / 2}" y="30" font-size="12" text-anchor="middle" class="s-titulo">LA MEMORIA</text>`;
   s += `<text x="${colP}" y="30" font-size="12" class="s-titulo">PUERTAS DE ENTRADA</text>`;
 
-  // Memoria: una sección por unidad académica, cada una con un estante por área
+  // Memoria: una sección por programa, cada una con un estante por área
   s += `<rect x="${miaX}" y="${miaY}" width="${miaW}" height="${miaH}" rx="16" class="s-mia"></rect>`;
   s += `<text x="${miaX + miaW / 2}" y="${miaY + 62}" font-size="44" text-anchor="middle" class="s-mia-texto">MIA</text>`;
-  s += `<text x="${miaX + miaW / 2}" y="${miaY + 86}" font-size="12" text-anchor="middle" class="s-suave">por unidad y por área</text>`;
+  s += `<text x="${miaX + miaW / 2}" y="${miaY + 86}" font-size="12" text-anchor="middle" class="s-suave">por programa y por área</text>`;
   const ux = miaX + 16, uw = miaW - 32, uGap = 14;
   const uTop = miaY + 104, uh = (miaY + miaH - 16 - uTop - uGap * (UNIDADES.length - 1)) / UNIDADES.length;
   UNIDADES.forEach((u, k) => {
     const uy = uTop + k * (uh + uGap);
     s += `<rect x="${ux}" y="${uy}" width="${uw}" height="${uh}" rx="10" class="s-unidad"></rect>`;
-    s += `<text x="${ux + uw / 2}" y="${uy + 22}" font-size="11.5" text-anchor="middle" class="s-unidad-texto">${esc(u)}</text>`;
+    // El nombre es largo: se parte en dos renglones por la palabra "de" central, para que quepa en la sección.
+    const corte = u.indexOf(" de ", 8);
+    const renglones = corte > 0 ? [u.slice(0, corte), u.slice(corte + 1)] : [u];
+    renglones.forEach((texto, r) => {
+      s += `<text x="${ux + uw / 2}" y="${uy + 20 + r * 14}" font-size="11.5" text-anchor="middle" class="s-unidad-texto">${esc(texto)}</text>`;
+    });
     for (let e = 0; e < 4; e++) {
-      const y = uy + 42 + e * 18;
+      const y = uy + 24 + renglones.length * 14 + e * 18;
       if (y > uy + uh - 10) break;
       s += `<line x1="${ux + 24}" y1="${y}" x2="${ux + uw - 24}" y2="${y}" class="s-estante"></line>`;
     }
@@ -530,7 +535,7 @@ function dibujarEstantes() {
       <span class="estado estado-${a.estado}">${ETIQUETA_ESTADO[a.estado] || a.estado}</span>
     </div>`;
   });
-  tarjetas.push(`<div class="estante estante-nuevo"><strong style="font-size:1.6rem;line-height:1">+</strong><span>Un área o una unidad nueva, cuando haga falta</span></div>`);
+  tarjetas.push(`<div class="estante estante-nuevo"><strong style="font-size:1.6rem;line-height:1">+</strong><span>Un área o un programa nuevo, cuando haga falta</span></div>`);
   document.getElementById("lista-estantes").innerHTML = tarjetas.join("");
 }
 

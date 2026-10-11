@@ -71,7 +71,7 @@ def _obtener_unidad(session: Session, datos: dict, resultado: Resultado) -> Unit
         unidad = Unit(id=str(uuid.uuid4()), name=datos["nombre"], description=datos.get("descripcion", ""))
         session.add(unidad)
         session.flush()
-        resultado.acciones.append(f"Crear unidad '{unidad.name}'")
+        resultado.acciones.append(f"Crear programa '{unidad.name}'")
     return unidad
 
 
@@ -204,7 +204,7 @@ def _resumen(session: Session) -> list[str]:
                 lineas.extend(_resumen_carpeta(session, carpeta, 2))
     sueltos = session.scalars(select(Domain).where(Domain.unit_id.is_(None)).order_by(Domain.name)).all()
     for dominio in sueltos:
-        lineas.append(f"SIN UNIDAD: {dominio.name} ({_contar(session, dominio.id)} documentos)")
+        lineas.append(f"SIN PROGRAMA: {dominio.name} ({_contar(session, dominio.id)} documentos)")
     return lineas
 
 
@@ -264,7 +264,7 @@ def main() -> int:
         # Simular no debe modificar la base: si el esquema no está migrado, se avisa y se sale.
         columnas = {c["name"] for c in inspect(engine).get_columns("domains")} if inspect(engine).has_table("domains") else set()
         if "unit_id" not in columnas:
-            print("El esquema aún no tiene las unidades. Arranca la API (aplica las migraciones) o corre sin --simular.")
+            print("El esquema aún no tiene los programas. Arranca la API (aplica las migraciones) o corre sin --simular.")
             return 1
     else:
         init_db()

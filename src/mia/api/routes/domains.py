@@ -79,11 +79,11 @@ def create_domain(
     payload: DomainCreate, principal: Principal = Depends(require_admin), session: Session = Depends(get_session)
 ) -> DomainCreated:
     if session.get(Unit, payload.unit_id) is None:
-        raise HTTPException(status_code=404, detail="Unidad no encontrada.")
+        raise HTTPException(status_code=404, detail="Programa no encontrado.")
     ensure_unit(principal, payload.unit_id, "domain.create", payload.unit_id)
     existing = session.scalar(select(Domain).where(Domain.unit_id == payload.unit_id, Domain.name == payload.name))
     if existing is not None:
-        raise HTTPException(status_code=409, detail=f"Ya existe un dominio '{payload.name}' en esa unidad.")
+        raise HTTPException(status_code=409, detail=f"Ya existe un dominio '{payload.name}' en ese programa.")
     domain = Domain(
         id=str(uuid.uuid4()), unit_id=payload.unit_id, name=payload.name, description=payload.description
     )

@@ -150,7 +150,7 @@ def _to_out(session: Session, artifact: Artifact) -> ArtifactOut:
 
 def _validate_access(session: Session, access: Access) -> None:
     if not (access.all_domains or access.unit_ids or access.domain_ids):
-        raise HTTPException(status_code=422, detail="El artefacto debe tener acceso al menos a un dominio o unidad.")
+        raise HTTPException(status_code=422, detail="El artefacto debe tener acceso al menos a un dominio o programa.")
     known_units = set(session.scalars(select(Unit.id).where(Unit.id.in_(access.unit_ids)))) if access.unit_ids else set()
     missing_units = set(access.unit_ids) - known_units
     known_domains = (
@@ -160,7 +160,7 @@ def _validate_access(session: Session, access: Access) -> None:
     if missing_units or missing_domains:
         raise HTTPException(
             status_code=422,
-            detail="Unidades o dominios inexistentes: " + ", ".join(sorted(missing_units | missing_domains)),
+            detail="Programas o dominios inexistentes: " + ", ".join(sorted(missing_units | missing_domains)),
         )
 
 

@@ -11,7 +11,7 @@ Uso:
     python scripts/pruebas_mvp.py --url http://localhost:8000 --clave mia_... --modo razonamiento
 
 La clave es la de un artefacto con acceso a las dos unidades (también se puede dar en la variable
-MIA_ARTIFACT_KEY). Los dominios se identifican por "Unidad / Dominio": desde la versión 2 el nombre
+MIA_ARTIFACT_KEY). Los dominios se identifican por "Programa / Dominio": desde la versión 2 el nombre
 de un dominio solo es único dentro de su unidad.
 
 Solo usa la biblioteca estándar, para poder correrlo sin instalar el proyecto.
@@ -28,14 +28,14 @@ import urllib.request
 from dataclasses import dataclass
 
 SEPARADOR = " / "
-AN_CONSEJO = "Administración de Empresas / Memoria del Consejo"
-AN_CURRICULUM = "Administración de Empresas / Currículum"
-CO_PLANES = "Computación / Currículum"
-CO_CONSEJO = "Computación / Memoria del Consejo"
+AN_CONSEJO = "Área académica de Analítica de Negocios / Memoria del Consejo"
+AN_CURRICULUM = "Área académica de Analítica de Negocios / Currículum"
+CO_PLANES = "Unidad de Postgrados de Computación / Currículum"
+CO_CONSEJO = "Unidad de Postgrados de Computación / Memoria del Consejo"
 # Los proyectos de graduación de Computación se reparten por tipo (anexo A de Definicion_Requerimientos_V2.md).
-CO_TESIS = "Computación / Proyectos de graduación: Tesis"
-CO_INFORMES = "Computación / Proyectos de graduación: Informes de IPA"
-CO_ARTICULOS = "Computación / Proyectos de graduación: Artículos"
+CO_TESIS = "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis"
+CO_INFORMES = "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA"
+CO_ARTICULOS = "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
 CO_PROYECTOS = [CO_TESIS, CO_INFORMES, CO_ARTICULOS]
 
 NO_INFO_PREFIX = "No encontré información suficiente"

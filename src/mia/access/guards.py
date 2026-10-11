@@ -39,4 +39,4 @@ def ensure_can_grant(
     """El acceso que se da a un artefacto debe caer dentro del alcance; "todos los dominios" es solo global."""
     if not can_grant_access(session, principal, all_domains, unit_ids, domain_ids):
         audit.log_write(principal, action, target, result="rechazado")
-        raise out_of_scope("Un artefacto solo puede dar acceso a dominios de tus unidades.")
+        raise out_of_scope("Un artefacto solo puede dar acceso a dominios de tus programas.")

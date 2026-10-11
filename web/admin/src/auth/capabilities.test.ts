@@ -37,6 +37,6 @@ describe("scopeLabel", () => {
     expect(
       scopeLabel({ ...unidad, units: [{ id: "1", name: "Computación" }, { id: "2", name: "Administración de Empresas" }] }),
     ).toBe("Computación, Administración de Empresas");
-    expect(scopeLabel({ ...unidad, units: [] })).toBe("Sin unidades");
+    expect(scopeLabel({ ...unidad, units: [] })).toBe("Sin programas");
   });
 });

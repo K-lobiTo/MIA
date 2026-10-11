@@ -27,25 +27,25 @@ describe("describeAccess", () => {
     expect(describeAccess({ all_domains: true, unit_ids: [], domain_ids: [] }, units)).toMatch(/Todos los dominios/);
   });
 
-  it("una unidad completa", () => {
+  it("un programa completo", () => {
     expect(describeAccess({ all_domains: false, unit_ids: ["u1"], domain_ids: [] }, units)).toBe(
-      "Unidad Computación completa",
+      "Computación (programa completo)",
     );
   });
 
-  it("dominios puntuales con su unidad, para distinguir los que se llaman igual", () => {
+  it("dominios puntuales con su programa, para distinguir los que se llaman igual", () => {
     expect(describeAccess({ all_domains: false, unit_ids: [], domain_ids: ["d1", "d3"] }, units)).toBe(
       "Computación / Currículum; Administración de Empresas / Currículum",
     );
   });
 
-  it("unidades y dominios combinados", () => {
+  it("programas y dominios combinados", () => {
     expect(describeAccess({ all_domains: false, unit_ids: ["u1"], domain_ids: ["d3"] }, units)).toBe(
-      "Unidad Computación completa; Administración de Empresas / Currículum",
+      "Computación (programa completo); Administración de Empresas / Currículum",
     );
   });
 
-  it("no falla con una unidad o dominio que ya no existe", () => {
+  it("no falla con un programa o dominio que ya no existe", () => {
     expect(describeAccess({ all_domains: false, unit_ids: ["x"], domain_ids: ["y"] }, units)).toContain("eliminad");
     expect(describeAccess({ all_domains: false, unit_ids: [], domain_ids: [] }, units)).toBe("Sin acceso");
   });
@@ -66,7 +66,7 @@ describe("describeModes y describeCost", () => {
 });
 
 describe("pruneCoveredDomains", () => {
-  it("quita los dominios que ya cubre una unidad completa", () => {
+  it("quita los dominios que ya cubre un programa completo", () => {
     expect(pruneCoveredDomains(["u1"], ["d1", "d3"], units)).toEqual(["d3"]);
     expect(pruneCoveredDomains([], ["d1"], units)).toEqual(["d1"]);
   });

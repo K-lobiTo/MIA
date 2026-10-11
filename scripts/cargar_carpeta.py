@@ -1,18 +1,18 @@
 """Carga todos los documentos de una o varias carpetas a un dominio de MIA, a través de la API.
 
-Crea el dominio si no existe (lo busca por nombre, dentro de la unidad indicada), sube cada archivo PDF, DOCX o TXT de las
+Crea el dominio si no existe (lo busca por nombre, dentro del programa indicado), sube cada archivo PDF, DOCX o TXT de las
 carpetas (recorriendo subcarpetas) y espera a que termine de indexarse antes de subir el
 siguiente, para no acumular ingestas en paralelo en la API. Un archivo que ya estaba en el
 dominio no se duplica: la API devuelve el documento existente.
 
 Uso (ver "Cargar documentos" en docs/OPERACION.md):
     python scripts/cargar_carpeta.py --url http://localhost:8010 --clave "$ADMIN_KEY" \\
-        --unidad "Administración de Empresas" --dominio "Memoria del Consejo" \\
+        --programa "Área académica de Analítica de Negocios" --dominio "Memoria del Consejo" \\
         --descripcion "Actas del Consejo de Área Académica" \\
         "tmp/Información_analítica_de_negocios/ACTAS"
 
 La clave de automatización (ADMIN_KEY de la API, con alcance global) también se puede dar en la variable MIA_ADMIN_KEY.
-Crear un dominio exige la unidad (se crea si no existe); un dominio que ya existe no la necesita.
+Crear un dominio exige el programa (se crea si no existe); un dominio que ya existe no la necesita.
 
 Solo usa la biblioteca estándar, para poder correrlo sin instalar el proyecto.
 """
@@ -56,12 +56,12 @@ def obtener_unidad(api: str, nombre: str) -> str:
 
 
 def obtener_dominio(api: str, nombre: str, descripcion: str, unidad: str | None) -> str:
-    # Desde la versión 2 el nombre de un dominio solo es único dentro de su unidad.
+    # Desde la versión 2 el nombre de un dominio solo es único dentro de su programa.
     for dominio in pedir(f"{api}/domains"):
         if dominio["name"] == nombre and (unidad is None or dominio.get("unit_name") == unidad):
             return dominio["id"]
     if unidad is None:
-        raise SystemExit(f"El dominio '{nombre}' no existe: indica --unidad para crearlo.")
+        raise SystemExit(f"El dominio '{nombre}' no existe: indica --programa para crearlo.")
     datos = json.dumps(
         {"unit_id": obtener_unidad(api, unidad), "name": nombre, "description": descripcion}
     ).encode()
@@ -96,7 +96,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--url", required=True, help="URL de la API, con la ingesta activada")
     parser.add_argument("--clave", default=CLAVE_ADMIN, help="Clave de automatización, ADMIN_KEY de la API (o MIA_ADMIN_KEY)")
-    parser.add_argument("--unidad", help="Unidad académica del dominio (se crea si no existe)")
+    parser.add_argument(
+        "--programa", "--unidad", dest="programa", help="Programa del dominio, por su nombre exacto (se crea si no existe)"
+    )
     parser.add_argument("--dominio", required=True, help="Nombre del dominio (se crea si no existe)")
     parser.add_argument("--descripcion", default="", help="Descripción, si se crea el dominio")
     parser.add_argument(
@@ -115,7 +117,7 @@ def main() -> int:
         and p.suffix.lower() in TIPOS
         and not any(texto in p.name for texto in args.excluir)
     )
-    dominio_id = obtener_dominio(api, args.dominio, args.descripcion, args.unidad)
+    dominio_id = obtener_dominio(api, args.dominio, args.descripcion, args.programa)
     print(f"Dominio '{args.dominio}' ({dominio_id}): {len(archivos)} archivos")
 
     errores = 0

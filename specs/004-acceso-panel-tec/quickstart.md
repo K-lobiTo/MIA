@@ -56,12 +56,12 @@ claves inyectado: no necesitan red ni client ID.
 
 ```bash
 python scripts/admin.py agregar operador@itcr.ac.cr --global
-python scripts/admin.py agregar coord.comp@itcr.ac.cr --unidad "Computación"
-python scripts/admin.py agregar coord.adm@itcr.ac.cr --unidad "Administración de Empresas"
+python scripts/admin.py agregar coord.comp@itcr.ac.cr --programa "Unidad de Postgrados de Computación"
+python scripts/admin.py agregar coord.adm@itcr.ac.cr --programa "Área académica de Analítica de Negocios"
 python scripts/admin.py listar
 python scripts/admin.py desactivar coord.adm@itcr.ac.cr
 python scripts/admin.py listar        # ahora figura inactivo
-python scripts/admin.py agregar coord.adm@itcr.ac.cr --unidad "Administración de Empresas"   # reactiva
+python scripts/admin.py agregar coord.adm@itcr.ac.cr --programa "Área académica de Analítica de Negocios"   # reactiva
 ```
 
 Esperado: cada orden confirma lo hecho; `listar` muestra correo, alcance y estado; una unidad inexistente

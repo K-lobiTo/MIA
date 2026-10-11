@@ -1,13 +1,13 @@
 import type { ArtifactAccess, ModeId, UnitNode } from "../../api/types";
 
-/** Acceso de un artefacto en lenguaje claro (ART-1): "Todos los dominios", unidades completas y
+/** Acceso de un artefacto en lenguaje claro (ART-1): "Todos los dominios", programas completos y
  * dominios elegidos uno a uno. */
 export function describeAccess(access: ArtifactAccess, units: UnitNode[]): string {
-  if (access.all_domains) return "Todos los dominios (incluye los de unidades futuras)";
+  if (access.all_domains) return "Todos los dominios (incluye los de programas futuros)";
   const parts: string[] = [];
   for (const unitId of access.unit_ids) {
     const unit = units.find((u) => u.id === unitId);
-    parts.push(`Unidad ${unit ? unit.name : "(eliminada)"} completa`);
+    parts.push(`${unit ? unit.name : "(programa eliminado)"} (programa completo)`);
   }
   for (const domainId of access.domain_ids) {
     const unit = units.find((u) => u.domains.some((d) => d.id === domainId));

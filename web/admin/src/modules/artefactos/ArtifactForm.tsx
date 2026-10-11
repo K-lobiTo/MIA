@@ -109,7 +109,7 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
               <input type="checkbox" checked={allDomains} onChange={(e) => setAllDomains(e.target.checked)} />
               <span>
                 <strong>Todos los dominios</strong>
-                <span className="mode-cost">Incluye los de unidades que se creen después.</span>
+                <span className="mode-cost">Incluye los de programas que se creen después.</span>
               </span>
             </label>
           )}
@@ -121,8 +121,8 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
                   <label className="choice">
                     <input type="checkbox" checked={unitChecked} onChange={() => toggleUnit(unit.id)} />
                     <span>
-                      <strong>Unidad {unit.name} completa</strong>
-                      <span className="mode-cost">Incluye los dominios que se creen después en esta unidad.</span>
+                      <strong>{unit.name} (programa completo)</strong>
+                      <span className="mode-cost">Incluye los dominios que se creen después en este programa.</span>
                     </span>
                   </label>
                   <div className="domains">
@@ -141,7 +141,7 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
                 </div>
               );
             })}
-          {!hasAccess && <p className="hint">Elige al menos un dominio o unidad.</p>}
+          {!hasAccess && <p className="hint">Elige al menos un dominio o programa.</p>}
         </fieldset>
 
         <fieldset>

@@ -37,7 +37,7 @@ def not_authorized() -> AuthError:
     )
 
 
-def out_of_scope(detail: str = "Eso queda fuera de las unidades a las que tienes acceso.") -> AuthError:
+def out_of_scope(detail: str = "Eso queda fuera de los programas a los que tienes acceso.") -> AuthError:
     return AuthError(403, "out_of_scope", detail)
 
 

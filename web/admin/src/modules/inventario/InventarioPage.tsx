@@ -93,7 +93,7 @@ export function InventarioPage() {
       </button>
     );
     if (node.kind === "unit") {
-      const unitName = lookup?.units.get(node.id) ?? "la unidad";
+      const unitName = lookup?.units.get(node.id) ?? "el programa";
       return (
         <button className="btn btn-small" onClick={() => setDialog({ kind: "domain", unitId: node.id, unitName })}>
           + Dominio
@@ -148,21 +148,21 @@ export function InventarioPage() {
         <input
           className="inv-search"
           type="search"
-          placeholder="Buscar unidad, dominio, carpeta o documento"
+          placeholder="Buscar programa, dominio, carpeta o documento"
           aria-label="Buscar en el inventario"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
         {canCreateUnit && (
           <button className="btn btn-primary" onClick={() => setDialog({ kind: "unit" })}>
-            + Nueva unidad
+            + Nuevo programa
           </button>
         )}
       </div>
 
       {data && !ingestionEnabled && (
         <div className="notice notice-warn" role="status">
-          <strong>Modo solo lectura para documentos.</strong> {READ_ONLY_REASON} Se puede ver todo el inventario, y crear unidades,
+          <strong>Modo solo lectura para documentos.</strong> {READ_ONLY_REASON} Se puede ver todo el inventario, y crear programas,
           dominios y carpetas.
         </div>
       )}
@@ -199,8 +199,8 @@ export function InventarioPage() {
           {filtered.unassigned_domains.length > 0 && (
             <div className="card unit-card">
               <div className="branch-head">
-                <span className="branch-title unit">Sin unidad</span>
-                <span className="branch-desc">Dominios que todavía no pertenecen a ninguna unidad académica</span>
+                <span className="branch-title unit">Sin programa</span>
+                <span className="branch-desc">Dominios que todavía no pertenecen a ningún programa</span>
               </div>
               <div className="branch-children">
                 {filtered.unassigned_domains.map((domain) => (

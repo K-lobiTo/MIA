@@ -36,7 +36,8 @@ def _now() -> datetime:
 
 
 class Unit(Base):
-    """Unidad académica: agrupa dominios (Computación, Administración de Empresas)."""
+    """Programa: agrupa dominios. Hoy son dos: la Unidad de Postgrados de Computación y el Área académica de
+    Analítica de Negocios (la clase y la tabla conservan el nombre técnico `Unit`/`units`)."""
 
     __tablename__ = "units"
 

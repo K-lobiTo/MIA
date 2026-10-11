@@ -51,12 +51,12 @@ class Servicio:
 # La API va primero: los sitios llaman a la API, y al apagar se deja para el final.
 SERVICIOS = [
     Servicio("MIA", "https://mia-main.up.railway.app", "/health", "API"),
-    Servicio("mia-computacion", "https://mia-computacion.up.railway.app", "/", "Consulta de Computación"),
+    Servicio("mia-computacion", "https://mia-computacion.up.railway.app", "/", "Consulta de la Unidad de Postgrados de Computación"),
     Servicio(
         "mia-administracion",
         "https://mia-administracion.up.railway.app",
         "/",
-        "Consulta de Administración de Empresas",
+        "Consulta del Área académica de Analítica de Negocios",
     ),
     Servicio("mia-panel", "https://mia-panel.up.railway.app", "/", "Panel de administración"),
 ]

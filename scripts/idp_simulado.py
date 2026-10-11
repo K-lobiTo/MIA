@@ -4,7 +4,7 @@ Levanta dos servidores en esta misma máquina:
   - Un "Microsoft" simulado en https://localhost:9000 (certificado autofirmado que se genera al arrancar):
     ofrece cuentas de prueba, el flujo de código con PKCE y la renovación con refresh token, y firma los ID
     tokens con una clave RSA local con el emisor, el tenant y los claims que espera la API.
-  - La API de MIA en http://localhost:8000 con una base SQLite temporal ya sembrada (dos unidades con
+  - La API de MIA en http://localhost:8000 con una base SQLite temporal ya sembrada (dos programas con
     sus dominios, documentos, artefactos y consultas) y con esas claves de firma como únicas de confianza.
 
 Nada de esto toca producción: la confianza en la clave simulada se inyecta aquí, en este proceso, y no
@@ -44,14 +44,14 @@ IDP_PORT = 9000
 API_PORT = 8000
 PANEL_ORIGIN = "http://localhost:3001"
 
-# correo -> (nombre, unidades de la lista de administradores o None si es global, ¿incluye segundo factor?)
-# Las cuentas con unidades None y "no listada" se manejan aparte.
+# correo -> (nombre, programas de la lista de administradores o None si es global, ¿incluye segundo factor?)
+# Las cuentas con programas None y "no listada" se manejan aparte.
 CUENTAS = {
     "operador@itcr.ac.cr": ("Operador de MIA (global)", "global", True),
-    "coord.comp@itcr.ac.cr": ("Coordinador de Computación", ["Computación"], True),
-    "ayudante.comp@itcr.ac.cr": ("Ayudante de Computación", ["Computación"], True),
-    "coord.adm@itcr.ac.cr": ("Coordinador de Administración de Empresas", ["Administración de Empresas"], True),
-    "sinmfa@itcr.ac.cr": ("Listada pero sin segundo factor", ["Computación"], False),
+    "coord.comp@itcr.ac.cr": ("Coordinador de la Unidad de Postgrados de Computación", ["Unidad de Postgrados de Computación"], True),
+    "ayudante.comp@itcr.ac.cr": ("Ayudante de la Unidad de Postgrados de Computación", ["Unidad de Postgrados de Computación"], True),
+    "coord.adm@itcr.ac.cr": ("Coordinador del Área académica de Analítica de Negocios", ["Área académica de Analítica de Negocios"], True),
+    "sinmfa@itcr.ac.cr": ("Listada pero sin segundo factor", ["Unidad de Postgrados de Computación"], False),
     "sinregistro@itcr.ac.cr": ("Cuenta del TEC que no está en la lista", None, True),
 }
 
@@ -253,7 +253,7 @@ def _certificado(carpeta: Path) -> tuple[str, str]:
 
 
 def sembrar(session_factory) -> None:
-    """Datos de ejemplo: dos unidades con dominio, carpeta, documentos, artefactos y consultas, y la lista de administradores."""
+    """Datos de ejemplo: dos programas con dominio, carpeta, documentos, artefactos y consultas, y la lista de administradores."""
     from decimal import Decimal
 
     from mia.access.admins import add_admin
@@ -262,8 +262,8 @@ def sembrar(session_factory) -> None:
 
     with session_factory() as s:
         unidades = {}
-        for nombre in ("Computación", "Administración de Empresas"):
-            unidades[nombre] = Unit(id=str(uuid.uuid4()), name=nombre, description=f"Posgrados de {nombre}")
+        for nombre in ("Unidad de Postgrados de Computación", "Área académica de Analítica de Negocios"):
+            unidades[nombre] = Unit(id=str(uuid.uuid4()), name=nombre, description=f"Programa: {nombre}")
             s.add(unidades[nombre])
         s.flush()
         artefactos = []

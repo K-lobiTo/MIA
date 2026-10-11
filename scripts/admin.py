@@ -1,13 +1,13 @@
 """Gestiona quién puede entrar al panel de administración con su cuenta del TEC.
 
 Cada persona se identifica por su correo institucional y tiene un alcance: global (ve y hace todo) o
-de una o más unidades (solo lo de ellas). No hay pantalla en el panel: se gestiona aquí, sobre la misma
+de uno o más programas (solo lo de ellos). No hay pantalla en el panel: se gestiona aquí, sobre la misma
 base de datos que usa la API (DATABASE_URL).
 
 Uso (ver "Dar y quitar acceso al panel" en docs/OPERACION.md):
     python scripts/admin.py agregar operador@itcr.ac.cr --global
-    python scripts/admin.py agregar coord@itcr.ac.cr --unidad "Computación"
-    python scripts/admin.py agregar otra@itcr.ac.cr --unidad "Computación" --unidad "Administración de Empresas"
+    python scripts/admin.py agregar coord@itcr.ac.cr --programa "Unidad de Postgrados de Computación"
+    python scripts/admin.py agregar otra@itcr.ac.cr --programa "Unidad de Postgrados de Computación" --programa "Área académica de Analítica de Negocios"
     python scripts/admin.py listar
     python scripts/admin.py desactivar coord@itcr.ac.cr
     python scripts/admin.py --env-file .env.produccion listar      # contra la base de producción
@@ -30,7 +30,7 @@ def _cargar_entorno(ruta: str) -> None:
 
 
 def _alcance(info) -> str:
-    return "global" if info.is_global else ", ".join(info.units) or "(sin unidades)"
+    return "global" if info.is_global else ", ".join(info.units) or "(sin programas)"
 
 
 def ejecutar(args, session_factory) -> int:
@@ -39,8 +39,8 @@ def ejecutar(args, session_factory) -> int:
     with session_factory() as session:
         try:
             if args.orden == "agregar":
-                admin = add_admin(session, args.correo, is_global=args.global_, unit_names=args.unidad or [])
-                alcance = "global" if admin.is_global else ", ".join(args.unidad)
+                admin = add_admin(session, args.correo, is_global=args.global_, unit_names=args.programa or [])
+                alcance = "global" if admin.is_global else ", ".join(args.programa)
                 print(f"Listo: {admin.email} tiene acceso con alcance {alcance}.")
             elif args.orden == "desactivar":
                 deactivate_admin(session, args.correo)
@@ -70,8 +70,10 @@ def main(argv: list[str] | None = None, session_factory=None) -> int:
 
     agregar = ordenes.add_parser("agregar", help="agrega un administrador o cambia su alcance y lo reactiva")
     agregar.add_argument("correo")
-    agregar.add_argument("--global", dest="global_", action="store_true", help="alcance global: todas las unidades")
-    agregar.add_argument("--unidad", action="append", help="nombre de la unidad (se puede repetir)")
+    agregar.add_argument("--global", dest="global_", action="store_true", help="alcance global: todos los programas")
+    agregar.add_argument(
+        "--programa", "--unidad", dest="programa", action="append", help="nombre exacto del programa (se puede repetir)"
+    )
     desactivar = ordenes.add_parser("desactivar", help="quita el acceso sin borrar el registro")
     desactivar.add_argument("correo")
     ordenes.add_parser("listar", help="muestra los administradores, su alcance y si están activos")

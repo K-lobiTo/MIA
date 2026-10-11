@@ -33,7 +33,7 @@ La API queda en `http://localhost:8000/docs` (Swagger UI). También se puede lev
 
 ## Panel de administración
 
-`cd web/admin && npm install && npm run dev` abre `http://localhost:3001` contra la API local (`MIA_API_URL=<url> npm run dev` para otra). Gestiona el **inventario** (unidades académicas, dominios, carpetas y documentos), los **artefactos y sus accesos** (clave propia, dominios y modos permitidos, topes de gasto) y el **uso** (gasto, consultas, tokens, registro y saldo). Pide iniciar sesión con una cuenta del TEC y muestra solo lo de la unidad de cada persona. Detalle en [web/admin/README.md](web/admin/README.md).
+`cd web/admin && npm install && npm run dev` abre `http://localhost:3001` contra la API local (`MIA_API_URL=<url> npm run dev` para otra). Gestiona el **inventario** (programas, dominios, carpetas y documentos), los **artefactos y sus accesos** (clave propia, dominios y modos permitidos, topes de gasto) y el **uso** (gasto, consultas, tokens, registro y saldo). Pide iniciar sesión con una cuenta del TEC y muestra solo lo de el programa de cada persona. Detalle en [web/admin/README.md](web/admin/README.md).
 
 ## Consultar la API
 
@@ -52,7 +52,7 @@ ruff check src tests scripts
 cd web/admin && npm test            # pruebas del panel
 cd web/consulta && npm test         # pruebas de la Consulta
 
-# Pruebas de aceptación contra una instancia con los datos reales cargados (clave de un artefacto con acceso a las dos unidades)
+# Pruebas de aceptación contra una instancia con los datos reales cargados (clave de un artefacto con acceso a las dos programas)
 python scripts/pruebas_mvp.py --url https://mia-main.up.railway.app --clave mia_...
 ```
 

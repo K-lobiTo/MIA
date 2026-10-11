@@ -125,7 +125,7 @@ def _domain_node(
 def inventory(
     principal: Principal = Depends(require_admin), session: Session = Depends(get_session)
 ) -> InventoryOut:
-    """Árbol (unidades, dominios, carpetas y documentos) del alcance de quien pregunta, en una sola petición."""
+    """Árbol (programas, dominios, carpetas y documentos) del alcance de quien pregunta, en una sola petición."""
     units = [u for u in session.scalars(select(Unit)) if unit_in_scope(principal, u.id)]
     domains = [d for d in session.scalars(select(Domain)) if domain_in_scope(principal, d)]
     all_folders = list(session.scalars(select(Folder)))
@@ -183,7 +183,7 @@ def create_unit(
 ) -> Unit:
     ensure_global(principal, "unit.create", payload.name)
     if session.scalar(select(Unit).where(Unit.name == payload.name)) is not None:
-        raise HTTPException(status_code=409, detail=f"Ya existe una unidad llamada '{payload.name}'.")
+        raise HTTPException(status_code=409, detail=f"Ya existe un programa llamado '{payload.name}'.")
     unit = Unit(id=str(uuid.uuid4()), name=payload.name, description=payload.description)
     session.add(unit)
     session.commit()

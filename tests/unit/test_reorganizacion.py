@@ -225,7 +225,7 @@ def test_informa_los_documentos_que_no_encuentra_en_el_origen(db, raiz):
 def test_el_mapeo_real_es_coherente_con_el_anexo_a():
     mapeo = json.loads((RAIZ_REPO / "scripts" / "datos" / "reorganizacion_v2.json").read_text())
 
-    assert {u["nombre"] for u in mapeo["unidades"]} == {"Computación", "Administración de Empresas"}
+    assert {u["nombre"] for u in mapeo["unidades"]} == {"Unidad de Postgrados de Computación", "Área académica de Analítica de Negocios"}
     actuales = {d["actual"] for d in mapeo["dominios"]}
     assert actuales == {
         "Computación: Consejo de Unidad",
@@ -246,9 +246,9 @@ def test_el_mapeo_real_es_coherente_con_el_anexo_a():
     assert len(todos) == len(set(todos)) == 30
     nombres_unidad = {u["nombre"] for u in mapeo["unidades"]}
     assert all(d["unidad"] in nombres_unidad for d in mapeo["dominios"])
-    # Con los dominios que se crean vacíos, Computación llega a 7 dominios y Administración de Empresas a 4.
+    # Con los dominios que se crean vacíos, la Unidad de Postgrados de Computación llega a 7 dominios y el Área académica de Analítica de Negocios a 4.
     por_unidad: dict[str, set[str]] = {}
     for d in mapeo["dominios"] + mapeo["dominios_vacios"]:
         por_unidad.setdefault(d["unidad"], set()).add(d["nombre"])
-    assert len(por_unidad["Computación"]) == 7
-    assert len(por_unidad["Administración de Empresas"]) == 4
+    assert len(por_unidad["Unidad de Postgrados de Computación"]) == 7
+    assert len(por_unidad["Área académica de Analítica de Negocios"]) == 4

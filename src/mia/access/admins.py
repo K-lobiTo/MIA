@@ -31,15 +31,15 @@ def add_admin(session: Session, email: str, *, is_global: bool, unit_names: list
     global o al menos una unidad (por nombre), nunca ninguno."""
     email = normalize_email(email)
     if is_global and unit_names:
-        raise ValueError("El alcance es global o de unidades, no ambos.")
+        raise ValueError("El alcance es global o de programas, no ambos.")
     if not is_global and not unit_names:
-        raise ValueError("Indica el alcance: global o al menos una unidad.")
+        raise ValueError("Indica el alcance: global o al menos un programa.")
     units: list[Unit] = []
     for name in dict.fromkeys(unit_names):
         unit = session.scalar(select(Unit).where(Unit.name == name))
         if unit is None:
             known = ", ".join(sorted(u.name for u in session.scalars(select(Unit)))) or "ninguna"
-            raise ValueError(f"No existe la unidad '{name}'. Unidades: {known}.")
+            raise ValueError(f"No existe el programa '{name}'. Programas: {known}.")
         units.append(unit)
 
     admin = session.scalar(select(Admin).where(Admin.email == email))

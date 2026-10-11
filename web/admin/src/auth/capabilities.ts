@@ -17,5 +17,5 @@ export function capabilities(me: Pick<Me, "is_global"> | null | undefined): Capa
 /** "Global" o los nombres de las unidades, para mostrar en la barra lateral. */
 export function scopeLabel(me: Me): string {
   if (me.is_global) return "Global";
-  return me.units.map((unit) => unit.name).join(", ") || "Sin unidades";
+  return me.units.map((unit) => unit.name).join(", ") || "Sin programas";
 }
