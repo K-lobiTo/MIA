@@ -29,4 +29,6 @@ async function start() {
   void loadProfile(fetchMe);
 }
 
-void start();
+// MSAL abre un iframe oculto con esta misma dirección para renovar la sesión en silencio. Dentro de él no
+// se monta el panel: la ventana principal solo necesita leer la respuesta de Microsoft en la dirección.
+if (window.self === window.top) void start();

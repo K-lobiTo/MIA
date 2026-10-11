@@ -24,15 +24,16 @@ export function buildMsalConfig(env: EntraEnv): Configuration {
   const redirectUri = `${env.origin.replace(/\/+$/, "")}/`;
   const custom = env.authority?.trim().replace(/\/+$/, "");
   const cache = { cacheLocation: "sessionStorage" };
+  const tenant = env.tenantId?.trim() || TEC_TENANT_ID;
 
   if (!custom) {
-    const tenant = env.tenantId?.trim() || TEC_TENANT_ID;
     return {
       auth: { clientId, authority: `https://login.microsoftonline.com/${tenant}`, redirectUri },
       cache,
     };
   }
-  // Autoridad que no es Microsoft: se describe en la configuración para que MSAL no consulte a nadie.
+  // Autoridad que no es Microsoft: se describe en la configuración para que MSAL no consulte a nadie. El
+  // emisor sigue siendo el de Microsoft porque es el que la API espera en el token.
   return {
     auth: {
       clientId,
@@ -41,7 +42,7 @@ export function buildMsalConfig(env: EntraEnv): Configuration {
       protocolMode: "OIDC",
       knownAuthorities: [new URL(custom).host],
       authorityMetadata: JSON.stringify({
-        issuer: `${custom}/v2.0`,
+        issuer: `https://login.microsoftonline.com/${tenant}/v2.0`,
         authorization_endpoint: `${custom}/oauth2/v2.0/authorize`,
         token_endpoint: `${custom}/oauth2/v2.0/token`,
         end_session_endpoint: `${custom}/oauth2/v2.0/logout`,

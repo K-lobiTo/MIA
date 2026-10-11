@@ -45,6 +45,7 @@ describe("buildMsalConfig", () => {
     expect(config.auth.protocolMode).toBe("OIDC");
     expect(config.auth.knownAuthorities).toEqual(["localhost:9000"]);
     const metadata = JSON.parse(config.auth.authorityMetadata!);
+    expect(metadata.issuer).toBe(`https://login.microsoftonline.com/${TEC_TENANT_ID}/v2.0`);
     expect(metadata.token_endpoint).toBe("https://localhost:9000/tenant-de-prueba/oauth2/v2.0/token");
     expect(metadata.authorization_endpoint).toBe("https://localhost:9000/tenant-de-prueba/oauth2/v2.0/authorize");
   });
