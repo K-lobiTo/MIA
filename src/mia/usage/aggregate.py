@@ -87,7 +87,8 @@ def _statement(
     outcomes: list[str] | None = None,
 ):
     query = select(QueryLog).where(QueryLog.created_at >= start, QueryLog.created_at < end)
-    if artifact_ids:
+    # None: todos los artefactos. Una lista vacía: ninguno (es lo que ve un alcance de unidad sin artefactos).
+    if artifact_ids is not None:
         query = query.where(QueryLog.artifact_id.in_(artifact_ids))
     if mode:
         query = query.where(QueryLog.mode == mode)
@@ -358,7 +359,7 @@ def compute_usage(
     previous = load_rows(session, period.prev_start, period.start, artifact_ids, mode)
     artifacts = list(session.scalars(select(Artifact)))
     names = {a.id: a.name for a in artifacts}
-    shown = [a for a in artifacts if not artifact_ids or a.id in artifact_ids]
+    shown = [a for a in artifacts if artifact_ids is None or a.id in artifact_ids]
     return {
         "period": {"from": period.first_day.isoformat(), "to": period.last_day.isoformat(), "bucket": period.bucket},
         "kpis": build_kpis(rows, previous),

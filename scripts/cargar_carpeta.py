@@ -11,7 +11,7 @@ Uso (ver "Cargar documentos" en docs/OPERACION.md):
         --descripcion "Actas del Consejo de Área Académica" \\
         "tmp/Información_analítica_de_negocios/ACTAS"
 
-La clave de administración (ADMIN_KEY de la API) también se puede dar en la variable MIA_ADMIN_KEY.
+La clave de automatización (ADMIN_KEY de la API, con alcance global) también se puede dar en la variable MIA_ADMIN_KEY.
 Crear un dominio exige la unidad (se crea si no existe); un dominio que ya existe no la necesita.
 
 Solo usa la biblioteca estándar, para poder correrlo sin instalar el proyecto.
@@ -95,7 +95,7 @@ def main() -> int:
     global CLAVE_ADMIN
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--url", required=True, help="URL de la API, con la ingesta activada")
-    parser.add_argument("--clave", default=CLAVE_ADMIN, help="Clave de administración (o MIA_ADMIN_KEY)")
+    parser.add_argument("--clave", default=CLAVE_ADMIN, help="Clave de automatización, ADMIN_KEY de la API (o MIA_ADMIN_KEY)")
     parser.add_argument("--unidad", help="Unidad académica del dominio (se crea si no existe)")
     parser.add_argument("--dominio", required=True, help="Nombre del dominio (se crea si no existe)")
     parser.add_argument("--descripcion", default="", help="Descripción, si se crea el dominio")
