@@ -87,13 +87,13 @@ def test_clave_de_artefacto_invalida_responde_401(client, base, modes_config):
     assert client.get("/config", headers={"X-Artifact-Key": "mia_falsa"}).status_code == 401
 
 
-def test_dominios_con_clave_de_artefacto_solo_los_permitidos(client, db, base, make_artifact):
+def test_dominios_con_clave_de_artefacto_solo_los_permitidos(client, db, base, make_artifact, admin):
     with db() as session:
         session.add(Domain(id="d2", unit_id="u1", name="Docentes"))
         session.commit()
     artefacto = make_artifact(domains=["d2"])
 
-    todos = client.get("/domains").json()
+    todos = client.get("/domains", headers=admin).json()
     permitidos = client.get("/domains", headers=artefacto.headers).json()
 
     assert {d["name"] for d in todos} == {"Currículum", "Docentes"}

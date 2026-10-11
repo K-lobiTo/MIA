@@ -120,7 +120,7 @@ def test_con_la_ingesta_desactivada_responde_503(client, admin, base, monkeypatc
 def test_la_lista_de_documentos_incluye_la_carpeta(client, admin, base):
     _subir(client, admin, carpeta="f1")
 
-    documentos = client.get("/domains/d1/documents").json()
+    documentos = client.get("/domains/d1/documents", headers=admin).json()
 
     assert documentos[0]["folder_id"] == "f1" and documentos[0]["status"] == "pending"
 

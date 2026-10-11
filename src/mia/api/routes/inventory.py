@@ -6,6 +6,9 @@ from pydantic import BaseModel, StringConstraints
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from mia.access import audit
+from mia.access.guards import ensure_domain, ensure_global
+from mia.access.scope import Principal, domain_in_scope, unit_in_scope
 from mia.api.security import require_admin
 from mia.config import settings
 from mia.storage.db import get_session
@@ -119,10 +122,12 @@ def _domain_node(
 
 
 @router.get("/inventory", response_model=InventoryOut)
-def inventory(session: Session = Depends(get_session)) -> InventoryOut:
-    """Árbol completo (unidades, dominios, carpetas y documentos) en una sola petición."""
-    units = list(session.scalars(select(Unit)))
-    domains = list(session.scalars(select(Domain)))
+def inventory(
+    principal: Principal = Depends(require_admin), session: Session = Depends(get_session)
+) -> InventoryOut:
+    """Árbol (unidades, dominios, carpetas y documentos) del alcance de quien pregunta, en una sola petición."""
+    units = [u for u in session.scalars(select(Unit)) if unit_in_scope(principal, u.id)]
+    domains = [d for d in session.scalars(select(Domain)) if domain_in_scope(principal, d)]
     all_folders = list(session.scalars(select(Folder)))
     all_documents = list(session.scalars(select(Document)))
 
@@ -162,8 +167,9 @@ def inventory(session: Session = Depends(get_session)) -> InventoryOut:
 
 
 @router.get("/units", response_model=list[UnitOut])
-def list_units(session: Session = Depends(get_session)) -> list[Unit]:
-    return sorted(session.scalars(select(Unit)), key=lambda u: u.name.lower())
+def list_units(principal: Principal = Depends(require_admin), session: Session = Depends(get_session)) -> list[Unit]:
+    units = [u for u in session.scalars(select(Unit)) if unit_in_scope(principal, u.id)]
+    return sorted(units, key=lambda u: u.name.lower())
 
 
 class UnitCreate(BaseModel):
@@ -171,14 +177,18 @@ class UnitCreate(BaseModel):
     description: str = ""
 
 
-@router.post("/units", response_model=UnitOut, status_code=201, dependencies=[Depends(require_admin)])
-def create_unit(payload: UnitCreate, session: Session = Depends(get_session)) -> Unit:
+@router.post("/units", response_model=UnitOut, status_code=201)
+def create_unit(
+    payload: UnitCreate, principal: Principal = Depends(require_admin), session: Session = Depends(get_session)
+) -> Unit:
+    ensure_global(principal, "unit.create", payload.name)
     if session.scalar(select(Unit).where(Unit.name == payload.name)) is not None:
         raise HTTPException(status_code=409, detail=f"Ya existe una unidad llamada '{payload.name}'.")
     unit = Unit(id=str(uuid.uuid4()), name=payload.name, description=payload.description)
     session.add(unit)
     session.commit()
     session.refresh(unit)
+    audit.log_write(principal, "unit.create", unit.id, unit.name)
     return unit
 
 
@@ -210,12 +220,17 @@ def _sibling(session: Session, domain_id: str, parent_id: str | None, name: str,
     return session.scalar(query)
 
 
-@router.post(
-    "/domains/{domain_id}/folders", response_model=FolderOut, status_code=201, dependencies=[Depends(require_admin)]
-)
-def create_folder(domain_id: str, payload: FolderCreate, session: Session = Depends(get_session)) -> Folder:
-    if session.get(Domain, domain_id) is None:
+@router.post("/domains/{domain_id}/folders", response_model=FolderOut, status_code=201)
+def create_folder(
+    domain_id: str,
+    payload: FolderCreate,
+    principal: Principal = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> Folder:
+    domain = session.get(Domain, domain_id)
+    if domain is None:
         raise HTTPException(status_code=404, detail="Dominio no encontrado.")
+    ensure_domain(principal, domain, "folder.create")
     if payload.parent_id is not None:
         parent = session.get(Folder, payload.parent_id)
         if parent is None:
@@ -228,27 +243,39 @@ def create_folder(domain_id: str, payload: FolderCreate, session: Session = Depe
     session.add(folder)
     session.commit()
     session.refresh(folder)
+    audit.log_write(principal, "folder.create", folder.id, folder.name)
     return folder
 
 
-@router.patch("/folders/{folder_id}", response_model=FolderOut, dependencies=[Depends(require_admin)])
-def rename_folder(folder_id: str, payload: FolderRename, session: Session = Depends(get_session)) -> Folder:
+@router.patch("/folders/{folder_id}", response_model=FolderOut)
+def rename_folder(
+    folder_id: str,
+    payload: FolderRename,
+    principal: Principal = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> Folder:
     folder = session.get(Folder, folder_id)
     if folder is None:
         raise HTTPException(status_code=404, detail="Carpeta no encontrada.")
+    ensure_domain(principal, session.get(Domain, folder.domain_id), "folder.rename")
     if _sibling(session, folder.domain_id, folder.parent_id, payload.name, exclude_id=folder.id) is not None:
         raise HTTPException(status_code=409, detail=f"Ya existe una carpeta '{payload.name}' en ese nivel.")
+    old_name = folder.name
     folder.name = payload.name
     session.commit()
     session.refresh(folder)
+    audit.log_write(principal, "folder.rename", folder.id, f"{old_name} -> {folder.name}")
     return folder
 
 
-@router.delete("/folders/{folder_id}", status_code=204, dependencies=[Depends(require_admin)])
-def delete_folder(folder_id: str, session: Session = Depends(get_session)) -> Response:
+@router.delete("/folders/{folder_id}", status_code=204)
+def delete_folder(
+    folder_id: str, principal: Principal = Depends(require_admin), session: Session = Depends(get_session)
+) -> Response:
     folder = session.get(Folder, folder_id)
     if folder is None:
         raise HTTPException(status_code=404, detail="Carpeta no encontrada.")
+    ensure_domain(principal, session.get(Domain, folder.domain_id), "folder.delete")
     has_documents = session.scalar(select(Document.id).where(Document.folder_id == folder_id).limit(1))
     has_children = session.scalar(select(Folder.id).where(Folder.parent_id == folder_id).limit(1))
     if has_documents is not None or has_children is not None:
@@ -256,6 +283,8 @@ def delete_folder(folder_id: str, session: Session = Depends(get_session)) -> Re
             status_code=409,
             detail="La carpeta debe estar vacía (sin documentos ni subcarpetas) para borrarla.",
         )
+    name = folder.name
     session.delete(folder)
     session.commit()
+    audit.log_write(principal, "folder.delete", folder_id, name)
     return Response(status_code=204)

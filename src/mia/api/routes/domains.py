@@ -9,9 +9,13 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from mia.access import audit
+from mia.access.errors import unauthenticated
+from mia.access.guards import ensure_domain, ensure_unit
 from mia.access.permissions import allowed_domain_ids
+from mia.access.scope import Principal, artifact_in_scope, domain_in_scope
 from mia.api.routes.inventory import Name
-from mia.api.security import optional_artifact, require_admin
+from mia.api.security import optional_admin, optional_artifact, require_admin
 from mia.config import settings
 from mia.ingestion.pipeline import UPLOAD_DIR, ingest_document
 from mia.storage.db import get_session
@@ -58,20 +62,25 @@ class DocumentOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-def _visible_to(session: Session, unit_id: str) -> VisibleTo:
+def _visible_to(session: Session, principal: Principal, unit_id: str) -> VisibleTo:
     """Artefactos activos que verán el dominio nuevo de inmediato (acceso a todos los dominios o a
-    la unidad) y los que necesitan que se les habilite (INV-12)."""
+    la unidad) y los que necesitan que se les habilite (INV-12). Solo se mencionan los del alcance."""
     with_unit = set(session.scalars(select(ArtifactUnit.artifact_id).where(ArtifactUnit.unit_id == unit_id)))
     now, needs_enabling = [], []
     for artifact in session.scalars(select(Artifact).where(Artifact.active.is_(True)).order_by(Artifact.name)):
+        if not artifact_in_scope(session, principal, artifact):
+            continue
         (now if artifact.all_domains or artifact.id in with_unit else needs_enabling).append(artifact.name)
     return VisibleTo(now=now, needs_enabling=needs_enabling)
 
 
-@router.post("/domains", response_model=DomainCreated, status_code=201, dependencies=[Depends(require_admin)])
-def create_domain(payload: DomainCreate, session: Session = Depends(get_session)) -> DomainCreated:
+@router.post("/domains", response_model=DomainCreated, status_code=201)
+def create_domain(
+    payload: DomainCreate, principal: Principal = Depends(require_admin), session: Session = Depends(get_session)
+) -> DomainCreated:
     if session.get(Unit, payload.unit_id) is None:
         raise HTTPException(status_code=404, detail="Unidad no encontrada.")
+    ensure_unit(principal, payload.unit_id, "domain.create", payload.unit_id)
     existing = session.scalar(select(Domain).where(Domain.unit_id == payload.unit_id, Domain.name == payload.name))
     if existing is not None:
         raise HTTPException(status_code=409, detail=f"Ya existe un dominio '{payload.name}' en esa unidad.")
@@ -80,20 +89,26 @@ def create_domain(payload: DomainCreate, session: Session = Depends(get_session)
     )
     session.add(domain)
     session.commit()
+    audit.log_write(principal, "domain.create", domain.id, domain.name)
     return DomainCreated(
         id=domain.id,
         unit_id=payload.unit_id,
         name=domain.name,
         description=domain.description,
-        visible_to=_visible_to(session, payload.unit_id),
+        visible_to=_visible_to(session, principal, payload.unit_id),
     )
 
 
 @router.get("/domains", response_model=list[DomainOut])
 def list_domains(
-    artifact: Artifact | None = Depends(optional_artifact), session: Session = Depends(get_session)
+    artifact: Artifact | None = Depends(optional_artifact),
+    principal: Principal | None = Depends(optional_admin),
+    session: Session = Depends(get_session),
 ) -> list[DomainOut]:
-    """Sin clave, todos los dominios (como hoy). Con la clave de un artefacto, solo los que puede consultar."""
+    """Con la clave de un artefacto, solo los dominios que puede consultar. Sin ella, quien administra
+    ve los de su alcance; sin ninguna credencial, 401."""
+    if artifact is None and principal is None:
+        raise unauthenticated()
     units = {u.id: u.name for u in session.scalars(select(Unit))}
     allowed = allowed_domain_ids(session, artifact) if artifact is not None else None
     return [
@@ -101,22 +116,19 @@ def list_domains(
             id=d.id, unit_id=d.unit_id, unit_name=units.get(d.unit_id), name=d.name, description=d.description
         )
         for d in session.scalars(select(Domain))
-        if allowed is None or d.id in allowed
+        if (allowed is not None and d.id in allowed)
+        or (allowed is None and principal is not None and domain_in_scope(principal, d))
     ]
 
 
-@router.post(
-    "/domains/{domain_id}/documents",
-    response_model=DocumentOut,
-    status_code=201,
-    dependencies=[Depends(require_admin)],
-)
+@router.post("/domains/{domain_id}/documents", response_model=DocumentOut, status_code=201)
 def upload_document(
     domain_id: str,
     file: UploadFile,
     background_tasks: BackgroundTasks,
     response: Response,
     folder_id: Annotated[str | None, Form()] = None,
+    principal: Principal = Depends(require_admin),
     session: Session = Depends(get_session),
 ) -> DocumentOut:
     if not settings.ingestion_enabled:
@@ -131,6 +143,7 @@ def upload_document(
     domain = session.get(Domain, domain_id)
     if domain is None:
         raise HTTPException(status_code=404, detail="Dominio no encontrado")
+    ensure_domain(principal, domain, "document.upload")
 
     source_type = Path(file.filename or "").suffix.lstrip(".").lower()
     if source_type not in {"pdf", "docx", "txt"}:
@@ -185,6 +198,7 @@ def upload_document(
             raise HTTPException(status_code=404, detail="La carpeta ya no existe.") from exc
         raise
     session.refresh(document)
+    audit.log_write(principal, "document.upload", document.id, document.filename)
 
     if settings.ingestion_sync:
         ingest_document(document.id)
@@ -196,5 +210,10 @@ def upload_document(
 
 
 @router.get("/domains/{domain_id}/documents", response_model=list[DocumentOut])
-def list_documents(domain_id: str, session: Session = Depends(get_session)) -> list[Document]:
+def list_documents(
+    domain_id: str, principal: Principal = Depends(require_admin), session: Session = Depends(get_session)
+) -> list[Document]:
+    domain = session.get(Domain, domain_id)
+    if domain is None or not domain_in_scope(principal, domain):
+        raise HTTPException(status_code=404, detail="Dominio no encontrado.")
     return list(session.scalars(select(Document).where(Document.domain_id == domain_id)))
