@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
-import { useOutletContext } from "react-router-dom";
-import { useAdminKey } from "../../api/client";
+import { capabilities } from "../../auth/capabilities";
+import { useMe } from "../../auth/session";
 import { useInventory } from "../../api/inventory";
 import type { Inventory } from "../../api/types";
 import { filterInventory } from "./filterTree";
@@ -44,8 +44,7 @@ const READ_ONLY_REASON =
   "Esta instancia de la API tiene la carga de documentos desactivada, por eso no se pueden agregar documentos desde aquí.";
 
 export function InventarioPage() {
-  const adminKey = useAdminKey();
-  const { askForKey } = useOutletContext<{ askForKey: () => void }>();
+  const canCreateUnit = capabilities(useMe()).canCreateUnit;
   const inventory = useInventory();
   const [query, setQuery] = useState("");
   const [dialog, setDialog] = useState<DialogState | null>(null);
@@ -58,9 +57,6 @@ export function InventarioPage() {
   const lookup = useMemo(() => (data ? buildLookup(data) : null), [data]);
   const filtered = useMemo(() => (data ? filterInventory(data, query) : undefined), [data, query]);
   const searching = query.trim().length > 0;
-
-  // Sin clave de administración, las acciones piden la clave en vez de fallar con un 401 (ADM-1).
-  const guarded = (action: () => void) => () => (adminKey ? action() : askForKey());
 
   function targetOf(node: NodeRef): UploadTarget | null {
     if (!lookup || !node.domainId) return null;
@@ -76,7 +72,6 @@ export function InventarioPage() {
   function dropFiles(node: NodeRef, files: File[]) {
     const target = targetOf(node);
     if (!target) return;
-    if (!adminKey) return askForKey();
     if (!ingestionEnabled) return;
     uploads.add(files, target);
   }
@@ -92,7 +87,7 @@ export function InventarioPage() {
         className="btn btn-small"
         disabled={!ingestionEnabled}
         title={ingestionEnabled ? "Elegir archivos PDF, DOCX o TXT (también se pueden arrastrar aquí)" : READ_ONLY_REASON}
-        onClick={guarded(() => pickFiles(node))}
+        onClick={() => pickFiles(node)}
       >
         Subir
       </button>
@@ -100,7 +95,7 @@ export function InventarioPage() {
     if (node.kind === "unit") {
       const unitName = lookup?.units.get(node.id) ?? "la unidad";
       return (
-        <button className="btn btn-small" onClick={guarded(() => setDialog({ kind: "domain", unitId: node.id, unitName }))}>
+        <button className="btn btn-small" onClick={() => setDialog({ kind: "domain", unitId: node.id, unitName })}>
           + Dominio
         </button>
       );
@@ -111,7 +106,7 @@ export function InventarioPage() {
         <>
           <button
             className="btn btn-small"
-            onClick={guarded(() => setDialog({ kind: "folder", domainId: node.id, parentId: null, where: domainName }))}
+            onClick={() => setDialog({ kind: "folder", domainId: node.id, parentId: null, where: domainName })}
           >
             + Carpeta
           </button>
@@ -124,19 +119,19 @@ export function InventarioPage() {
       <>
         <button
           className="btn btn-small"
-          onClick={guarded(() =>
-            setDialog({ kind: "folder", domainId: node.domainId!, parentId: node.id, where: `${domainName} / ${folderName}` }),
-          )}
+          onClick={() =>
+            setDialog({ kind: "folder", domainId: node.domainId!, parentId: node.id, where: `${domainName} / ${folderName}` })
+          }
         >
           + Subcarpeta
         </button>
         {uploadButton}
-        <button className="btn btn-small" onClick={guarded(() => setDialog({ kind: "rename", folderId: node.id, name: folderName }))}>
+        <button className="btn btn-small" onClick={() => setDialog({ kind: "rename", folderId: node.id, name: folderName })}>
           Renombrar
         </button>
         <button
           className="btn btn-small btn-danger"
-          onClick={guarded(() => setDialog({ kind: "delete", folderId: node.id, name: folderName }))}
+          onClick={() => setDialog({ kind: "delete", folderId: node.id, name: folderName })}
         >
           Borrar
         </button>
@@ -158,16 +153,13 @@ export function InventarioPage() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <button className="btn btn-primary" onClick={guarded(() => setDialog({ kind: "unit" }))}>
-          + Nueva unidad
-        </button>
+        {canCreateUnit && (
+          <button className="btn btn-primary" onClick={() => setDialog({ kind: "unit" })}>
+            + Nueva unidad
+          </button>
+        )}
       </div>
 
-      {!adminKey && (
-        <div className="notice notice-admin">
-          Estás viendo el inventario en modo lectura. Para crear o subir información, ingresa la clave de administración.
-        </div>
-      )}
       {data && !ingestionEnabled && (
         <div className="notice notice-warn" role="status">
           <strong>Modo solo lectura para documentos.</strong> {READ_ONLY_REASON} Se puede ver todo el inventario, y crear unidades,

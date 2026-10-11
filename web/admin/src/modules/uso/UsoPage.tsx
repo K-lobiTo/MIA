@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useOutletContext } from "react-router-dom";
-import { useAdminKey } from "../../api/client";
+import { capabilities } from "../../auth/capabilities";
+import { useMe } from "../../auth/session";
 import { DEFAULT_FILTERS, filtersReady, useUsage, type UsageFilters } from "../../api/usage";
 import { BalanceCard } from "./BalanceCard";
 import { Filters } from "./Filters";
@@ -12,26 +12,11 @@ import type { GroupBy, Metric } from "./usageUtils";
 import "./uso.css";
 
 export function UsoPage() {
-  const adminKey = useAdminKey();
-  const { askForKey } = useOutletContext<{ askForKey: () => void }>();
+  const canSeeBalance = capabilities(useMe()).canSeeBalance;
   const [filters, setFilters] = useState<UsageFilters>(DEFAULT_FILTERS);
   const [metric, setMetric] = useState<Metric>("spend_usd");
   const [groupBy, setGroupBy] = useState<GroupBy>("artifact");
-  const usage = useUsage(filters, groupBy, Boolean(adminKey));
-
-  if (!adminKey) {
-    return (
-      <>
-        <h1>Uso</h1>
-        <div className="notice notice-admin">
-          Este módulo necesita la clave de administración.{" "}
-          <button className="btn btn-small btn-primary" onClick={askForKey}>
-            Ingresar clave
-          </button>
-        </div>
-      </>
-    );
-  }
+  const usage = useUsage(filters, groupBy, true);
 
   const data = usage.data;
   return (
@@ -55,7 +40,7 @@ export function UsoPage() {
       {usage.isPending && filtersReady(filters) && <p className="muted">Cargando el uso...</p>}
 
       <div className={`uso-stack${usage.isPlaceholderData ? " refreshing" : ""}`}>
-        <BalanceCard />
+        {canSeeBalance && <BalanceCard />}
         {data && (
           <>
             <KpiRow kpis={data.kpis} />

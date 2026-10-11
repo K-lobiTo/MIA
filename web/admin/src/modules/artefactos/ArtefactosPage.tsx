@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { useOutletContext } from "react-router-dom";
 import { useRegenerateKey, useArtifacts, useUpdateArtifact } from "../../api/artifacts";
-import { useAdminKey } from "../../api/client";
 import { useInventory } from "../../api/inventory";
 import type { Artifact } from "../../api/types";
 import { ArtifactCard } from "./ArtifactCard";
 import { ArtifactForm } from "./ArtifactForm";
+import { capabilities } from "../../auth/capabilities";
+import { useMe } from "../../auth/session";
 import { formatUsd } from "./capMath";
 import { KeyReveal } from "./KeyReveal";
 import "./artefactos.css";
@@ -17,28 +17,13 @@ type DialogState =
   | { kind: "confirm-regenerate"; artifact: Artifact };
 
 export function ArtefactosPage() {
-  const adminKey = useAdminKey();
-  const { askForKey } = useOutletContext<{ askForKey: () => void }>();
-  const artifacts = useArtifacts(Boolean(adminKey));
+  const canSeeGlobal = capabilities(useMe()).showGlobalCaps;
+  const artifacts = useArtifacts(true);
   const inventory = useInventory();
   const update = useUpdateArtifact();
   const regenerate = useRegenerateKey();
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-
-  if (!adminKey) {
-    return (
-      <>
-        <h1>Artefactos y accesos</h1>
-        <div className="notice notice-admin">
-          Este módulo necesita la clave de administración.{" "}
-          <button className="btn btn-small btn-primary" onClick={askForKey}>
-            Ingresar clave
-          </button>
-        </div>
-      </>
-    );
-  }
 
   const units = inventory.data?.units ?? [];
   const modes = artifacts.data?.modes ?? [];
@@ -77,14 +62,14 @@ export function ArtefactosPage() {
         Los cambios rigen desde la consulta siguiente.
       </p>
 
-      {artifacts.data && (
+      {artifacts.data?.global && canSeeGlobal && (
         <div className="notice" role="status">
           <strong>Tope diario de toda la API:</strong> {formatUsd(artifacts.data.global.daily_cap_usd)}. Hoy se han gastado{" "}
           {formatUsd(artifacts.data.global.spent_today_usd)}. Este tope se fija en la configuración de la instancia y no se
           cambia desde el panel.
         </div>
       )}
-      {artifacts.data?.global.caps_exceed_global && (
+      {artifacts.data?.global?.caps_exceed_global && canSeeGlobal && (
         <div className="notice notice-warn" role="alert">
           <strong>Los topes de los artefactos suman {formatUsd(artifacts.data.global.sum_of_artifact_caps_usd)}</strong>, más que
           el tope de toda la API. Un artefacto puede quedarse sin servicio por el gasto de otros aunque no haya alcanzado el
