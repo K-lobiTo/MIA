@@ -106,7 +106,7 @@ Quien mantiene MIA abre el módulo Uso y ve, para el período que elija, cuánto
 
 1. **Given** el módulo Uso, **When** se elige un período (hoy, 7 días, 30 días o un rango) y se filtra por artefacto o modo, **Then** todos los indicadores, gráficas y tablas responden a esa selección [USO-1].
 2. **Given** un período, **When** se ven los indicadores, **Then** aparecen gasto, consultas, tokens (de entrada, de salida y de razonamiento), costo medio, tiempo de respuesta (mediana y el 95 % más lento), porcentaje sin información, porcentaje de errores y porcentaje de útiles, cada uno comparado con el período anterior de igual duración [USO-2].
-3. **Given** la gráfica, **When** se cambia la métrica (gasto, consultas o tokens) o el desglose (artefacto, modo o modelo), **Then** se redibuja como barras apiladas por hora (período "hoy") o por día [USO-3].
+3. **Given** la gráfica, **When** se cambia la métrica (gasto, consultas o tokens) o el desglose (artefacto, modo o modelo), **Then** se redibuja como barras apiladas por hora (período "hoy") o por día, con la opción de verla por mes [USO-3].
 4. **Given** el período, **When** se ven las tablas, **Then** hay una por artefacto (con su gasto de hoy frente a su tope) y una por modelo [USO-4, USO-5].
 5. **Given** el registro de consultas, **When** se abre una, **Then** se ven su pregunta, los dominios consultados, los documentos citados y el comentario de su calificación; las consultas rechazadas por tope o por permisos aparecen con su motivo [USO-6].
 6. **Given** el saldo del proveedor de modelos, **When** se abre el módulo, **Then** se muestra el saldo restante y cuántos días alcanza al ritmo de los últimos 7 días, con un aviso si alcanza para menos de una semana [USO-7].
