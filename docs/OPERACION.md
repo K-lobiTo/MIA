@@ -102,7 +102,7 @@ Desde la feature 004 ([specs/004-acceso-panel-tec/](../specs/004-acceso-panel-te
 | API (Railway) | `ENTRA_CLIENT_ID` | el client ID que entregó TI (vacío: el inicio de sesión responde 503 `login_not_configured`) |
 | API | `ENTRA_TENANT_ID` | `1119bb90-88ba-4894-b7f1-de26e129d977` (el del TEC, ya es el valor por defecto) |
 | API | `ENTRA_REQUIRE_MFA` | `true` (por defecto). Solo `false` si se comprueba que la política del TEC no pone `mfa` en el token y se acepta el riesgo; dejarlo anotado |
-| Panel (Railway) | `VITE_ENTRA_CLIENT_ID` | el mismo client ID. Es variable de **compilación**: si cambia, hay que volver a desplegar el panel con `railway up -s mia-panel --detach` |
+| Panel (Railway) | `VITE_ENTRA_CLIENT_ID` | el mismo client ID. Es variable de **compilación**: si cambia, hay que volver a desplegar el panel con `./scripts/servicios.py encender mia-panel` |
 
 **Quién ve qué.** *Global* (el operador): todo. *Programa* (coordinador y ayudante de un programa): solo el inventario de sus programas, los artefactos que dan acceso solo a dominios de ellos, y el Uso (registro, detalle y CSV) de esos artefactos. El saldo de OpenRouter, crear programas y los artefactos de "todos los dominios" o de varias programas son solo del alcance global. Coordinador y ayudante de un programa tienen los mismos permisos. Los topes de toda la API (`DAILY_CAP_USD`) no se editan desde el panel.
 
@@ -252,7 +252,11 @@ python scripts/reorganizar_v2.py --env-file .env.produccion             # una se
 
 ### Desplegar cambios (no hay auto-deploy)
 
-**Atajo:** `scripts/servicios.py` enciende, apaga y consulta el estado de los cuatro servicios (`./scripts/servicios.py estado`, `encender [servicio...]`, `apagar [servicio...]`; la API va primero al encender y al final al apagar; espera cada despliegue y comprueba que responda). Apagar equivale a *Remove* y no borra nada. Los comandos de abajo son lo que hace por dentro.
+**Forma normal: `scripts/servicios.py`, desde `main` de GitHub.** Enciende, apaga y consulta el estado de los cuatro servicios (`./scripts/servicios.py estado`, `encender [servicio...]`, `apagar [servicio...]`; la API va primero al encender y al final al apagar; espera cada despliegue y comprueba que responda). Apagar equivale a *Remove* y no borra nada.
+
+**`encender` despliega por defecto lo publicado en `main` de GitHub (`origin/main`), no la carpeta local.** Hace `git fetch`, muestra el commit que va a subir, lo exporta a una carpeta temporal y lo sube de ahí, así el trabajo de `dev` sin fusionar no llega a producción por accidente. El flujo es: trabajar en `dev`, hacer merge a `main`, **hacer `git push origin main`** (si no se empuja, `origin/main` sigue siendo la versión anterior y es esa la que se despliega) y entonces `./scripts/servicios.py encender`. Opciones: `--ref origin/dev` despliega otra rama publicada (por ejemplo para probar algo antes del merge) y `--local` sube la carpeta actual tal cual (con aviso si hay cambios sin commitear).
+
+**Cuidado con las migraciones.** La API migra la base al arrancar. Si se despliega una versión con menos migraciones de las que la base ya tiene (por ejemplo, `main` anterior sobre una base que ya aplicó una migración posterior), la API **no arranca**. Antes de desplegar una versión anterior hay que devolver la base con `alembic downgrade <revisión>` (con `DATABASE_URL` de producción), y al volver a una versión nueva la API la sube sola. La revisión actual de producción se ve con `select version_num from alembic_version`. Los comandos de abajo son lo que el script hace por dentro.
 
 Railway tiene los servicios conectados al repositorio como público, **sin su aplicación de GitHub instalada**, así que un push a `main` no dispara ningún deploy (el aviso es *"This is a public repository without a Railway GitHub App installation"*). Decisión tomada: mantener los deploys manuales. Hay dos formas:
 
@@ -264,7 +268,7 @@ railway up -s mia-administracion --detach   # Consulta de Administración de Emp
 railway up -s mia-panel --detach            # panel de administración
 ```
 
-`railway up` sube los archivos de la carpeta local (respeta `.gitignore`, así que `.env*`, `tmp/` y `mia.db` no se suben) y respeta el *Root Directory* de cada servicio. El despliegue no muestra commit en el panel de Railway. Alternativas: el botón **Deploy** del servicio, que aplica las variables en espera y el último commit, o instalar la aplicación de GitHub de Railway para activar el auto-deploy (entonces conviene fijar *Watch Paths* por servicio: `/web/consulta/**` y `/web/admin/**`).
+`railway up` desde la raíz sube los archivos de la carpeta local (respeta `.gitignore`, así que `.env*`, `tmp/` y `mia.db` no se suben) y respeta el *Root Directory* de cada servicio. El despliegue no muestra commit en el panel de Railway. Alternativas: el botón **Deploy** del servicio, que aplica las variables en espera y el último commit, o instalar la aplicación de GitHub de Railway para activar el auto-deploy (entonces conviene fijar *Watch Paths* por servicio: `/web/consulta/**` y `/web/admin/**`).
 
 **Reglas que dieron problemas:**
 - Los cambios de variables hechos con la CLI (`--skip-deploys`) o en el panel quedan **en espera** hasta un deploy. `PORT`, `CORS_ORIGINS` y los demás se leen al arrancar; `VITE_API_URL` se usa al **compilar**, así que exige un deploy completo, no solo reiniciar.
