@@ -65,7 +65,7 @@ Paquetes: `@mantine/core`, `@mantine/hooks`, `@mantine/dates` (con `dayjs`) y `@
 - **Router:** los enlaces del menú son `NavLink` de Mantine con `component={RouterLink}` (de `react-router-dom`), para conservar `HashRouter`.
 - **Accesibilidad:** se conservan las etiquetas `aria-label`, las tablas alternativas de las gráficas y el aro de foco. Cualquier componente nuevo debe poder usarse con teclado.
 - **Las gráficas siguen siendo SVG propio** (`modules/uso/UsageChart.tsx`), con la paleta categórica `--series-1..8` validada para ambos modos. No se reemplazan por `@mantine/charts` para no perder esa validación ni la tabla alternativa.
-- **Alcance de Mantine en MIA:** solo los artefactos con cliente propio, que son este panel y la Consulta administrativa (`web/consulta/`, pendiente de migrar). El chatbot que se incorpore en sistemas existentes **no** debe usar Mantine: sus estilos globales y variables CSS chocarían con los del sistema anfitrión; irá como un componente aislado (Shadow DOM o CSS con prefijo propio). El bot de WhatsApp no tiene interfaz propia.
+- **Alcance de Mantine en MIA:** solo los artefactos con cliente propio, que son este panel y la Consulta administrativa (`web/consulta/`, ya migrada, con otra paleta; ver su [README](../consulta/README.md#interfaz-mantine)). El chatbot que se incorpore en sistemas existentes **no** debe usar Mantine: sus estilos globales y variables CSS chocarían con los del sistema anfitrión; irá como un componente aislado (Shadow DOM o CSS con prefijo propio). El bot de WhatsApp no tiene interfaz propia.
 
 **Estado de la migración**
 
@@ -76,7 +76,7 @@ Paquetes: `@mantine/core`, `@mantine/hooks`, `@mantine/dates` (con `dayjs`) y `@
 | Artefactos (tarjetas, formulario, clave de una sola vez, confirmación) | Hecho |
 | Inventario (árbol con botones y avisos de Mantine, diálogos, subida) | Hecho (el árbol es una estructura propia) |
 | Pantalla de inicio de sesión y diálogos genéricos (`FormDialog`) | Hecho |
-| Consulta administrativa (`web/consulta/`) | Pendiente |
+| Consulta administrativa (`web/consulta/`) | Hecho (paleta Vanilla Style; ver su README) |
 
 Las clases propias de botones, campos, tarjetas, avisos y diálogos (`.btn`, `.card`, `.field`, `.badge`, `.notice`, `.dialog`) se eliminaron: todo el panel usa Mantine.
 

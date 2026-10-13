@@ -43,6 +43,16 @@ Se compila una vez por instancia y se publica una vez por instancia, cada una en
 
 Pasos completos en [docs/OPERACION.md](../../docs/OPERACION.md), sección "Consulta administrativa".
 
+## Interfaz: Mantine
+
+La Consulta usa [Mantine](https://mantine.dev/) como librería de componentes, igual que el panel de administración, con la paleta **Vanilla Style (#05 de [docs/PALETAS.md](../../docs/PALETAS.md))**: violeta `#6D597A` (acento, botones, burbuja de la pregunta), rosa palo `#B56576`, coral `#E56B6F` y durazno `#EAAC8B` (en tintes claros, para fondos suaves y estado al pasar el mouse). Las reglas generales de uso (capas de CSS, sin grises de Mantine, avisos y tipografía) están en [web/admin/README.md](../admin/README.md#interfaz-mantine); aquí solo lo propio de esta aplicación:
+
+- **Tema:** `src/theme.ts` (escalas `vanilla`, `coral` y `peach`, y `gray` y `dark` reemplazados por tonos de la paleta) y `src/styles/tokens.css` (variables CSS con su versión oscura). Se cambian juntos. La paleta no trae un color claro ni uno oscuro para texto, así que los fondos suaves son tintes del durazno y del violeta y el texto usa violetas oscuros; el coral y el durazno puros tienen poco contraste sobre blanco y solo se usan en rellenos, nunca como texto.
+- **Marco:** `AppShell` con encabezado (nombre de la instancia, interruptor de apariencia, "Cambiar clave") y menú lateral (modo y dominios). En pantallas angostas el menú se despliega con el botón del encabezado y el interruptor pasa a él.
+- **Modo claro, oscuro o del sistema:** `components/ColorSchemeToggle.tsx`; la elección se recuerda en el navegador (`mantine-color-scheme-value`) y un script en `index.html` la aplica antes de pintar.
+- **Piezas:** `Notice` (avisos con los colores de la paleta, copia del panel: no hay paquete compartido), `Radio`, `Checkbox`, `Textarea` con crecimiento automático, `Button`, `PasswordInput`.
+- **Lo que se conserva a mano:** las burbujas de la conversación (`.message` en `styles/base.css`) y el formateador de respuestas, que nunca interpreta HTML.
+
 ## Estructura
 
 | Carpeta | Contenido |
@@ -51,4 +61,5 @@ Pasos completos en [docs/OPERACION.md](../../docs/OPERACION.md), sección "Consu
 | `src/state/` | Lógica sin interfaz y con pruebas: dominios recordados, modos disponibles, errores, conversación, fuentes |
 | `src/format/` | Formateador de respuestas (negritas y listas) que nunca interpreta HTML |
 | `src/components/` | Pantalla de clave, encabezado, dominios, modos, conversación, calificación y campo de pregunta |
+| `src/theme.ts` | Tema de Mantine con la paleta Vanilla Style |
 | `src/styles/` | Variables de color con modo claro y oscuro, y estilos base |

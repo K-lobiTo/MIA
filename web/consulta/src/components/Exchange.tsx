@@ -1,3 +1,4 @@
+import { Anchor, Button } from "@mantine/core";
 import { useState } from "react";
 import type { Rating as RatingValue } from "../api/types";
 import { Answer } from "../format/Answer";
@@ -91,14 +92,14 @@ function Failure({ exchange, onRetry, literalAvailable, busy }: Pick<Props, "exc
       {(view.canRetry || view.offerLiteral) && (
         <div className="message-actions">
           {view.canRetry && (
-            <button type="button" className="btn btn-small" disabled={busy} onClick={() => onRetry(exchange)}>
+            <Button type="button" variant="default" size="compact-sm" disabled={busy} onClick={() => onRetry(exchange)}>
               Reintentar
-            </button>
+            </Button>
           )}
           {view.offerLiteral && (
-            <button type="button" className="btn btn-small" disabled={busy} onClick={() => onRetry(exchange, "literal")}>
+            <Button type="button" variant="default" size="compact-sm" disabled={busy} onClick={() => onRetry(exchange, "literal")}>
               Reintentar en modo literal
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -117,9 +118,9 @@ function Excerpt({ index, document, text }: { index: number; document: string; t
       </div>
       <p>{open || !preview.truncated ? text.replace(/\s+/g, " ").trim() : preview.text}</p>
       {preview.truncated && (
-        <button type="button" className="btn-link" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        <Anchor component="button" type="button" fz="sm" fw={600} aria-expanded={open} onClick={() => setOpen((value) => !value)}>
           {open ? "Ver menos" : "Ver más"}
-        </button>
+        </Anchor>
       )}
     </div>
   );

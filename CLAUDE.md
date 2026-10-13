@@ -35,7 +35,7 @@ Resumen: una API FastAPI intermedia entre el almacenamiento (Qdrant + SQL: SQLit
 ## Idioma y convenciones
 
 - Documentación, nombres de dominio/conceptos en español.
-- Frontend del panel (`web/admin/`): componentes de Mantine con el tema de `src/theme.ts`; las gráficas siguen siendo SVG propio. Reglas en [web/admin/README.md](web/admin/README.md#interfaz-mantine): leerlas antes de tocar la interfaz. Paletas de color candidatas (la #03 es la vigente) en [docs/PALETAS.md](docs/PALETAS.md).
+- Frontend del panel (`web/admin/`): componentes de Mantine con el tema de `src/theme.ts`; las gráficas siguen siendo SVG propio. Reglas en [web/admin/README.md](web/admin/README.md#interfaz-mantine): leerlas antes de tocar la interfaz. Paletas de color candidatas (el panel usa la #03 y la Consulta la #05) en [docs/PALETAS.md](docs/PALETAS.md). La Consulta (`web/consulta/`) también usa Mantine: ver [su README](web/consulta/README.md#interfaz-mantine).
 - Despliegue: `scripts/servicios.py encender` despliega `origin/main` de GitHub (no la carpeta local; `--local` y `--ref` son la excepción). Flujo: trabajar en `dev`, merge a `main`, `git push origin main`, y recién entonces encender. La API migra la base al arrancar: no desplegar una versión con menos migraciones que las de la base (ver "Desplegar cambios" en `docs/OPERACION.md`).
 - Sin atribución de Claude en commits ni PRs (`includeCoAuthoredBy: false` en `.claude/settings.json`).
 - Spec Kit está instalado (`.specify/`, skills `speckit-*`) para uso opcional en flujos de especificación futuros.

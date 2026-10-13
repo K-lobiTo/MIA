@@ -2,7 +2,7 @@
 
 Paletas candidatas para los artefactos con interfaz propia. Se guardan aquí para probarlas más adelante, una por una, sin volver a buscarlas. Cada paleta son cuatro colores, en el orden en que se presentaron.
 
-Hoy el Panel de administración usa la **#03**. Cómo cambiar de paleta en el panel: ver "Probar otra paleta" más abajo.
+Hoy el Panel de administración usa la **#03** y la Consulta administrativa usa la **#05**. Cómo cambiar de paleta en el panel: ver "Probar otra paleta" más abajo.
 
 ## #00 Eagle Style
 
@@ -49,7 +49,7 @@ Hoy el Panel de administración usa la **#03**. Cómo cambiar de paleta en el pa
 | `#52796F` | 4.86:1 | 3.24:1 |
 | `#354F52` | 8.78:1 | 1.79:1 |
 
-## #05 Vanilla Style
+## #05 Vanilla Style **(la que usa hoy la Consulta administrativa)**
 
 | Color | Contraste con blanco | Contraste con fondo oscuro (#162434) |
 |---|---|---|
@@ -67,4 +67,4 @@ En el Panel de administración los colores salen de dos archivos, que hay que ca
 1. `web/admin/src/styles/tokens.css`: variables `--accent`, `--secondary`, `--accent-soft`, `--highlight`, `--selected` y las series de las gráficas `--series-1..8`, cada una con su versión del modo oscuro.
 2. `web/admin/src/theme.ts`: las escalas `mia` y `coral` de Mantine (y `gray` y `dark`, que reemplazan los grises de Mantine por tonos de la paleta).
 
-Pasos sugeridos: asignar los cuatro colores a un rol cada uno (acento principal oscuro, acento secundario, fondo suave, resalte), generar la escala de diez pasos de Mantine a partir de ellos, y revisar con capturas en modo claro y oscuro que ningún texto quede bajo 4.5:1 y que las series de las gráficas se distingan entre sí. Una paleta con varios colores claros (como #00 o #02) probablemente necesite un cuarto color oscuro para el texto y el acento.
+Pasos sugeridos: asignar los cuatro colores a un rol cada uno (acento principal oscuro, acento secundario, fondo suave, resalte), generar la escala de diez pasos de Mantine a partir de ellos, y revisar con capturas en modo claro y oscuro que ningún texto quede bajo 4.5:1 y que las series de las gráficas se distingan entre sí. Una paleta con varios colores claros (como #00 o #02) probablemente necesite un cuarto color oscuro para el texto y el acento. En la #05 (usada en la Consulta) ocurrió algo parecido: no trae un color muy claro ni uno muy oscuro, así que los fondos suaves se derivaron como tintes del durazno y el violeta, y el texto usa violetas oscuros. Detalle en [web/consulta/README.md](../web/consulta/README.md#interfaz-mantine).
