@@ -213,7 +213,9 @@ def _desplegar(servicios: list[Servicio], esperar: bool, carpeta: Path | None, p
             railway("up", "-s", servicio.nombre, "--detach")
         else:
             proyecto_id, entorno = proyecto
-            railway("up", str(carpeta), "-p", proyecto_id, "-e", entorno, "-s", servicio.nombre, "--detach")
+            # Desde la propia carpeta temporal: `railway up <ruta>` exige que la ruta esté dentro del proyecto
+            # vinculado ("prefix not found"), y la temporal no lo está.
+            railway("up", "-p", proyecto_id, "-e", entorno, "-s", servicio.nombre, "--detach", cwd=carpeta)
         if not esperar:
             print("  lanzado (sin esperar).")
             continue
