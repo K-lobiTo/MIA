@@ -12,7 +12,14 @@ from mia.storage.db import get_session
 from mia.storage.models import QueryLog
 from mia.usage import balance as balance_module
 from mia.usage import log as log_module
-from mia.usage.aggregate import Period, compute_usage, load_rows, page_rows, resolve_period
+from mia.usage.aggregate import (
+    Period,
+    compute_usage,
+    load_rows,
+    page_rows,
+    resolve_period,
+    with_bucket,
+)
 
 router = APIRouter(tags=["usage"])
 
@@ -62,9 +69,11 @@ class UsageOut(BaseModel):
 def usage(
     filters: UsageFilters = Depends(),
     group_by: Literal["artifact", "mode", "model"] = "artifact",
+    bucket: Literal["day", "month"] | None = None,
     session: Session = Depends(get_session),
 ) -> dict:
-    return compute_usage(session, filters.period, filters.artifact_ids, filters.mode, group_by)
+    period = with_bucket(filters.period, bucket)
+    return compute_usage(session, period, filters.artifact_ids, filters.mode, group_by)
 
 
 @router.get("/usage/queries")

@@ -5,7 +5,7 @@ del prototipo (miles de filas por mes) es inmediato y funciona igual en SQLite y
 
 import math
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, timedelta
 from functools import lru_cache
 from typing import Literal
@@ -31,7 +31,7 @@ class Period:
     prev_start: datetime
     first_day: date  # días locales, ambos incluidos
     last_day: date
-    bucket: Literal["hour", "day"]
+    bucket: Literal["hour", "day", "month"]
 
 
 def _zone() -> ZoneInfo:
@@ -260,9 +260,21 @@ def _pct_kpi(value: float | None, previous: float | None) -> dict:
     }
 
 
+def with_bucket(period: Period, bucket: Literal["day", "month"] | None) -> Period:
+    """El período con otra granularidad de la serie. 'Hoy' se queda por hora: un solo día no se puede
+    dividir en días ni en meses."""
+    if bucket is None or period.bucket == "hour":
+        return period
+    return replace(period, bucket=bucket)
+
+
 def _bucket_labels(period: Period) -> list[str]:
     if period.bucket == "hour":
         return [f"{period.first_day.isoformat()}T{hour:02d}:00" for hour in range(24)]
+    if period.bucket == "month":
+        # Todos los meses que toca el período, también los vacíos; el primero y el último pueden quedar parciales.
+        first, last = period.first_day.year * 12 + period.first_day.month - 1, period.last_day.year * 12 + period.last_day.month - 1
+        return [f"{m // 12:04d}-{m % 12 + 1:02d}" for m in range(first, last + 1)]
     days = (period.last_day - period.first_day).days + 1
     return [(period.first_day + timedelta(days=i)).isoformat() for i in range(days)]
 
@@ -281,6 +293,8 @@ def _bucket_of(row, period: Period) -> str:
     day, hour = _local_hour(
         created.replace(minute=created.minute // 15 * 15, second=0, microsecond=0), settings.cap_timezone
     )
+    if period.bucket == "month":
+        return day[:7]
     return f"{day}T{hour:02d}:00" if period.bucket == "hour" else day
 
 

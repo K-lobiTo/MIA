@@ -1,11 +1,14 @@
+import { ActionIcon, Paper } from "@mantine/core";
+import { IconChevronRight } from "@tabler/icons-react";
 import { useState, type DragEvent, type ReactNode } from "react";
+import { StatusBadge, type BadgeTone } from "../../components/StatusBadge";
 import type { DocumentItem, DocumentStatus, DomainNode, FolderNode, UnitNode } from "../../api/types";
 
-const STATUS_LABEL: Record<DocumentStatus, { text: string; className: string }> = {
-  pending: { text: "En cola", className: "badge badge-muted" },
-  processing: { text: "Procesando", className: "badge badge-warn" },
-  done: { text: "Listo", className: "badge badge-ok" },
-  error: { text: "Error", className: "badge badge-danger" },
+const STATUS_LABEL: Record<DocumentStatus, { text: string; tone: BadgeTone }> = {
+  pending: { text: "En cola", tone: "neutral" },
+  processing: { text: "Procesando", tone: "warn" },
+  done: { text: "Listo", tone: "ok" },
+  error: { text: "Error", tone: "danger" },
 };
 
 export function countLabel(count: number): string {
@@ -58,16 +61,17 @@ function Branch({ title, titleClass, description, count, defaultOpen, forceOpen,
   return (
     <div>
       <div className={`branch-head${dragOver ? " drop-over" : ""}`} {...dropProps}>
-        <button
+        <ActionIcon
+          variant="subtle"
+          color="mia"
+          size="sm"
           className="branch-toggle"
           aria-expanded={expanded}
           aria-label={`${expanded ? "Contraer" : "Expandir"} ${title}`}
           onClick={() => setOpen(!expanded)}
         >
-          <span className="chevron" aria-hidden="true">
-            ▸
-          </span>
-        </button>
+          <IconChevronRight size={16} className="chevron" aria-hidden="true" />
+        </ActionIcon>
         <span className={`branch-title ${titleClass ?? ""}`}>{title}</span>
         <span className="branch-meta">{countLabel(count)}</span>
         {description && <span className="branch-desc">{description}</span>}
@@ -79,13 +83,13 @@ function Branch({ title, titleClass, description, count, defaultOpen, forceOpen,
 }
 
 export function DocumentRow({ document }: { document: DocumentItem }) {
-  const status = STATUS_LABEL[document.status] ?? { text: document.status, className: "badge" };
+  const status = STATUS_LABEL[document.status] ?? { text: document.status, tone: "info" as BadgeTone };
   return (
     <div className="doc-row">
       <span className="doc-name">{document.filename}</span>
       <span className="doc-type">{document.source_type.toUpperCase()}</span>
       <span className="doc-date">{formatDate(document.uploaded_at)}</span>
-      <span className={status.className}>{status.text}</span>
+      <StatusBadge tone={status.tone}>{status.text}</StatusBadge>
     </div>
   );
 }
@@ -166,7 +170,7 @@ export function DomainBranch({ domain, forceOpen, renderActions, onDropFiles }: 
 
 export function UnitBranch({ unit, forceOpen, renderActions, onDropFiles }: Slots & { unit: UnitNode }) {
   return (
-    <div className="card unit-card">
+    <Paper withBorder p="xs" radius="md">
       <Branch
         title={unit.name}
         titleClass="unit"
@@ -188,6 +192,6 @@ export function UnitBranch({ unit, forceOpen, renderActions, onDropFiles }: Slot
         ))}
         {unit.domains.length === 0 && <div className="empty">Sin dominios todavía</div>}
       </Branch>
-    </div>
+    </Paper>
   );
 }

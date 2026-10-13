@@ -130,7 +130,7 @@ export interface KpiValue {
 }
 
 export interface UsageResponse {
-  period: { from: string; to: string; bucket: "hour" | "day" };
+  period: { from: string; to: string; bucket: "hour" | "day" | "month" };
   kpis: {
     spend_usd: KpiValue;
     queries: KpiValue;

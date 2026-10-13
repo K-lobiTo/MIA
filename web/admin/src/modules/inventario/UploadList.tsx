@@ -1,12 +1,14 @@
+import { Button, Group, Paper, Text } from "@mantine/core";
+import { StatusBadge, type BadgeTone } from "../../components/StatusBadge";
 import type { UploadItem, UploadState } from "./useUploads";
 
-const LABEL: Record<UploadState, { text: string; className: string }> = {
-  queued: { text: "En espera", className: "badge badge-muted" },
-  uploading: { text: "Subiendo", className: "badge badge-warn" },
-  done: { text: "Subido", className: "badge badge-ok" },
-  existing: { text: "Ya existía", className: "badge" },
-  error: { text: "Error", className: "badge badge-danger" },
-  rejected: { text: "Rechazado", className: "badge badge-danger" },
+const LABEL: Record<UploadState, { text: string; tone: BadgeTone }> = {
+  queued: { text: "En espera", tone: "neutral" },
+  uploading: { text: "Subiendo", tone: "warn" },
+  done: { text: "Subido", tone: "ok" },
+  existing: { text: "Ya existía", tone: "info" },
+  error: { text: "Error", tone: "danger" },
+  rejected: { text: "Rechazado", tone: "danger" },
 };
 
 interface Props {
@@ -19,34 +21,34 @@ interface Props {
 export function UploadList({ items, onRetry, onDismiss, onClear }: Props) {
   if (items.length === 0) return null;
   return (
-    <section className="card uploads" aria-label="Subidas">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <Paper component="section" withBorder p="md" radius="md" className="uploads" aria-label="Subidas">
+      <Group justify="space-between">
         <h2>Subidas</h2>
-        <button className="btn btn-small" onClick={onClear}>
+        <Button variant="default" size="compact-sm" onClick={onClear}>
           Limpiar terminadas
-        </button>
-      </div>
+        </Button>
+      </Group>
       {items.map((item) => {
         const label = LABEL[item.state];
         return (
           <div className="upload-row" key={item.id}>
             <span className="name">{item.file.name}</span>
             <span className="dest">{item.destination}</span>
-            <span className={label.className}>{label.text}</span>
-            {item.message && <span className="hint">{item.message}</span>}
+            <StatusBadge tone={label.tone}>{label.text}</StatusBadge>
+            {item.message && <Text span c="dimmed" fz="sm">{item.message}</Text>}
             {item.state === "error" && (
-              <button className="btn btn-small" onClick={() => onRetry(item.id)}>
+              <Button variant="default" size="compact-sm" onClick={() => onRetry(item.id)}>
                 Reintentar
-              </button>
+              </Button>
             )}
             {(item.state === "rejected" || item.state === "error" || item.state === "existing") && (
-              <button className="btn btn-small" onClick={() => onDismiss(item.id)} aria-label={`Quitar ${item.file.name}`}>
+              <Button variant="default" size="compact-sm" onClick={() => onDismiss(item.id)} aria-label={`Quitar ${item.file.name}`}>
                 Quitar
-              </button>
+              </Button>
             )}
           </div>
         );
       })}
-    </section>
+    </Paper>
   );
 }

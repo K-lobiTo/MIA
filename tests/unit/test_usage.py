@@ -135,6 +135,25 @@ def test_la_serie_de_varios_dias_es_por_dia(client, admin, datos):
     assert consultas == 7
 
 
+def test_la_serie_puede_ser_por_mes_y_no_afecta_a_hoy(client, admin, datos):
+    mensual = _uso(client, admin, period="30d", bucket="month").json()
+    hoy = _uso(client, admin, period="today", bucket="month").json()
+
+    assert mensual["period"]["bucket"] == "month"
+    assert all(len(p["bucket"]) == 7 for p in mensual["series"]) and len(mensual["series"]) in (1, 2)
+    assert sum(g["queries"] for p in mensual["series"] for g in p["groups"].values()) == 7
+    assert hoy["period"]["bucket"] == "hour" and len(hoy["series"]) == 24
+
+
+def test_la_serie_por_mes_incluye_los_meses_vacios_de_un_rango_largo(client, admin, datos):
+    desde = (day_start_utc() - timedelta(days=200)).date().isoformat()
+    cuerpo = _uso(client, admin, period="custom", **{"from": desde, "to": day_start_utc().date().isoformat()}, bucket="month").json()
+
+    meses = [p["bucket"] for p in cuerpo["series"]]
+    assert meses == sorted(set(meses)) and len(meses) >= 7
+    assert sum(1 for p in cuerpo["series"] if p["groups"]) <= 2  # las siete consultas de los datos caen en el mes actual y el anterior
+
+
 def test_tabla_por_artefacto_con_el_gasto_de_hoy_frente_a_su_tope(client, admin, datos):
     filas = {f["name"]: f for f in _uso(client, admin, period="today").json()["by_artifact"]}
 

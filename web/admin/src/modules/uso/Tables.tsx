@@ -1,3 +1,4 @@
+import { Button, Paper, Table, Text } from "@mantine/core";
 import { Link } from "react-router-dom";
 import type { UsageResponse } from "../../api/types";
 import { Meter } from "../artefactos/Meter";
@@ -6,81 +7,81 @@ import { formatLatency, formatMetric, formatUsd } from "./usageUtils";
 /** Gasto por artefacto, con el gasto de hoy frente a su tope y un acceso a su configuración (USO-4). */
 export function ByArtifactTable({ rows }: { rows: UsageResponse["by_artifact"] }) {
   return (
-    <section className="card" aria-label="Por artefacto">
+    <Paper component="section" withBorder p="md" radius="md" aria-label="Por artefacto">
       <h2>Por artefacto</h2>
       {rows.length === 0 ? (
-        <p className="muted">No hay artefactos registrados.</p>
+        <Text c="dimmed" mt="sm">No hay artefactos registrados.</Text>
       ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Artefacto</th>
-                <th scope="col">Hoy frente a su tope</th>
-                <th scope="col" className="num">Gasto</th>
-                <th scope="col" className="num">Consultas</th>
-                <th scope="col" className="num">Tiempo medio</th>
-                <th scope="col"><span className="sr-only">Configuración</span></th>
-              </tr>
-            </thead>
-            <tbody>
+        <Table.ScrollContainer minWidth={720}>
+          <Table verticalSpacing="sm" highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th scope="col">Artefacto</Table.Th>
+                <Table.Th scope="col">Hoy frente a su tope</Table.Th>
+                <Table.Th scope="col" ta="right">Gasto</Table.Th>
+                <Table.Th scope="col" ta="right">Consultas</Table.Th>
+                <Table.Th scope="col" ta="right">Tiempo medio</Table.Th>
+                <Table.Th scope="col"><span className="sr-only">Configuración</span></Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
               {rows.map((row) => (
-                <tr key={row.id}>
-                  <th scope="row">{row.name}</th>
-                  <td>
+                <Table.Tr key={row.id}>
+                  <Table.Th scope="row">{row.name}</Table.Th>
+                  <Table.Td>
                     <Meter label="Gasto de hoy" spent={row.today_spent_usd} cap={row.daily_cap_usd} />
-                  </td>
-                  <td className="num">{formatUsd(row.spend_usd)}</td>
-                  <td className="num">{formatMetric("queries", row.queries)}</td>
-                  <td className="num">{formatLatency(row.avg_latency_ms)}</td>
-                  <td>
-                    <Link to="/artefactos" className="btn btn-small">
+                  </Table.Td>
+                  <Table.Td ta="right">{formatUsd(row.spend_usd)}</Table.Td>
+                  <Table.Td ta="right">{formatMetric("queries", row.queries)}</Table.Td>
+                  <Table.Td ta="right">{formatLatency(row.avg_latency_ms)}</Table.Td>
+                  <Table.Td>
+                    <Button component={Link} to="/artefactos" variant="default" size="compact-sm">
                       Configurar
-                    </Link>
-                  </td>
-                </tr>
+                    </Button>
+                  </Table.Td>
+                </Table.Tr>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
       )}
-    </section>
+    </Paper>
   );
 }
 
 /** Qué modelo concentra el gasto: sirve para comparar modelos al cambiar el de un modo (USO-5). */
 export function ByModelTable({ rows }: { rows: UsageResponse["by_model"] }) {
   return (
-    <section className="card" aria-label="Por modelo">
+    <Paper component="section" withBorder p="md" radius="md" aria-label="Por modelo">
       <h2>Por modelo</h2>
       {rows.length === 0 ? (
-        <p className="muted">Ninguna consulta llegó a un modelo en este período.</p>
+        <Text c="dimmed" mt="sm">Ninguna consulta llegó a un modelo en este período.</Text>
       ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Modelo</th>
-                <th scope="col" className="num">Consultas</th>
-                <th scope="col" className="num">Tokens</th>
-                <th scope="col" className="num">Gasto</th>
-                <th scope="col" className="num">Tiempo medio</th>
-              </tr>
-            </thead>
-            <tbody>
+        <Table.ScrollContainer minWidth={600}>
+          <Table verticalSpacing="sm" highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th scope="col">Modelo</Table.Th>
+                <Table.Th scope="col" ta="right">Consultas</Table.Th>
+                <Table.Th scope="col" ta="right">Tokens</Table.Th>
+                <Table.Th scope="col" ta="right">Gasto</Table.Th>
+                <Table.Th scope="col" ta="right">Tiempo medio</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
               {rows.map((row) => (
-                <tr key={row.model}>
-                  <th scope="row" className="mono">{row.model}</th>
-                  <td className="num">{formatMetric("queries", row.queries)}</td>
-                  <td className="num">{formatMetric("tokens", row.tokens)}</td>
-                  <td className="num">{formatUsd(row.spend_usd)}</td>
-                  <td className="num">{formatLatency(row.avg_latency_ms)}</td>
-                </tr>
+                <Table.Tr key={row.model}>
+                  <Table.Th scope="row" ff="monospace">{row.model}</Table.Th>
+                  <Table.Td ta="right">{formatMetric("queries", row.queries)}</Table.Td>
+                  <Table.Td ta="right">{formatMetric("tokens", row.tokens)}</Table.Td>
+                  <Table.Td ta="right">{formatUsd(row.spend_usd)}</Table.Td>
+                  <Table.Td ta="right">{formatLatency(row.avg_latency_ms)}</Table.Td>
+                </Table.Tr>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
       )}
-    </section>
+    </Paper>
   );
 }

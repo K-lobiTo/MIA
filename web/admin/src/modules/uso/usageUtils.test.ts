@@ -76,6 +76,7 @@ describe("formatos", () => {
   it("etiquetas del eje", () => {
     expect(bucketLabel("2026-10-08T14:00", "hour")).toBe("14:00");
     expect(bucketLabel("2026-10-08", "day")).toBe("8/10");
+    expect(bucketLabel("2026-10", "month")).toBe("oct 2026");
   });
 });
 

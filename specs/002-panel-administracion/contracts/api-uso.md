@@ -13,7 +13,7 @@ Los días se cortan a medianoche de `CAP_TIMEZONE`, igual que los topes.
 
 ## GET /usage
 
-Parámetros extra: `group_by` = `artifact` | `mode` | `model` (por defecto `artifact`).
+Parámetros extra: `group_by` = `artifact` | `mode` | `model` (por defecto `artifact`); `bucket` = `day` | `month` (opcional, granularidad de la serie; sin él, por día).
 
 ```json
 {
@@ -40,7 +40,7 @@ Parámetros extra: `group_by` = `artifact` | `mode` | `model` (por defecto `arti
 }
 ```
 
-- `bucket` es `hour` con `period=today` y `day` en los demás (USO-3).
+- `bucket` es `hour` con `period=today` (aunque se pida otro) y, en los demás, `day` o `month` según el parámetro `bucket` (USO-3). Por mes, las cubetas se llaman `AAAA-MM` e incluyen los meses vacíos; el primero y el último pueden quedar parciales según el período.
 - `previous` es el período anterior de igual duración; `change_pct` es nulo si `previous` es 0.
 - Las consultas rechazadas cuentan en `queries` y en el registro, con costo 0, pero no en los
   porcentajes de "sin información" ni en el tiempo de respuesta.

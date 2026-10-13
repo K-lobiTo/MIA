@@ -1,3 +1,4 @@
+import { Paper, SimpleGrid } from "@mantine/core";
 import type { UsageResponse } from "../../api/types";
 import { describeDelta, formatLatency, formatMetric, formatTokens, formatUsd, type DeltaTone } from "./usageUtils";
 
@@ -16,7 +17,7 @@ const TONE_CLASS: Record<DeltaTone, string> = { good: "delta-good", bad: "delta-
 function Tile({ label, value, detail, change, unit, upIsGood }: TileProps) {
   const delta = describeDelta(change, unit, upIsGood);
   return (
-    <div className="kpi">
+    <Paper withBorder p="md" radius="md" className="kpi">
       <span className="kpi-label">{label}</span>
       <span className="kpi-value">{value}</span>
       {detail && <span className="kpi-detail">{detail}</span>}
@@ -29,7 +30,7 @@ function Tile({ label, value, detail, change, unit, upIsGood }: TileProps) {
           "Sin período anterior con qué comparar"
         )}
       </span>
-    </div>
+    </Paper>
   );
 }
 
@@ -37,7 +38,7 @@ function Tile({ label, value, detail, change, unit, upIsGood }: TileProps) {
 export function KpiRow({ kpis }: { kpis: UsageResponse["kpis"] }) {
   const latency = kpis.latency_ms;
   return (
-    <section className="kpis" aria-label="Indicadores del período">
+    <SimpleGrid component="section" cols={{ base: 1, xs: 2, md: 3, xl: 4 }} spacing="sm" aria-label="Indicadores del período">
       <Tile label="Gasto" value={formatUsd(kpis.spend_usd.value)} change={kpis.spend_usd.change_pct} unit="%" upIsGood={false} />
       <Tile label="Consultas" value={formatMetric("queries", kpis.queries.value)} change={kpis.queries.change_pct} unit="%" upIsGood={null} />
       <Tile
@@ -67,6 +68,6 @@ export function KpiRow({ kpis }: { kpis: UsageResponse["kpis"] }) {
         unit="pts"
         upIsGood={true}
       />
-    </section>
+    </SimpleGrid>
   );
 }

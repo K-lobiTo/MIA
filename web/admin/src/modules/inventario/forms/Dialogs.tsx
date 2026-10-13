@@ -1,6 +1,8 @@
+import { Button, Group, Modal, Stack, Text } from "@mantine/core";
 import { useState } from "react";
 import { ApiError } from "../../../api/client";
 import { useCreateDomain, useCreateFolder, useCreateUnit, useDeleteFolder, useRenameFolder } from "../../../api/inventoryMutations";
+import { Notice } from "../../../components/Notice";
 import { FormDialog } from "../../../components/FormDialog";
 
 interface CloseProps {
@@ -39,21 +41,21 @@ export function NewDomainDialog({ unitId, unitName, onClose }: CloseProps & { un
       onClose={onClose}
       // INV-12: indicar qué artefactos lo verán y cuáles necesitan que se les habilite.
       renderResult={(domain) => (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <p>
+        <Stack gap="sm">
+          <Text>
             Dominio <strong>{domain.name}</strong> creado.
-          </p>
-          <div className="notice">
+          </Text>
+          <Notice tone="info">
             <strong>Lo verán de inmediato:</strong>{" "}
             {domain.visible_to.now.length > 0 ? domain.visible_to.now.join(", ") : "ningún artefacto todavía."}
-          </div>
+          </Notice>
           {domain.visible_to.needs_enabling.length > 0 && (
-            <div className="notice notice-warn">
+            <Notice tone="warn">
               <strong>Hay que habilitarlo en Artefactos y accesos para:</strong> {domain.visible_to.needs_enabling.join(", ")}.
               Tienen dominios elegidos uno a uno.
-            </div>
+            </Notice>
           )}
-        </div>
+        </Stack>
       )}
     />
   );
@@ -107,26 +109,21 @@ export function DeleteFolderDialog({ folderId, name, onClose }: CloseProps & { f
   }
 
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-label="Borrar carpeta">
-      <div className="dialog">
-        <h2>Borrar carpeta</h2>
-        <p>
+    <Modal opened onClose={onClose} title="Borrar carpeta" centered>
+      <Stack gap="sm">
+        <Text>
           ¿Borrar la carpeta <strong>{name}</strong>? Solo se puede borrar si está vacía.
-        </p>
-        {error && (
-          <div className="notice notice-danger" role="alert" style={{ marginTop: 12 }}>
-            {error}
-          </div>
-        )}
-        <div className="dialog-actions">
-          <button className="btn" onClick={onClose}>
+        </Text>
+        {error && <Notice tone="danger">{error}</Notice>}
+        <Group justify="flex-end">
+          <Button variant="default" onClick={onClose}>
             Cancelar
-          </button>
-          <button className="btn btn-danger" onClick={confirm} disabled={remove.isPending}>
+          </Button>
+          <Button color="coral" onClick={confirm} loading={remove.isPending}>
             Borrar
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </Group>
+      </Stack>
+    </Modal>
   );
 }

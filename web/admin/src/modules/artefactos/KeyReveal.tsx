@@ -1,4 +1,6 @@
+import { Button, Group, Modal } from "@mantine/core";
 import { useState } from "react";
+import { Notice } from "../../components/Notice";
 
 interface Props {
   artifactName: string;
@@ -22,25 +24,30 @@ export function KeyReveal({ artifactName, keyValue, regenerated, onClose }: Prop
   }
 
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="clave-nueva">
-      <div className="dialog dialog-wide">
-        <h2 id="clave-nueva">{regenerated ? "Clave regenerada" : "Artefacto registrado"}: {artifactName}</h2>
-        <div className="notice notice-warn">
-          <strong>Copia la clave ahora.</strong> No se volverá a mostrar completa: si se pierde, hay que regenerarla.
-          {regenerated && " La clave anterior ya dejó de funcionar."}
-        </div>
-        <div className="key-box" data-testid="clave-completa">
-          {keyValue}
-        </div>
-        <div className="dialog-actions" style={{ justifyContent: "space-between" }}>
-          <button className="btn" onClick={copy}>
-            {copied ? "Copiada" : "Copiar clave"}
-          </button>
-          <button className="btn btn-primary" onClick={onClose}>
-            Ya la guardé
-          </button>
-        </div>
+    // Solo se cierra con "Ya la guardé": un clic o Escape por accidente perdería la única vista de la clave.
+    <Modal
+      opened
+      onClose={onClose}
+      size="lg"
+      centered
+      withCloseButton={false}
+      closeOnClickOutside={false}
+      closeOnEscape={false}
+      title={`${regenerated ? "Clave regenerada" : "Artefacto registrado"}: ${artifactName}`}
+    >
+      <Notice tone="warn">
+        <strong>Copia la clave ahora.</strong> No se volverá a mostrar completa: si se pierde, hay que regenerarla.
+        {regenerated && " La clave anterior ya dejó de funcionar."}
+      </Notice>
+      <div className="key-box" data-testid="clave-completa">
+        {keyValue}
       </div>
-    </div>
+      <Group justify="space-between" mt="md">
+        <Button variant="default" onClick={copy}>
+          {copied ? "Copiada" : "Copiar clave"}
+        </Button>
+        <Button onClick={onClose}>Ya la guardé</Button>
+      </Group>
+    </Modal>
   );
 }

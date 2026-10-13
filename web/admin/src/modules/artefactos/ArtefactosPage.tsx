@@ -1,7 +1,10 @@
+import { Button, Group, Modal, Text } from "@mantine/core";
+import { IconPlus } from "@tabler/icons-react";
 import { useState } from "react";
 import { useRegenerateKey, useArtifacts, useUpdateArtifact } from "../../api/artifacts";
 import { useInventory } from "../../api/inventory";
 import type { Artifact } from "../../api/types";
+import { Notice } from "../../components/Notice";
 import { ArtifactCard } from "./ArtifactCard";
 import { ArtifactForm } from "./ArtifactForm";
 import { capabilities } from "../../auth/capabilities";
@@ -51,44 +54,40 @@ export function ArtefactosPage() {
 
   return (
     <>
-      <div className="inv-toolbar">
+      <Group justify="space-between" align="center" gap="md">
         <h1>Artefactos y accesos</h1>
-        <button className="btn btn-primary" onClick={() => setDialog({ kind: "new" })}>
-          + Nuevo artefacto
-        </button>
-      </div>
-      <p className="muted">
+        <Button leftSection={<IconPlus size={16} />} onClick={() => setDialog({ kind: "new" })}>
+          Nuevo artefacto
+        </Button>
+      </Group>
+      <Text c="dimmed">
         Cada artefacto tiene su propia clave y solo puede consultar los dominios y usar los modos que se le permitan aquí.
         Los cambios rigen desde la consulta siguiente.
-      </p>
+      </Text>
 
       {artifacts.data?.global && canSeeGlobal && (
-        <div className="notice" role="status">
+        <Notice tone="info">
           <strong>Tope diario de toda la API:</strong> {formatUsd(artifacts.data.global.daily_cap_usd)}. Hoy se han gastado{" "}
           {formatUsd(artifacts.data.global.spent_today_usd)}. Este tope se fija en la configuración de la instancia y no se
           cambia desde el panel.
-        </div>
+        </Notice>
       )}
       {artifacts.data?.global?.caps_exceed_global && canSeeGlobal && (
-        <div className="notice notice-warn" role="alert">
+        <Notice tone="warn">
           <strong>Los topes de los artefactos suman {formatUsd(artifacts.data.global.sum_of_artifact_caps_usd)}</strong>, más que
           el tope de toda la API. Un artefacto puede quedarse sin servicio por el gasto de otros aunque no haya alcanzado el
           suyo: baja algún tope, o sube el de la API en la configuración de la instancia.
-        </div>
+        </Notice>
       )}
-      {actionError && (
-        <div className="notice notice-danger" role="alert">
-          {actionError}
-        </div>
-      )}
-      {artifacts.isPending && <p className="muted">Cargando artefactos...</p>}
+      {actionError && <Notice tone="danger">{actionError}</Notice>}
+      {artifacts.isPending && <Text c="dimmed">Cargando artefactos...</Text>}
       {artifacts.isError && (
-        <div className="notice notice-danger" role="alert">
+        <Notice tone="danger">
           No se pudieron cargar los artefactos: {artifacts.error.message}{" "}
-          <button className="btn btn-small" onClick={() => artifacts.refetch()}>
+          <Button variant="default" size="compact-sm" onClick={() => artifacts.refetch()}>
             Reintentar
-          </button>
-        </div>
+          </Button>
+        </Notice>
       )}
 
       {artifacts.data && (
@@ -105,7 +104,7 @@ export function ArtefactosPage() {
             />
           ))}
           {artifacts.data.artifacts.length === 0 && (
-            <p className="muted">Todavía no hay artefactos registrados. Registra el primero con "+ Nuevo artefacto".</p>
+            <Text c="dimmed">Todavía no hay artefactos registrados. Registra el primero con "Nuevo artefacto".</Text>
           )}
         </div>
       )}
@@ -123,23 +122,20 @@ export function ArtefactosPage() {
         <KeyReveal artifactName={dialog.name} keyValue={dialog.key} regenerated={dialog.regenerated} onClose={close} />
       )}
       {dialog?.kind === "confirm-regenerate" && (
-        <div className="overlay" role="dialog" aria-modal="true" aria-label="Regenerar clave">
-          <div className="dialog">
-            <h2>Regenerar clave</h2>
-            <p>
-              La clave actual de <strong>{dialog.artifact.name}</strong> dejará de funcionar de inmediato, y todo lo que la use
-              (el sitio publicado, scripts) tendrá que actualizarse con la nueva.
-            </p>
-            <div className="dialog-actions">
-              <button className="btn" onClick={close}>
-                Cancelar
-              </button>
-              <button className="btn btn-danger" onClick={() => void confirmRegenerate(dialog.artifact)}>
-                Regenerar
-              </button>
-            </div>
-          </div>
-        </div>
+        <Modal opened onClose={close} title="Regenerar clave" centered>
+          <Text>
+            La clave actual de <strong>{dialog.artifact.name}</strong> dejará de funcionar de inmediato, y todo lo que la use
+            (el sitio publicado, scripts) tendrá que actualizarse con la nueva.
+          </Text>
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={close}>
+              Cancelar
+            </Button>
+            <Button color="coral" onClick={() => void confirmRegenerate(dialog.artifact)}>
+              Regenerar
+            </Button>
+          </Group>
+        </Modal>
       )}
     </>
   );
