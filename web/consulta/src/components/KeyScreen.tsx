@@ -1,5 +1,7 @@
+import { Button, Paper, PasswordInput, Text, Title } from "@mantine/core";
 import { useState } from "react";
 import { setKey } from "../api/client";
+import { Notice } from "./Notice";
 
 interface Props {
   /** La clave guardada fue rechazada por la API: se explica antes de pedir la nueva. */
@@ -11,39 +13,39 @@ export function KeyScreen({ invalid }: Props) {
 
   return (
     <main className="key-screen">
-      <form
+      <Paper
+        component="form"
+        withBorder
+        p="xl"
+        radius="md"
         className="key-card"
-        onSubmit={(event) => {
+        onSubmit={(event: React.FormEvent) => {
           event.preventDefault();
           if (value.trim()) setKey(value.trim());
         }}
       >
-        <h1>MIA: Consulta</h1>
-        {invalid && (
-          <p className="notice notice-warn" role="alert">
-            La clave guardada ya no es válida. Ingresa la vigente (te la da quien administra MIA).
-          </p>
-        )}
-        <p className="muted">
+        <Title order={1} fz="1.4rem">
+          MIA: Consulta
+        </Title>
+        {invalid && <Notice tone="warn">La clave guardada ya no es válida. Ingresa la vigente (te la da quien administra MIA).</Notice>}
+        <Text c="dimmed">
           Escribe la clave de tu Consulta para preguntar sobre los documentos de tu unidad. Te la entrega quien
           administra MIA; se recuerda en este navegador.
-        </p>
-        <div className="field">
-          <label htmlFor="key">Clave de la Consulta</label>
-          <input
-            id="key"
-            type="password"
-            autoComplete="off"
-            autoFocus
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-            placeholder="mia_..."
-          />
-        </div>
-        <button type="submit" className="btn btn-primary" disabled={!value.trim()}>
+        </Text>
+        <PasswordInput
+          id="key"
+          label="Clave de la Consulta"
+          autoComplete="off"
+          data-autofocus
+          autoFocus
+          value={value}
+          onChange={(event) => setValue(event.currentTarget.value)}
+          placeholder="mia_..."
+        />
+        <Button type="submit" disabled={!value.trim()}>
           Entrar
-        </button>
-      </form>
+        </Button>
+      </Paper>
     </main>
   );
 }

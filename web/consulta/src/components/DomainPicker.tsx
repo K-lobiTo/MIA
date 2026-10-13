@@ -1,3 +1,4 @@
+import { Anchor, Checkbox, Group, Text } from "@mantine/core";
 import { useMemo } from "react";
 import type { Domain } from "../api/types";
 import { groupByUnit } from "../state/domains";
@@ -13,7 +14,7 @@ export function DomainPicker({ domains, selected, onChange }: Props) {
   const chosen = new Set(selected);
 
   if (domains.length === 0) {
-    return <p className="muted">Esta Consulta todavía no tiene dominios para consultar.</p>;
+    return <Text c="dimmed">Esta Consulta todavía no tiene dominios para consultar.</Text>;
   }
 
   const toggle = (id: string) => {
@@ -21,27 +22,28 @@ export function DomainPicker({ domains, selected, onChange }: Props) {
   };
 
   return (
-    <section aria-label="Dominios">
+    <section aria-label="Dominios" className="sidebar-section">
       <h2>Dominios</h2>
-      <div className="picker-actions">
-        <button type="button" className="btn-link" onClick={() => onChange(domains.map((d) => d.id))}>
+      <Group gap="md">
+        <Anchor component="button" type="button" fz="sm" fw={600} onClick={() => onChange(domains.map((d) => d.id))}>
           Todos
-        </button>
-        <button type="button" className="btn-link" onClick={() => onChange([])}>
+        </Anchor>
+        <Anchor component="button" type="button" fz="sm" fw={600} onClick={() => onChange([])}>
           Ninguno
-        </button>
-      </div>
+        </Anchor>
+      </Group>
       {groups.map((group) => (
         <div key={group.title ?? "unico"}>
           {group.title && <div className="group-title">{group.title}</div>}
           {group.domains.map((domain) => (
-            <label key={domain.id} className="domain">
-              <input type="checkbox" checked={chosen.has(domain.id)} onChange={() => toggle(domain.id)} />
-              <span>
-                <span className="name">{domain.name}</span>
-                {domain.description && <span className="description">{domain.description}</span>}
-              </span>
-            </label>
+            <div key={domain.id} className="pick">
+              <Checkbox
+                checked={chosen.has(domain.id)}
+                onChange={() => toggle(domain.id)}
+                label={domain.name}
+                description={domain.description ? <span className="pick-description">{domain.description}</span> : undefined}
+              />
+            </div>
           ))}
         </div>
       ))}

@@ -1,42 +1,69 @@
+/* Paleta Vanilla Style (docs/PALETAS.md, #05): cuatro colores principales.
+     #6D597A  violeta     : acento, botones, burbuja de la pregunta
+     #B56576  rosa palo   : acento secundario (bordes y resaltes suaves)
+     #E56B6F  coral       : resalte y acciones destructivas
+     #EAAC8B  durazno     : fondos suaves y estado al pasar el mouse (en tintes claros)
+   La paleta no trae ningún color claro ni uno oscuro para texto: los fondos suaves son tintes del durazno y
+   del violeta, y el texto usa tonos oscuros del violeta. Los pasos de la paleta con poco contraste sobre
+   blanco (coral 3.15:1, durazno 1.95:1) solo se usan en rellenos y adornos, nunca como texto. */
 :root {
-  --bg: #f4f6f6;
+  --bg: #fbf6f4;
   --surface: #ffffff;
-  --ink: #1b2424;
-  --muted: #4f5d5d;
-  --line: #d3dcdc;
-  --accent: #0f6b6b;
+  --ink: #2a2230;
+  --muted: #5e5266;
+  --line: #e6d6d6;
+  --accent: #6d597a;
   --accent-ink: #ffffff;
-  --accent-soft: #dff0f0;
-  --user: #0f6b6b;
+  --accent-soft: #fbe7db;
+  --secondary: #b56576;
+  --highlight: #e56b6f;
+  --peach: #eaac8b;
+  --selected: #f6d8c5;
+  --user: #6d597a;
   --user-ink: #ffffff;
-  --info-bg: #eef1f3;
-  --warn: #a04a06;
-  --warn-soft: #fbeedf;
-  --danger: #a12626;
-  --danger-soft: #fbe6e6;
+  --info-bg: #f6edf0;
+  --warn: #8c4a1f;
+  --warn-soft: #fcebdd;
+  --danger: #a63a45;
+  --danger-soft: #fbe6e7;
   --ok: #2d6a4f;
+  --ok-soft: #e2f0e8;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #101616;
-    --surface: #182020;
-    --ink: #e6eded;
-    --muted: #a6b4b4;
-    --line: #2b3838;
-    --accent: #5fc4c4;
-    --accent-ink: #082020;
-    --accent-soft: #17302f;
-    --user: #1c8a8a;
-    --user-ink: #ffffff;
-    --info-bg: #1e2828;
-    --warn: #f0a964;
-    --warn-soft: #3a2716;
-    --danger: #f2a0a0;
-    --danger-soft: #3a1c1c;
-    --ok: #86cba6;
-    color-scheme: dark;
-  }
+/* Mantine toma sus colores base de la misma paleta, para que sus componentes y los propios se vean iguales. */
+:root[data-mantine-color-scheme] {
+  --mantine-color-body: var(--surface);
+  --mantine-color-text: var(--ink);
+  --mantine-color-dimmed: var(--muted);
+  --mantine-color-default-border: var(--line);
+  --mantine-color-error: var(--danger);
+}
+
+/* Modo oscuro: lo activa el atributo que pone Mantine en <html> (data-mantine-color-scheme), que sigue el
+   modo del sistema o la elección del interruptor del encabezado. */
+:root[data-mantine-color-scheme="dark"] {
+  --bg: #1a141f;
+  --surface: #251c2b;
+  --ink: #f2eaf3;
+  --muted: #bdafc4;
+  --line: #3d3146;
+  --accent: #c2aacf;
+  --accent-ink: #1a141f;
+  --accent-soft: #3a2b3f;
+  --secondary: #d38b99;
+  --highlight: #e56b6f;
+  --peach: #eaac8b;
+  --selected: #4a3a52;
+  --user: #6d597a;
+  --user-ink: #ffffff;
+  --info-bg: #2e2236;
+  --warn: #f0b07a;
+  --warn-soft: #3a2716;
+  --danger: #f4a3a8;
+  --danger-soft: #3d1c20;
+  --ok: #86cba6;
+  --ok-soft: #173326;
+  color-scheme: dark;
 }

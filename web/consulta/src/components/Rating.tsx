@@ -1,3 +1,4 @@
+import { Button, Group, Stack, Text, Textarea } from "@mantine/core";
 import { useState } from "react";
 import { useFeedback } from "../api/consulta";
 import type { Rating as RatingValue } from "../api/types";
@@ -25,54 +26,61 @@ export function Rating({ queryId, rating, comment, onRate }: Props) {
   };
 
   return (
-    <div className="rating">
-      <span className="muted">¿Te sirvió esta respuesta?</span>
-      <button
-        type="button"
-        className="btn btn-small"
-        aria-pressed={rating === "util"}
-        disabled={feedback.isPending}
-        onClick={() => submit("util")}
-      >
-        Útil
-      </button>
-      <button
-        type="button"
-        className="btn btn-small"
-        aria-pressed={rating === "no_util"}
-        disabled={feedback.isPending}
-        onClick={() => submit("no_util")}
-      >
-        No útil
-      </button>
-      {failed && (
-        <span role="alert" className="muted">
-          No se pudo guardar tu calificación. Intenta de nuevo.
-        </span>
-      )}
+    <Stack gap="xs" mt="xs">
+      <Group gap="xs" align="center">
+        <Text span c="dimmed" fz="sm">
+          ¿Te sirvió esta respuesta?
+        </Text>
+        <Button
+          type="button"
+          size="compact-sm"
+          variant={rating === "util" ? "filled" : "default"}
+          aria-pressed={rating === "util"}
+          disabled={feedback.isPending}
+          onClick={() => submit("util")}
+        >
+          Útil
+        </Button>
+        <Button
+          type="button"
+          size="compact-sm"
+          variant={rating === "no_util" ? "filled" : "default"}
+          aria-pressed={rating === "no_util"}
+          disabled={feedback.isPending}
+          onClick={() => submit("no_util")}
+        >
+          No útil
+        </Button>
+        {failed && (
+          <Text span role="alert" c="dimmed" fz="sm">
+            No se pudo guardar tu calificación. Intenta de nuevo.
+          </Text>
+        )}
+      </Group>
       {rating && (
-        <div className="rating-comment">
-          <label className="sr-only" htmlFor={`comment-${queryId}`}>
-            Comentario (opcional)
-          </label>
-          <textarea
-            id={`comment-${queryId}`}
-            rows={2}
+        <Stack gap="xs" maw={420}>
+          <Textarea
+            aria-label="Comentario (opcional)"
+            autosize
+            minRows={2}
             maxLength={1000}
             placeholder="Comentario (opcional)"
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={(event) => setDraft(event.currentTarget.value)}
           />
-          <button
-            type="button"
-            className="btn btn-small"
-            disabled={feedback.isPending || draft.trim() === (comment ?? "")}
-            onClick={() => submit(rating, draft)}
-          >
-            Enviar comentario
-          </button>
-        </div>
+          <Group>
+            <Button
+              type="button"
+              size="compact-sm"
+              variant="default"
+              disabled={feedback.isPending || draft.trim() === (comment ?? "")}
+              onClick={() => submit(rating, draft)}
+            >
+              Enviar comentario
+            </Button>
+          </Group>
+        </Stack>
       )}
-    </div>
+    </Stack>
   );
 }

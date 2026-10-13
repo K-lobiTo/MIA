@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { Button, Textarea } from "@mantine/core";
+import { useEffect, useState } from "react";
+import { Notice } from "./Notice";
 
 export const MAX_QUESTION_LENGTH = 2000;
 const COUNTER_FROM = 1800;
@@ -19,7 +21,6 @@ interface Props {
 
 export function Composer({ selectedCount, busy, blockedReason, rejection, restore, onSend }: Props) {
   const [text, setText] = useState("");
-  const areaRef = useRef<HTMLTextAreaElement>(null);
 
   // `n` cambia en cada rechazo, así que dos rechazos seguidos de la misma pregunta también la restauran.
   useEffect(() => {
@@ -33,7 +34,6 @@ export function Composer({ selectedCount, busy, blockedReason, rejection, restor
     if (!canSend) return;
     onSend(text.trim());
     setText("");
-    if (areaRef.current) areaRef.current.style.height = "";
   };
 
   return (
@@ -44,27 +44,19 @@ export function Composer({ selectedCount, busy, blockedReason, rejection, restor
         send();
       }}
     >
-      {rejection && (
-        <p className="notice notice-danger" role="alert">
-          {rejection}
-        </p>
-      )}
+      {rejection && <Notice tone="danger">{rejection}</Notice>}
       <div className="composer-row">
-        <label className="sr-only" htmlFor="question">
-          Tu pregunta
-        </label>
-        <textarea
+        <Textarea
           id="question"
-          ref={areaRef}
-          rows={1}
+          aria-label="Tu pregunta"
+          style={{ flex: 1 }}
+          autosize
+          minRows={1}
+          maxRows={6}
           maxLength={MAX_QUESTION_LENGTH}
           value={text}
           placeholder={hint ? "" : "Escribe tu pregunta..."}
-          onChange={(event) => {
-            setText(event.target.value);
-            event.target.style.height = "";
-            event.target.style.height = `${Math.min(event.target.scrollHeight, 160)}px`;
-          }}
+          onChange={(event) => setText(event.currentTarget.value)}
           onKeyDown={(event) => {
             // Enter envía; Mayúsculas+Enter agrega una línea.
             if (event.key === "Enter" && !event.shiftKey) {
@@ -73,9 +65,9 @@ export function Composer({ selectedCount, busy, blockedReason, rejection, restor
             }
           }}
         />
-        <button type="submit" className="btn btn-primary" disabled={!canSend}>
+        <Button type="submit" size="md" disabled={!canSend}>
           Preguntar
-        </button>
+        </Button>
       </div>
       <div className="composer-hint">
         <span role={hint ? "status" : undefined}>{hint ?? ""}</span>

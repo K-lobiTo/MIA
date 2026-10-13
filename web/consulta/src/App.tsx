@@ -1,15 +1,18 @@
+import { AppShell, Box, Loader, Text } from "@mantine/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, setInvalidKeyHandler, useKey } from "./api/client";
 import { FIXED_KEY } from "./api/fixedKey";
 import { useAsk, useConfig, useDomains } from "./api/consulta";
 import type { ModeId, Rating } from "./api/types";
+import { ColorSchemeToggle } from "./components/ColorSchemeToggle";
 import { Composer } from "./components/Composer";
 import { Conversation } from "./components/Conversation";
 import { DomainPicker } from "./components/DomainPicker";
 import { ModePicker } from "./components/ModePicker";
 import { Header } from "./components/Header";
 import { KeyScreen } from "./components/KeyScreen";
+import { Notice } from "./components/Notice";
 import {
   answeredExchange,
   failedExchange,
@@ -123,48 +126,58 @@ export function App() {
   if (!key) return <KeyScreen invalid={invalid} />;
   if (config.isPending || domains.isPending) {
     return (
-      <p className="muted" style={{ padding: 24 }}>
+      <Text c="dimmed" p="xl">
+        <Loader size="xs" mr="xs" />
         Cargando...
-      </p>
+      </Text>
     );
   }
   if (config.isError || !config.data?.artifact || domains.isError) {
     const rejected = FIXED_KEY && config.error instanceof ApiError && config.error.status === 401;
     return (
-      <p className="notice notice-danger" style={{ margin: 24 }}>
-        {rejected
-          ? "La clave configurada para esta Consulta no es válida o fue desactivada. Avisa a quien administra MIA."
-          : "No se pudo cargar la Consulta. Recarga la página."}
-      </p>
+      <div style={{ margin: 24 }}>
+        <Notice tone="danger">
+          {rejected
+            ? "La clave configurada para esta Consulta no es válida o fue desactivada. Avisa a quien administra MIA."
+            : "No se pudo cargar la Consulta. Recarga la página."}
+        </Notice>
+      </div>
     );
   }
 
   return (
-    <div className="app">
-      <Header name={config.data.artifact.name} onToggleSidebar={() => setSidebarOpen((open) => !open)} />
-      <aside className={`sidebar${sidebarOpen ? " open" : ""}`}>
-        {availability && <ModePicker availability={availability} onChange={changeMode} />}
-        <DomainPicker domains={domains.data ?? []} selected={selected} onChange={changeSelection} />
-      </aside>
-      <main className="main">
-        <Conversation
-          exchanges={exchanges}
-          onRetry={(exchange, forced) => send(exchange.question, forced ?? exchange.mode)}
-          literalAvailable={Boolean(config.data.modes.find((m) => m.id === "literal")?.available)}
-          busy={busy}
-          mode={mode}
-          modeNames={modeNames}
-          onRate={rate}
-        />
-        <Composer
-          selectedCount={selected.length}
-          busy={busy}
-          blockedReason={availability?.sendBlocked ?? null}
-          rejection={rejection}
-          restore={restore}
-          onSend={(question) => send(question)}
-        />
-      </main>
-    </div>
+    <AppShell header={{ height: 56 }} navbar={{ width: 300, breakpoint: "sm", collapsed: { mobile: !sidebarOpen } }} padding={0}>
+      <Header name={config.data.artifact.name} sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen((open) => !open)} />
+      <AppShell.Navbar p="md" aria-label="Dominios y modo de respuesta">
+        <Box hiddenFrom="sm" mb="md">
+          <ColorSchemeToggle />
+        </Box>
+        <div className="sidebar-scroll" style={{ display: "flex", flexDirection: "column", gap: 18, overflowY: "auto" }}>
+          {availability && <ModePicker availability={availability} onChange={changeMode} />}
+          <DomainPicker domains={domains.data ?? []} selected={selected} onChange={changeSelection} />
+        </div>
+      </AppShell.Navbar>
+      <AppShell.Main>
+        <main className="main">
+          <Conversation
+            exchanges={exchanges}
+            onRetry={(exchange, forced) => send(exchange.question, forced ?? exchange.mode)}
+            literalAvailable={Boolean(config.data.modes.find((m) => m.id === "literal")?.available)}
+            busy={busy}
+            mode={mode}
+            modeNames={modeNames}
+            onRate={rate}
+          />
+          <Composer
+            selectedCount={selected.length}
+            busy={busy}
+            blockedReason={availability?.sendBlocked ?? null}
+            rejection={rejection}
+            restore={restore}
+            onSend={(question) => send(question)}
+          />
+        </main>
+      </AppShell.Main>
+    </AppShell>
   );
 }
