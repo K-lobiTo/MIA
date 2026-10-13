@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BROWSER_BLOCKED, EXPIRED, describeAccessError, microsoftProblem } from "./errors";
+import { BROWSER_BLOCKED, EXPIRED, INVALID_KEY, describeAccessError, microsoftProblem } from "./errors";
 
 describe("describeAccessError", () => {
   it("cuenta no autorizada nombra el correo y ofrece cerrar sesión", () => {
@@ -27,6 +27,13 @@ describe("describeAccessError", () => {
       expect(describeAccessError(401, code)).toEqual(EXPIRED);
     }
     expect(EXPIRED.message).toBe("Tu sesión venció. Inicia sesión de nuevo.");
+  });
+
+  it("con la clave de administración un 401 es clave inválida y se vuelve a la pantalla de entrada", () => {
+    expect(describeAccessError(401, "unauthenticated", undefined, true)).toEqual(INVALID_KEY);
+    expect(INVALID_KEY.message).toBe("La clave de administración no es válida.");
+    expect(INVALID_KEY.action).toBe("volver");
+    expect(describeAccessError(401, "token_expired", undefined, false)).toEqual(EXPIRED);
   });
 
   it("la API sin configurar no ofrece ninguna acción", () => {

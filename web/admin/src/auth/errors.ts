@@ -7,9 +7,10 @@ export type AccessKind =
   | "api_sin_configurar"
   | "identidad_no_disponible"
   | "microsoft"
-  | "navegador";
+  | "navegador"
+  | "clave_invalida";
 
-export type AccessAction = "cerrar_sesion" | "iniciar_sesion" | "reintentar" | "ninguna";
+export type AccessAction = "cerrar_sesion" | "iniciar_sesion" | "reintentar" | "volver" | "ninguna";
 
 export interface AccessProblem {
   kind: AccessKind;
@@ -21,6 +22,12 @@ export const EXPIRED: AccessProblem = {
   kind: "vencida",
   message: "Tu sesión venció. Inicia sesión de nuevo.",
   action: "iniciar_sesion",
+};
+
+export const INVALID_KEY: AccessProblem = {
+  kind: "clave_invalida",
+  message: "La clave de administración no es válida.",
+  action: "volver",
 };
 
 export const BROWSER_BLOCKED: AccessProblem = {
@@ -41,8 +48,14 @@ export function microsoftProblem(detail?: string): AccessProblem {
 
 /** Traduce un error de la API a un problema de acceso (que deja la sesión inutilizable), o a null si
  * es un error normal de la operación (conflicto, fuera de alcance, sin conexión...). */
-export function describeAccessError(status: number, code?: string, email?: string): AccessProblem | null {
-  if (status === 401) return EXPIRED;
+export function describeAccessError(
+  status: number,
+  code?: string,
+  email?: string,
+  byKey = false,
+): AccessProblem | null {
+  // Con la clave de administración un 401 es una clave incorrecta, no una sesión vencida.
+  if (status === 401) return byKey ? INVALID_KEY : EXPIRED;
   if (status === 403 && code === "not_authorized") {
     return {
       kind: "no_autorizada",

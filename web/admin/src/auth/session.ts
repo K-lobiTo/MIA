@@ -42,7 +42,11 @@ export class NoSessionError extends Error {}
 
 const RENEW_MARGIN_SECONDS = 5 * 60;
 const LEGACY_KEY = "mia-admin-key";
+// La clave de administración (ADMIN_KEY, alcance global) es una segunda forma de entrar, para cuando no hay
+// cuenta del TEC. Vive solo en la pestaña (sessionStorage), nunca en localStorage.
+const KEY_STORAGE = "mia-clave-sesion";
 
+let adminKey = "";
 let msal: PublicClientApplication | null = null;
 let account: AccountInfo | null = null;
 // Con solo los permisos openid, profile y email, MSAL no guarda un token de acceso que reutilizar:
@@ -67,6 +71,33 @@ function remember(result: AuthenticationResult): string {
   return result.idToken;
 }
 
+function readStoredKey(): string {
+  try {
+    return sessionStorage.getItem(KEY_STORAGE) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function storeKey(key: string): void {
+  adminKey = key;
+  try {
+    if (key) sessionStorage.setItem(KEY_STORAGE, key);
+    else sessionStorage.removeItem(KEY_STORAGE);
+  } catch {
+    // sin almacenamiento: la clave queda solo en memoria
+  }
+}
+
+/** La clave de administración con que se entró, o "" si se entró con una cuenta del TEC. */
+export function getAdminKey(): string {
+  return adminKey;
+}
+
+export function usingKey(): boolean {
+  return adminKey !== "";
+}
+
 function clearLegacyKey(): void {
   // La clave compartida de la versión anterior ya no se usa: se borra del navegador.
   try {
@@ -81,6 +112,8 @@ function clearLegacyKey(): void {
 export async function initSession(): Promise<void> {
   clearLegacyKey();
   const env = readEnv();
+  adminKey = readStoredKey();
+  if (adminKey) return; // sesión con la clave de administración de esta pestaña
   if (!isConfigured(env)) {
     setState({ kind: "no_configurado" });
     return;
@@ -108,7 +141,7 @@ export async function initSession(): Promise<void> {
 /** Con una cuenta ya conocida, pide el perfil a la API para pasar al panel. Los rechazos de acceso
  * ya los registra el cliente de la API con `reject`. */
 export async function loadProfile(loadMe: () => Promise<Me>): Promise<void> {
-  if (!account) return;
+  if (!account && !usingKey()) return;
   try {
     setState({ kind: "activa", me: await loadMe() });
   } catch (caught) {
@@ -117,6 +150,20 @@ export async function loadProfile(loadMe: () => Promise<Me>): Promise<void> {
       setState({ kind: "rechazada", problem: { kind: "identidad_no_disponible", message, action: "reintentar" } });
     }
   }
+}
+
+/** Entra con la clave de administración: la valida pidiendo el perfil a la API (alcance global). */
+export async function signInWithKey(key: string, loadMe: () => Promise<Me>): Promise<void> {
+  storeKey(key.trim());
+  setState({ kind: "cargando" });
+  await loadProfile(loadMe);
+  if (state.kind !== "activa") storeKey(""); // clave incorrecta u otro fallo: no se recuerda
+}
+
+/** Vuelve a la pantalla de entrada (por ejemplo tras una clave incorrecta). */
+export function backToLogin(): void {
+  storeKey("");
+  setState(isConfigured(readEnv()) ? { kind: "sin_sesion" } : { kind: "no_configurado" });
 }
 
 export function currentEmail(): string | undefined {
@@ -140,6 +187,10 @@ export async function signIn(forceLogin = false): Promise<void> {
 
 /** Cierra la sesión solo en este navegador: borra la caché local sin cerrar la sesión de Microsoft. */
 export async function signOut(): Promise<void> {
+  if (usingKey()) {
+    backToLogin();
+    return;
+  }
   cached = null;
   const current = account;
   account = null;

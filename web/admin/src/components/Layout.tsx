@@ -33,7 +33,7 @@ export function Layout() {
         ))}
         <div className="sidebar-footer">
           <div className="session-info">
-            <strong>{me.email ?? "Clave de automatización"}</strong>
+            <strong>{me.email ?? "Clave de administración"}</strong>
             <small>Alcance: {scopeLabel(me)}</small>
           </div>
           <button className="btn btn-small" onClick={() => void signOut()}>

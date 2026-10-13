@@ -1,4 +1,6 @@
-import { signIn, signOut, type AccessState } from "../auth/session";
+import { useState } from "react";
+import { fetchMe } from "../api/me";
+import { backToLogin, signIn, signInWithKey, signOut, type AccessState } from "../auth/session";
 import type { AccessProblem } from "../auth/errors";
 
 interface Props {
@@ -26,7 +28,38 @@ function Problem({ problem }: { problem: AccessProblem }) {
           Reintentar
         </button>
       )}
+      {problem.action === "volver" && (
+        <button className="btn btn-primary" onClick={backToLogin}>
+          Volver a intentar
+        </button>
+      )}
     </>
+  );
+}
+
+/** Entrada con la clave de administración (alcance global): para cuando no hay cuenta del TEC. */
+function KeyForm({ alone }: { alone: boolean }) {
+  const [key, setKey] = useState("");
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (key.trim()) void signInWithKey(key, fetchMe);
+  }
+  return (
+    <form onSubmit={submit} className="login-key">
+      <label htmlFor="login-key">{alone ? "Clave de administración" : "O entra con la clave de administración"}</label>
+      <input
+        id="login-key"
+        type="password"
+        autoComplete="off"
+        autoFocus={alone}
+        value={key}
+        onChange={(event) => setKey(event.target.value)}
+      />
+      <button type="submit" className={`btn${alone ? " btn-primary" : ""}`} disabled={!key.trim()}>
+        Entrar con la clave
+      </button>
+      <p className="muted">La clave da acceso a todo y se recuerda solo en esta pestaña.</p>
+    </form>
   );
 }
 
@@ -42,10 +75,13 @@ export function LoginScreen({ state }: Props) {
         {state.kind === "cargando" && <p className="muted">Cargando...</p>}
         {state.kind === "iniciando" && <p className="muted">Abriendo Microsoft...</p>}
         {state.kind === "no_configurado" && (
-          <div className="notice notice-warn" role="status">
-            El inicio de sesión no está configurado en este sitio (falta el identificador de la aplicación). Avisa a quien
-            administra MIA.
-          </div>
+          <>
+            <div className="notice notice-warn" role="status">
+              El inicio de sesión con cuenta del TEC no está configurado en este sitio. Se puede entrar con la clave de
+              administración.
+            </div>
+            <KeyForm alone />
+          </>
         )}
         {state.kind === "sin_sesion" && (
           <>
@@ -53,6 +89,7 @@ export function LoginScreen({ state }: Props) {
             <button className="btn btn-primary" onClick={() => void signIn()}>
               Iniciar sesión con Microsoft
             </button>
+            <KeyForm alone={false} />
           </>
         )}
         {state.kind === "rechazada" && <Problem problem={state.problem} />}

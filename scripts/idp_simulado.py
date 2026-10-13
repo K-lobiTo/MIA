@@ -43,6 +43,7 @@ KID = "clave-simulada"
 IDP_PORT = 9000
 API_PORT = 8000
 PANEL_ORIGIN = "http://localhost:3001"
+CLAVE_ADMIN = "clave-de-administracion-simulada"  # para probar la entrada del panel con la clave de administración
 
 # correo -> (nombre, programas de la lista de administradores o None si es global, ¿incluye segundo factor?)
 # Las cuentas con programas None y "no listada" se manejan aparte.
@@ -319,7 +320,7 @@ def main() -> int:
         ENTRA_REQUIRE_MFA="true",
         CORS_ORIGINS=PANEL_ORIGIN,
         INGESTION_ENABLED="true",
-        ADMIN_KEY="",
+        ADMIN_KEY=CLAVE_ADMIN,
     )
     identidad = Identidad(args.vigencia)
     import uvicorn
@@ -343,6 +344,7 @@ def main() -> int:
     threading.Thread(target=idp.run, daemon=True).start()
     print(f"IdP simulado: https://localhost:{IDP_PORT} (certificado autofirmado)")
     print(f"API: http://localhost:{API_PORT} con la base temporal {carpeta}/simulado.db")
+    print(f"Clave de administración del panel (alcance global): {CLAVE_ADMIN}")
     print(f"ID tokens de {args.vigencia} s. Cuentas de prueba:")
     for correo, (nombre, alcance, mfa) in CUENTAS.items():
         etiqueta = "global" if alcance == "global" else ", ".join(alcance) if alcance else "NO está en la lista"

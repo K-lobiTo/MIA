@@ -118,7 +118,9 @@ python scripts/admin.py --env-file .env.produccion desactivar coordinador@itcr.a
 
 Agregar un correo que ya existe reemplaza su alcance y lo reactiva. El correo no distingue mayúsculas. Los programas se escriben con su nombre exacto. Quien deja de necesitar acceso: `desactivar` (el registro se conserva). Si se desactiva al último global, el script avisa; la clave de automatización sigue sirviendo.
 
-**Clave de automatización.** `ADMIN_KEY` ya no se usa en el navegador: solo la envían los scripts (`X-Admin-Key`), con alcance global. Vaciarla la desactiva (entonces cualquier clave responde 401).
+**Entrar al panel sin cuenta del TEC (prototipo).** Mientras el proyecto sea un prototipo no habrá client ID de TI (decisión del 2026-10-12): el panel acepta también la clave de administración (`ADMIN_KEY`, alcance global) como segunda forma de entrar. Cuenta con alcance global y sin separación por programa ni atribución a una persona; la separación por programa y el inicio con Microsoft quedan listos para cuando haya client ID. En la pantalla de entrada del panel hay un campo "Clave de administración": se escribe `ADMIN_KEY` y entra con alcance global; la clave se guarda solo en esa pestaña (`sessionStorage`) y se borra al cerrar sesión. La clave no se puede cambiar por el panel: está en las variables de la API (`.env.produccion`, Railway).
+
+**Clave de automatización.** `ADMIN_KEY` también la envían los scripts (`X-Admin-Key`), con alcance global. Vaciarla la desactiva (entonces cualquier clave responde 401, y el panel solo deja entrar con cuenta del TEC).
 
 **Registro de quién hizo qué.** Cada escritura (crear programa, dominio, carpeta, subir documento, crear o modificar artefacto, regenerar clave) y cada rechazo por alcance dejan una línea JSON en el log del servicio (`mia.admin`) con `actor` (correo o `automatizacion`), `action`, `target`, `detail` y `result`. No hay tabla de auditoría: se conserva lo que guarde Railway.
 

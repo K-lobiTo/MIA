@@ -12,6 +12,10 @@ Contexto: el panel y la API ya existen (specs/002-panel-administracion) y hoy se
 
 ## Clarifications
 
+### Session 2026-10-12
+
+- Q: Sin client ID de TI mientras el proyecto sea un prototipo, ¿cómo se entra al panel? → A: El panel acepta también la clave de administración (`ADMIN_KEY`, alcance global) en su pantalla de entrada, guardada solo en la pestaña. Sin separación por programa para quien entra así; el inicio con Microsoft y la lista de administradores siguen disponibles para cuando haya client ID.
+
 ### Session 2026-10-10
 
 - Q: ¿Las lecturas de inventario que hoy son públicas (árbol, unidades, dominios sin clave de artefacto y lista de documentos de un dominio) deben exigir inicio de sesión y devolver solo lo del alcance de quien pregunta? → A: Sí. Sin sesión ni clave de automatización responden no autorizado; con sesión, solo lo del alcance. `/health` sigue público y la Consulta (que usa su clave de artefacto) no cambia.
@@ -108,7 +112,7 @@ Quien carga documentos o reorganiza datos desde la terminal (scripts/cargar_carp
 
 1. **Given** `ADMIN_KEY` configurada, **When** un script la envía, **Then** tiene alcance global en las rutas de administración, como hoy.
 2. **Given** `ADMIN_KEY` vacía, **When** alguien envía cualquier valor como clave de administración, **Then** se rechaza (sin errores que sugieran que existe).
-3. **Given** el panel ya en producción, **When** se revisa su código y su almacenamiento, **Then** ya no pide, envía ni guarda `ADMIN_KEY`.
+3. **Given** el panel ya en producción, **When** se revisa su código y su almacenamiento, **Then** la clave de administración solo se pide en la pantalla de entrada, se guarda solo para la pestaña abierta y nunca en el almacenamiento persistente (desde la decisión del 2026-10-12, ver Clarifications).
 4. **Given** una operación hecha con la clave de automatización, **When** se revisa el registro del servidor, **Then** queda atribuida a "clave de automatización" y no a una persona.
 
 ---
@@ -186,7 +190,7 @@ Cada operación de escritura de administración (crear unidad, dominio, carpeta,
 
 **Clave de automatización**
 
-- **FR-025**: `ADMIN_KEY` DEBE conservarse únicamente como clave de automatización con alcance global para scripts, y DEBE desactivarse dejándola vacía (ninguna clave se acepta entonces). El panel NO DEBE pedirla, enviarla ni guardarla.
+- **FR-025**: `ADMIN_KEY` DEBE conservarse como clave con alcance global para los scripts y, desde la decisión del 2026-10-12, como segunda forma de entrar al panel mientras no haya client ID de TI, y DEBE desactivarse dejándola vacía (ninguna clave se acepta entonces). El panel solo la guarda para la pestaña abierta (nunca en el almacenamiento persistente) y la envía únicamente a la API.
 - **FR-026**: Las rutas de consulta (`/query`, calificación, configuración y dominios con la clave de un artefacto) y las claves de artefacto NO DEBEN cambiar.
 
 **Registro**
@@ -214,7 +218,7 @@ Cada operación de escritura de administración (crear unidad, dominio, carpeta,
 - **SC-002**: Una persona autorizada, con su cuenta del TEC, llega del enlace del panel a ver su inventario en menos de 1 minuto y sin recibir ni conocer ninguna clave.
 - **SC-003**: El 100 % de los intentos de entrar con cuenta no listada, desactivada, sin segundo factor, vencida o de otro directorio se rechazan, y cada uno muestra en el panel el mensaje que le corresponde.
 - **SC-004**: Desactivar a una persona con el script impide su siguiente operación en menos de 1 minuto, sin tocar nada más.
-- **SC-005**: Tras esta entrega, el panel publicado no contiene ni guarda ninguna clave compartida: revisando su código y el almacenamiento del navegador no aparece `ADMIN_KEY`.
+- **SC-005**: El panel publicado no contiene ninguna clave en su código, y en el navegador la clave de administración, si se usa, solo vive en la pestaña abierta (no en el almacenamiento persistente) y se borra al cerrar sesión.
 - **SC-006**: El 100 % de las escrituras de administración quedan atribuidas en el registro del servidor a una persona o a la clave de automatización, y el 0 % de las líneas contiene un token o una clave.
 - **SC-007**: Los scripts de carga existentes siguen funcionando sin cambios con `ADMIN_KEY`, y la Consulta administrativa sigue funcionando sin cambios con la clave de su artefacto.
 - **SC-008**: Todo lo anterior queda verificado con pruebas automáticas y en un navegador real contra un servidor de identidad simulado, sin necesidad del identificador real de la aplicación.

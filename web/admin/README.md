@@ -16,7 +16,7 @@ npm run typecheck && npm test && npm run build
 
 ## Inicio de sesión
 
-El panel pide iniciar sesión con la cuenta del TEC (Microsoft, `@itcr.ac.cr`, con verificación en dos pasos). Cada persona ve y opera solo lo de su programa; el operador (alcance global) ve todo. Las personas autorizadas se gestionan con `python scripts/admin.py` (ver [docs/OPERACION.md](../../docs/OPERACION.md), "Acceso al panel con cuentas del TEC"). La sesión vive solo en la pestaña (`sessionStorage`); el token de identidad se renueva en silencio y, si no se puede, se pide iniciar sesión de nuevo. Los scripts de carga no pasan por aquí: usan `ADMIN_KEY` (clave de automatización).
+El panel pide iniciar sesión con la cuenta del TEC (Microsoft, `@itcr.ac.cr`, con verificación en dos pasos). Cada persona ve y opera solo lo de su programa; el operador (alcance global) ve todo. Las personas autorizadas se gestionan con `python scripts/admin.py` (ver [docs/OPERACION.md](../../docs/OPERACION.md), "Acceso al panel con cuentas del TEC"). Mientras no haya client ID de TI (prototipo), la pantalla de entrada también deja entrar con la clave de administración (`ADMIN_KEY`, alcance global), que se guarda solo en la pestaña. La sesión vive solo en la pestaña (`sessionStorage`); el token de identidad se renueva en silencio y, si no se puede, se pide iniciar sesión de nuevo. Los scripts de carga no pasan por aquí: usan `ADMIN_KEY` por la API.
 
 Variables de **compilación** (`.env.local` o en la orden):
 
