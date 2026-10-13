@@ -36,10 +36,10 @@ def _sembrar(db):
         session.commit()
 
 
-def test_inventario_devuelve_el_arbol_completo_sin_clave(client, db):
+def test_inventario_devuelve_el_arbol_completo_sin_clave(client, db, admin):
     _sembrar(db)
 
-    response = client.get("/inventory")
+    response = client.get("/inventory", headers=admin)
 
     assert response.status_code == 200
     body = response.json()
@@ -59,10 +59,10 @@ def test_inventario_devuelve_el_arbol_completo_sin_clave(client, db):
     assert primero["folder_id"] == "f2" and primero["uploaded_at"].startswith("2026-10-07")
 
 
-def test_cantidad_de_documentos_incluye_las_carpetas_internas(client, db):
+def test_cantidad_de_documentos_incluye_las_carpetas_internas(client, db, admin):
     _sembrar(db)
 
-    body = client.get("/inventory").json()
+    body = client.get("/inventory", headers=admin).json()
 
     computacion = next(u for u in body["units"] if u["name"] == "Computación")
     consejo = next(d for d in computacion["domains"] if d["name"] == "Memoria del Consejo")
@@ -74,36 +74,36 @@ def test_cantidad_de_documentos_incluye_las_carpetas_internas(client, db):
     assert administracion["document_count"] == 1
 
 
-def test_dominios_sin_unidad_salen_aparte(client, db):
+def test_dominios_sin_unidad_salen_aparte(client, db, admin):
     _sembrar(db)
 
-    body = client.get("/inventory").json()
+    body = client.get("/inventory", headers=admin).json()
 
     assert [d["name"] for d in body["unassigned_domains"]] == ["Suelto"]
     assert body["unassigned_domains"][0]["document_count"] == 1
 
 
-def test_inventario_indica_si_la_ingesta_esta_activa(client, db, monkeypatch):
+def test_inventario_indica_si_la_ingesta_esta_activa(client, db, monkeypatch, admin):
     monkeypatch.setattr(settings, "ingestion_enabled", False)
-    assert client.get("/inventory").json()["ingestion_enabled"] is False
+    assert client.get("/inventory", headers=admin).json()["ingestion_enabled"] is False
     monkeypatch.setattr(settings, "ingestion_enabled", True)
-    assert client.get("/inventory").json()["ingestion_enabled"] is True
+    assert client.get("/inventory", headers=admin).json()["ingestion_enabled"] is True
 
 
-def test_inventario_informa_el_tamano_maximo_de_archivo(client, db, monkeypatch):
+def test_inventario_informa_el_tamano_maximo_de_archivo(client, db, monkeypatch, admin):
     monkeypatch.setattr(settings, "max_upload_mb", 12)
-    assert client.get("/inventory").json()["max_upload_mb"] == 12
+    assert client.get("/inventory", headers=admin).json()["max_upload_mb"] == 12
 
 
-def test_inventario_vacio(client, db):
-    body = client.get("/inventory").json()
+def test_inventario_vacio(client, db, admin):
+    body = client.get("/inventory", headers=admin).json()
     assert body["units"] == [] and body["unassigned_domains"] == []
 
 
-def test_lista_de_unidades(client, db):
+def test_lista_de_unidades(client, db, admin):
     _sembrar(db)
 
-    response = client.get("/units")
+    response = client.get("/units", headers=admin)
 
     assert response.status_code == 200
     assert [u["name"] for u in response.json()] == ["Administración de Empresas", "Computación"]

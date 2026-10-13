@@ -3,6 +3,8 @@ import { ApiError } from "../../api/client";
 import { useCreateArtifact, useUpdateArtifact } from "../../api/artifacts";
 import type { Artifact, ArtifactCreated, ModeId, ModeInfo, UnitNode } from "../../api/types";
 import { MODE_LABEL, describeCost, pruneCoveredDomains } from "./accessUtils";
+import { capabilities } from "../../auth/capabilities";
+import { useMe } from "../../auth/session";
 import { approxQueries, parseUsd, validateCaps } from "./capMath";
 
 interface Props {
@@ -19,6 +21,7 @@ const ALL_MODES: ModeId[] = ["literal", "razonamiento"];
 const DEFAULT_CAP = "0.50";
 
 export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Props) {
+  const canUseAllDomains = capabilities(useMe()).canUseAllDomains;
   const create = useCreateArtifact();
   const update = useUpdateArtifact();
   const [name, setName] = useState(artifact?.name ?? "");
@@ -101,13 +104,15 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
 
         <fieldset>
           <legend>Información que puede consultar</legend>
-          <label className="choice">
-            <input type="checkbox" checked={allDomains} onChange={(e) => setAllDomains(e.target.checked)} />
-            <span>
-              <strong>Todos los dominios</strong>
-              <span className="mode-cost">Incluye los de unidades que se creen después.</span>
-            </span>
-          </label>
+          {(canUseAllDomains || allDomains) && (
+            <label className="choice">
+              <input type="checkbox" checked={allDomains} onChange={(e) => setAllDomains(e.target.checked)} />
+              <span>
+                <strong>Todos los dominios</strong>
+                <span className="mode-cost">Incluye los de programas que se creen después.</span>
+              </span>
+            </label>
+          )}
           {!allDomains &&
             units.map((unit) => {
               const unitChecked = unitIds.includes(unit.id);
@@ -116,8 +121,8 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
                   <label className="choice">
                     <input type="checkbox" checked={unitChecked} onChange={() => toggleUnit(unit.id)} />
                     <span>
-                      <strong>Unidad {unit.name} completa</strong>
-                      <span className="mode-cost">Incluye los dominios que se creen después en esta unidad.</span>
+                      <strong>{unit.name} (programa completo)</strong>
+                      <span className="mode-cost">Incluye los dominios que se creen después en este programa.</span>
                     </span>
                   </label>
                   <div className="domains">
@@ -136,7 +141,7 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
                 </div>
               );
             })}
-          {!hasAccess && <p className="hint">Elige al menos un dominio o unidad.</p>}
+          {!hasAccess && <p className="hint">Elige al menos un dominio o programa.</p>}
         </fieldset>
 
         <fieldset>

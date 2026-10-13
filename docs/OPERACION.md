@@ -28,7 +28,8 @@ Guía práctica para desplegar, cargar documentos y mantener funcionando el prot
 | `INGESTION_ENABLED` | `true` | `true` | `true` |
 | `INGESTION_SYNC` | `false` | `false` | `false` (en Cloud Run: `true`) |
 | `QUERY_SIMILARITY_THRESHOLD` | ver `.env.example` | igual | no se usa al ingerir |
-| `ADMIN_KEY` | una clave cualquiera | **obligatoria** (larga y aleatoria, secreto) | la misma de producción, para subir documentos |
+| `ADMIN_KEY` | una clave cualquiera | clave de **automatización** de los scripts (larga y aleatoria, secreto); vacía la desactiva | la misma de producción, para subir documentos |
+| `ENTRA_CLIENT_ID` / `ENTRA_TENANT_ID` / `ENTRA_REQUIRE_MFA` | vacío / el del TEC / `true` | el client ID que entrega TI / el del TEC / `true` (ver "Acceso al panel con cuentas del TEC") | no se usa |
 | `DAILY_CAP_USD` / `CAP_TIMEZONE` | `3` / `America/Costa_Rica` | tope diario de toda la API y zona en que se reinicia | no se usa |
 | `LLM_PROVIDER_LITERAL` / `LLM_MODEL_LITERAL` / `LLM_REASONING_EFFORT_LITERAL` | vacías (usa `LLM_PROVIDER` y `OPENROUTER_*`) | `openrouter` / id del modelo / `low` | no se usa al ingerir |
 | `LLM_PROVIDER_RAZONAMIENTO` / `LLM_MODEL_RAZONAMIENTO` / `LLM_REASONING_EFFORT_RAZONAMIENTO` | vacías (modo no disponible) | `openrouter` / `z-ai/glm-5.3` / `medium` | no se usa al ingerir |
@@ -86,29 +87,76 @@ Reemplazó a Render free: la API en [Railway](https://railway.com) (plan Hobby) 
 
 ## Panel de administración, artefactos y topes (versión 2)
 
-La versión 2 agrega el panel de administración (`web/admin/`) y cambia cómo se accede a la API: las operaciones de administración piden la clave de administración y las consultas piden la clave de un artefacto. Cómo funciona por dentro: [ARQUITECTURA.md](ARQUITECTURA.md); qué se pidió: [Definicion_Requerimientos_V2.md](Definicion_Requerimientos_V2.md).
+La versión 2 agrega el panel de administración (`web/admin/`) y cambia cómo se accede a la API: las operaciones de administración piden iniciar sesión con una cuenta del TEC (o la clave de automatización de los scripts) y las consultas piden la clave de un artefacto. Cómo funciona por dentro: [ARQUITECTURA.md](ARQUITECTURA.md); qué se pidió: [Definicion_Requerimientos_V2.md](Definicion_Requerimientos_V2.md).
+
+### Acceso al panel con cuentas del TEC
+
+Desde la feature 004 ([specs/004-acceso-panel-tec/](../specs/004-acceso-panel-tec/spec.md)) el panel no usa una clave compartida: cada persona entra con su cuenta institucional del TEC (Microsoft, con verificación en dos pasos) y ve solo lo de su programa. La API valida el token de Microsoft en cada petición y busca el correo en la lista de administradores.
+
+**Requisito previo:** que TI registre la aplicación en el directorio del TEC ([REGISTRO_APLICACION_TEC.md](REGISTRO_APLICACION_TEC.md)) y devuelva el *Application (client) ID*. Hasta entonces el inicio de sesión responde "no configurado" y los scripts siguen funcionando con `ADMIN_KEY`.
+
+**Variables nuevas:**
+
+| Dónde | Variable | Valor |
+|---|---|---|
+| API (Railway) | `ENTRA_CLIENT_ID` | el client ID que entregó TI (vacío: el inicio de sesión responde 503 `login_not_configured`) |
+| API | `ENTRA_TENANT_ID` | `1119bb90-88ba-4894-b7f1-de26e129d977` (el del TEC, ya es el valor por defecto) |
+| API | `ENTRA_REQUIRE_MFA` | `true` (por defecto). Solo `false` si se comprueba que la política del TEC no pone `mfa` en el token y se acepta el riesgo; dejarlo anotado |
+| Panel (Railway) | `VITE_ENTRA_CLIENT_ID` | el mismo client ID. Es variable de **compilación**: si cambia, hay que volver a desplegar el panel con `./scripts/servicios.py encender mia-panel` |
+
+**Quién ve qué.** *Global* (el operador): todo. *Programa* (coordinador y ayudante de un programa): solo el inventario de sus programas, los artefactos que dan acceso solo a dominios de ellos, y el Uso (registro, detalle y CSV) de esos artefactos. El saldo de OpenRouter, crear programas y los artefactos de "todos los dominios" o de varias programas son solo del alcance global. Coordinador y ayudante de un programa tienen los mismos permisos. Los topes de toda la API (`DAILY_CAP_USD`) no se editan desde el panel.
+
+**Dar y quitar acceso** con `scripts/admin.py` (usa `DATABASE_URL`; con `--env-file .env.produccion` actúa sobre la base de producción, y los cambios rigen desde la siguiente petición de la persona, sin cerrarle la sesión):
+
+```bash
+python scripts/admin.py --env-file .env.produccion agregar operador@itcr.ac.cr --global
+python scripts/admin.py --env-file .env.produccion agregar coordinador@itcr.ac.cr --programa "Unidad de Postgrados de Computación"
+python scripts/admin.py --env-file .env.produccion agregar otra@itcr.ac.cr --programa "Unidad de Postgrados de Computación" --programa "Área académica de Analítica de Negocios"
+python scripts/admin.py --env-file .env.produccion listar
+python scripts/admin.py --env-file .env.produccion desactivar coordinador@itcr.ac.cr
+```
+
+Agregar un correo que ya existe reemplaza su alcance y lo reactiva. El correo no distingue mayúsculas. Los programas se escriben con su nombre exacto. Quien deja de necesitar acceso: `desactivar` (el registro se conserva). Si se desactiva al último global, el script avisa; la clave de automatización sigue sirviendo.
+
+**Entrar al panel sin cuenta del TEC (prototipo).** Mientras el proyecto sea un prototipo no habrá client ID de TI (decisión del 2026-10-12): el panel acepta también la clave de administración (`ADMIN_KEY`, alcance global) como segunda forma de entrar. Cuenta con alcance global y sin separación por programa ni atribución a una persona; la separación por programa y el inicio con Microsoft quedan listos para cuando haya client ID. En la pantalla de entrada del panel hay un campo "Clave de administración": se escribe `ADMIN_KEY` y entra con alcance global; la clave se guarda solo en esa pestaña (`sessionStorage`) y se borra al cerrar sesión. La clave no se puede cambiar por el panel: está en las variables de la API (`.env.produccion`, Railway).
+
+**Clave de automatización.** `ADMIN_KEY` también la envían los scripts (`X-Admin-Key`), con alcance global. Vaciarla la desactiva (entonces cualquier clave responde 401, y el panel solo deja entrar con cuenta del TEC).
+
+**Registro de quién hizo qué.** Cada escritura (crear programa, dominio, carpeta, subir documento, crear o modificar artefacto, regenerar clave) y cada rechazo por alcance dejan una línea JSON en el log del servicio (`mia.admin`) con `actor` (correo o `automatizacion`), `action`, `target`, `detail` y `result`. No hay tabla de auditoría: se conserva lo que guarde Railway.
+
+**Orden de despliegue.** (1) Desplegar la API con `ENTRA_CLIENT_ID` (la migración `0003` se aplica al arrancar). (2) Cargar los correos con `scripts/admin.py`. (3) Desplegar el panel con `VITE_ENTRA_CLIENT_ID`. El panel anterior (con clave compartida) deja de funcionar apenas la API nueva esté en línea, porque las lecturas del inventario ahora exigen sesión: conviene desplegar los dos juntos y avisar a las personas.
+
+**Si TI cambia algo:**
+
+| Cambio | Qué hacer |
+|---|---|
+| Nuevo client ID (se registró de nuevo la aplicación) | Actualizar `ENTRA_CLIENT_ID` en la API y `VITE_ENTRA_CLIENT_ID` en el panel, y volver a desplegar el panel |
+| Cambia la dirección del panel | Que TI agregue la nueva dirección de redirección (el origen con barra final, p. ej. `https://mia-panel.up.railway.app/`); si no coincide exactamente, Microsoft rechaza el inicio de sesión |
+| Cambia el correo de una persona | `agregar` el correo nuevo con el mismo alcance y `desactivar` el anterior |
+| El token deja de traer `mfa` (política distinta) | Todos reciben "sin verificación en dos pasos". Confirmar con TI que el segundo factor sigue exigido; si lo está y solo cambió el claim, `ENTRA_REQUIRE_MFA=false` |
+| Una persona nueva debe entrar | Que TI la asigne a la aplicación (*Users and groups*) y `agregar` su correo con `scripts/admin.py` |
 
 ### Artefactos y claves
 
-- **Clave de administración:** la variable `ADMIN_KEY` de la API. Es la que se escribe en el panel (se recuerda en el navegador) y la que usan `scripts/cargar_carpeta.py` (`--clave`) y `scripts/reorganizar_v2.py`. Generar una larga y aleatoria: `python -c "import secrets; print(secrets.token_urlsafe(32))"`. Sin `ADMIN_KEY` en la instancia, las operaciones de administración responden 503.
-- **Registrar un artefacto:** panel > *Artefactos y accesos* > *+ Nuevo artefacto*. Se elige qué puede consultar (unidades completas, dominios puntuales o todos), qué modos puede usar y su tope diario. La API genera su clave y **se muestra una sola vez**: copiarla en ese momento. Si se pierde o se filtra, *Regenerar clave* (la anterior deja de funcionar de inmediato).
+- **Clave de automatización:** la variable `ADMIN_KEY` de la API. Ya no se escribe en el panel: la usan `scripts/cargar_carpeta.py` (`--clave`) y `scripts/pruebas_mvp.py`, con alcance global. Generar una larga y aleatoria: `python -c "import secrets; print(secrets.token_urlsafe(32))"`. Vacía, queda desactivada.
+- **Registrar un artefacto:** panel > *Artefactos y accesos* > *+ Nuevo artefacto*. Se elige qué puede consultar (programas completos, dominios puntuales o todos), qué modos puede usar y su tope diario. La API genera su clave y **se muestra una sola vez**: copiarla en ese momento. Si se pierde o se filtra, *Regenerar clave* (la anterior deja de funcionar de inmediato).
 - **Las dos instancias de la Consulta administrativa** son dos artefactos, con la misma aplicación y claves distintas. Configuración sugerida para empezar:
 
 | Artefacto | Acceso | Modos | Tope total / de razonamiento |
 |---|---|---|---|
-| Consulta administrativa Postgrados Computación | Unidad Computación completa | literal y con razonamiento | 1.50 / 1.00 USD por día |
-| Consulta administrativa Postgrados Administración Empresas | Unidad Administración de Empresas completa | literal y con razonamiento | 1.00 / 0.60 USD por día |
+| Consulta administrativa Postgrados Computación | Unidad de Postgrados de Computación (programa completo) | literal y con razonamiento | 1.50 / 1.00 USD por día |
+| Consulta administrativa Área Académica Administración Empresas | Área académica de Analítica de Negocios (programa completo) | literal y con razonamiento | 1.00 / 0.60 USD por día |
 
-- Cambiar el acceso, los modos o los topes rige desde la consulta siguiente, sin reiniciar la API. Al crear un dominio nuevo, el panel avisa qué artefactos lo verán de inmediato (los que tienen la unidad completa o todos los dominios) y cuáles hay que habilitar a mano.
+- Cambiar el acceso, los modos o los topes rige desde la consulta siguiente, sin reiniciar la API. Al crear un dominio nuevo, el panel avisa qué artefactos lo verán de inmediato (los que tienen el programa completo o todos los dominios) y cuáles hay que habilitar a mano.
 - Para probar con curl: `curl -H "X-Artifact-Key: mia_..." <url>/domains` (los dominios que ve ese artefacto) y `<url>/config` (sus modos).
 
 ### Topes de gasto y saldo
 
 - **Tope por artefacto** (panel): USD por día para todos sus modos juntos, y uno menor opcional solo para el modo con razonamiento. Al alcanzarlo, ese artefacto (o ese modo) responde 429 hasta la medianoche de Costa Rica; los demás siguen. Un artefacto nuevo arranca en 0.50 USD.
-- **Tope de toda la API** (`DAILY_CAP_USD` en Railway): no se cambia desde el panel a propósito, para que una clave de administración filtrada no pueda subirlo. Si los topes de los artefactos suman más que este, el panel avisa: un artefacto puede quedarse sin servicio por el gasto de otros.
+- **Tope de toda la API** (`DAILY_CAP_USD` en Railway): no se cambia desde el panel a propósito, para que una cuenta o la clave de automatización comprometidas no puedan subirlo. Si los topes de los artefactos suman más que este, el panel avisa: un artefacto puede quedarse sin servicio por el gasto de otros.
 - El costo de una consulta se conoce al terminar, así que un tope puede excederse por lo que cuesten las consultas que estaban en curso. `OPENROUTER_MAX_TOKENS` acota ese exceso.
 - **Saldo en el módulo Uso:** se lee del **límite de crédito de la clave** de OpenRouter (`mia-railway`), no del saldo de la cuenta. MIA deja de responder con el menor de los dos: conviene mantener el límite de la clave cerca de lo que se cargó en la cuenta. Leer el saldo de toda la cuenta exige una clave de gestión (`OPENROUTER_MANAGEMENT_KEY`), que puede crear claves sin límite: si se filtrara desde el servidor, el daño pasaría de "el límite de la clave" a "todo el saldo". No se recomienda en producción.
-- El módulo Uso incluye las consultas rechazadas (con costo cero) y puede descargar el registro en CSV. Las **preguntas pueden contener datos personales**: el registro solo se ve con la clave de administración y el CSV las omite salvo que se marque incluirlas.
+- El módulo Uso incluye las consultas rechazadas (con costo cero) y puede descargar el registro en CSV. Las **preguntas pueden contener datos personales**: el registro solo lo ve una cuenta autorizada (cada programa, solo el de sus artefactos) y el CSV las omite salvo que se marque incluirlas.
 
 ### Publicar el panel como sitio estático
 
@@ -118,26 +166,31 @@ El panel se publica igual que la Consulta: como un servicio de Railway que sirve
 2. *Settings > Source > Root Directory*: `web/admin`. **No** poner ruta en *Config-as-code* ni en *Dockerfile Path*: con una ruta fija Railway busca el `Dockerfile` de la raíz (el de la API) y la compilación falla con `"/pyproject.toml": not found`. Sin ruta, usa el `Dockerfile` de la carpeta.
 3. *Variables*:
    - `VITE_API_URL` = URL de la API **con `https://`** y sin barra final (`https://mia-main.up.railway.app`). Es variable de **compilación**: si cambia, hay que volver a desplegar.
+   - `VITE_ENTRA_CLIENT_ID` = el client ID que entrega TI (también de **compilación**). Si falta, el panel compila y muestra "el inicio de sesión no está configurado".
    - `PORT` = `3000` (Railway inyecta su propio `PORT`; con este valor el sitio escucha en el mismo puerto que el dominio).
 4. *Settings > Networking > Generate Domain*, con puerto `3000`. *Replica Limits*: 0.5 vCPU y 512 MB bastan.
 5. Agregar la dirección del panel a `CORS_ORIGINS` en la API (junto a las de la Consulta, separadas por coma, con `https://` y sin barra final) y desplegar la API; sin eso el navegador bloquea las llamadas.
-6. Abrir el sitio e ingresar la clave de administración.
+6. Abrir el sitio e iniciar sesión con una cuenta del TEC que esté en la lista de administradores (ver "Acceso al panel con cuentas del TEC").
 
-**Seguridad.** Un panel publicado es accesible desde internet: lo único que protege la administración es `ADMIN_KEY`, que debe ser larga y aleatoria y no compartirse. El código publicado no contiene ninguna clave; la clave se escribe en el navegador y se guarda solo ahí. Apagar el servicio (*Remove*) cuando no se use reduce la exposición. Para uso ocasional también se puede correr en local: `cd web/admin && MIA_API_URL=<url> npm run dev` (puerto 3001), sin CORS.
+**Seguridad.** Un panel publicado es accesible desde internet: la administración la protegen el inicio de sesión con cuenta del TEC con verificación en dos pasos y la lista de administradores, que la API verifica en cada petición. El código publicado no contiene ninguna clave ni secreto (el client ID no es secreto); la sesión vive solo en la pestaña (`sessionStorage`) y se borra al cerrarla. Apagar el servicio (*Remove*) cuando no se use reduce la exposición. Para uso ocasional también se puede correr en local: `cd web/admin && VITE_ENTRA_CLIENT_ID=<client id> MIA_API_URL=<url> npm run dev` (puerto 3001), sin CORS; la dirección `http://localhost:3001/` debe estar registrada entre las de redirección (la solicitud a TI ya la incluye).
 
 ### Consulta administrativa (publicar las dos instancias)
 
-La Consulta (`web/consulta/`) se compila una vez por instancia y se publica **dos veces**, una por unidad, para que cada dirección recuerde su propia clave y cada unidad tenga su enlace. Cada instancia es un servicio de Railway dentro del mismo proyecto que la API. La compilación es idéntica: lo que cambia es la clave con que se abre, que la API traduce en el nombre, los dominios y los modos de la instancia.
+La Consulta (`web/consulta/`) se compila una vez por instancia y se publica **dos veces**, una por programa, para que cada dirección recuerde su propia clave y cada programa tenga su enlace. Cada instancia es un servicio de Railway dentro del mismo proyecto que la API. La compilación es idéntica: lo que cambia es la clave con que se abre, que la API traduce en el nombre, los dominios y los modos de la instancia.
 
-1. **Registrar los artefactos** en el panel (si no existen): `Consulta administrativa Postgrados Computación` (unidad Computación completa) y `Consulta administrativa Postgrados Administración Empresas` (unidad Administración de Empresas completa), ambos con los dos modos y su tope diario. Copiar cada clave `mia_...` al crearla: se muestra una sola vez.
+1. **Registrar los artefactos** en el panel (si no existen): `Consulta administrativa Postgrados Computación` (Unidad de Postgrados de Computación, programa completo) y `Consulta administrativa Área Académica Administración Empresas` (Área académica de Analítica de Negocios, programa completo), ambos con los dos modos y su tope diario. Copiar cada clave `mia_...` al crearla: se muestra una sola vez.
 2. **Crear los servicios en Railway** (una vez por instancia), en el proyecto de MIA: *New > GitHub Repo* y elegir este repositorio. Nombres sugeridos: `mia-computacion` y `mia-administracion`. En cada servicio:
    - *Settings > Source > Root Directory*: `web/consulta`. Railway usa el `Dockerfile` de esa carpeta (compila con Vite y sirve `dist` con `serve`).
    - Dejar vacíos *Config-as-code* y *Dockerfile Path*: con una ruta fija Railway busca el `Dockerfile` de la raíz (el de la API) y la compilación falla con `"/pyproject.toml": not found`. Sin ruta, usa el `Dockerfile` de `web/consulta`.
    - *Variables*: `VITE_API_URL` = URL de la API **con `https://`** (`https://mia-main.up.railway.app`, sin barra final). Sin esta variable la compilación falla con un mensaje claro. Es una variable de **compilación**: si cambia, hay que volver a desplegar. Agregar también `PORT` = `3000`: Railway inyecta su propio `PORT` (8080), y el dominio debe apuntar al mismo puerto en que escucha el sitio.
    - *Settings > Networking > Generate Domain*: la dirección pública de esa instancia.
 3. **Permitir los orígenes:** agregar ambas direcciones a `CORS_ORIGINS` en la API (servicio `MIA`), separadas por coma, con `https://` y sin barra final, junto a las demás si ya hay. Sin eso el navegador bloquea las llamadas. Un cambio de variables exige un deploy de la API.
-4. **Entregar a cada equipo** su enlace y su clave por un canal privado. Las claves se pueden regenerar desde el panel (la anterior deja de valer de inmediato).
-5. **Verificar** abriendo cada sitio con su clave: debe mostrar su nombre y solo los dominios de su unidad.
+4. **Entregar a cada equipo** su enlace y su clave por un canal privado. Las claves se pueden regenerar desde el panel (la anterior deja de valer de inmediato). **Alternativa: clave fija en el servicio** (siguiente apartado), para que la Consulta abra sin pedir la clave.
+5. **Verificar** abriendo cada sitio con su clave: debe mostrar su nombre y solo los dominios de su programa.
+
+**Clave fija en el servicio (opcional, para demostraciones).** Si el servicio tiene la variable `ARTIFACT_KEY` (la clave `mia_...` del artefacto de esa instancia), la Consulta abre directo, sin pedir la clave ni mostrar "Cambiar clave". Se lee **al arrancar** (no hace falta compilar de nuevo): para ponerla o cambiarla, guardar la variable y reiniciar o desplegar el servicio (`./scripts/servicios.py encender mia-computacion`). Para volver a pedir la clave, quitar la variable.
+
+> **Riesgo que hay que aceptar a conciencia:** la clave queda en `/config.js`, un archivo **público**. Cualquiera que abra la dirección de la Consulta puede leerla y usarla (también desde fuera del sitio, con `curl`). Por eso: úsala solo en instancias cuyo artefacto **no dé acceso a información sensible** (por ejemplo, un artefacto de demostración sin el dominio "Memoria del Consejo", que tiene datos personales de estudiantes); ponle un **tope diario bajo**; y **apaga el sitio** cuando no lo estés mostrando. Si una clave se filtra, regenerarla desde el panel (la anterior deja de valer) y actualizar la variable. La alternativa segura es el inicio de sesión individual con cuenta del TEC ([REGISTRO_APLICACION_TEC.md](REGISTRO_APLICACION_TEC.md)).
 
 **Apagar y encender un sitio (para compartirlo solo cuando haga falta).** En el servicio, *Deployments*, menú del despliegue activo, **Remove**: el enlace deja de responder y el servicio no consume crédito; su configuración y su dirección se conservan. Para encenderlo de nuevo, *Redeploy* sobre ese despliegue (o `railway redeploy -s mia-computacion` desde la CLI; `railway down -s mia-computacion` lo apaga). Se puede hacer desde el celular. Dos cosas más: la API no se apaga nunca (los sitios la necesitan), y para cortar el uso al instante sin esperar un deploy basta **desactivar el artefacto** en el panel: el sitio sigue publicado, pero la Consulta explica que fue desactivada.
 
@@ -147,7 +200,8 @@ La Consulta (`web/consulta/`) se compila una vez por instancia y se publica **do
 
 ### Migraciones y reorganización de los datos
 
-- **Migraciones:** la API aplica las de Alembic al arrancar. La base de Neon, creada antes con `create_all`, se marca sola en la revisión `0001` y luego recibe `0002` (unidades, carpetas, artefactos y registro de consultas). Se puede correr a mano con `DATABASE_URL=<url> alembic upgrade head`.
+- **Migraciones:** la API aplica las de Alembic al arrancar. La base de Neon, creada antes con `create_all`, se marca sola en la revisión `0001` y luego recibe `0002` (unidades, carpetas, artefactos y registro de consultas), `0003` (administradores del panel) y `0004` (nombres de los programas). Se puede correr a mano con `DATABASE_URL=<url> alembic upgrade head`.
+- **Nombres de los programas (migración `0004`, 2026-10-11):** las dos divisiones de la memoria ya no son dos "unidades académicas" de lo mismo. `Computación` pasa a **Unidad de Postgrados de Computación** y `Administración de Empresas` pasa a **Área académica de Analítica de Negocios** (la Maestría en Analítica de Negocios es una carrera de computación y administración de empresas); el término genérico pasa de "unidad" a **"programa"** en el panel, `scripts/admin.py` (`--programa`; `--unidad` sigue valiendo) y `scripts/cargar_carpeta.py`. La migración solo cambia el nombre (y la descripción del segundo, si no se editó a mano) y se aplica sola al arrancar la API tras desplegar; es idempotente y reversible (`alembic downgrade 0003`). Los ids no cambian: artefactos, administradores, dominios y documentos siguen apuntando a lo mismo, y Qdrant no se toca. Qué cambia para quien opera: (1) en `scripts/admin.py agregar` y `cargar_carpeta.py` el programa se escribe con su nombre nuevo exacto; (2) las pruebas de aceptación y la Consulta muestran los dominios como `Programa / Dominio` con los nombres nuevos; (3) los **nombres de los artefactos** son datos que se escribieron en el panel, que no permite renombrarlos todavía, así que la migración no los toca: el de la Consulta del Área académica se cambió a mano en producción el 2026-10-11, con una instrucción directa a la base (`UPDATE artifacts SET name = 'Consulta administrativa Área Académica Administración Empresas' WHERE id = '7a16e2b9-...'`; la clave y el resto del artefacto no cambian, y la Consulta muestra el nombre nuevo al recargar). Hasta desplegar, producción conserva los nombres anteriores de los programas.
 - **Reorganización** (una sola vez): lleva los cinco dominios cargados a la estructura de unidades y carpetas, y reparte los 30 proyectos de graduación de Computación en sus tres tipos. **No vuelve a procesar ningún documento**; solo cambia el dominio de sus fragmentos en Qdrant. Se corre desde la laptop, porque lee las carpetas de origen de `tmp/`:
 
 ```bash
@@ -189,7 +243,7 @@ python scripts/reorganizar_v2.py --env-file .env.produccion             # una se
 5. **Reorganizar los datos:** los tres comandos de "Migraciones y reorganización", en ese orden. Revisar que el resumen coincida con la sección 2.3 y que no queden documentos sin ubicar.
 6. **Abrir el panel** (`MIA_API_URL=<url> npm run dev` en `web/admin`, o publicado) con la clave de administración: el inventario debe mostrar las dos unidades, Computación con 7 dominios y Administración de Empresas con 4, y los 162 documentos en "Listo".
 7. **Registrar las dos instancias** de la Consulta administrativa (tabla de "Artefactos y claves") y copiar cada clave.
-8. **Correr las pruebas de aceptación:** `python scripts/pruebas_mvp.py --url <url> --clave <clave de un artefacto con acceso a las dos unidades>`. Debe dar 19 de 19 en modo literal; ese artefacto debe tener las dos unidades. Si no se registró uno así, registrar uno de prueba y desactivarlo después. Opcional: `--modo razonamiento`.
+8. **Correr las pruebas de aceptación:** `python scripts/pruebas_mvp.py --url <url> --clave <clave de un artefacto con acceso a los dos programas>`. Debe dar 19 de 19 en modo literal; ese artefacto debe tener los dos programas. Si no se registró uno así, registrar uno de prueba y desactivarlo después. Opcional: `--modo razonamiento`.
 9. **Entregar las claves** a quien use cada instancia, y actualizar lo que consultaba sin clave (scripts; el cliente web anterior ya no existe, lo reemplazó la Consulta administrativa).
 10. **Publicar el panel** y las dos Consultas (secciones "Publicar el panel como sitio estático" y "Consulta administrativa") y agregar sus direcciones a `CORS_ORIGINS`.
 11. **Mirar el módulo Uso:** que el saldo aparezca (o que explique por qué no) y que las consultas de las pruebas estén en el registro.
@@ -198,7 +252,11 @@ python scripts/reorganizar_v2.py --env-file .env.produccion             # una se
 
 ### Desplegar cambios (no hay auto-deploy)
 
-**Atajo:** `scripts/servicios.py` enciende, apaga y consulta el estado de los cuatro servicios (`./scripts/servicios.py estado`, `encender [servicio...]`, `apagar [servicio...]`; la API va primero al encender y al final al apagar; espera cada despliegue y comprueba que responda). Apagar equivale a *Remove* y no borra nada. Los comandos de abajo son lo que hace por dentro.
+**Forma normal: `scripts/servicios.py`, desde `main` de GitHub.** Enciende, apaga y consulta el estado de los cuatro servicios (`./scripts/servicios.py estado`, `encender [servicio...]`, `apagar [servicio...]`; la API va primero al encender y al final al apagar; espera cada despliegue y comprueba que responda). Apagar equivale a *Remove* y no borra nada.
+
+**`encender` despliega por defecto lo publicado en `main` de GitHub (`origin/main`), no la carpeta local.** Hace `git fetch`, muestra el commit que va a subir, lo exporta a una carpeta temporal y lo sube de ahí, así el trabajo de `dev` sin fusionar no llega a producción por accidente. El flujo es: trabajar en `dev`, hacer merge a `main`, **hacer `git push origin main`** (si no se empuja, `origin/main` sigue siendo la versión anterior y es esa la que se despliega) y entonces `./scripts/servicios.py encender`. Opciones: `--ref origin/dev` despliega otra rama publicada (por ejemplo para probar algo antes del merge) y `--local` sube la carpeta actual tal cual (con aviso si hay cambios sin commitear).
+
+**Cuidado con las migraciones.** La API migra la base al arrancar. Si se despliega una versión con menos migraciones de las que la base ya tiene (por ejemplo, `main` anterior sobre una base que ya aplicó una migración posterior), la API **no arranca**. Antes de desplegar una versión anterior hay que devolver la base con `alembic downgrade <revisión>` (con `DATABASE_URL` de producción), y al volver a una versión nueva la API la sube sola. La revisión actual de producción se ve con `select version_num from alembic_version`. Los comandos de abajo son lo que el script hace por dentro.
 
 Railway tiene los servicios conectados al repositorio como público, **sin su aplicación de GitHub instalada**, así que un push a `main` no dispara ningún deploy (el aviso es *"This is a public repository without a Railway GitHub App installation"*). Decisión tomada: mantener los deploys manuales. Hay dos formas:
 
@@ -210,7 +268,7 @@ railway up -s mia-administracion --detach   # Consulta de Administración de Emp
 railway up -s mia-panel --detach            # panel de administración
 ```
 
-`railway up` sube los archivos de la carpeta local (respeta `.gitignore`, así que `.env*`, `tmp/` y `mia.db` no se suben) y respeta el *Root Directory* de cada servicio. El despliegue no muestra commit en el panel de Railway. Alternativas: el botón **Deploy** del servicio, que aplica las variables en espera y el último commit, o instalar la aplicación de GitHub de Railway para activar el auto-deploy (entonces conviene fijar *Watch Paths* por servicio: `/web/consulta/**` y `/web/admin/**`).
+`railway up` desde la raíz sube los archivos de la carpeta local (respeta `.gitignore`, así que `.env*`, `tmp/` y `mia.db` no se suben) y respeta el *Root Directory* de cada servicio. El despliegue no muestra commit en el panel de Railway. Alternativas: el botón **Deploy** del servicio, que aplica las variables en espera y el último commit, o instalar la aplicación de GitHub de Railway para activar el auto-deploy (entonces conviene fijar *Watch Paths* por servicio: `/web/consulta/**` y `/web/admin/**`).
 
 **Reglas que dieron problemas:**
 - Los cambios de variables hechos con la CLI (`--skip-deploys`) o en el panel quedan **en espera** hasta un deploy. `PORT`, `CORS_ORIGINS` y los demás se leen al arrancar; `VITE_API_URL` se usa al **compilar**, así que exige un deploy completo, no solo reiniciar.
@@ -264,17 +322,17 @@ source .venv/bin/activate
 # (No usar `source .env.produccion`: la URL de Neon contiene "&" y el shell la corta.)
 # INGESTION_SYNC=true: cada subida responde cuando el documento terminó de indexarse, así una carga
 # masiva no acumula ingestas en espera dentro de la API.
-# ADMIN_KEY debe estar también en .env.produccion: subir documentos y crear dominios exige la clave de administración.
+# ADMIN_KEY debe estar también en .env.produccion: subir documentos y crear dominios exige la clave de automatización.
 INGESTION_SYNC=true uvicorn mia.api.main:app --env-file .env.produccion --port 8010
 ```
 
 Ojo al copiar la URL de Neon en `DATABASE_URL`: debe empezar con `postgresql://` (si se editó la línea de SQLite, verificar que no quede un prefijo `sqlite:`). Con `Connection pooling` desactivado en el diálogo *Connect* de Neon.
 
-**Carga de una carpeta completa (recomendado):** `scripts/cargar_carpeta.py` crea el dominio si no existe (dentro de la unidad indicada, que también crea si falta) y sube todos los PDF, DOCX y TXT de una o varias carpetas (con subcarpetas), uno a la vez, informando el estado de cada uno. Los documentos quedan en la raíz del dominio; para ordenarlos en carpetas, usar el panel:
+**Carga de una carpeta completa (recomendado):** `scripts/cargar_carpeta.py` crea el dominio si no existe (dentro del programa indicado, que también crea si falta) y sube todos los PDF, DOCX y TXT de una o varias carpetas (con subcarpetas), uno a la vez, informando el estado de cada uno. Los documentos quedan en la raíz del dominio; para ordenarlos en carpetas, usar el panel:
 
 ```bash
 python scripts/cargar_carpeta.py --url http://localhost:8010 --clave "$ADMIN_KEY" \
-  --unidad "Administración de Empresas" --dominio "Memoria del Consejo" \
+  --programa "Área académica de Analítica de Negocios" --dominio "Memoria del Consejo" \
   --descripcion "Actas del Consejo de Área Académica" \
   "tmp/Información_analítica_de_negocios/ACTAS"
 ```
@@ -283,7 +341,7 @@ Desde el panel también se pueden subir documentos (en el inventario, *Subir* en
 
 **Carga manual de un documento**, en `http://localhost:8010/docs`:
 
-1. `GET /domains` para ver si el dominio ya existe; si no, `GET /units` para elegir la unidad y `POST /domains` con `{"unit_id": "<id>", "name": "Memoria del Consejo", "description": "..."}`. Guardar el `id`. En Swagger, *Authorize* no aplica: las operaciones de administración piden el encabezado `X-Admin-Key`.
+1. `GET /domains` para ver si el dominio ya existe; si no, `GET /units` para elegir el programa y `POST /domains` con `{"unit_id": "<id>", "name": "Memoria del Consejo", "description": "..."}`. Guardar el `id`. En Swagger, *Authorize* no aplica: las operaciones de administración piden el encabezado `X-Admin-Key`.
 2. `POST /domains/{id}/documents` con cada archivo (PDF, DOCX o TXT) y, opcional, `folder_id`. Responde enseguida con estado `pending`.
 3. `GET /domains/{id}/documents` hasta que todos estén en `done`. Como referencia, un acta de ~180 páginas (~540 fragmentos) tarda unos minutos en una laptop.
 4. Probar una consulta (`POST /query` con `{"domains": ["<id>"], "question": "..."}` y el encabezado `X-Artifact-Key` de un artefacto con acceso a ese dominio).
@@ -309,9 +367,16 @@ Si un documento queda en `error`, ver el log de la API local (el mensaje empieza
 | Toda consulta responde 401 desde la versión 2 | Falta la clave del artefacto (`X-Artifact-Key`), o se regeneró y la que se usa es la anterior | Usar la clave vigente; si se perdió, regenerarla en el panel |
 | Una consulta responde 403 | El artefacto está desactivado, o pide un dominio o un modo que no tiene permitido | Revisar el artefacto en el panel (*Artefactos y accesos*); el mensaje dice cuál es el motivo |
 | Una consulta responde 429 | Se alcanzó un tope diario de gasto (de toda la API, del artefacto o de su modo con razonamiento) | El mensaje dice cuál. Se reinicia a la medianoche de Costa Rica; mientras tanto, subir el tope del artefacto desde el panel, o `DAILY_CAP_USD` en Railway |
-| El panel dice "La clave guardada ya no es válida" | Se cambió `ADMIN_KEY` en la API | Ingresar la clave vigente |
+| El panel dice "La cuenta ... no está autorizada" | El correo no está en la lista de administradores, o está desactivado | `python scripts/admin.py listar`; `agregar` con su alcance |
+| El panel dice que falta la verificación en dos pasos | El token no trae `mfa` | Completar el segundo factor al iniciar sesión; si la política del TEC no lo emite, ver "Si TI cambia algo" |
+| El panel dice "El inicio de sesión no está configurado" | Se compiló sin `VITE_ENTRA_CLIENT_ID` | Agregar la variable y volver a desplegar el panel |
+| El panel dice "Tu sesión venció" | La sesión de Microsoft venció o fue revocada | Iniciar sesión de nuevo |
+| Microsoft muestra un error de dirección de redirección | La dirección del panel no coincide con la registrada por TI | Pedir a TI que agregue la dirección exacta (origen con barra final) |
 | El panel publicado no carga datos y la consola dice que CORS bloqueó la petición | La dirección del sitio no está en `CORS_ORIGINS` | Agregarla en Railway, sin barra final |
-| La API responde 503 al crear dominios o subir documentos | No hay `ADMIN_KEY` en la instancia, o `INGESTION_ENABLED=false` | Configurar la variable que corresponda |
+| La API responde 503 al subir documentos | `INGESTION_ENABLED=false` | Configurar la variable |
+| La API responde 503 `login_not_configured` | La API no tiene `ENTRA_CLIENT_ID` | Configurarla (los scripts con `ADMIN_KEY` siguen funcionando) |
+| La API responde 503 `identity_unavailable` | No pudo bajar las claves públicas de Microsoft y no tiene copia | Reintentar en unos minutos; revisar la salida a internet de la API |
+| Un script responde 401 con `ADMIN_KEY` | `ADMIN_KEY` vacía en la API (desactivada) o distinta | Revisar la variable en Railway |
 | El módulo Uso muestra "No se pudo consultar OpenRouter" o "no tiene límite de crédito" | La clave de OpenRouter es inválida, OpenRouter no respondió, o la clave no tiene un límite de crédito | Ver el motivo en la tarjeta de saldo; ponerle un límite de crédito a `mia-railway` |
 | Responde "no encontré información" a preguntas que sí tienen respuesta | El umbral es demasiado alto, o la instrucción del LLM es demasiado estricta | Revisar `QUERY_SIMILARITY_THRESHOLD` y `RAG_SYSTEM_PROMPT` (ver `specs/001-pipeline-ingesta-rag/research.md`) |
 
@@ -320,5 +385,5 @@ Si un documento queda en `error`, ver el log de la API local (el mensaje empieza
 - Desde el 2026-10-06 MIA tiene documentos reales entregados por la Unidad de Posgrado en Computación (Mauricio Arroyo) y la Maestría en Analítica de Negocios (Martín Solís), en lugar de los datos de prueba del MVP (actas públicas del Consejo Institucional). Los archivos viven en `tmp/`, que está en `.gitignore`: **no se versionan documentos en el repositorio**.
 - **Actas del Consejo de la Unidad de Posgrado en Computación** (20 actas de 2025, cargadas el 2026-10-07): incluyen nombres de estudiantes con número de carné, cédulas, notas, becas y temas de salud. No se cargaron mientras el LLM era Gemini gratuito, que puede usar los datos. Se cargaron al pasar a OpenRouter con la cuenta configurada para usar solo proveedores de **retención cero** y que **no entrenan** con los datos (*Settings > Privacy*). Esa configuración de cuenta es la que protege estas actas: no debe desactivarse. Como refuerzo, en Railway conviene `OPENROUTER_ZDR=true`, que exige lo mismo en cada consulta. El texto de las actas queda guardado en Qdrant Cloud y Neon, fuera del país; si la institución pide otra cosa, ver ESCALABILIDAD.md (modelo y almacenamiento propios). Las actas de Analítica de Negocios sí se cargaron: tratan temas del programa (becas como política, presupuesto, admisión), sin datos de estudiantes; la única cédula es la de su coordinador en su designación ante FUNDATEC.
 - El LLM recibe fragmentos de los documentos en cada consulta. Con Gemini gratuito (el LLM anterior) Google podía usar esos datos; por eso las actas con datos personales esperaron al cambio a OpenRouter con retención cero.
-- Desde la versión 2 la API exige claves: la de administración para gestionar y la de un artefacto para consultar, y cada artefacto solo ve los dominios que se le permitieron. Es un control mínimo, no un sistema de usuarios: todas las personas que usan un artefacto comparten su clave, y la clave de un sitio público (un chatbot) se puede copiar, por eso cada artefacto tiene su propio tope de gasto. No publicar las claves ni la clave de administración.
-- El registro de consultas guarda las preguntas, que pueden contener datos personales (nombres de estudiantes, carnés). Solo se ve con la clave de administración, el CSV las omite por defecto, y no hay política de retención: se conservan durante todo el prototipo. Tratarlo con las mismas condiciones que los documentos con datos personales.
+- Desde la versión 2 la API exige claves: una cuenta del TEC autorizada (o la clave de automatización de los scripts) para gestionar y la de un artefacto para consultar, y cada artefacto solo ve los dominios que se le permitieron. La administración es individual y por unidad (feature 004); en cambio las personas que usan un artefacto de consulta siguen compartiendo su clave, y la clave de un sitio público (un chatbot) se puede copiar, por eso cada artefacto tiene su propio tope de gasto. No publicar las claves de artefacto ni la clave de automatización.
+- El registro de consultas guarda las preguntas, que pueden contener datos personales (nombres de estudiantes, carnés). Solo lo ve una cuenta autorizada (cada unidad, solo el de sus artefactos), el CSV las omite por defecto, y no hay política de retención: se conservan durante todo el prototipo. Tratarlo con las mismas condiciones que los documentos con datos personales.

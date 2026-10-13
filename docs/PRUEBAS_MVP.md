@@ -21,19 +21,19 @@ Total: 162 documentos y 6239 fragmentos.
 - **`Planes de estudio/MCC/Electivas.pdf`**: es un escaneo sin capa de texto (mismo motivo).
 - **`Docentes`**: la carpeta llegó vacía.
 
-**Desde la versión 2 los dominios están organizados por unidad académica** (se pasó de los cinco dominios anteriores a esta estructura con `scripts/reorganizar_v2.py`, sin reprocesar documentos; ver "Panel de administración" en [OPERACION.md](OPERACION.md)). Los nombres de la tabla de arriba son los de la carga original:
+**Desde la versión 2 los dominios están organizados por programa** (desde el 2026-10-11, la Unidad de Postgrados de Computación y el Área académica de Analítica de Negocios; antes, "unidades" llamadas Computación y Administración de Empresas) (se pasó de los cinco dominios anteriores a esta estructura con `scripts/reorganizar_v2.py`, sin reprocesar documentos; ver "Panel de administración" en [OPERACION.md](OPERACION.md)). Los nombres de la tabla de arriba son los de la carga original:
 
-| Unidad | Dominio | Documentos | Era |
+| Programa | Dominio | Documentos | Era |
 |---|---|---|---|
-| Computación | Memoria del Consejo | 20 (carpeta Actas > 2025) | Computación: Consejo de Unidad |
-| Computación | Currículum | 83 (carpetas MCC, MCSg y MGTI, con sus programas) | Computación: Planes de estudio |
-| Computación | Proyectos de graduación: Tesis | 12 | parte de Computación: Proyectos de graduación |
-| Computación | Proyectos de graduación: Informes de IPA | 4 | parte de Computación: Proyectos de graduación |
-| Computación | Proyectos de graduación: Artículos | 14 | parte de Computación: Proyectos de graduación |
-| Computación | Apertura de promoción, Docentes | 0 (vacíos) | nuevos |
-| Administración de Empresas | Memoria del Consejo | 6 (carpeta Actas) | Analítica de Negocios: Consejo de Área |
-| Administración de Empresas | Currículum | 23 (carpetas Programas de curso, Documento constitutivo del programa, Líneas de trabajos finales de graduación y Reglamentos) | Analítica de Negocios: Currículum |
-| Administración de Empresas | Apertura de promoción, Docentes | 0 (vacíos) | nuevos |
+| Unidad de Postgrados de Computación | Memoria del Consejo | 20 (carpeta Actas > 2025) | Computación: Consejo de Unidad |
+| Unidad de Postgrados de Computación | Currículum | 83 (carpetas MCC, MCSg y MGTI, con sus programas) | Computación: Planes de estudio |
+| Unidad de Postgrados de Computación | Proyectos de graduación: Tesis | 12 | parte de Computación: Proyectos de graduación |
+| Unidad de Postgrados de Computación | Proyectos de graduación: Informes de IPA | 4 | parte de Computación: Proyectos de graduación |
+| Unidad de Postgrados de Computación | Proyectos de graduación: Artículos | 14 | parte de Computación: Proyectos de graduación |
+| Unidad de Postgrados de Computación | Apertura de promoción, Docentes | 0 (vacíos) | nuevos |
+| Área académica de Analítica de Negocios | Memoria del Consejo | 6 (carpeta Actas) | Analítica de Negocios: Consejo de Área |
+| Área académica de Analítica de Negocios | Currículum | 23 (carpetas Programas de curso, Documento constitutivo del programa, Líneas de trabajos finales de graduación y Reglamentos) | Analítica de Negocios: Currículum |
+| Área académica de Analítica de Negocios | Apertura de promoción, Docentes | 0 (vacíos) | nuevos |
 
 La clasificación de los 30 proyectos de graduación por tipo, archivo por archivo, está en el anexo A de [Definicion_Requerimientos_V2.md](Definicion_Requerimientos_V2.md).
 
@@ -60,7 +60,7 @@ python scripts/cargar_carpeta.py --url $U --dominio "Computación: Consejo de Un
 
 ## Cómo correr las pruebas
 
-Desde la versión 2 las consultas exigen la clave de un artefacto (`--clave` o la variable `MIA_ARTIFACT_KEY`). Para esta batería hace falta un artefacto con acceso a **las dos unidades**; si el script no encuentra algún dominio, el mensaje dice que falta o que el artefacto no tiene acceso a él.
+Desde la versión 2 las consultas exigen la clave de un artefacto (`--clave` o la variable `MIA_ARTIFACT_KEY`). Para esta batería hace falta un artefacto con acceso a **los dos programas**; si el script no encuentra algún dominio, el mensaje dice que falta o que el artefacto no tiene acceso a él.
 
 ```bash
 python scripts/pruebas_mvp.py --url https://mia-main.up.railway.app --clave mia_...   # producción
@@ -69,7 +69,7 @@ python scripts/pruebas_mvp.py --url <url> --clave mia_... --solo U4,I1          
 python scripts/pruebas_mvp.py --url <url> --clave mia_... --modo razonamiento                    # con el otro modo
 ```
 
-El script solo usa la biblioteca estándar de Python. Identifica cada dominio por "Unidad / Dominio" (el nombre de un dominio solo es único dentro de su unidad: las dos unidades tienen un "Currículum") y, para cada caso, verifica una de dos cosas:
+El script solo usa la biblioteca estándar de Python. Identifica cada dominio por "Programa / Dominio" (el nombre de un dominio solo es único dentro de su programa: los dos programas tienen un "Currículum") y, para cada caso, verifica una de dos cosas:
 - que la API responda con contenido y cite el documento esperado (y, en algunos casos, que la respuesta contenga un dato concreto, p. ej. "14" horas o el último punto de una lista, para detectar respuestas incorrectas o cortadas);
 - o que responda "sin información" sin listar fuentes.
 
@@ -77,7 +77,7 @@ Reintenta hasta 3 veces ante un 502 (Gemini gratuito se satura seguido). Termina
 
 ## Casos
 
-(AD = unidad Administración de Empresas, CO = unidad Computación.)
+(AD = Área académica de Analítica de Negocios, CO = Unidad de Postgrados de Computación.)
 
 | Id | Dominios | Pregunta | Esperado |
 |---|---|---|---|
@@ -95,7 +95,7 @@ Reintenta hasta 3 veces ante un 502 (Gemini gratuito se satura seguido). Termina
 | CU1 | CO Memoria del Consejo | Caso de uso 1 del documento conceptual: acuerdos del Consejo de Unidad sobre la maestría de Ciberseguridad | Respuesta, cita actas |
 | G1 | CO Proyectos: Artículos | ¿Qué trabajo de graduación trata sobre drones en aeropuertos? | Respuesta, cita el trabajo de César Jiménez |
 | G2 | CO Proyectos: Tesis | ¿Qué compara el análisis de modelos centralizados y descentralizados en sistemas de pagos? | Respuesta, cita el trabajo de Luis Alvarado |
-| N1 | Todos los dominios de las dos unidades | ¿Cuál es la receta del gallo pinto? | Sin información |
+| N1 | Todos los dominios de los dos programas | ¿Cuál es la receta del gallo pinto? | Sin información |
 | X1 | AD Currículum + CO Currículum | La pregunta de P1 | Respuesta "14", cita MC3010 |
 | I1 | AD Currículum | La pregunta de P1, en el dominio equivocado | Sin información |
 | I3 | AD Memoria del Consejo | La pregunta de K2, en el dominio equivocado | Sin información |

@@ -1,4 +1,5 @@
 import { setKey } from "../api/client";
+import { FIXED_KEY } from "../api/fixedKey";
 
 interface Props {
   name: string;
@@ -12,11 +13,13 @@ export function Header({ name, onToggleSidebar }: Props) {
         Dominios
       </button>
       <h1>{name}</h1>
-      <div className="header-actions">
-        <button type="button" className="btn btn-small" onClick={() => setKey("")}>
-          Cambiar clave
-        </button>
-      </div>
+      {!FIXED_KEY && (
+        <div className="header-actions">
+          <button type="button" className="btn btn-small" onClick={() => setKey("")}>
+            Cambiar clave
+          </button>
+        </div>
+      )}
     </header>
   );
 }

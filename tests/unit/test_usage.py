@@ -304,3 +304,13 @@ def test_las_horas_se_asignan_en_la_zona_configurada_incluso_con_desfase_de_medi
     # 20 minutos antes de la medianoche local es el día anterior; 10 minutos después, hoy.
     assert len(dias) == 2 and dias[0]["bucket"] < dias[1]["bucket"]
     assert [p["bucket"][-5:] for p in horas] == ["00:00"]  # la fila de hoy cae en la hora 0 local
+
+
+def test_lista_vacia_de_artefactos_significa_ninguno_y_none_todos(db, datos):
+    from mia.usage.aggregate import load_rows, resolve_period
+
+    periodo = resolve_period("today", None, None)
+    with db() as session:
+        assert load_rows(session, periodo.start, periodo.end, [], None) == []
+        assert len(load_rows(session, periodo.start, periodo.end, None, None)) == 6
+        assert len(load_rows(session, periodo.start, periodo.end, ["a1"], None)) == 3

@@ -106,12 +106,13 @@ export interface ModeInfo {
 
 export interface ArtifactsResponse {
   artifacts: Artifact[];
+  // Nulo para quien tiene alcance de unidad: el gasto de toda la API no es suyo.
   global: {
     daily_cap_usd: number;
     spent_today_usd: number;
     sum_of_artifact_caps_usd: number;
     caps_exceed_global: boolean;
-  };
+  } | null;
   modes: ModeInfo[];
 }
 
@@ -194,4 +195,11 @@ export interface BalanceResponse {
   days_left?: number | null;
   avg_daily_spend_usd_7d?: number;
   warning?: boolean;
+}
+
+export interface Me {
+  email: string | null;
+  is_global: boolean;
+  units: { id: string; name: string }[];
+  source: string;
 }

@@ -88,7 +88,7 @@ def test_borrar_carpeta_vacia(client, admin, base):
     carpeta = _crear(client, admin).json()
 
     assert client.delete(f"/folders/{carpeta['id']}", headers=admin).status_code == 204
-    with_session = client.get("/inventory").json()
+    with_session = client.get("/inventory", headers=admin).json()
     assert with_session["units"][0]["domains"][0]["folders"] == []
 
 

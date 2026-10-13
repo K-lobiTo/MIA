@@ -13,11 +13,17 @@ src/mia/
 ├── config.py          Settings (pydantic-settings, lee .env)
 ├── api/
 │   ├── main.py         App FastAPI, CORS y routers; en el lifespan: init_db() (migraciones) y ensure_collection()
-│   ├── security.py     require_admin (X-Admin-Key) y require_artifact / optional_artifact (X-Artifact-Key)
-│   └── routes/         health, inventory (árbol, unidades, carpetas), domains (dominios y documentos),
+│   ├── security.py     require_admin / optional_admin (token de Microsoft o X-Admin-Key, devuelven un Principal) y require_artifact / optional_artifact (X-Artifact-Key)
+│   └── routes/         health, me (quién soy y mi alcance), inventory (árbol, programas, carpetas), domains (dominios y documentos),
 │                       artifacts, config, query (consulta y calificación), usage
 ├── access/             Lógica de acceso sin HTTP, para probarla sin levantar la API
-│   ├── keys.py          generar, hashear y verificar claves
+│   ├── keys.py          generar, hashear y verificar claves (artefactos y clave de automatización)
+│   ├── errors.py        AuthError: estado, mensaje y `code` de los rechazos de acceso
+│   ├── entra.py         validar el token de identidad de Microsoft (firma, emisor, audiencia, tenant, vigencia, segundo factor) y caché de claves
+│   ├── admins.py        lista de administradores: agregar, listar, desactivar, buscar (la usa scripts/admin.py)
+│   ├── scope.py         Principal y reglas de alcance por programa (dominios, artefactos)
+│   ├── guards.py        comprobaciones de alcance que cortan la petición y anotan el rechazo
+│   ├── audit.py         línea JSON por escritura de administración (logger `mia.admin`)
 │   ├── permissions.py   dominios y modos que puede usar un artefacto
 │   └── caps.py          topes diarios de gasto y su día (zona horaria de Costa Rica)
 ├── usage/              Módulo Uso
@@ -35,31 +41,34 @@ src/mia/
 │   └── providers/       una implementación por proveedor (local, gemini, anthropic, openai, openrouter, glm)
 └── storage/
     ├── db.py            engine/session de SQLAlchemy; init_db() aplica las migraciones de Alembic
-    ├── models.py        Unit, Domain, Folder, Document, Artifact, ArtifactUnit, ArtifactDomain, QueryLog
-    ├── migrations/      Alembic: 0001 (esquema anterior) y 0002 (panel de administración)
+    ├── models.py        Unit, Domain, Folder, Document, Artifact, ArtifactUnit, ArtifactDomain, QueryLog, Admin, AdminUnit
+    ├── migrations/      Alembic: 0001 (esquema anterior), 0002 (panel de administración) y 0003 (administradores)
     └── vector_store.py  VectorStore (interfaz) + QdrantVectorStore + get_vector_store()
 
 web/                    Aplicaciones web: admin/ (panel de administración) y consulta/ (Consulta administrativa)
 web/admin/              Panel de administración (React + TypeScript + Vite), ver más abajo
 web/consulta/           Consulta administrativa (React + TypeScript + Vite), ver más abajo
-scripts/                cargar_carpeta.py, reorganizar_v2.py, pruebas_mvp.py, cliente.py, servicios.py (encender y apagar en Railway)
+scripts/                cargar_carpeta.py, reorganizar_v2.py, pruebas_mvp.py, cliente.py, servicios.py (encender y apagar en Railway), admin.py (administradores del panel), idp_simulado.py (solo desarrollo: Microsoft simulado)
 ```
 
 ## Cómo se organiza la información
 
 Tres niveles, más los documentos (especificación en [specs/002-panel-administracion/](../specs/002-panel-administracion/spec.md), decisiones en [Definicion_Requerimientos_V2.md](Definicion_Requerimientos_V2.md)):
 
-- **Unidad académica** (`Unit`): agrupa dominios de un área, hoy Computación y Administración de Empresas. Es el nivel en que normalmente se da acceso a un artefacto.
-- **Dominio** (`Domain`): lo que se elige al consultar (Memoria del Consejo, Currículum, Proyectos de graduación: Tesis...). Su nombre es único solo dentro de su unidad. Es la unidad de búsqueda y de permisos: Qdrant filtra por el id del dominio.
+- **Programa** (`Unit` en el código, `units` en la base y la API): agrupa dominios. Hoy son dos: la **Unidad de Postgrados de Computación** y el **Área académica de Analítica de Negocios** (la Maestría en Analítica de Negocios, carrera de computación y administración de empresas). Antes se llamaban "unidades académicas" (Computación y Administración de Empresas); la migración `0004` los renombró sin cambiar sus ids, así que artefactos, administradores y dominios siguen apuntando a lo mismo. Es el nivel en que normalmente se da acceso a un artefacto.
+- **Dominio** (`Domain`): lo que se elige al consultar (Memoria del Consejo, Currículum, Proyectos de graduación: Tesis...). Su nombre es único solo dentro de su programa. Es la unidad de búsqueda y de permisos: Qdrant filtra por el id del dominio.
 - **Carpeta** (`Folder`): agrupa documentos dentro de un dominio, anidable y sin límite de profundidad. **Solo organiza**: viven únicamente en la base SQL, la consulta sigue siendo por dominio, y crearlas o renombrarlas no obliga a reprocesar nada.
 - **Documento** (`Document`): pertenece a un dominio y, opcionalmente, a una carpeta. El duplicado se detecta por contenido dentro del dominio, en cualquiera de sus carpetas.
 
-Como Qdrant identifica cada dominio por su id y no por su nombre, renombrar un dominio o asignarle unidad no toca Qdrant. Mover documentos a otro dominio sí cambia el campo `domain` de sus fragmentos (`VectorStore.set_domain`), pero sin recalcular embeddings.
+Como Qdrant identifica cada dominio por su id y no por su nombre, renombrar un dominio o asignarle programa no toca Qdrant. Mover documentos a otro dominio sí cambia el campo `domain` de sus fragmentos (`VectorStore.set_domain`), pero sin recalcular embeddings.
 
 ## Acceso: claves, permisos y modos
 
-- **Clave de administración:** variable `ADMIN_KEY`, enviada en `X-Admin-Key`. Protege crear unidades, dominios y carpetas, subir documentos, gestionar artefactos y ver el módulo Uso. Sin `ADMIN_KEY` configurada esas operaciones responden 503, no quedan abiertas por olvido. Leer el inventario no la pide.
-- **Artefactos** (`Artifact`): cada aplicación de consulta se registra con su nombre, una clave propia (`X-Artifact-Key`, generada por la API y mostrada una sola vez; se guarda solo su SHA-256), los dominios que puede consultar (todos, unidades completas incluidos sus dominios futuros, o dominios puntuales), los modos de respuesta permitidos y sus topes de gasto. Un mismo producto se registra una vez por público: las dos instancias de la Consulta administrativa (Postgrados Computación y Postgrados Administración Empresas) son dos artefactos.
+- **Administración (panel):** cada persona inicia sesión con su cuenta institucional del TEC (Microsoft Entra ID). El panel envía el **token de identidad** en `Authorization: Bearer`; la API lo valida en cada petición (`access/entra.py`: firma RS256 contra las claves públicas del directorio, guardadas en memoria; emisor, audiencia igual a `ENTRA_CLIENT_ID`, `tid` igual al tenant del TEC, vigencia y `amr` con `mfa` salvo `ENTRA_REQUIRE_MFA=false`), toma el correo (`email` o `preferred_username`) y lo busca en la tabla `admins`. De ahí sale un `Principal`: alcance **global** (todo) o de **programas** (solo lo de ellas). Las rutas de administración, incluida la lectura del inventario, exigen credencial (401 sin ella); los rechazos llevan `detail` y un `code` estable (`not_authorized`, `mfa_required`, `token_expired`, `out_of_scope`, `global_only`, ...), ver [contrato](../specs/004-acceso-panel-tec/contracts/api-acceso.md). Se usa el ID token y no un access token porque la aplicación registrada solo pide `openid profile email` y no expone una API propia; es un ID token emitido para esta misma aplicación, de una hora y enviado solo por HTTPS a la API.
+- **Clave de automatización:** `ADMIN_KEY` en `X-Admin-Key` da alcance global a los scripts (`cargar_carpeta.py`, `pruebas_mvp.py`). El panel también la acepta en su pantalla de entrada como segunda forma de entrar (alcance global, guardada solo en la pestaña), pensada para el prototipo mientras no haya client ID de TI. Vacía, queda desactivada y cualquier valor responde 401.
+- **Alcance por programa** (`access/scope.py`): un dominio está en alcance si su programa lo está (los sin programa, solo global). Un artefacto está en alcance si no es de "todos los dominios", tiene acceso configurado y todas sus programas y el programa de cada dominio puntual están en alcance. Quien no es global ve el inventario, los artefactos y el Uso (registro, detalle, CSV) solo de lo suyo; las lecturas ajenas responden 404 y las escrituras ajenas, 403 `out_of_scope`. Crear programas y el saldo de OpenRouter son solo globales, y `GET /artifacts` trae `global: null` para quien no lo es. El filtro de artefactos de Uso es exacto: `None` todos, lista vacía ninguno. Los topes de toda la API siguen sin poder editarse desde el panel.
+- **Registro:** cada escritura de administración y cada rechazo por alcance dejan una línea JSON en el logger `mia.admin` (correo o `automatizacion`, acción, objeto, resultado), sin tokens ni claves. No hay tabla de auditoría.
+- **Artefactos** (`Artifact`): cada aplicación de consulta se registra con su nombre, una clave propia (`X-Artifact-Key`, generada por la API y mostrada una sola vez; se guarda solo su SHA-256), los dominios que puede consultar (todos, unidades completas incluidos sus dominios futuros, o dominios puntuales), los modos de respuesta permitidos y sus topes de gasto. Un mismo producto se registra una vez por público: las dos instancias de la Consulta administrativa (Postgrados Computación y Área Académica Administración Empresas) son dos artefactos.
 - **Quién aplica los permisos:** la API, en cada consulta, no el artefacto (el código de un sitio estático se puede modificar). Una consulta a un dominio o modo no permitido, o de un artefacto desactivado, responde 403; un cambio hecho en el panel rige desde la consulta siguiente. `GET /domains` y `GET /config` con la clave de un artefacto muestran solo lo que ese artefacto puede usar.
 - **Modos de respuesta** (`rag/modes.py`): `literal` y `razonamiento`. Cada uno tiene su proveedor, modelo y esfuerzo de razonamiento por configuración (`LLM_PROVIDER_<MODO>`, `LLM_MODEL_<MODO>`...); sin variables propias, el literal usa la configuración anterior (`LLM_PROVIDER`, `OPENROUTER_*`). Un modo sin proveedor figura como no disponible. Los artefactos piden un modo y nunca ven el modelo. Cada modo trae además su instrucción al modelo y su cantidad de resultados de búsqueda (`QUERY_SEARCH_LIMIT`, 8, en literal; `QUERY_SEARCH_LIMIT_RAZONAMIENTO`, 16, con razonamiento): la instrucción llega al proveedor como parámetro de `LLMProvider.answer`. La del literal pide responder solo con lo que dicen los fragmentos; la del razonamiento permite combinar, comparar, resumir y calcular, y estructura la respuesta en dos partes fijas ("Lo que dicen los documentos" y "Conclusión"). `POST /query` limita la pregunta a 2000 caracteres y devuelve `no_info` para que el cliente distinga la respuesta "sin información suficiente". Contrato en [specs/003-consulta-administrativa/contracts/api-consulta-modos.md](../specs/003-consulta-administrativa/contracts/api-consulta-modos.md).
 
@@ -71,11 +80,11 @@ Como Qdrant identifica cada dominio por su id y no por su nombre, renombrar un d
 
 ## Migraciones
 
-El esquema lo versiona Alembic (`src/mia/storage/migrations/`). `init_db()` corre en cada arranque de la API: si la base ya tiene tablas pero no `alembic_version` (la de Neon, creada antes con `create_all`), la marca en la revisión `0001` sin ejecutarla, y luego aplica `0002`. Con una sola instancia de la API no hay riesgo de dos migraciones a la vez. `alembic upgrade head` también funciona desde la terminal, con `DATABASE_URL`. `domains.unit_id` es nullable en la base (los dominios anteriores a la reorganización no tienen unidad); la API la exige al crear uno.
+El esquema lo versiona Alembic (`src/mia/storage/migrations/`). `init_db()` corre en cada arranque de la API: si la base ya tiene tablas pero no `alembic_version` (la de Neon, creada antes con `create_all`), la marca en la revisión `0001` sin ejecutarla, y luego aplica `0002` y `0003`. Con una sola instancia de la API no hay riesgo de dos migraciones a la vez. `alembic upgrade head` también funciona desde la terminal, con `DATABASE_URL`. `domains.unit_id` es nullable en la base (los dominios anteriores a la reorganización no tienen unidad); la API la exige al crear uno.
 
 ## Panel de administración
 
-`web/admin/`: React 19, TypeScript y Vite, con TanStack Query y `HashRouter` (funciona como sitio estático sin reescrituras). Un menú de módulos (`src/modules/index.tsx`): Inventario de información, Artefactos y accesos, y Uso; agregar uno es sumar una entrada y un grupo de rutas en la API. Las gráficas son SVG propio, con una paleta categórica validada para el modo claro y el oscuro. En desarrollo usa el proxy de Vite (`/api`); publicado como sitio estático llama directo a la API, que debe permitir su origen (`CORS_ORIGINS`). Detalle de uso en [web/admin/README.md](../web/admin/README.md).
+`web/admin/`: React 19, TypeScript y Vite, con TanStack Query y `HashRouter` (funciona como sitio estático sin reescrituras). Antes de nada pide iniciar sesión (`src/auth/`: `@azure/msal-browser` con flujo de código y PKCE, sesión en `sessionStorage`, renovación del token en silencio cuando faltan menos de 5 minutos, y `describeAccessError` para los mensajes de rechazo; MSAL queda aislado en `auth/session.ts`). Sin sesión no se monta ninguna ruta ni se pide ningún dato; el perfil de `GET /me` decide qué se muestra (`auth/capabilities.ts`). Un menú de módulos (`src/modules/index.tsx`): Inventario de información, Artefactos y accesos, y Uso; agregar uno es sumar una entrada y un grupo de rutas en la API. Las gráficas son SVG propio, con una paleta categórica validada para el modo claro y el oscuro. En desarrollo usa el proxy de Vite (`/api`); publicado como sitio estático llama directo a la API, que debe permitir su origen (`CORS_ORIGINS`). Detalle de uso en [web/admin/README.md](../web/admin/README.md).
 
 ## Consulta administrativa
 
@@ -117,7 +126,7 @@ El panel de administración y la Consulta administrativa (dos instancias) son lo
 ## Qué funciona hoy vs. qué es interfaz sin implementar
 
 **Funciona (probado con tests unitarios y manualmente contra Qdrant y Gemini reales):**
-- Unidades, dominios, carpetas y documentos (`/units`, `/domains`, `/domains/{id}/folders`, `/domains/{id}/documents`, `/inventory`), con deduplicación por hash de archivo.
+- Programas, dominios, carpetas y documentos (`/units`, `/domains`, `/domains/{id}/folders`, `/domains/{id}/documents`, `/inventory`), con deduplicación por hash de archivo.
 - `PdfLoader`, `DocxLoader`, `TxtLoader`: extracción real de texto (probado con actas reales en PDF de 96 a 180 páginas). `DocxLoader` lee párrafos y tablas en el orden del documento, una fila por línea con las celdas separadas por " | ": los programas de curso del TEC tienen casi todo su contenido en tablas (créditos, horas, requisitos, objetivos, evaluación), y leyendo solo párrafos se perdía (p. ej. 114 de 4936 caracteres en un programa de Ciberseguridad).
 - `chunk_text()`: chunking con overlap (1000 caracteres, 200 de overlap).
 - Metadata store con SQLAlchemy: SQLite en desarrollo, Postgres (Neon) en producción. El esquema se versiona con Alembic y se aplica al arrancar la API (`init_db()`); ver "Migraciones".
@@ -142,7 +151,9 @@ Detalle completo de esta feature en `specs/001-pipeline-ingesta-rag/` (spec, pla
 
 ```mermaid
 flowchart LR
-    P[Panel de administración<br/>sitio estático] -->|X-Admin-Key| R
+    P[Panel de administración<br/>sitio estático] -->|Authorization: Bearer<br/>token de Microsoft| R
+    M[Microsoft Entra ID<br/>cuentas del TEC] -.->|claves públicas| R
+    P -.->|inicio de sesión PKCE| M
     U[Consulta administrativa y otros<br/>artefactos] -->|X-Artifact-Key| R[API en Railway Hobby<br/>INGESTION_ENABLED=true]
     L[API local del operador<br/>cargas masivas] -->|ingesta| Q
     L --> N

@@ -8,9 +8,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from mia.access import audit
 from mia.access.caps import artifact_status, spent_today
+from mia.access.guards import ensure_can_grant
 from mia.access.keys import generate_key, hash_key, key_prefix
 from mia.access.permissions import allowed_modes, configured_domain_ids
+from mia.access.scope import Principal, artifact_in_scope
 from mia.api.routes.inventory import Name
 from mia.api.security import require_admin
 from mia.config import settings
@@ -18,7 +21,7 @@ from mia.rag.modes import MODE_IDS, MODES, mode_available
 from mia.storage.db import get_session
 from mia.storage.models import Artifact, ArtifactDomain, ArtifactUnit, Domain, QueryLog, Unit
 
-router = APIRouter(tags=["artifacts"], dependencies=[Depends(require_admin)])
+router = APIRouter(tags=["artifacts"])
 
 ModeId = Literal["literal", "razonamiento"]
 DEFAULT_DAILY_CAP = 0.50
@@ -97,7 +100,8 @@ class ArtifactsOut(BaseModel):
 
     artifacts: list[ArtifactOut]
     # "global" es una palabra reservada de Python: en el JSON se llama "global".
-    global_: GlobalOut = Field(alias="global")
+    # Nulo para quien tiene alcance de unidad: el gasto de toda la API no es suyo.
+    global_: GlobalOut | None = Field(alias="global")
     modes: list[ModeOut]
 
 
@@ -146,7 +150,7 @@ def _to_out(session: Session, artifact: Artifact) -> ArtifactOut:
 
 def _validate_access(session: Session, access: Access) -> None:
     if not (access.all_domains or access.unit_ids or access.domain_ids):
-        raise HTTPException(status_code=422, detail="El artefacto debe tener acceso al menos a un dominio o unidad.")
+        raise HTTPException(status_code=422, detail="El artefacto debe tener acceso al menos a un dominio o programa.")
     known_units = set(session.scalars(select(Unit.id).where(Unit.id.in_(access.unit_ids)))) if access.unit_ids else set()
     missing_units = set(access.unit_ids) - known_units
     known_domains = (
@@ -156,7 +160,7 @@ def _validate_access(session: Session, access: Access) -> None:
     if missing_units or missing_domains:
         raise HTTPException(
             status_code=422,
-            detail="Unidades o dominios inexistentes: " + ", ".join(sorted(missing_units | missing_domains)),
+            detail="Programas o dominios inexistentes: " + ", ".join(sorted(missing_units | missing_domains)),
         )
 
 
@@ -180,8 +184,12 @@ def _modes_text(modes: list[str]) -> str:
 
 
 @router.get("/artifacts", response_model=ArtifactsOut)
-def list_artifacts(session: Session = Depends(get_session)) -> ArtifactsOut:
-    artifacts = session.scalars(select(Artifact).order_by(Artifact.name)).all()
+def list_artifacts(
+    principal: Principal = Depends(require_admin), session: Session = Depends(get_session)
+) -> ArtifactsOut:
+    artifacts = [
+        a for a in session.scalars(select(Artifact).order_by(Artifact.name)) if artifact_in_scope(session, principal, a)
+    ]
     # Costo medio por consulta de cada modo en los últimos 7 días: solo las que llegaron al modelo
     # (con respuesta o "sin información" del modelo), no las rechazadas ni las sin resultados.
     averages = {
@@ -192,6 +200,8 @@ def list_artifacts(session: Session = Depends(get_session)) -> ArtifactsOut:
                 QueryLog.created_at >= _week_ago(),
                 QueryLog.outcome.in_(["answered", "no_info"]),
                 QueryLog.model.is_not(None),
+                # Quien no es global promedia solo con sus artefactos.
+                *([] if principal.is_global else [QueryLog.artifact_id.in_([a.id for a in artifacts])]),
             )
             .group_by(QueryLog.mode)
         )
@@ -205,23 +215,31 @@ def list_artifacts(session: Session = Depends(get_session)) -> ArtifactsOut:
         )
         for mode in MODE_IDS
     ]
-    cap_sum = sum(float(a.daily_cap_usd) for a in artifacts if a.active)
-    global_block = GlobalOut(
-        daily_cap_usd=settings.daily_cap_usd,
-        spent_today_usd=float(spent_today(session)),
-        sum_of_artifact_caps_usd=cap_sum,
-        caps_exceed_global=cap_sum > settings.daily_cap_usd,
-    )
+    global_block = None
+    if principal.is_global:
+        cap_sum = sum(float(a.daily_cap_usd) for a in artifacts if a.active)
+        global_block = GlobalOut(
+            daily_cap_usd=settings.daily_cap_usd,
+            spent_today_usd=float(spent_today(session)),
+            sum_of_artifact_caps_usd=cap_sum,
+            caps_exceed_global=cap_sum > settings.daily_cap_usd,
+        )
     return ArtifactsOut(artifacts=[_to_out(session, a) for a in artifacts], global_=global_block, modes=modes)
 
 
 @router.post("/artifacts", response_model=ArtifactCreatedOut, status_code=201)
-def create_artifact(payload: ArtifactCreate, session: Session = Depends(get_session)) -> ArtifactCreatedOut:
+def create_artifact(
+    payload: ArtifactCreate, principal: Principal = Depends(require_admin), session: Session = Depends(get_session)
+) -> ArtifactCreatedOut:
     if session.scalar(select(Artifact).where(Artifact.name == payload.name)) is not None:
         raise HTTPException(status_code=409, detail=f"Ya existe un artefacto llamado '{payload.name}'.")
     daily = payload.daily_cap_usd if payload.daily_cap_usd is not None else DEFAULT_DAILY_CAP
     _validate_caps(daily, payload.reasoning_daily_cap_usd)
     _validate_access(session, payload.access)
+    access = payload.access
+    ensure_can_grant(
+        session, principal, access.all_domains, access.unit_ids, access.domain_ids, "artifact.create", payload.name
+    )
 
     key = generate_key()
     artifact = Artifact(
@@ -241,15 +259,20 @@ def create_artifact(payload: ArtifactCreate, session: Session = Depends(get_sess
     _set_access(session, artifact, payload.access)
     session.commit()
     session.refresh(artifact)
+    audit.log_write(principal, "artifact.create", artifact.id, artifact.name)
     return ArtifactCreatedOut(**_to_out(session, artifact).model_dump(), key=key)
 
 
 @router.patch("/artifacts/{artifact_id}", response_model=ArtifactOut)
 def update_artifact(
-    artifact_id: str, payload: ArtifactUpdate, session: Session = Depends(get_session)
+    artifact_id: str,
+    payload: ArtifactUpdate,
+    principal: Principal = Depends(require_admin),
+    session: Session = Depends(get_session),
 ) -> ArtifactOut:
     artifact = session.get(Artifact, artifact_id)
-    if artifact is None:
+    # Un artefacto fuera del alcance responde igual que uno inexistente.
+    if artifact is None or not artifact_in_scope(session, principal, artifact):
         raise HTTPException(status_code=404, detail="Artefacto no encontrado.")
     changes = payload.model_fields_set
 
@@ -265,6 +288,8 @@ def update_artifact(
 
     if payload.access is not None:
         _validate_access(session, payload.access)
+        new = payload.access
+        ensure_can_grant(session, principal, new.all_domains, new.unit_ids, new.domain_ids, "artifact.update", artifact_id)
         _set_access(session, artifact, payload.access)
     if payload.description is not None:
         artifact.description = payload.description
@@ -278,16 +303,20 @@ def update_artifact(
         artifact.active = payload.active
     session.commit()
     session.refresh(artifact)
+    audit.log_write(principal, "artifact.update", artifact.id, artifact.name)
     return _to_out(session, artifact)
 
 
 @router.post("/artifacts/{artifact_id}/key", response_model=NewKeyOut)
-def regenerate_key(artifact_id: str, session: Session = Depends(get_session)) -> NewKeyOut:
+def regenerate_key(
+    artifact_id: str, principal: Principal = Depends(require_admin), session: Session = Depends(get_session)
+) -> NewKeyOut:
     artifact = session.get(Artifact, artifact_id)
-    if artifact is None:
+    if artifact is None or not artifact_in_scope(session, principal, artifact):
         raise HTTPException(status_code=404, detail="Artefacto no encontrado.")
     key = generate_key()
     artifact.key_hash = hash_key(key)
     artifact.key_prefix = key_prefix(key)
     session.commit()
+    audit.log_write(principal, "artifact.key_regenerate", artifact.id, artifact.name)
     return NewKeyOut(key=key, key_prefix=key_prefix(key))

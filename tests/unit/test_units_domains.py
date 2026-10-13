@@ -29,7 +29,7 @@ def test_crear_unidad(client, db, admin):
     assert response.status_code == 201
     body = response.json()
     assert body["name"] == "Computación" and body["description"] == "Posgrados" and body["id"]
-    assert [u["name"] for u in client.get("/units").json()] == ["Computación"]
+    assert [u["name"] for u in client.get("/units", headers=admin).json()] == ["Computación"]
 
 
 def test_unidad_con_nombre_repetido_responde_409(client, db, admin):
@@ -101,14 +101,14 @@ def test_visible_to_indica_que_artefactos_ven_el_dominio_nuevo(client, db, admin
     assert sorted(visible["needs_enabling"]) == ["Un dominio", "Ve Administración"]
 
 
-def test_listar_dominios_incluye_la_unidad(client, db):
+def test_listar_dominios_incluye_la_unidad(client, db, admin):
     _unidad(db)
     with db() as session:
         session.add(Domain(id="d1", unit_id="u1", name="Currículum", description=""))
         session.add(Domain(id="d2", unit_id=None, name="Suelto", description=""))
         session.commit()
 
-    body = {d["name"]: d for d in client.get("/domains").json()}
+    body = {d["name"]: d for d in client.get("/domains", headers=admin).json()}
 
     assert body["Currículum"]["unit_id"] == "u1" and body["Currículum"]["unit_name"] == "Computación"
     assert body["Suelto"]["unit_id"] is None and body["Suelto"]["unit_name"] is None

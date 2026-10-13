@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-from mia.api.routes import artifacts, config, domains, health, inventory, query, usage
+from mia.access.errors import AuthError
+from mia.api.routes import artifacts, config, domains, health, inventory, me, query, usage
 from mia.config import settings
 from mia.rag.embeddings import get_embedding_provider
 from mia.storage.db import init_db
@@ -28,11 +30,23 @@ if _cors_origins:
         CORSMiddleware,
         allow_origins=_cors_origins,
         allow_methods=["GET", "POST", "PATCH", "DELETE"],
-        allow_headers=["content-type", "X-Admin-Key", "X-Artifact-Key"],
+        allow_headers=["content-type", "Authorization", "X-Admin-Key", "X-Artifact-Key"],
         expose_headers=["Retry-After"],
     )
 
+
+
+@app.exception_handler(AuthError)
+async def auth_error_handler(request: Request, error: AuthError) -> JSONResponse:
+    # Además del mensaje, un código estable para que el panel distinga el caso.
+    headers = {"WWW-Authenticate": "Bearer"} if error.status_code == 401 else None
+    return JSONResponse(
+        status_code=error.status_code, content={"detail": error.detail, "code": error.code}, headers=headers
+    )
+
+
 app.include_router(health.router)
+app.include_router(me.router)
 app.include_router(inventory.router)
 app.include_router(artifacts.router)
 app.include_router(config.router)

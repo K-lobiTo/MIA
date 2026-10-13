@@ -3,14 +3,14 @@ import type { Domain } from "../api/types";
 const STORAGE_KEY = "mia-consulta-dominios";
 
 export interface DomainGroup {
-  /** Nombre de la unidad; nulo cuando todos los dominios son de una sola y no hace falta titular. */
+  /** Nombre del programa; nulo cuando todos los dominios son de una sola y no hace falta titular. */
   title: string | null;
   domains: Domain[];
 }
 
 const byName = (a: Domain, b: Domain) => a.name.localeCompare(b.name, "es");
 
-/** Agrupa por unidad académica; con una sola unidad devuelve un grupo sin título (CON-1). */
+/** Agrupa por programa; con un solo programa devuelve un grupo sin título (CON-1). */
 export function groupByUnit(domains: Domain[]): DomainGroup[] {
   if (domains.length === 0) return [];
   const units = new Map<string, Domain[]>();

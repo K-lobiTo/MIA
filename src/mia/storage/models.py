@@ -36,7 +36,8 @@ def _now() -> datetime:
 
 
 class Unit(Base):
-    """Unidad académica: agrupa dominios (Computación, Administración de Empresas)."""
+    """Programa: agrupa dominios. Hoy son dos: la Unidad de Postgrados de Computación y el Área académica de
+    Analítica de Negocios (la clase y la tabla conservan el nombre técnico `Unit`/`units`)."""
 
     __tablename__ = "units"
 
@@ -138,6 +139,30 @@ class ArtifactDomain(Base):
 
     artifact_id: Mapped[str] = mapped_column(ForeignKey("artifacts.id"), primary_key=True)
     domain_id: Mapped[str] = mapped_column(ForeignKey("domains.id"), primary_key=True)
+
+
+class Admin(Base):
+    """Persona autorizada a usar el panel con su cuenta del TEC. El alcance es global o un conjunto de
+    unidades (`AdminUnit`). Solo `mia.access.admins` escribe esta tabla."""
+
+    __tablename__ = "admins"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    # Siempre en minúsculas y sin espacios.
+    email: Mapped[str] = mapped_column(String, unique=True)
+    is_global: Mapped[bool] = mapped_column(Boolean, default=False)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
+
+
+class AdminUnit(Base):
+    """Unidad sobre la que un administrador de alcance de unidad puede ver y operar."""
+
+    __tablename__ = "admin_units"
+
+    admin_id: Mapped[str] = mapped_column(ForeignKey("admins.id"), primary_key=True)
+    unit_id: Mapped[str] = mapped_column(ForeignKey("units.id"), primary_key=True)
 
 
 class QueryLog(Base):

@@ -5,6 +5,8 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from mia.access.errors import global_only
+from mia.access.scope import Principal, artifact_ids_in_scope
 from mia.api.security import require_admin
 from mia.storage.db import get_session
 from mia.storage.models import QueryLog
@@ -12,14 +14,15 @@ from mia.usage import balance as balance_module
 from mia.usage import log as log_module
 from mia.usage.aggregate import Period, compute_usage, load_rows, page_rows, resolve_period
 
-router = APIRouter(tags=["usage"], dependencies=[Depends(require_admin)])
+router = APIRouter(tags=["usage"])
 
 PeriodName = Literal["today", "7d", "30d", "custom"]
 ModeName = Literal["literal", "razonamiento"]
 
 
 class UsageFilters:
-    """Filtros comunes del módulo Uso: período, artefactos y modo (USO-1)."""
+    """Filtros comunes del módulo Uso: período, artefactos y modo (USO-1). Los artefactos pedidos se
+    limitan a los del alcance de quien consulta."""
 
     def __init__(
         self,
@@ -28,12 +31,21 @@ class UsageFilters:
         to: str | None = None,
         artifact_id: Annotated[list[str] | None, Query()] = None,
         mode: ModeName | None = None,
+        principal: Principal = Depends(require_admin),
+        session: Session = Depends(get_session),
     ):
         try:
             self.period: Period = resolve_period(period, from_, to)
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
-        self.artifact_ids = artifact_id or None
+        allowed = artifact_ids_in_scope(session, principal)
+        requested = artifact_id or None
+        if allowed is None:
+            self.artifact_ids = requested
+        elif requested is None:
+            self.artifact_ids = allowed
+        else:
+            self.artifact_ids = [i for i in requested if i in allowed]
         self.mode = mode
 
 
@@ -88,13 +100,19 @@ def usage_queries(
 
 
 @router.get("/usage/queries/{query_id}")
-def usage_query_detail(query_id: str, session: Session = Depends(get_session)) -> dict:
+def usage_query_detail(
+    query_id: str, principal: Principal = Depends(require_admin), session: Session = Depends(get_session)
+) -> dict:
     row = session.scalar(select(QueryLog).where(QueryLog.id == query_id))
-    if row is None:
+    allowed = artifact_ids_in_scope(session, principal)
+    # Una consulta de un artefacto fuera del alcance (o sin artefacto) no se revela.
+    if row is None or (allowed is not None and row.artifact_id not in allowed):
         raise HTTPException(status_code=404, detail="Consulta no encontrada.")
     return log_module.detail(session, row)
 
 
 @router.get("/usage/balance")
-def usage_balance(session: Session = Depends(get_session)) -> dict:
+def usage_balance(principal: Principal = Depends(require_admin), session: Session = Depends(get_session)) -> dict:
+    if not principal.is_global:
+        raise global_only("El saldo de OpenRouter es solo del alcance global.")
     return balance_module.get_balance(session)

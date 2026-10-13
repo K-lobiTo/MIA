@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { FIXED_KEY } from "./fixedKey";
 
 // En desarrollo, el proxy de Vite atiende /api. Publicado como sitio estático se construye con
 // VITE_API_URL apuntando a la API (que debe permitir el origen del sitio en CORS_ORIGINS).
@@ -28,7 +29,8 @@ function read(): string {
   }
 }
 
-let currentKey = read();
+// Con una clave fija de la instancia (ARTIFACT_KEY) no se usa la guardada ni se puede cambiar.
+let currentKey = FIXED_KEY || read();
 const listeners = new Set<() => void>();
 
 export function getKey(): string {
@@ -36,6 +38,7 @@ export function getKey(): string {
 }
 
 export function setKey(key: string): void {
+  if (FIXED_KEY) return;
   currentKey = key;
   try {
     if (key) localStorage.setItem(STORAGE_KEY, key);
@@ -114,6 +117,7 @@ export async function apiFetch<T>(
   if (!response.ok) {
     // Una clave guardada que dejó de valer (se regeneró o se desactivó) se olvida y se vuelve a pedir.
     if (response.status === 401 && currentKey) {
+      // setKey no hace nada con una clave fija: se muestra el aviso de que está rechazada.
       setKey("");
       onInvalidKey();
     }

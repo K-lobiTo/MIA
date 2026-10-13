@@ -35,5 +35,6 @@ Resumen: una API FastAPI intermedia entre el almacenamiento (Qdrant + SQL: SQLit
 ## Idioma y convenciones
 
 - Documentación, nombres de dominio/conceptos en español.
+- Despliegue: `scripts/servicios.py encender` despliega `origin/main` de GitHub (no la carpeta local; `--local` y `--ref` son la excepción). Flujo: trabajar en `dev`, merge a `main`, `git push origin main`, y recién entonces encender. La API migra la base al arrancar: no desplegar una versión con menos migraciones que las de la base (ver "Desplegar cambios" en `docs/OPERACION.md`).
 - Sin atribución de Claude en commits ni PRs (`includeCoAuthoredBy: false` en `.claude/settings.json`).
 - Spec Kit está instalado (`.specify/`, skills `speckit-*`) para uso opcional en flujos de especificación futuros.
