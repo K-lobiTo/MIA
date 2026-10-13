@@ -1,8 +1,11 @@
+import { Button, Group, Paper, Text, TextInput } from "@mantine/core";
+import { IconPlus, IconSearch } from "@tabler/icons-react";
 import { useMemo, useRef, useState } from "react";
 import { capabilities } from "../../auth/capabilities";
 import { useMe } from "../../auth/session";
 import { useInventory } from "../../api/inventory";
 import type { Inventory } from "../../api/types";
+import { Notice } from "../../components/Notice";
 import { filterInventory } from "./filterTree";
 import {
   DeleteFolderDialog,
@@ -83,33 +86,35 @@ export function InventarioPage() {
 
   function renderActions(node: NodeRef) {
     const uploadButton = (
-      <button
-        className="btn btn-small"
+      <Button
+        variant="default"
+        size="compact-sm"
         disabled={!ingestionEnabled}
         title={ingestionEnabled ? "Elegir archivos PDF, DOCX o TXT (también se pueden arrastrar aquí)" : READ_ONLY_REASON}
         onClick={() => pickFiles(node)}
       >
         Subir
-      </button>
+      </Button>
     );
     if (node.kind === "unit") {
       const unitName = lookup?.units.get(node.id) ?? "el programa";
       return (
-        <button className="btn btn-small" onClick={() => setDialog({ kind: "domain", unitId: node.id, unitName })}>
+        <Button variant="default" size="compact-sm" onClick={() => setDialog({ kind: "domain", unitId: node.id, unitName })}>
           + Dominio
-        </button>
+        </Button>
       );
     }
     const domainName = lookup?.domains.get(node.domainId ?? "") ?? "el dominio";
     if (node.kind === "domain") {
       return (
         <>
-          <button
-            className="btn btn-small"
+          <Button
+            variant="default"
+            size="compact-sm"
             onClick={() => setDialog({ kind: "folder", domainId: node.id, parentId: null, where: domainName })}
           >
             + Carpeta
-          </button>
+          </Button>
           {uploadButton}
         </>
       );
@@ -117,24 +122,27 @@ export function InventarioPage() {
     const folderName = lookup?.folders.get(node.id) ?? "la carpeta";
     return (
       <>
-        <button
-          className="btn btn-small"
+        <Button
+          variant="default"
+          size="compact-sm"
           onClick={() =>
             setDialog({ kind: "folder", domainId: node.domainId!, parentId: node.id, where: `${domainName} / ${folderName}` })
           }
         >
           + Subcarpeta
-        </button>
+        </Button>
         {uploadButton}
-        <button className="btn btn-small" onClick={() => setDialog({ kind: "rename", folderId: node.id, name: folderName })}>
+        <Button variant="default" size="compact-sm" onClick={() => setDialog({ kind: "rename", folderId: node.id, name: folderName })}>
           Renombrar
-        </button>
-        <button
-          className="btn btn-small btn-danger"
+        </Button>
+        <Button
+          variant="default"
+          size="compact-sm"
+          color="coral"
           onClick={() => setDialog({ kind: "delete", folderId: node.id, name: folderName })}
         >
           Borrar
-        </button>
+        </Button>
       </>
     );
   }
@@ -143,28 +151,29 @@ export function InventarioPage() {
 
   return (
     <>
-      <div className="inv-toolbar">
+      <Group justify="space-between" align="center" gap="md" wrap="wrap">
         <h1>Inventario de información</h1>
-        <input
-          className="inv-search"
+        <TextInput
           type="search"
           placeholder="Buscar programa, dominio, carpeta o documento"
           aria-label="Buscar en el inventario"
+          leftSection={<IconSearch size={16} />}
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => setQuery(event.currentTarget.value)}
+          style={{ flex: "1 1 260px", maxWidth: 420 }}
         />
         {canCreateUnit && (
-          <button className="btn btn-primary" onClick={() => setDialog({ kind: "unit" })}>
-            + Nuevo programa
-          </button>
+          <Button leftSection={<IconPlus size={16} />} onClick={() => setDialog({ kind: "unit" })}>
+            Nuevo programa
+          </Button>
         )}
-      </div>
+      </Group>
 
       {data && !ingestionEnabled && (
-        <div className="notice notice-warn" role="status">
+        <Notice tone="warn">
           <strong>Modo solo lectura para documentos.</strong> {READ_ONLY_REASON} Se puede ver todo el inventario, y crear programas,
           dominios y carpetas.
-        </div>
+        </Notice>
       )}
 
       <input
@@ -181,14 +190,14 @@ export function InventarioPage() {
       />
       <UploadList items={uploads.items} onRetry={uploads.retry} onDismiss={uploads.dismiss} onClear={uploads.clearFinished} />
 
-      {inventory.isPending && <p className="muted">Cargando el inventario...</p>}
+      {inventory.isPending && <Text c="dimmed">Cargando el inventario...</Text>}
       {inventory.isError && (
-        <div className="notice notice-danger" role="alert">
+        <Notice tone="danger">
           No se pudo cargar el inventario: {inventory.error.message}{" "}
-          <button className="btn btn-small" onClick={() => inventory.refetch()}>
+          <Button variant="default" size="compact-sm" onClick={() => inventory.refetch()}>
             Reintentar
-          </button>
-        </div>
+          </Button>
+        </Notice>
       )}
 
       {filtered && (
@@ -197,7 +206,7 @@ export function InventarioPage() {
             <UnitBranch key={unit.id} unit={unit} forceOpen={searching} renderActions={renderActions} onDropFiles={dropFiles} />
           ))}
           {filtered.unassigned_domains.length > 0 && (
-            <div className="card unit-card">
+            <Paper withBorder p="xs" radius="md">
               <div className="branch-head">
                 <span className="branch-title unit">Sin programa</span>
                 <span className="branch-desc">Dominios que todavía no pertenecen a ningún programa</span>
@@ -213,10 +222,10 @@ export function InventarioPage() {
                   />
                 ))}
               </div>
-            </div>
+            </Paper>
           )}
           {filtered.units.length === 0 && filtered.unassigned_domains.length === 0 && (
-            <p className="muted">{searching ? "Ninguna coincidencia con la búsqueda." : "Todavía no hay información cargada."}</p>
+            <Text c="dimmed">{searching ? "Ninguna coincidencia con la búsqueda." : "Todavía no hay información cargada."}</Text>
           )}
         </div>
       )}

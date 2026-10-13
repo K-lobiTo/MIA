@@ -4,6 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>MIA: Panel de administración</title>
+    <script>
+      // Aplica el modo elegido (o el del sistema) antes de pintar, para que no parpadee. Mantine guarda la
+      // elección en esta misma clave de localStorage y mantiene el atributo después.
+      (function () {
+        try {
+          var choice = localStorage.getItem("mantine-color-scheme-value") || "auto";
+          var dark = choice === "dark" || (choice === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.setAttribute("data-mantine-color-scheme", dark ? "dark" : "light");
+        } catch (e) {
+          /* sin localStorage: queda el modo claro hasta que cargue Mantine */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

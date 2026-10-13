@@ -1,4 +1,6 @@
+import { Button, Group, Paper, Text } from "@mantine/core";
 import type { Artifact, UnitNode } from "../../api/types";
+import { StatusBadge } from "../../components/StatusBadge";
 import { describeAccess, describeModes } from "./accessUtils";
 import { Meter } from "./Meter";
 
@@ -13,25 +15,23 @@ interface Props {
 
 export function ArtifactCard({ artifact, units, busy, onEdit, onRegenerate, onToggleActive }: Props) {
   return (
-    <article className="card art-card" aria-label={artifact.name}>
-      <div className="art-head">
+    <Paper component="article" withBorder p="md" radius="md" className="art-card" aria-label={artifact.name}>
+      <Group gap="sm" wrap="wrap">
         <span className="art-name">{artifact.name}</span>
-        <span className={artifact.active ? "badge badge-ok" : "badge badge-muted"}>
-          {artifact.active ? "Activo" : "Desactivado"}
-        </span>
+        <StatusBadge tone={artifact.active ? "ok" : "neutral"}>{artifact.active ? "Activo" : "Desactivado"}</StatusBadge>
         <span className="art-key" title="Comienzo de su clave">
           {artifact.key_prefix}...
         </span>
         {(artifact.today.cap_reached || artifact.today.reasoning_cap_reached) && (
-          <span className="badge badge-danger">
+          <StatusBadge tone="danger">
             {artifact.today.cap_reached ? "Tope alcanzado" : "Tope de razonamiento alcanzado"}
-          </span>
+          </StatusBadge>
         )}
-        <span className="branch-meta">
+        <Text span c="dimmed" fz="sm" ml="auto">
           {artifact.queries_last_7_days} {artifact.queries_last_7_days === 1 ? "consulta" : "consultas"} (7 días)
-        </span>
-      </div>
-      {artifact.description && <p className="muted">{artifact.description}</p>}
+        </Text>
+      </Group>
+      {artifact.description && <Text c="dimmed">{artifact.description}</Text>}
       <dl className="art-meta">
         <dt>Dominios</dt>
         <dd>
@@ -52,17 +52,17 @@ export function ArtifactCard({ artifact, units, busy, onEdit, onRegenerate, onTo
           )}
         </dd>
       </dl>
-      <div className="art-actions">
-        <button className="btn btn-small" onClick={onEdit} disabled={busy}>
+      <Group gap="xs" mt={4}>
+        <Button variant="default" size="compact-sm" onClick={onEdit} disabled={busy}>
           Editar
-        </button>
-        <button className="btn btn-small" onClick={onRegenerate} disabled={busy}>
+        </Button>
+        <Button variant="default" size="compact-sm" onClick={onRegenerate} disabled={busy}>
           Regenerar clave
-        </button>
-        <button className="btn btn-small" onClick={onToggleActive} disabled={busy}>
+        </Button>
+        <Button variant="default" size="compact-sm" onClick={onToggleActive} disabled={busy}>
           {artifact.active ? "Desactivar" : "Reactivar"}
-        </button>
-      </div>
-    </article>
+        </Button>
+      </Group>
+    </Paper>
   );
 }

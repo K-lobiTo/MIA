@@ -1,4 +1,6 @@
+import { Button, Group, Modal, Stack, Text, TextInput, Textarea } from "@mantine/core";
 import { useState, type ReactNode } from "react";
+import { Notice } from "./Notice";
 import { ApiError } from "../api/client";
 
 export interface FieldSpec {
@@ -50,63 +52,57 @@ export function FormDialog<TResult>({ title, intro, fields, submitLabel, onSubmi
 
   if (result && renderResult) {
     return (
-      <div className="overlay" role="dialog" aria-modal="true" aria-label={title}>
-        <div className="dialog">
-          <h2>{title}</h2>
-          {renderResult(result.value)}
-          <div className="dialog-actions">
-            <button className="btn btn-primary" onClick={onClose}>
-              Cerrar
-            </button>
-          </div>
-        </div>
-      </div>
+      <Modal opened onClose={onClose} title={title} centered>
+        {renderResult(result.value)}
+        <Group justify="flex-end" mt="md">
+          <Button onClick={onClose}>Cerrar</Button>
+        </Group>
+      </Modal>
     );
   }
 
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-label={title}>
-      <form className="dialog" onSubmit={submit}>
-        <h2>{title}</h2>
-        {intro && (
-          <p className="muted" style={{ marginBottom: 12 }}>
-            {intro}
-          </p>
-        )}
-        {fields.map((field, index) => (
-          <div className="field" key={field.name}>
-            <label htmlFor={`campo-${field.name}`}>{field.label}</label>
-            {field.multiline ? (
-              <textarea
-                id={`campo-${field.name}`}
-                rows={3}
+    <Modal opened onClose={onClose} title={title} centered closeOnClickOutside={false}>
+      <form onSubmit={submit}>
+        <Stack gap="sm">
+          {intro && (
+            <Text c="dimmed" fz="sm">
+              {intro}
+            </Text>
+          )}
+          {fields.map((field, index) =>
+            field.multiline ? (
+              <Textarea
+                key={field.name}
+                label={field.label}
+                withAsterisk={field.required}
+                autosize
+                minRows={3}
                 value={values[field.name]}
-                onChange={(e) => setValues({ ...values, [field.name]: e.target.value })}
+                onChange={(e) => setValues({ ...values, [field.name]: e.currentTarget.value })}
               />
             ) : (
-              <input
-                id={`campo-${field.name}`}
-                autoFocus={index === 0}
+              <TextInput
+                key={field.name}
+                label={field.label}
+                withAsterisk={field.required}
+                data-autofocus={index === 0 ? true : undefined}
                 value={values[field.name]}
-                onChange={(e) => setValues({ ...values, [field.name]: e.target.value })}
+                onChange={(e) => setValues({ ...values, [field.name]: e.currentTarget.value })}
               />
-            )}
-          </div>
-        ))}
-        {error && (
-          <div className="notice notice-danger" role="alert">
-            {error}
-          </div>
-        )}
-        <div className="dialog-actions">
-          <button type="button" className="btn" onClick={onClose}>
-            Cancelar
-          </button>
-          <button type="submit" className="btn btn-primary" disabled={!ready || pending}>
-            {pending ? "Guardando..." : submitLabel}
-          </button>
-        </div>
+            ),
+          )}
+          {error && <Notice tone="danger">{error}</Notice>}
+          <Group justify="flex-end" mt="xs">
+            <Button type="button" variant="default" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={!ready} loading={pending}>
+              {submitLabel}
+            </Button>
+          </Group>
+        </Stack>
       </form>
-    </div>
+    </Modal>
   );
 }

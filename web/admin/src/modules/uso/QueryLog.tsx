@@ -1,9 +1,13 @@
+import { Anchor, Button, Checkbox, Group, Modal, Pagination, Paper, Select, Table, Text } from "@mantine/core";
 import { useState } from "react";
+import { Notice } from "../../components/Notice";
+import { StatusBadge } from "../../components/StatusBadge";
 import { downloadCsv, useQueryDetail, useQueryLog, type UsageFilters } from "../../api/usage";
 import type { Outcome } from "../../api/types";
 import { ApiError } from "../../api/client";
 import { OUTCOME_LABEL, formatLatency, formatTokens, formatUsd } from "./usageUtils";
 
+const ALL = "todos";
 const RATING_LABEL = { util: "Útil", no_util: "No útil" } as const;
 
 function formatDate(iso: string): string {
@@ -15,11 +19,10 @@ function Detail({ id, onClose }: { id: string; onClose: () => void }) {
   const detail = useQueryDetail(id);
   const data = detail.data;
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-label="Detalle de la consulta">
-      <div className="dialog dialog-wide">
-        <h2>Detalle de la consulta</h2>
-        {detail.isPending && <p className="muted">Cargando...</p>}
-        {detail.isError && <div className="notice notice-danger" role="alert">{detail.error.message}</div>}
+    <Modal opened onClose={onClose} title="Detalle de la consulta" size="lg" centered>
+      <>
+        {detail.isPending && <Text c="dimmed">Cargando...</Text>}
+        {detail.isError && <Notice tone="danger">{detail.error.message}</Notice>}
         {data && (
           <dl className="detail">
             <dt>Pregunta</dt>
@@ -28,7 +31,7 @@ function Detail({ id, onClose }: { id: string; onClose: () => void }) {
             <dd>{data.artifact ?? "(ninguno)"} · modo {data.mode}</dd>
             <dt>Resultado</dt>
             <dd>
-              <span className={OUTCOME_LABEL[data.outcome].className}>{OUTCOME_LABEL[data.outcome].text}</span>
+              <StatusBadge tone={OUTCOME_LABEL[data.outcome].tone}>{OUTCOME_LABEL[data.outcome].text}</StatusBadge>
               {data.reject_reason && <span className="muted"> {data.reject_reason}</span>}
             </dd>
             <dt>Dominios consultados</dt>
@@ -59,13 +62,11 @@ function Detail({ id, onClose }: { id: string; onClose: () => void }) {
             </dd>
           </dl>
         )}
-        <div className="dialog-actions">
-          <button className="btn btn-primary" onClick={onClose}>
-            Cerrar
-          </button>
-        </div>
-      </div>
-    </div>
+        <Group justify="flex-end" mt="md">
+          <Button onClick={onClose}>Cerrar</Button>
+        </Group>
+      </>
+    </Modal>
   );
 }
 
@@ -90,101 +91,109 @@ export function QueryLog({ filters }: { filters: UsageFilters }) {
   }
 
   return (
-    <section className="card" aria-label="Registro de consultas">
+    <Paper component="section" withBorder p="md" radius="md" aria-label="Registro de consultas">
       <div className="chart-head">
         <h2>Registro de consultas</h2>
         <div className="chart-controls">
-          <label className="select-label">
-            Resultado
-            <select
-              value={outcome}
-              onChange={(e) => {
-                setOutcome(e.target.value as "" | Outcome);
-                setPage(1);
-              }}
-            >
-              <option value="">Todos</option>
-              {(Object.keys(OUTCOME_LABEL) as Outcome[]).map((key) => (
-                <option key={key} value={key}>
-                  {OUTCOME_LABEL[key].text}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="choice-inline" title="Las preguntas pueden contener datos personales">
-            <input type="checkbox" checked={withQuestions} onChange={(e) => setWithQuestions(e.target.checked)} />
-            Incluir las preguntas
-          </label>
-          <button className="btn btn-small" onClick={() => void download()}>
+          <Select
+            label="Resultado"
+            size="xs"
+            data={[
+              { value: ALL, label: "Todos" },
+              ...(Object.keys(OUTCOME_LABEL) as Outcome[]).map((key) => ({ value: key, label: OUTCOME_LABEL[key].text })),
+            ]}
+            value={outcome || ALL}
+            onChange={(value) => {
+              setOutcome(!value || value === ALL ? "" : (value as Outcome));
+              setPage(1);
+            }}
+            allowDeselect={false}
+            w={210}
+          />
+          <Checkbox
+            size="xs"
+            label="Incluir las preguntas"
+            title="Las preguntas pueden contener datos personales"
+            checked={withQuestions}
+            onChange={(e) => setWithQuestions(e.currentTarget.checked)}
+            pb={6}
+          />
+          <Button variant="default" size="xs" onClick={() => void download()}>
             Descargar CSV
-          </button>
+          </Button>
         </div>
       </div>
-      {downloadError && <div className="notice notice-danger" role="alert">{downloadError}</div>}
+      {downloadError && <Notice tone="danger">{downloadError}</Notice>}
 
-      {log.isPending && <p className="muted">Cargando el registro...</p>}
-      {log.isError && <div className="notice notice-danger" role="alert">{log.error.message}</div>}
-      {data && data.items.length === 0 && <p className="muted">No hay consultas con estos filtros.</p>}
+      {log.isPending && <Text c="dimmed">Cargando el registro...</Text>}
+      {log.isError && <Notice tone="danger">{log.error.message}</Notice>}
+      {data && data.items.length === 0 && <Text c="dimmed">No hay consultas con estos filtros.</Text>}
       {data && data.items.length > 0 && (
         <>
-          <div className="table-wrap">
-            <table className="log-table">
-              <thead>
-                <tr>
-                  <th scope="col">Fecha</th>
-                  <th scope="col">Artefacto</th>
-                  <th scope="col">Modo</th>
-                  <th scope="col">Modelo</th>
-                  <th scope="col" className="num">Tokens</th>
-                  <th scope="col" className="num">Costo</th>
-                  <th scope="col" className="num">Tiempo</th>
-                  <th scope="col">Resultado</th>
-                  <th scope="col">Calificación</th>
-                </tr>
-              </thead>
-              <tbody>
+          <Table.ScrollContainer minWidth={980}>
+            <Table verticalSpacing="xs" highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th scope="col">Fecha</Table.Th>
+                  <Table.Th scope="col">Artefacto</Table.Th>
+                  <Table.Th scope="col">Modo</Table.Th>
+                  <Table.Th scope="col">Modelo</Table.Th>
+                  <Table.Th scope="col" ta="right">Tokens</Table.Th>
+                  <Table.Th scope="col" ta="right">Costo</Table.Th>
+                  <Table.Th scope="col" ta="right">Tiempo</Table.Th>
+                  <Table.Th scope="col">Resultado</Table.Th>
+                  <Table.Th scope="col">Calificación</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
                 {data.items.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <button className="btn-link" onClick={() => setOpen(item.id)} aria-label={`Ver el detalle de la consulta del ${formatDate(item.created_at)}`}>
+                  <Table.Tr key={item.id}>
+                    <Table.Td style={{ whiteSpace: "nowrap" }}>
+                      <Anchor
+                        component="button"
+                        type="button"
+                        fw={600}
+                        fz="sm"
+                        onClick={() => setOpen(item.id)}
+                        aria-label={`Ver el detalle de la consulta del ${formatDate(item.created_at)}`}
+                      >
                         {formatDate(item.created_at)}
-                      </button>
-                    </td>
-                    <td>{item.artifact ?? "-"}</td>
-                    <td>{item.mode === "razonamiento" ? "razonamiento" : "literal"}</td>
-                    <td className="mono">{item.model ?? "-"}</td>
-                    <td className="num">{item.tokens === null ? "-" : formatTokens(item.tokens)}</td>
-                    <td className="num">
+                      </Anchor>
+                    </Table.Td>
+                    <Table.Td miw={200}>{item.artifact ?? "-"}</Table.Td>
+                    <Table.Td>{item.mode === "razonamiento" ? "razonamiento" : "literal"}</Table.Td>
+                    <Table.Td ff="monospace" fz="xs">{item.model ?? "-"}</Table.Td>
+                    <Table.Td ta="right">{item.tokens === null ? "-" : formatTokens(item.tokens)}</Table.Td>
+                    <Table.Td ta="right" style={{ whiteSpace: "nowrap" }}>
                       {item.outcome.startsWith("rejected") ? "-" : formatUsd(item.cost_usd)}
                       {item.cost_estimated && <span title="Costo estimado con precios configurados"> *</span>}
-                    </td>
-                    <td className="num">{item.outcome.startsWith("rejected") ? "-" : formatLatency(item.latency_ms)}</td>
-                    <td>
-                      <span className={OUTCOME_LABEL[item.outcome].className} title={item.reject_reason ?? undefined}>
+                    </Table.Td>
+                    <Table.Td ta="right" style={{ whiteSpace: "nowrap" }}>
+                      {item.outcome.startsWith("rejected") ? "-" : formatLatency(item.latency_ms)}
+                    </Table.Td>
+                    <Table.Td>
+                      <StatusBadge tone={OUTCOME_LABEL[item.outcome].tone} title={item.reject_reason ?? undefined}>
                         {OUTCOME_LABEL[item.outcome].text}
-                      </span>
-                      {item.reject_reason && item.outcome !== "error" && <span className="reason"> {item.reject_reason}</span>}
-                    </td>
-                    <td>{item.rating ? RATING_LABEL[item.rating] : <span className="muted">-</span>}</td>
-                  </tr>
+                      </StatusBadge>
+                      {item.reject_reason && item.outcome !== "error" && (
+                        <Text span c="dimmed" fz="xs"> {item.reject_reason}</Text>
+                      )}
+                    </Table.Td>
+                    <Table.Td>{item.rating ? RATING_LABEL[item.rating] : <Text span c="dimmed">-</Text>}</Table.Td>
+                  </Table.Tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="pager">
-            <button className="btn btn-small" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-              Anterior
-            </button>
-            <span className="muted">
+              </Table.Tbody>
+            </Table>
+          </Table.ScrollContainer>
+          <Group justify="center" gap="md" mt="md">
+            <Pagination total={pages} value={page} onChange={setPage} size="sm" />
+            <Text c="dimmed" fz="sm">
               Página {page} de {pages} · {data.total} {data.total === 1 ? "consulta" : "consultas"}
-            </span>
-            <button className="btn btn-small" disabled={page >= pages} onClick={() => setPage(page + 1)}>
-              Siguiente
-            </button>
-          </div>
+            </Text>
+          </Group>
         </>
       )}
       {open && <Detail id={open} onClose={() => setOpen(null)} />}
-    </section>
+    </Paper>
   );
 }

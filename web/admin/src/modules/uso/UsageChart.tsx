@@ -1,7 +1,10 @@
+import { Button, Paper, Table } from "@mantine/core";
 import { useMemo, useState } from "react";
+import { Segmented } from "../../components/Segmented";
 import { assignColors } from "./colors";
-import { GROUP_LABEL, METRIC_LABEL, bucketLabel, buildChartData, formatAxis, formatMetric, niceTicks, type GroupBy, type Metric } from "./usageUtils";
+import { BUCKET_NOUN, GRANULARITY_LABEL, GROUP_LABEL, METRIC_LABEL, bucketLabel, buildChartData, formatAxis, formatMetric, niceTicks, type GroupBy, type Metric } from "./usageUtils";
 import type { UsageResponse } from "../../api/types";
+import type { Granularity } from "../../api/usage";
 
 // Geometría fija del lienzo; el SVG se escala con su contenedor (viewBox).
 const W = 860;
@@ -13,33 +16,13 @@ const RADIUS = 4; // extremo redondeado de los datos; el lado de la base queda r
 
 interface Props {
   series: UsageResponse["series"];
-  bucket: "hour" | "day";
+  bucket: "hour" | "day" | "month";
   metric: Metric;
   groupBy: GroupBy;
   onMetric: (metric: Metric) => void;
   onGroupBy: (groupBy: GroupBy) => void;
-}
-
-function Segmented<T extends string>({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: T;
-  options: Record<T, string>;
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="segmented" role="group" aria-label={label}>
-      {(Object.keys(options) as T[]).map((key) => (
-        <button key={key} type="button" aria-pressed={value === key} onClick={() => onChange(key)}>
-          {options[key]}
-        </button>
-      ))}
-    </div>
-  );
+  granularity: Granularity;
+  onGranularity: (granularity: Granularity) => void;
 }
 
 /** Barra con el extremo superior redondeado y la base recta. */
@@ -48,7 +31,7 @@ function topRoundedBar(x: number, y: number, w: number, h: number): string {
   return `M${x},${y + h}V${y + r}A${r},${r} 0 0 1 ${x + r},${y}H${x + w - r}A${r},${r} 0 0 1 ${x + w},${y + r}V${y + h}Z`;
 }
 
-export function UsageChart({ series, bucket, metric, groupBy, onMetric, onGroupBy }: Props) {
+export function UsageChart({ series, bucket, metric, groupBy, onMetric, onGroupBy, granularity, onGranularity }: Props) {
   const data = useMemo(() => buildChartData(series, metric), [series, metric]);
   const colors = useMemo(() => assignColors(data.names), [data.names]);
   const [hover, setHover] = useState<number | null>(null);
@@ -68,18 +51,22 @@ export function UsageChart({ series, bucket, metric, groupBy, onMetric, onGroupB
   const hovered = hover !== null ? hover : null;
 
   return (
-    <section className="card chart-card" aria-label="Uso a lo largo del tiempo">
+    <Paper component="section" withBorder p="md" radius="md" className="chart-card" aria-label="Uso a lo largo del tiempo">
       <div className="chart-head">
         <h2>
-          {METRIC_LABEL[metric]} por {bucket === "hour" ? "hora" : "día"}
+          {METRIC_LABEL[metric]} por {BUCKET_NOUN[bucket]}
           {metric === "spend_usd" && <span className="muted"> (USD)</span>}
         </h2>
         <div className="chart-controls">
           <Segmented label="Métrica" value={metric} options={METRIC_LABEL} onChange={onMetric} />
+          {/* Con "Hoy" la serie es por hora y no hay nada que elegir. */}
+          {bucket !== "hour" && (
+            <Segmented label="Granularidad" value={granularity} options={GRANULARITY_LABEL} onChange={onGranularity} />
+          )}
           <Segmented label="Desglose" value={groupBy} options={GROUP_LABEL} onChange={onGroupBy} />
-          <button className="btn btn-small" onClick={() => setAsTable(!asTable)}>
+          <Button variant="default" size="xs" onClick={() => setAsTable(!asTable)}>
             {asTable ? "Ver gráfica" : "Ver como tabla"}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -98,42 +85,42 @@ export function UsageChart({ series, bucket, metric, groupBy, onMetric, onGroupB
       {empty && <p className="muted chart-empty">No hay consultas en este período con los filtros elegidos.</p>}
 
       {!empty && asTable && (
-        <div className="table-wrap">
-          <table>
-            <caption className="sr-only">
-              {METRIC_LABEL[metric]} por {bucket === "hour" ? "hora" : "día"}, desglosado por {GROUP_LABEL[groupBy].toLowerCase()}
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">{bucket === "hour" ? "Hora" : "Día"}</th>
+        <Table.ScrollContainer minWidth={480}>
+          <Table verticalSpacing="xs" highlightOnHover>
+            <Table.Caption className="sr-only">
+              {METRIC_LABEL[metric]} por {BUCKET_NOUN[bucket]}, desglosado por {GROUP_LABEL[groupBy].toLowerCase()}
+            </Table.Caption>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th scope="col">{BUCKET_NOUN[bucket][0].toUpperCase() + BUCKET_NOUN[bucket].slice(1)}</Table.Th>
                 {data.names.map((name) => (
-                  <th scope="col" key={name} className="num">
+                  <Table.Th scope="col" key={name} ta="right">
                     {name}
-                  </th>
+                  </Table.Th>
                 ))}
-                {data.names.length > 1 && <th scope="col" className="num">Total</th>}
-              </tr>
-            </thead>
-            <tbody>
+                {data.names.length > 1 && <Table.Th scope="col" ta="right">Total</Table.Th>}
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
               {data.buckets.map((b, i) => (
-                <tr key={b}>
-                  <th scope="row">{bucketLabel(b, bucket)}</th>
+                <Table.Tr key={b}>
+                  <Table.Th scope="row">{bucketLabel(b, bucket)}</Table.Th>
                   {data.values[i].map((value, j) => (
-                    <td key={data.names[j]} className="num">
+                    <Table.Td key={data.names[j]} ta="right">
                       {value > 0 ? formatMetric(metric, value) : "-"}
-                    </td>
+                    </Table.Td>
                   ))}
-                  {data.names.length > 1 && <td className="num">{formatMetric(metric, data.totals[i])}</td>}
-                </tr>
+                  {data.names.length > 1 && <Table.Td ta="right">{formatMetric(metric, data.totals[i])}</Table.Td>}
+                </Table.Tr>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
       )}
 
       {!empty && !asTable && (
         <div className="chart-wrap" onMouseLeave={() => setHover(null)}>
-          <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${METRIC_LABEL[metric]} por ${bucket === "hour" ? "hora" : "día"}`}>
+          <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${METRIC_LABEL[metric]} por ${BUCKET_NOUN[bucket]}`}>
             {ticks.map((tick) => (
               <g key={tick}>
                 <line x1={MARGIN.left} x2={W - MARGIN.right} y1={yOf(tick)} y2={yOf(tick)} className="grid" />
@@ -202,7 +189,7 @@ export function UsageChart({ series, bucket, metric, groupBy, onMetric, onGroupB
                 transform: hovered > n / 2 ? "translateX(-105%)" : "translateX(5%)",
               }}
             >
-              <strong>{bucket === "hour" ? `${bucketLabel(data.buckets[hovered], bucket)} h` : data.buckets[hovered]}</strong>
+              <strong>{bucket === "hour" ? `${bucketLabel(data.buckets[hovered], bucket)} h` : bucket === "month" ? bucketLabel(data.buckets[hovered], bucket) : data.buckets[hovered]}</strong>
               <span className="muted"> · {formatMetric(metric, data.totals[hovered])}</span>
               <ul>
                 {data.names
@@ -220,6 +207,6 @@ export function UsageChart({ series, bucket, metric, groupBy, onMetric, onGroupB
           )}
         </div>
       )}
-    </section>
+    </Paper>
   );
 }

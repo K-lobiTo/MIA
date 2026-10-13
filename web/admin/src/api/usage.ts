@@ -35,10 +35,13 @@ export function toParams(filters: UsageFilters, extra: Record<string, string | s
   return params.toString();
 }
 
-export function useUsage(filters: UsageFilters, groupBy: string, enabled = true) {
+/** Granularidad de la serie cuando el período abarca varios días (con "Hoy" siempre es por hora). */
+export type Granularity = "day" | "month";
+
+export function useUsage(filters: UsageFilters, groupBy: string, granularity: Granularity, enabled = true) {
   return useQuery({
-    queryKey: ["usage", filters, groupBy],
-    queryFn: () => apiFetch<UsageResponse>(`/usage?${toParams(filters, { group_by: groupBy })}`),
+    queryKey: ["usage", filters, groupBy, granularity],
+    queryFn: () => apiFetch<UsageResponse>(`/usage?${toParams(filters, { group_by: groupBy, bucket: granularity })}`),
     enabled: enabled && filtersReady(filters),
     // Al cambiar un filtro se sigue mostrando lo anterior mientras llega lo nuevo, sin parpadeos.
     placeholderData: keepPreviousData,

@@ -1,7 +1,9 @@
+import { Button, Checkbox, Fieldset, Group, Modal, Paper, Stack, Text, TextInput, Textarea } from "@mantine/core";
 import { useState } from "react";
 import { ApiError } from "../../api/client";
 import { useCreateArtifact, useUpdateArtifact } from "../../api/artifacts";
 import type { Artifact, ArtifactCreated, ModeId, ModeInfo, UnitNode } from "../../api/types";
+import { Notice } from "../../components/Notice";
 import { MODE_LABEL, describeCost, pruneCoveredDomains } from "./accessUtils";
 import { capabilities } from "../../auth/capabilities";
 import { useMe } from "../../auth/session";
@@ -82,139 +84,130 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
   }
 
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-label={artifact ? "Editar artefacto" : "Nuevo artefacto"}>
-      <form className="dialog dialog-wide" onSubmit={submit}>
-        <h2>{artifact ? `Editar ${artifact.name}` : "Nuevo artefacto"}</h2>
-        {!artifact && (
-          <p className="muted" style={{ marginBottom: 12 }}>
-            Un artefacto es una aplicación que consulta a MIA. Al registrarlo se genera su clave, que se muestra una sola vez.
-          </p>
-        )}
-
-        {!artifact && (
-          <div className="field">
-            <label htmlFor="art-nombre">Nombre</label>
-            <input id="art-nombre" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-        )}
-        <div className="field">
-          <label htmlFor="art-desc">Descripción</label>
-          <textarea id="art-desc" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
-        </div>
-
-        <fieldset>
-          <legend>Información que puede consultar</legend>
-          {(canUseAllDomains || allDomains) && (
-            <label className="choice">
-              <input type="checkbox" checked={allDomains} onChange={(e) => setAllDomains(e.target.checked)} />
-              <span>
-                <strong>Todos los dominios</strong>
-                <span className="mode-cost">Incluye los de programas que se creen después.</span>
-              </span>
-            </label>
+    <Modal
+      opened
+      onClose={onClose}
+      size="lg"
+      centered
+      closeOnClickOutside={false}
+      title={artifact ? `Editar ${artifact.name}` : "Nuevo artefacto"}
+    >
+      <form onSubmit={submit}>
+        <Stack gap="md">
+          {!artifact && (
+            <Text c="dimmed" fz="sm">
+              Un artefacto es una aplicación que consulta a MIA. Al registrarlo se genera su clave, que se muestra una sola vez.
+            </Text>
           )}
-          {!allDomains &&
-            units.map((unit) => {
-              const unitChecked = unitIds.includes(unit.id);
-              return (
-                <div className="unit-group" key={unit.id}>
-                  <label className="choice">
-                    <input type="checkbox" checked={unitChecked} onChange={() => toggleUnit(unit.id)} />
-                    <span>
-                      <strong>{unit.name} (programa completo)</strong>
-                      <span className="mode-cost">Incluye los dominios que se creen después en este programa.</span>
-                    </span>
-                  </label>
-                  <div className="domains">
-                    {unit.domains.map((domain) => (
-                      <label className="choice" key={domain.id}>
-                        <input
-                          type="checkbox"
-                          disabled={unitChecked}
-                          checked={unitChecked || domainIds.includes(domain.id)}
-                          onChange={() => setDomainIds(toggle(domainIds, domain.id))}
-                        />
-                        <span>{domain.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          {!hasAccess && <p className="hint">Elige al menos un dominio o programa.</p>}
-        </fieldset>
+          {!artifact && <TextInput label="Nombre" data-autofocus value={name} onChange={(e) => setName(e.currentTarget.value)} />}
+          <Textarea label="Descripción" rows={2} autosize minRows={2} value={description} onChange={(e) => setDescription(e.currentTarget.value)} />
 
-        <fieldset>
-          <legend>Modos de respuesta que puede usar</legend>
-          {ALL_MODES.map((mode) => {
-            const info = modes.find((m) => m.id === mode);
-            return (
-              <label className="choice" key={mode}>
-                <input
-                  type="checkbox"
-                  checked={selectedModes.includes(mode)}
-                  onChange={() => setSelectedModes(toggle(selectedModes, mode))}
+          <Fieldset legend="Información que puede consultar" variant="unstyled">
+            <Stack gap="xs">
+              {(canUseAllDomains || allDomains) && (
+                <Checkbox
+                  checked={allDomains}
+                  onChange={(e) => setAllDomains(e.currentTarget.checked)}
+                  label="Todos los dominios"
+                  description="Incluye los de programas que se creen después."
                 />
-                <span>
-                  <strong>{MODE_LABEL[mode]}</strong>
-                  <span className="mode-cost">
-                    {describeCost(info?.avg_cost_usd_7d)}
-                    {info && !info.available && " · todavía no está configurado en esta instancia"}
-                  </span>
-                </span>
-              </label>
-            );
-          })}
-          {selectedModes.length === 0 && <p className="hint">Elige al menos un modo.</p>}
-        </fieldset>
+              )}
+              {!allDomains &&
+                units.map((unit) => {
+                  const unitChecked = unitIds.includes(unit.id);
+                  return (
+                    <Paper withBorder p="sm" radius="md" key={unit.id}>
+                      <Checkbox
+                        checked={unitChecked}
+                        onChange={() => toggleUnit(unit.id)}
+                        label={`${unit.name} (programa completo)`}
+                        description="Incluye los dominios que se creen después en este programa."
+                      />
+                      <Stack gap={6} mt="xs" ml={28}>
+                        {unit.domains.map((domain) => (
+                          <Checkbox
+                            key={domain.id}
+                            disabled={unitChecked}
+                            checked={unitChecked || domainIds.includes(domain.id)}
+                            onChange={() => setDomainIds(toggle(domainIds, domain.id))}
+                            label={domain.name}
+                          />
+                        ))}
+                      </Stack>
+                    </Paper>
+                  );
+                })}
+              {!hasAccess && <Text c="dimmed" fz="sm">Elige al menos un dominio o programa.</Text>}
+            </Stack>
+          </Fieldset>
 
-        <fieldset>
-          <legend>Tope de gasto diario</legend>
-          <div className="field">
-            <label htmlFor="art-tope">Tope total, para todos los modos (USD por día)</label>
-            <input id="art-tope" inputMode="decimal" value={dailyCap} onChange={(e) => setDailyCap(e.target.value)} />
-            {dailyValue !== null && (
-              <span className="hint">
-                {selectedModes
-                  .map((mode) => {
-                    const approx = approxQueries(dailyValue, modes.find((m) => m.id === mode)?.avg_cost_usd_7d);
-                    return approx === null ? null : `unas ${approx} consultas ${mode === "literal" ? "literales" : "con razonamiento"}`;
-                  })
-                  .filter(Boolean)
-                  .join(" o ") || "sin consultas recientes para estimar cuántas alcanza"}
-                {" al día (según el costo medio de los últimos 7 días)."}
-              </span>
-            )}
-          </div>
-          <div className="field">
-            <label htmlFor="art-tope-raz">Tope menor solo para el modo con razonamiento (opcional)</label>
-            <input
-              id="art-tope-raz"
-              inputMode="decimal"
-              placeholder="Sin tope propio"
-              value={reasoningCap}
-              onChange={(e) => setReasoningCap(e.target.value)}
-            />
-            <span className="hint">Al alcanzarlo, el artefacto sigue respondiendo en los otros modos hasta el tope total.</span>
-          </div>
-          {capProblem && <p className="hint" role="alert">{capProblem}</p>}
-          <p className="hint">Al alcanzar un tope el artefacto deja de responder hasta la medianoche (hora de Costa Rica), sin afectar a los demás.</p>
-        </fieldset>
+          <Fieldset legend="Modos de respuesta que puede usar" variant="unstyled">
+            <Stack gap="xs">
+              {ALL_MODES.map((mode) => {
+                const info = modes.find((m) => m.id === mode);
+                return (
+                  <Checkbox
+                    key={mode}
+                    checked={selectedModes.includes(mode)}
+                    onChange={() => setSelectedModes(toggle(selectedModes, mode))}
+                    label={MODE_LABEL[mode]}
+                    description={`${describeCost(info?.avg_cost_usd_7d)}${
+                      info && !info.available ? " · todavía no está configurado en esta instancia" : ""
+                    }`}
+                  />
+                );
+              })}
+              {selectedModes.length === 0 && <Text c="dimmed" fz="sm">Elige al menos un modo.</Text>}
+            </Stack>
+          </Fieldset>
 
-        {error && (
-          <div className="notice notice-danger" role="alert">
-            {error}
-          </div>
-        )}
-        <div className="dialog-actions">
-          <button type="button" className="btn" onClick={onClose}>
-            Cancelar
-          </button>
-          <button type="submit" className="btn btn-primary" disabled={!ready || pending}>
-            {pending ? "Guardando..." : artifact ? "Guardar cambios" : "Registrar artefacto"}
-          </button>
-        </div>
+          <Fieldset legend="Tope de gasto diario" variant="unstyled">
+            <Stack gap="sm">
+              <TextInput
+                label="Tope total, para todos los modos (USD por día)"
+                inputMode="decimal"
+                value={dailyCap}
+                onChange={(e) => setDailyCap(e.currentTarget.value)}
+                error={capProblem ?? undefined}
+                description={
+                  dailyValue !== null
+                    ? `${
+                        selectedModes
+                          .map((mode) => {
+                            const approx = approxQueries(dailyValue, modes.find((m) => m.id === mode)?.avg_cost_usd_7d);
+                            return approx === null ? null : `unas ${approx} consultas ${mode === "literal" ? "literales" : "con razonamiento"}`;
+                          })
+                          .filter(Boolean)
+                          .join(" o ") || "sin consultas recientes para estimar cuántas alcanza"
+                      } al día (según el costo medio de los últimos 7 días).`
+                    : undefined
+                }
+              />
+              <TextInput
+                label="Tope menor solo para el modo con razonamiento (opcional)"
+                inputMode="decimal"
+                placeholder="Sin tope propio"
+                value={reasoningCap}
+                onChange={(e) => setReasoningCap(e.currentTarget.value)}
+                description="Al alcanzarlo, el artefacto sigue respondiendo en los otros modos hasta el tope total."
+              />
+              <Text c="dimmed" fz="sm">
+                Al alcanzar un tope el artefacto deja de responder hasta la medianoche (hora de Costa Rica), sin afectar a los demás.
+              </Text>
+            </Stack>
+          </Fieldset>
+
+          {error && <Notice tone="danger">{error}</Notice>}
+          <Group justify="flex-end">
+            <Button variant="default" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={!ready} loading={pending}>
+              {artifact ? "Guardar cambios" : "Registrar artefacto"}
+            </Button>
+          </Group>
+        </Stack>
       </form>
-    </div>
+    </Modal>
   );
 }

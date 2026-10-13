@@ -1,8 +1,35 @@
+import { Group, Select } from "@mantine/core";
+import { DatePickerInput, type DatePickerPreset } from "@mantine/dates";
+import dayjs from "dayjs";
 import { useArtifacts } from "../../api/artifacts";
 import type { ModeId } from "../../api/types";
 import { filtersReady, type PeriodName, type UsageFilters } from "../../api/usage";
+import { Segmented } from "../../components/Segmented";
 
 const PERIODS: Record<PeriodName, string> = { today: "Hoy", "7d": "7 días", "30d": "30 días", custom: "Rango" };
+const ALL = "todos";
+const MODES = [
+  { value: ALL, label: "Todos" },
+  { value: "literal", label: "Literal" },
+  { value: "razonamiento", label: "Con razonamiento" },
+];
+
+const DAY = "YYYY-MM-DD";
+
+/** Atajos del selector de rango. Ninguno pasa de 366 días, que es lo que acepta la API. */
+function rangePresets(): DatePickerPreset<"range">[] {
+  const today = dayjs();
+  const monthStart = today.startOf("month");
+  return [
+    { label: "Este mes", value: [monthStart.format(DAY), today.format(DAY)] },
+    {
+      label: "Mes anterior",
+      value: [monthStart.subtract(1, "month").format(DAY), monthStart.subtract(1, "day").format(DAY)],
+    },
+    { label: "Últimos 3 meses", value: [monthStart.subtract(2, "month").format(DAY), today.format(DAY)] },
+    { label: "Últimos 12 meses", value: [monthStart.subtract(11, "month").format(DAY), today.format(DAY)] },
+  ];
+}
 
 interface Props {
   filters: UsageFilters;
@@ -13,48 +40,45 @@ interface Props {
 export function Filters({ filters, onChange }: Props) {
   const artifacts = useArtifacts(true);
   const set = (changes: Partial<UsageFilters>) => onChange({ ...filters, ...changes });
+  const artifactOptions = [
+    { value: ALL, label: "Todos" },
+    ...(artifacts.data?.artifacts.map((artifact) => ({ value: artifact.id, label: artifact.name })) ?? []),
+  ];
 
   return (
-    <div className="filters" role="search" aria-label="Filtros del uso">
-      <div className="segmented" role="group" aria-label="Período">
-        {(Object.keys(PERIODS) as PeriodName[]).map((period) => (
-          <button key={period} type="button" aria-pressed={filters.period === period} onClick={() => set({ period })}>
-            {PERIODS[period]}
-          </button>
-        ))}
-      </div>
+    <Group role="search" aria-label="Filtros del uso" gap="md" align="flex-end" wrap="wrap">
+      <Segmented label="Período" value={filters.period} options={PERIODS} onChange={(period) => set({ period })} />
       {filters.period === "custom" && (
-        <div className="date-range">
-          <label>
-            Desde
-            <input type="date" value={filters.from} max={filters.to || undefined} onChange={(e) => set({ from: e.target.value })} />
-          </label>
-          <label>
-            Hasta
-            <input type="date" value={filters.to} min={filters.from || undefined} onChange={(e) => set({ to: e.target.value })} />
-          </label>
-          {!filtersReady(filters) && <span className="hint">Elige las dos fechas (la inicial no puede ser posterior a la final).</span>}
-        </div>
+        <DatePickerInput
+          type="range"
+          label="Rango de fechas"
+          placeholder="Elige el rango"
+          valueFormat="D MMM YYYY"
+          allowSingleDateInRange
+          maxDate={dayjs().format(DAY)}
+          presets={rangePresets()}
+          value={[filters.from || null, filters.to || null]}
+          onChange={([from, to]) => set({ from: from ?? "", to: to ?? "" })}
+          description={!filtersReady(filters) ? "Elige la fecha inicial y la final." : undefined}
+          w={280}
+        />
       )}
-      <label className="select-label">
-        Artefacto
-        <select value={filters.artifactId} onChange={(e) => set({ artifactId: e.target.value })}>
-          <option value="">Todos</option>
-          {artifacts.data?.artifacts.map((artifact) => (
-            <option key={artifact.id} value={artifact.id}>
-              {artifact.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="select-label">
-        Modo
-        <select value={filters.mode} onChange={(e) => set({ mode: e.target.value as "" | ModeId })}>
-          <option value="">Todos</option>
-          <option value="literal">Literal</option>
-          <option value="razonamiento">Con razonamiento</option>
-        </select>
-      </label>
-    </div>
+      <Select
+        label="Artefacto"
+        data={artifactOptions}
+        value={filters.artifactId || ALL}
+        onChange={(value) => set({ artifactId: !value || value === ALL ? "" : value })}
+        allowDeselect={false}
+        w={260}
+      />
+      <Select
+        label="Modo"
+        data={MODES}
+        value={filters.mode || ALL}
+        onChange={(value) => set({ mode: !value || value === ALL ? "" : (value as ModeId) })}
+        allowDeselect={false}
+        w={180}
+      />
+    </Group>
   );
 }

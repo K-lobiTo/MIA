@@ -1,17 +1,20 @@
 import type { Outcome, UsageResponse } from "../../api/types";
+import type { BadgeTone } from "../../components/StatusBadge";
 
 export type Metric = "spend_usd" | "queries" | "tokens";
 export type GroupBy = "artifact" | "mode" | "model";
 
 export const METRIC_LABEL: Record<Metric, string> = { spend_usd: "Gasto", queries: "Consultas", tokens: "Tokens" };
+export const GRANULARITY_LABEL: Record<"day" | "month", string> = { day: "Por día", month: "Por mes" };
+export const BUCKET_NOUN = { hour: "hora", day: "día", month: "mes" } as const;
 export const GROUP_LABEL: Record<GroupBy, string> = { artifact: "Artefacto", mode: "Modo", model: "Modelo" };
 
-export const OUTCOME_LABEL: Record<Outcome, { text: string; className: string }> = {
-  answered: { text: "Respondida", className: "badge badge-ok" },
-  no_info: { text: "Sin información", className: "badge" },
-  error: { text: "Error", className: "badge badge-danger" },
-  rejected_cap: { text: "Rechazada por tope", className: "badge badge-warn" },
-  rejected_permission: { text: "Rechazada por permisos", className: "badge badge-warn" },
+export const OUTCOME_LABEL: Record<Outcome, { text: string; tone: BadgeTone }> = {
+  answered: { text: "Respondida", tone: "ok" },
+  no_info: { text: "Sin información", tone: "neutral" },
+  error: { text: "Error", tone: "danger" },
+  rejected_cap: { text: "Rechazada por tope", tone: "warn" },
+  rejected_permission: { text: "Rechazada por permisos", tone: "warn" },
 };
 
 export const MAX_SERIES = 8;
@@ -93,9 +96,15 @@ export function formatLatency(ms: number | null | undefined): string {
   return ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms)} ms`;
 }
 
-/** Etiqueta del eje horizontal: "14:00" por hora, "8/10" por día. */
-export function bucketLabel(bucket: string, kind: "hour" | "day"): string {
+const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "set", "oct", "nov", "dic"];
+
+/** Etiqueta del eje horizontal: "14:00" por hora, "8/10" por día, "oct 2026" por mes. */
+export function bucketLabel(bucket: string, kind: "hour" | "day" | "month"): string {
   if (kind === "hour") return bucket.slice(11, 16);
+  if (kind === "month") {
+    const [year, month] = bucket.split("-");
+    return `${MONTHS[Number(month) - 1]} ${year}`;
+  }
   const [, month, day] = bucket.split("-");
   return `${Number(day)}/${Number(month)}`;
 }

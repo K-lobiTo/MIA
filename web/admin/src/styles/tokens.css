@@ -1,49 +1,68 @@
+/* Paleta de MIA: cuatro colores principales.
+     #3D5A80  azul pizarra  : acento, enlaces, botones, módulo activo
+     #98C1D9  azul cielo    : acento en modo oscuro, tercera serie de las gráficas
+     #E0FBFC  celeste claro : fondos suaves y estado seleccionado
+     #EE6C4D  coral         : resalte (atención, tope por alcanzarse, segunda serie)
+   El texto sobre cada fondo mantiene un contraste mínimo de 4.5:1; el coral puro (3.05:1 sobre blanco) solo
+   se usa en rellenos y gráficas, y el texto de aviso usa sus pasos oscuros (--danger, --warn). */
 :root {
-  --bg: #f3f5f8;
+  --bg: #f3f9fb;
   --surface: #ffffff;
-  --ink: #18212e;
-  --muted: #4d5868;
-  --line: #d5dce6;
-  --accent: #1f4e8c;
-  --accent-soft: #e3ecf8;
-  --admin: #6a3fa8;
-  --admin-soft: #f0e8fa;
+  --ink: #1d2b3a;
+  --muted: #4b5c6e;
+  --line: #cbdce6;
+  --accent: #3d5a80;
+  --accent-soft: #e0fbfc;
+  --secondary: #98c1d9;
+  --highlight: #ee6c4d;
+  --highlight-soft: #fdebe6;
+  --selected: #cdeef2;
   --ok: #2d6a4f;
   --ok-soft: #e2f0e8;
-  --warn: #a04a06;
-  --warn-soft: #fbeedf;
-  --danger: #a12626;
-  --danger-soft: #fbe6e6;
-  /* Serie categórica en orden fijo (azul, naranja, aqua, amarillo, magenta, verde, violeta, rojo). Validada
-     con validate_palette.js sobre #ffffff (claro) y #18212d (oscuro); los pasos oscuros son propios. */
-  --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100;
-  --series-5: #e87ba4; --series-6: #008300; --series-7: #4a3aa7; --series-8: #e34948;
-  --series-other: #8c96a3;
+  --warn: #8a5a00;
+  --warn-soft: #fbf1d8;
+  --danger: #b23a22;
+  --danger-soft: #fce8e3;
+  /* Serie categórica en orden fijo (azul pizarra, coral, azul cielo, amarillo, verde, rosa, violeta, café).
+     Las tres primeras son los colores de la marca. Contraste de cada paso con la superficie y distancia
+     entre pasos (CIELAB) revisadas para el modo claro (#ffffff) y el oscuro (#162434). */
+  --series-1: #3d5a80; --series-2: #ee6c4d; --series-3: #98c1d9; --series-4: #eda100;
+  --series-5: #1baf7a; --series-6: #e87ba4; --series-7: #4a3aa7; --series-8: #8c6d46;
+  --series-other: #7a8aa0;
   --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #10161f;
-    --surface: #18212d;
-    --ink: #e7ecf3;
-    --muted: #a8b3c2;
-    --line: #2e3a4a;
-    --accent: #8db4ec;
-    --accent-soft: #1d2d45;
-    --admin: #c4a5f0;
-    --admin-soft: #2b2140;
-    --ok: #86cba6;
-    --ok-soft: #173326;
-    --warn: #f0a964;
-    --warn-soft: #3a2716;
-    --danger: #f2a0a0;
-    --danger-soft: #3a1c1c;
-    --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
-    --series-5: #d55181; --series-6: #008300; --series-7: #9085e9; --series-8: #e66767;
-    --series-other: #7d8795;
-    color-scheme: dark;
-  }
+/* Mantine toma sus colores base de la misma paleta, para que sus componentes y los propios se vean iguales. */
+:root[data-mantine-color-scheme] {
+  --mantine-color-body: var(--surface);
+  --mantine-color-text: var(--ink);
+  --mantine-color-dimmed: var(--muted);
+  --mantine-color-default-border: var(--line);
+  --mantine-color-error: var(--danger);
+}
+
+/* Modo oscuro: lo activa el atributo que pone Mantine en <html> (data-mantine-color-scheme), que sigue el
+   modo del sistema o la elección del interruptor del menú (components/ColorSchemeToggle.tsx). */
+:root[data-mantine-color-scheme="dark"] {
+  --bg: #0e1a27;
+  --surface: #162434;
+  --ink: #e8f0f6;
+  --muted: #a9bbcb;
+  --line: #2a3c50;
+  --accent: #98c1d9;
+  --accent-soft: #1c3047;
+  --highlight-soft: #3a2119;
+  --selected: #2c4565;
+  --ok: #86cba6;
+  --ok-soft: #173326;
+  --warn: #e8b84a;
+  --warn-soft: #3a2e10;
+  --danger: #f2917d;
+  --danger-soft: #3d1e18;
+  --series-1: #5c84a8; --series-2: #ee6c4d; --series-3: #98c1d9; --series-4: #c98500;
+  --series-5: #199e70; --series-6: #d55181; --series-7: #9085e9; --series-8: #b08d5f;
+  --series-other: #8a9bb5;
+  color-scheme: dark;
 }
