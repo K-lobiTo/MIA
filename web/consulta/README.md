@@ -2,8 +2,8 @@
 
 Cliente web para que el personal administrativo (Coordinación y Asistencia Administrativa) pregunte en lenguaje natural sobre los documentos de su unidad. Se abre con la clave de un artefacto registrado en el panel de administración (`web/admin/`); el nombre de la instancia, los dominios, los modos de respuesta y los topes vienen de la API según esa clave, así que una misma compilación sirve para todas las instancias.
 
-- **Dominios:** casillas por dominio (agrupados por unidad si hay más de una), con "Todos" y "Ninguno".
-- **Modos:** Literal (lo que dice exactamente un documento) y Con razonamiento (combina, compara y calcula datos de varios documentos, mostrando los datos usados y el cálculo). Solo se muestran los que el artefacto tiene permitidos.
+- **Dominios:** un `MultiSelect` de Mantine en el menú lateral (agrupado por unidad si hay más de una, con búsqueda, fichas, "Todos", "Ninguno" y el recuento de elegidos).
+- **Modos:** Literal (lo que dice exactamente un documento) y Con razonamiento (combina, compara y calcula datos de varios documentos, mostrando los datos usados y el cálculo). Se elige con un `ComboboxPopover` de Mantine **a la izquierda del campo de la pregunta** (en pantallas angostas pasa a la línea de arriba); cada opción explica el modo y los no disponibles se ven deshabilitados con su motivo. Solo se muestran los que el artefacto tiene permitidos.
 - **Respuestas:** con formato, con los documentos citados y los fragmentos desplegables, el modo y el tiempo. La respuesta "sin información suficiente" se distingue.
 - **Calificación:** cada respuesta se puede marcar como útil o no útil, con un comentario opcional.
 - **Topes y errores:** si un modo o el envío no están disponibles se explica el motivo; ante un error hay "Reintentar" y, en razonamiento, "Reintentar en modo literal".
@@ -48,9 +48,9 @@ Pasos completos en [docs/OPERACION.md](../../docs/OPERACION.md), sección "Consu
 La Consulta usa [Mantine](https://mantine.dev/) como librería de componentes, igual que el panel de administración, con la paleta **Vanilla Style (#05 de [docs/PALETAS.md](../../docs/PALETAS.md))**: violeta `#6D597A` (acento, botones, burbuja de la pregunta), rosa palo `#B56576`, coral `#E56B6F` y durazno `#EAAC8B` (en tintes claros, para fondos suaves y estado al pasar el mouse). Las reglas generales de uso (capas de CSS, sin grises de Mantine, avisos y tipografía) están en [web/admin/README.md](../admin/README.md#interfaz-mantine); aquí solo lo propio de esta aplicación:
 
 - **Tema:** `src/theme.ts` (escalas `vanilla`, `coral` y `peach`, y `gray` y `dark` reemplazados por tonos de la paleta) y `src/styles/tokens.css` (variables CSS con su versión oscura). Se cambian juntos. La paleta no trae un color claro ni uno oscuro para texto, así que los fondos suaves son tintes del durazno y del violeta y el texto usa violetas oscuros; el coral y el durazno puros tienen poco contraste sobre blanco y solo se usan en rellenos, nunca como texto.
-- **Marco:** `AppShell` con encabezado (nombre de la instancia, interruptor de apariencia, "Cambiar clave") y menú lateral (modo y dominios). En pantallas angostas el menú se despliega con el botón del encabezado y el interruptor pasa a él.
+- **Marco:** `AppShell` con encabezado (nombre de la instancia, interruptor de apariencia, "Cambiar clave") y menú lateral (dominios). El selector de modo va junto al campo de la pregunta (`components/ModePicker.tsx`, dentro de `Composer`). En pantallas angostas el menú se despliega con el botón del encabezado y el interruptor pasa a él.
 - **Modo claro, oscuro o del sistema:** `components/ColorSchemeToggle.tsx`; la elección se recuerda en el navegador (`mantine-color-scheme-value`) y un script en `index.html` la aplica antes de pintar.
-- **Piezas:** `Notice` (avisos con los colores de la paleta, copia del panel: no hay paquete compartido), `Radio`, `Checkbox`, `Textarea` con crecimiento automático, `Button`, `PasswordInput`.
+- **Piezas:** `Notice` (avisos con los colores de la paleta, copia del panel: no hay paquete compartido), `ComboboxPopover` (modo), `MultiSelect` (dominios), `Textarea` con crecimiento automático, `Button`, `PasswordInput`.
 - **Lo que se conserva a mano:** las burbujas de la conversación (`.message` en `styles/base.css`) y el formateador de respuestas, que nunca interpreta HTML.
 
 ## Estructura

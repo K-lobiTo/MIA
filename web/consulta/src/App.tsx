@@ -9,7 +9,6 @@ import { ColorSchemeToggle } from "./components/ColorSchemeToggle";
 import { Composer } from "./components/Composer";
 import { Conversation } from "./components/Conversation";
 import { DomainPicker } from "./components/DomainPicker";
-import { ModePicker } from "./components/ModePicker";
 import { Header } from "./components/Header";
 import { KeyScreen } from "./components/KeyScreen";
 import { Notice } from "./components/Notice";
@@ -153,7 +152,6 @@ export function App() {
           <ColorSchemeToggle />
         </Box>
         <div className="sidebar-scroll" style={{ display: "flex", flexDirection: "column", gap: 18, overflowY: "auto" }}>
-          {availability && <ModePicker availability={availability} onChange={changeMode} />}
           <DomainPicker domains={domains.data ?? []} selected={selected} onChange={changeSelection} />
         </div>
       </AppShell.Navbar>
@@ -174,6 +172,8 @@ export function App() {
             blockedReason={availability?.sendBlocked ?? null}
             rejection={rejection}
             restore={restore}
+            availability={availability}
+            onModeChange={changeMode}
             onSend={(question) => send(question)}
           />
         </main>
