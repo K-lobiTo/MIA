@@ -1,11 +1,14 @@
 # MIA: Definición de Requerimientos de la Versión 2
 
-**Qué es este documento:** requerimientos de la segunda versión de MIA, que agrega los dos primeros artefactos reales sobre la API del MVP: un **panel de administración** para gestionar la información cargada (dominios y documentos) y la configuración de acceso de cada artefacto, y un **cliente de consulta para el personal administrativo** que permite elegir dominios y modo de respuesta (literal o con razonamiento). Parte del estado descrito en [Definicion_Requerimientos_MVP.md](Definicion_Requerimientos_MVP.md) y [ARQUITECTURA.md](ARQUITECTURA.md). Redactado el 2026-10-06 y actualizado el 2026-10-07 (el inventario pasa a ser un módulo del panel de administración); las decisiones abiertas están en la sección 9.
+**Qué es este documento:** requerimientos de la segunda versión de MIA, que agrega los dos primeros artefactos reales sobre la API del MVP: un **panel de administración** para gestionar la información cargada (dominios y documentos) y la configuración de acceso de cada artefacto, y un **cliente de consulta para el personal administrativo** que permite elegir dominios y modo de respuesta (literal o con razonamiento). Parte del estado descrito en [Definicion_Requerimientos_MVP.md](Definicion_Requerimientos_MVP.md) y [ARQUITECTURA.md](ARQUITECTURA.md). Redactado el 2026-10-06 y actualizado el 2026-10-07 (el inventario pasa a ser un módulo del panel de administración) y el 2026-10-13 (estado de los criterios de aceptación en 8.1 y nota de actualizaciones posteriores); las decisiones abiertas están en la sección 9.
 
 
 > **Actualizaciones posteriores a este documento (se conserva el texto original como registro de las decisiones):**
 >
 > - **Acceso de administración (2026-10-10, feature 004).** Donde este documento dice que el panel se abre con una clave de administración (ADM-1, INV-8 y la sección de claves de acceso), desde la feature 004 la administración usa cuentas del TEC (Microsoft, con segundo factor) con alcance por programa, y `ADMIN_KEY` queda solo como clave de automatización de los scripts. Ver [specs/004-acceso-panel-tec/spec.md](../specs/004-acceso-panel-tec/spec.md) y [OPERACION.md](OPERACION.md).
+> - **Interfaz de los dos artefactos (2026-10-13).** Donde este documento dice React + TypeScript + Vite (sección 1 y sección 7), ambos clientes usan ahora además **Mantine** como librería de componentes: el Panel con la paleta #03 y la Consulta con la #05 ([PALETAS.md](PALETAS.md)), con interruptor de modo claro, oscuro o del sistema. Las gráficas del módulo Uso siguen siendo SVG propio. Reglas en [web/admin/README.md](../web/admin/README.md#interfaz-mantine) y [web/consulta/README.md](../web/consulta/README.md#interfaz-mantine).
+> - **Gráfica del módulo Uso por mes (2026-10-13).** USO-3 dice por hora si el período es "hoy" y por día en los demás. Ahora, en los períodos de más de un día, el selector **Por día / Por mes** permite ver la serie por mes (parámetro `bucket=month` de `GET /usage`; "hoy" sigue por hora). Contrato en [specs/002-panel-administracion/contracts/api-uso.md](../specs/002-panel-administracion/contracts/api-uso.md).
+> - **Versión 3.** Los candidatos de la sección 10 se empezaron a definir en [Definicion_Requerimientos_V3.md](Definicion_Requerimientos_V3.md).
 > - **Nombres de las divisiones (2026-10-11).** Donde dice "unidad académica", "Computación" y "Administración de Empresas": el término genérico es ahora **programa**, y las dos divisiones se llaman **Unidad de Postgrados de Computación** y **Área académica de Analítica de Negocios** (la Maestría en Analítica de Negocios es una carrera de computación y administración de empresas). En el código y la API el nombre técnico sigue siendo `unit`/`units`. Ver "Nombres de los programas" en [OPERACION.md](OPERACION.md).
 
 ## 1. Alcance
@@ -399,14 +402,43 @@ La API mantiene un modelo por modo, configurado por variables de entorno (p. ej.
 17. Con la clave de Consulta administrativa Postgrados Administración Empresas, la Consulta muestra su nombre y solo los dominios de la unidad Administración de Empresas, y una consulta a un dominio de Computación (enviada directamente a la API) responde 403. Lo mismo al revés.
 18. Tras la reorganización, el árbol del inventario coincide con la tabla de 2.3, los 162 documentos conservan su estado "listo" sin haberse reprocesado, una pregunta en el dominio "Proyectos de graduación: Tesis" cita solo tesis, y `scripts/pruebas_mvp.py` sigue dando 19 de 19 con los dominios nuevos.
 
+### 8.1 Estado de los criterios (2026-10-13)
+
+Se armó leyendo la evidencia escrita (no se volvieron a ejecutar las pruebas): los resultados de [PRUEBAS_MVP.md](PRUEBAS_MVP.md), los quickstarts de [002](../specs/002-panel-administracion/quickstart.md) y [003](../specs/003-consulta-administrativa/quickstart.md) y las pruebas automáticas de `tests/unit/`. "Cumplido" significa verificado con datos reales o en un navegador real; "Cubierto por pruebas" significa que solo hay pruebas automáticas.
+
+| # | Estado | Evidencia |
+|---|---|---|
+| 1 | Cubierto por pruebas; **no probado en producción** | No hay forma de borrar un dominio y no se quiso dejar uno de prueba en el inventario real. Lo cubren `test_permissions.py` (un dominio creado después queda permitido) y `test_units_domains.py` (`visible_to`). |
+| 2 | **Parcial** | En un navegador local, un `.txt` llegó a "Listo" sin recargar (002, paso 4). No consta una pregunta real sobre el contenido de documentos recién subidos que los cite. |
+| 3 | Cumplido | Archivo repetido avisa que ya existía (002, paso 4); no duplica fragmentos (MVP, criterio 4, 2026-09-28). |
+| 4 | **Superado** | La API pasó a Railway con la carga activa (decisión 9.2); Render con la carga desactivada ya no se usa. El modo solo lectura se probó en la API, no en el navegador (002, paso 4). |
+| 5 | Cubierto por pruebas | `test_units_domains.py`, `test_artifacts.py`, `test_usage.py` y `test_query_access.py` (401 sin clave). Desde la feature 004 la administración usa cuentas del TEC (ver el encabezado). |
+| 6 | Cumplido | 19 de 19 en modo literal (2026-10-08, 003 paso 10 y PRUEBAS_MVP). |
+| 7 | Cumplido en lo esencial | Responde 12 con los créditos de cada curso; las fuentes devueltas no incluyen uno de los programas (003, paso 4). |
+| 8 | Cumplido | Modo con razonamiento deshabilitado por su tope, literal sigue, otro artefacto no se afecta, al subir el tope vuelve (003, paso 6; 002, paso 5). |
+| 9 | Cubierto por pruebas | `test_config.py` (modo sin proveedor o sin modelo figura no disponible). |
+| 10 | Cumplido | La calificación aparece en `GET /usage/queries` (003, paso 8). |
+| 11 | Cumplido | Permisos por dominio y modo con 403 (002, paso 5); instancia restringida con un dominio y sin selector de modo (003, paso 5). |
+| 12 | Cumplido | Regenerar (la anterior da 401), desactivar y reactivar (002, paso 5; 003, paso 6). |
+| 13 | Cumplido | Un cambio de tope hecho en el panel rige en la consulta siguiente (002, paso 5; 003, paso 6). |
+| 14 | Cubierto por pruebas | `test_query_access.py::test_el_tope_de_toda_la_api_bloquea_a_todos_aunque_no_alcancen_el_suyo`. |
+| 15 | **Sin constancia** | El paso está en el checklist (002, paso 6.5: comparar con el panel *Activity* de OpenRouter, diferencia menor al 5 %) pero no consta su resultado. El módulo Uso se verificó contra lo que calcula la API, no contra OpenRouter. |
+| 16 | Cumplido | El registro muestra las rechazadas con su motivo (002, paso 6; `test_usage.py`). |
+| 17 | Cumplido | Cada instancia ve solo sus dominios; consultar los de la otra da 403, en los dos sentidos (003, paso 5). |
+| 18 | Cumplido de forma indirecta | Con datos reales de producción la Unidad de Postgrados de Computación tiene 7 dominios y el Área de Analítica de Negocios 4, y la batería da 19 de 19 con los dominios nuevos, incluido el caso de Tesis (PRUEBAS_MVP, 2026-10-08). No consta por escrito el recuento de los 162 documentos en "Listo" después de reorganizar en producción. |
+
+**Resumen:** de los 18 criterios, 10 están cumplidos con datos reales o en un navegador (3, 6, 7, 8, 10, 11, 12, 13, 16 y 17; el 7 en lo esencial), 4 solo con pruebas automáticas (1, 5, 9 y 14), 1 de forma indirecta (18), 1 es parcial (2), 1 fue superado (4) y 1 no tiene constancia (15). Lo que falta para cerrarlos del todo: probar el criterio 1 en producción, una pregunta real sobre documentos recién subidos (2), y comparar el gasto del módulo Uso con el de OpenRouter (15).
+
 ## 9. Decisiones pendientes
 
 1. ~~**Nivel de tipo de fuente en el árbol.**~~ Resuelto el 2026-10-07: en su lugar, carpetas libres y anidables dentro de cada dominio, solo para organizar (ver 2.3, INV-10 e INV-11). El 2026-10-08 se sumó la unidad académica por encima de los dominios. Requiere Alembic para agregar la carpeta a la tabla `documents` existente.
 2. ~~**Dónde se cargan documentos.**~~ Resuelto el 2026-10-07: en el servidor. La API pasa a Railway Hobby (5 USD al mes, sin el límite de 512 MB de Render free), así que el inventario puede cargar documentos en producción y lo puede usar el personal, no solo quien opera el sistema. Los modelos de los dos modos (literal y con razonamiento) se contratan por OpenRouter. Ver [OPERACION.md](OPERACION.md).
-3. **Una aplicación o dos.** Este documento propone dos sitios separados. Alternativa: una sola aplicación con dos secciones, más simple de publicar pero que mezcla los permisos de administrar y de consultar. Con el registro de artefactos (2.5) se refuerza la separación: el panel configura a los artefactos de consulta, y no es uno de ellos.
+3. ~~**Una aplicación o dos.**~~ Resuelto en la implementación: **dos aplicaciones separadas**, `web/admin/` (Panel de administración) y `web/consulta/` (Consulta administrativa), como proponía este documento. La separación se reforzó con el registro de artefactos (2.5): el panel configura a los artefactos de consulta y no es uno de ellos. Texto original: Este documento propone dos sitios separados. Alternativa: una sola aplicación con dos secciones, más simple de publicar pero que mezcla los permisos de administrar y de consultar. Con el registro de artefactos (2.5) se refuerza la separación: el panel configura a los artefactos de consulta, y no es uno de ellos.
 4. ~~**Tope diario: global o por artefacto.**~~ Resuelto el 2026-10-08: los dos. Un tope por artefacto ajustable desde el panel (ART-8 a ART-10) y un tope de toda la API por variable de entorno (sección 5), ambos en USD por día y aplicados a todos los modos.
 
 ## 10. Fuera de la versión 2 (candidatos para la versión 3)
+
+La versión 3 se empezó a definir en [Definicion_Requerimientos_V3.md](Definicion_Requerimientos_V3.md) (por ahora, solo las consultas no directas).
 
 - **Preguntas de agregación sobre todo un dominio** ("todos los cursos"): recuperación con herramientas (el modelo decide qué buscar) o datos estructurados extraídos al cargar (créditos, horas, requisitos).
 - **Memoria de conversación:** preguntas de seguimiento que se apoyen en las anteriores.
