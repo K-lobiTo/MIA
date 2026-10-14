@@ -4,6 +4,8 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 h1, h2, h3 { margin: 0; line-height: 1.2; }
 p { margin: 0; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+/* El campo de búsqueda dentro de una lista de selección ya muestra el foco en el borde de todo el campo. */
+.mantine-MultiSelect-inputField:focus-visible { outline: none; }
 a:not([class]) { color: var(--accent); }
 
 /* Los botones, campos, avisos y el marco son componentes de Mantine (ver theme.ts); aquí solo quedan los
@@ -48,7 +50,9 @@ a:not([class]) { color: var(--accent); }
 
 /* Escritura */
 .composer { border-top: 1px solid var(--line); background: var(--surface); padding: 12px 18px; display: flex; flex-direction: column; gap: 8px; }
-.composer-row { display: flex; gap: 8px; align-items: flex-end; }
+.composer-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.composer-row .mode-button { flex: none; }
+.composer-row .mantine-Textarea-root { flex: 1 1 220px; min-width: 0; }
 .composer-hint { font-size: 0.82rem; color: var(--muted); display: flex; justify-content: space-between; gap: 12px; }
 
 @media (max-width: 48em) {

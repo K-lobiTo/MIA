@@ -1,5 +1,8 @@
 import { Button, Textarea } from "@mantine/core";
 import { useEffect, useState } from "react";
+import type { ModeId } from "../api/types";
+import type { Availability } from "../state/modes";
+import { ModePicker } from "./ModePicker";
 import { Notice } from "./Notice";
 
 export const MAX_QUESTION_LENGTH = 2000;
@@ -16,10 +19,13 @@ interface Props {
   rejection: string | null;
   /** Pregunta que la API rechazó por su contenido: vuelve al campo para no perder lo escrito. */
   restore: { text: string; n: number } | null;
+  /** Modos disponibles y el elegido: el selector va a la izquierda del campo. Nulo mientras no hay configuración. */
+  availability: Availability | null;
+  onModeChange: (mode: ModeId) => void;
   onSend: (question: string) => void;
 }
 
-export function Composer({ selectedCount, busy, blockedReason, rejection, restore, onSend }: Props) {
+export function Composer({ selectedCount, busy, blockedReason, rejection, restore, availability, onModeChange, onSend }: Props) {
   const [text, setText] = useState("");
 
   // `n` cambia en cada rechazo, así que dos rechazos seguidos de la misma pregunta también la restauran.
@@ -44,12 +50,17 @@ export function Composer({ selectedCount, busy, blockedReason, rejection, restor
         send();
       }}
     >
+      {availability?.changed && availability.effective && (
+        <Notice tone="warn">
+          El modo que usabas ya no está disponible. Ahora se usa «{availability.modes.find((m) => m.id === availability.effective)?.name}».
+        </Notice>
+      )}
       {rejection && <Notice tone="danger">{rejection}</Notice>}
       <div className="composer-row">
+        {availability && <ModePicker availability={availability} onChange={onModeChange} />}
         <Textarea
           id="question"
           aria-label="Tu pregunta"
-          style={{ flex: 1 }}
           autosize
           minRows={1}
           maxRows={6}
