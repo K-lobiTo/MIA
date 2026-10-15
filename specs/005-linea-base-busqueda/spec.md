@@ -45,7 +45,7 @@ Quien opera MIA corre una medición que, para cada caso, consulta la base vector
 
 **Acceptance Scenarios**:
 
-1. **Given** un caso con respuesta, **When** se mide, **Then** el informe muestra los puntajes de los fragmentos candidatos, marca los que superan el umbral y nombra el documento de origen de cada uno.
+1. **Given** un caso con respuesta, **When** se mide, **Then** el informe muestra los puntajes de los fragmentos candidatos, marca los que superan el umbral y nombra el documento de origen de cada uno (por alias en lo versionado).
 2. **Given** un caso que hoy falla (pregunta completa), **When** se mide junto con su variante corta (solo el nombre, o la sigla), **Then** el informe muestra ambos puntajes lado a lado y la diferencia respecto al umbral.
 3. **Given** una pregunta sin respuesta, **When** se mide, **Then** el informe muestra el mejor puntaje que obtiene, para saber cuánto margen hay bajo el umbral.
 4. **Given** cualquier informe producido, **When** se revisa, **Then** no contiene texto de fragmentos ni nombres reales de personas, solo puntajes, posiciones, ids de caso y nombres de documento.
@@ -104,7 +104,7 @@ Con las mediciones de las historias 2 y 3 se escribe un informe de línea base (
 - **FR-003**: Los archivos versionados no deben contener nombres reales de personas ni texto de documentos; las preguntas que necesiten un nombre real deben usar un marcador, y el valor debe leerse de un archivo local excluido del control de versiones.
 - **FR-004**: Debe existir una medición de puntajes que, por caso, consulte la base vectorial con la misma lógica de búsqueda que la API (mismos vectores de la pregunta, mismos dominios y mismo número de candidatos por modo) y registre por fragmento candidato: posición, puntaje, documento de origen y si supera el umbral configurado.
 - **FR-005**: La medición de puntajes debe ser de solo lectura: no debe crear, modificar ni borrar datos de la base vectorial ni de la base de uso, ni cambiar la configuración del producto.
-- **FR-006**: Ninguna salida de la medición (consola, archivos, informes) debe incluir texto de fragmentos ni nombres reales de personas; solo ids de caso, puntajes, posiciones, números y nombres de documento. No debe existir una opción que imprima texto de fragmentos.
+- **FR-006**: Ninguna salida de la medición (consola, archivos, informes) debe incluir texto de fragmentos ni nombres reales de personas; solo ids de caso, puntajes, posiciones y números, y los documentos se identifican por alias (`D01`...) en lo que se versiona, porque el nombre de archivo de un documento (por ejemplo, un trabajo de graduación) puede contener el nombre de una persona; los nombres de archivo solo pueden aparecer en la salida local no versionada. No debe existir una opción que imprima texto de fragmentos.
 - **FR-007**: La medición de puntajes debe poder reportar, para varios umbrales alternativos, qué casos cambiarían de resultado (responder o "sin información"), sin volver a consultar el modelo de lenguaje.
 - **FR-008**: Para los casos con variante corta, el informe debe mostrar pregunta completa y variante corta lado a lado, con el mejor puntaje de cada una y su distancia al umbral.
 - **FR-009**: Debe existir una medición de la respuesta completa que corra los casos contra la API como lo haría un artefacto, en los dos modos (literal y con razonamiento), y registre por caso: respondió o "sin información", fuentes mostradas, fuentes esperadas, fuentes sobrantes, tiempo total y costo.
