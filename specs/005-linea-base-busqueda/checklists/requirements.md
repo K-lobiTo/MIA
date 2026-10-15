@@ -31,5 +31,5 @@
 
 ## Notes
 
-- El marcador sobre dónde se puede medir se resolvió el 2026-10-14 (opción C: copia local y producción solo para confirmar).
+- La aclaración sobre dónde se puede medir se resolvió el 2026-10-15: directamente contra producción, porque la información se considera pública para pruebas (reemplaza la opción C del 2026-10-14).
 - La spec nombra `QUERY_SIMILARITY_THRESHOLD` y el módulo Uso porque son términos del producto ya existentes, no decisiones de implementación nuevas.

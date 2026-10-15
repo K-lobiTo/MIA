@@ -1,6 +1,6 @@
 # Research: Línea base de la búsqueda de MIA
 
-Todas las incógnitas de la spec quedaron resueltas; no hay marcadores `NEEDS CLARIFICATION`. Fecha: 2026-10-15.
+Todas las incógnitas de la spec quedaron resueltas; no hay marcadores `NEEDS CLARIFICATION`. Fecha: 2026-10-15. Revisado el mismo día tras la aclaración de que la información es pública y se mide en producción.
 
 ## R1. Cómo medir puntajes sin cambiar el producto
 
@@ -10,35 +10,36 @@ Todas las incógnitas de la spec quedaron resueltas; no hay marcadores `NEEDS CL
 
 **Alternativas descartadas**: (a) agregar `debug` a `/query`: toca el producto y arriesga exponer puntajes o texto; (b) llamar a Qdrant por HTTP a mano: duplica la lógica y puede divergir; (c) repetir la medición solo con la API: no entrega puntajes.
 
-## R2. Datos de la medición: copia local primero, producción solo para confirmar
+## R2. Datos de la medición: directamente contra producción
 
-**Decisión** (aclaración del 2026-10-14, opción C): la medición normal usa una copia local (Qdrant en docker compose y SQLite) ingestada desde `tmp/` con `scripts/cargar_carpeta.py`, el mismo procedimiento de [OPERACION.md](../../docs/OPERACION.md). Contra producción solo se corre cuando se pasa `--confirmo-produccion` y el usuario lo autorizó para esa corrida. El script detecta producción cuando `QDRANT_URL` no apunta a `localhost`/`127.0.0.1` y, sin esa bandera, se niega a continuar.
+**Decisión** (aclaración del 2026-10-15, que reemplaza la del 2026-10-14): se mide contra producción (Qdrant Cloud y Neon, con las credenciales de `.env.produccion`, que el script carga con `--env-file` igual que `uvicorn --env-file`). No se arma ninguna copia local. El usuario indicó que toda la información cargada se considera pública y se puede usar para pruebas.
 
-**Justificación**: la copia local reproduce los mismos vectores (mismo modelo local) y los mismos fragmentos si se usan los mismos archivos. Producción sirve para confirmar que no hay diferencias (documentos cambiados desde entonces). Para comparar ambas, cada corrida registra el conteo de fragmentos por dominio (FR-014).
+**Justificación**: la copia local solo se justificaba por privacidad (las actas tienen datos personales) y esa premisa se retiró para las pruebas. Medir en producción es más fiel (los datos que se miden son los que responden a las consultas reales) y ahorra montar Qdrant y reingestar.
 
-**Alternativas descartadas**: medir solo en producción (riesgo y credenciales de Neon/Qdrant en cada corrida); medir solo local (no detectaría diferencias con producción).
+**Lo que se conserva**: la medición de puntajes sigue siendo estrictamente de solo lectura (nunca se escribe en Qdrant ni en la base), porque medir no debe alterar el producto; y la de respuestas sigue con tope de gasto. Producción se identifica como `destino: produccion` en el contexto de la corrida (FR-014).
+
+**Alternativas descartadas**: copia local (esfuerzo y datos que pueden divergir de producción sin ganar nada ahora); medir solo con la API (no entrega puntajes).
 
 ## R3. Cómo se resuelven los dominios y los nombres de documento
 
-**Decisión**: en `puntajes`, los nombres `Programa / Dominio` se resuelven leyendo la base de metadatos con SQLAlchemy y **solo SELECT** (tablas de dominios, programas y documentos); en `respuestas` se usa `GET /domains` de la API con la clave del artefacto, como `pruebas_mvp.py`. Los nombres de archivo de los documentos se obtienen de la tabla de documentos.
+**Decisión**: en `puntajes`, los nombres `Programa / Dominio` se resuelven leyendo la base de metadatos con SQLAlchemy y **solo SELECT** (tablas de dominios, programas y documentos); en `respuestas` se usa `GET /domains` de la API con la clave del artefacto, como `pruebas_mvp.py`. Los nombres de archivo de los documentos se obtienen de la tabla de documentos. Contra producción, `puntajes` necesita entonces `DATABASE_URL` (Neon) además de Qdrant; ambas viven en `.env.produccion`. Si no se quisiera dar acceso a la base, la alternativa es resolver los dominios con `GET /domains` y limitar los nombres de documento a su id.
 
 **Justificación**: `puntajes` ya necesita las credenciales de Qdrant y la base (las mismas variables que usa la API, cargadas con `--env-file`, igual que `uvicorn --env-file`); `respuestas` no debe necesitar nada más que la clave del artefacto y la URL.
 
-## R4. Privacidad de las salidas
+## R4. Qué se guarda y qué no
 
-**Decisión**:
-1. Ninguna estructura de la herramienta guarda `text` de fragmentos, el texto de la respuesta ni el `excerpt` de las fuentes: se descartan al leer. La respuesta se reduce a longitud, "sin información" sí/no y si contiene el texto esperado (`contiene_ok`). No existe ninguna opción para imprimir texto.
-2. El archivo versionado de casos usa marcadores `{{clave}}` en lugar de nombres reales de personas; sus valores salen de `tmp/nombres_casos.json` (ignorado por git, ya cubierto por `tmp/` en `.gitignore`). Sin ese archivo los casos con marcadores se omiten con aviso (escenario 3 de la historia 1).
-3. **Los nombres de archivo de los documentos también pueden contener nombres de personas** (p. ej. los trabajos de graduación llevan el nombre del autor). La spec permite "nombres de documento", pero para lo que se versiona se aplica una regla más estricta: la salida cruda local (en `tmp/linea_base/`) conserva los nombres de archivo; el informe versionado los reemplaza por alias (`D01`, `D02`...) con la etiqueta del dominio, y la tabla de equivalencias queda solo en local. Se ajusta FR-006 en la spec.
-4. `informe` verifica antes de escribir que ningún valor de `tmp/nombres_casos.json` ni ningún nombre de archivo aparezca en el texto de salida y, si aparece, aborta.
-5. La etapa `respuestas` envía las preguntas a la API, que las guarda en el registro de consultas (módulo Uso, "las preguntas pueden contener datos personales", ver OPERACION.md). Por eso las preguntas con nombres reales se corren de preferencia contra la API local y, contra producción, solo con la misma confirmación.
+**Decisión** (con la información considerada pública, 2026-10-15):
+1. Se permiten nombres reales en las preguntas, los casos y los nombres de documento, tanto en la salida local como en lo versionado. Se eliminan los marcadores `{{clave}}`, `tmp/nombres_casos.json`, los alias de documentos y la verificación de `informe` contra esos valores.
+2. Se conserva una sola regla de higiene, sin costo: ninguna estructura de la herramienta guarda el `text` de fragmentos, el texto de las respuestas ni el `excerpt` de las fuentes. De la respuesta solo quedan su longitud, si es "sin información" y si contiene el texto esperado (`contiene_ok`). No hace falta para medir, evita informes enormes y sigue valiendo si la política de datos cambia.
+3. Las preguntas de las corridas de `respuestas` quedan en el registro de Uso de producción y suman a sus totales y a los topes diarios. Para separarlas, se recomienda un artefacto propio de pruebas (con tope diario bajo) cuya clave se usa en `--clave`.
+4. Si más adelante se agregan datos que no sean públicos, esta decisión debe revisarse antes de medir.
 
-**Alternativas descartadas**: confiar en que nadie imprima por error (no verificable); cifrar la salida (sobredimensionado para un único usuario).
+**Alternativas descartadas**: mantener marcadores y alias (complejidad sin beneficio con datos públicos).
 
 ## R5. Qué resultado se calcula con los puntajes
 
 **Decisión**, por caso y por modo (límite 8 o 16):
-- Lista de candidatos (posición, puntaje, alias de documento, dominio) y cuántos pasan el umbral configurado.
+- Lista de candidatos (posición, puntaje, documento, dominio) y cuántos pasan el umbral configurado.
 - Mejor puntaje general, y, si el caso tiene documentos esperados, la posición y el puntaje del mejor fragmento de cada documento esperado.
 - Resultado de recuperación: "responde" si algún candidato dentro del límite alcanza el umbral, "sin información" si no. Es exactamente la regla de la API (`relevant = [r for r in results if r.score >= threshold]`, y sin `relevant` responde sin llamar al modelo).
 - **Barrido de umbrales** de 0,60 a 0,90 en pasos de 0,01: para cada umbral, qué casos cambian de resultado frente al configurado.
@@ -65,13 +66,13 @@ Para SC-006 (costo del informe coincide con Uso) el costo ya sale del módulo Us
 
 ## R8. Cuántos casos y de qué categorías
 
-**Decisión**: la batería de aceptación completa (19 filas con ids A, U, P, K, CU, G, N, X, I; las que en V3 se llaman "los 15" son las de respuesta esperada; se conservan todas con sus ids), los dos casos de la sección 2.2 con su variante corta, y **al menos 3 casos nuevos** en cada una de: indirecta, sigla, sin respuesta (SC-001). Total previsto: unos 30. Los casos nuevos los redacta Claude como borrador a partir del tipo de documentos (sin leer texto de las actas con datos personales) y el usuario marca los documentos esperados.
+**Decisión**: la batería de aceptación completa (19 filas con ids A, U, P, K, CU, G, N, X, I; las que en V3 se llaman "los 15" son las de respuesta esperada; se conservan todas con sus ids), los dos casos de la sección 2.2 con su variante corta, y **al menos 3 casos nuevos** en cada una de: indirecta, sigla, sin respuesta (SC-001). Total previsto: unos 30. Los casos nuevos los redacta Claude como borrador a partir de los nombres de documentos y dominios, y el usuario marca los documentos esperados.
 
 **Justificación**: con 3 por categoría se detecta un patrón sin multiplicar el costo del modo con razonamiento; si el informe muestra una categoría ambigua, se amplían después.
 
 ## R9. Reproducibilidad y comparación
 
-**Decisión**: cada corrida guarda su contexto (fecha, commit, umbral, límites, proveedor de embeddings, `QDRANT_URL` reducido a "local" o "remoto", conteo de fragmentos por dominio). `comparar A B` informa por caso los cambios de resultado, de mejor puntaje (diferencia mayor a 0,001, SC-007) y de fuentes, y avisa si el conteo de fragmentos por dominio difiere (datos distintos). La repetibilidad (SC-007) se comprueba corriendo `puntajes` dos veces y comparando.
+**Decisión**: cada corrida guarda su contexto (fecha, commit, umbral, límites, proveedor de embeddings, destino, conteo de fragmentos por dominio). `comparar A B` informa por caso los cambios de resultado, de mejor puntaje (diferencia mayor a 0,001, SC-007) y de fuentes, y avisa si el conteo de fragmentos por dominio difiere (datos distintos). La repetibilidad (SC-007) se comprueba corriendo `puntajes` dos veces y comparando.
 
 ## R10. Compatibilidad del modelo de vectores
 

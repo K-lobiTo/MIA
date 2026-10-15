@@ -14,23 +14,23 @@ Contexto: la versión 3 ([Definicion_Requerimientos_V3.md](../../docs/Definicion
 
 ### Session 2026-10-14
 
-- Q: ¿Las mediciones de puntajes pueden ejecutarse contra la base vectorial de producción, o solo contra una copia local? → A: Ambas. Se mide primero y principalmente sobre una copia local ingestada en la laptop del usuario; producción se consulta solo en lectura y solo para confirmar, con autorización del usuario en cada corrida. En los dos casos solo se imprimen puntajes, nunca texto de fragmentos (decisión 3 de la sección 2.8 de V3).
+- Q: ¿Las mediciones pueden ejecutarse contra la base vectorial de producción? → A: Sí. El usuario indicó el 2026-10-15 que toda la información cargada se considera pública y se puede usar para pruebas, así que se mide directamente contra producción, sin copia local. La medición sigue siendo de solo lectura (no modifica datos) y la de respuestas respeta un tope de gasto. Esto reemplaza la respuesta del 2026-10-14 (copia local y producción solo para confirmar).
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Tener un conjunto de casos de prueba de búsqueda, versionado y sin datos personales (Priority: P1)
+### User Story 1 - Tener un conjunto de casos de prueba de búsqueda, versionado (Priority: P1)
 
-Quien opera MIA arma un conjunto de casos de prueba que cubre lo que hoy funciona y lo que hoy falla: la batería existente de la prueba de aceptación del MVP, los dos casos que fallan (pregunta con nombre y apellidos completos, y pregunta con la forma desarrollada de una sigla), preguntas indirectas (que no repiten las palabras del documento), preguntas con siglas y preguntas cuya respuesta no está en ningún documento. Cada caso dice en qué dominios se pregunta, qué se espera (respuesta con cierto documento, o "sin información suficiente") y a qué categoría pertenece. El conjunto vive en el repositorio y no contiene datos personales: cuando una pregunta necesita un nombre real, el caso guarda un marcador y el nombre se toma de un archivo local que no se versiona.
+Quien opera MIA arma un conjunto de casos de prueba que cubre lo que hoy funciona y lo que hoy falla: la batería existente de la prueba de aceptación del MVP, los dos casos que fallan (pregunta con nombre y apellidos completos, y pregunta con la forma desarrollada de una sigla), preguntas indirectas (que no repiten las palabras del documento), preguntas con siglas y preguntas cuya respuesta no está en ningún documento. Cada caso dice en qué dominios se pregunta, qué se espera (respuesta con cierto documento, o "sin información suficiente") y a qué categoría pertenece. El conjunto vive en el repositorio con las preguntas tal como se harían, incluidos los nombres reales que ya están en los documentos, porque la información cargada se considera pública para las pruebas.
 
 **Why this priority**: sin casos no hay medición, y sin medición V3 sigue decidiendo por intuición. Es la base de las otras historias y de todos los criterios de aceptación de V3.
 
-**Independent Test**: abrir el conjunto, comprobar que cada caso tiene dominios, pregunta (o marcador), resultado esperado y categoría; que las categorías pedidas están representadas; y que una búsqueda de nombres de personas y datos sensibles en los archivos versionados no encuentra nada.
+**Independent Test**: abrir el conjunto, comprobar que cada caso tiene dominios, pregunta, resultado esperado y categoría; y que las categorías pedidas están representadas.
 
 **Acceptance Scenarios**:
 
 1. **Given** el conjunto de casos, **When** se lista por categoría, **Then** aparecen al menos: batería existente del MVP, los 2 casos de la sección 2.2 de V3, preguntas indirectas, preguntas con siglas y preguntas sin respuesta en ningún dominio.
-2. **Given** un caso cuya pregunta lleva el nombre de una persona, **When** se revisa el archivo versionado, **Then** contiene un marcador y no el nombre; el nombre real se lee de un archivo local ignorado por git.
-3. **Given** que falta el archivo local con los nombres, **When** se corre el conjunto, **Then** esos casos se omiten con un aviso claro y los demás se ejecutan.
+2. **Given** el conjunto, **When** se revisa un caso de la batería existente o uno de la sección 2.2, **Then** conserva su pregunta y su resultado esperado tal como están en PRUEBAS_MVP.md y V3, y su variante corta si la tiene.
+3. **Given** un caso nuevo (indirecta, sigla o sin respuesta), **When** se agrega, **Then** declara los documentos que se espera que aporten (si espera respuesta), para poder medir fuentes sobrantes.
 4. **Given** el conjunto, **When** se compara con la batería existente, **Then** cada caso de la batería está incluido con el mismo resultado esperado y puede identificarse por su id original.
 
 ---
@@ -45,10 +45,10 @@ Quien opera MIA corre una medición que, para cada caso, consulta la base vector
 
 **Acceptance Scenarios**:
 
-1. **Given** un caso con respuesta, **When** se mide, **Then** el informe muestra los puntajes de los fragmentos candidatos, marca los que superan el umbral y nombra el documento de origen de cada uno (por alias en lo versionado).
+1. **Given** un caso con respuesta, **When** se mide, **Then** el informe muestra los puntajes de los fragmentos candidatos, marca los que superan el umbral y nombra el documento de origen de cada uno .
 2. **Given** un caso que hoy falla (pregunta completa), **When** se mide junto con su variante corta (solo el nombre, o la sigla), **Then** el informe muestra ambos puntajes lado a lado y la diferencia respecto al umbral.
 3. **Given** una pregunta sin respuesta, **When** se mide, **Then** el informe muestra el mejor puntaje que obtiene, para saber cuánto margen hay bajo el umbral.
-4. **Given** cualquier informe producido, **When** se revisa, **Then** no contiene texto de fragmentos ni nombres reales de personas, solo puntajes, posiciones, ids de caso y nombres de documento.
+4. **Given** cualquier informe producido, **When** se revisa, **Then** no contiene el texto de los fragmentos ni el texto de las respuestas, solo ids de caso, puntajes, posiciones, números y nombres de documento.
 5. **Given** que el umbral configurado cambia, **When** se repite la medición, **Then** el informe reporta cuántos casos cambiarían de resultado (responder o "sin información") para esos umbrales alternativos, sin tener que volver a consultar el modelo de lenguaje.
 
 ---
@@ -80,7 +80,7 @@ Con las mediciones de las historias 2 y 3 se escribe un informe de línea base (
 
 **Acceptance Scenarios**:
 
-1. **Given** las corridas hechas, **When** se escribe el informe, **Then** incluye fecha, commit, umbral, modo, conjunto de datos, resultados por caso y resumen, sin datos personales.
+1. **Given** las corridas hechas, **When** se escribe el informe, **Then** incluye fecha, commit, umbral, modo, conjunto de datos, resultados por caso y resumen.
 2. **Given** el informe, **When** se lee la sección 2.8 de V3, **Then** las decisiones 3 y 5 quedan marcadas como resueltas con enlace al informe, y las demás reciben los datos que necesitan.
 3. **Given** una mejora futura, **When** se repite el procedimiento con el mismo conjunto, **Then** el nuevo resultado se puede comparar caso por caso con la línea base.
 
@@ -93,18 +93,18 @@ Con las mediciones de las historias 2 y 3 se escribe un informe de línea base (
 - El proveedor de modelos gratuito o de pago responde con error o se satura: se reintenta un número limitado de veces y el caso queda marcado como no concluyente, sin contarse como fallo de búsqueda.
 - Un documento fue reemplazado o eliminado desde la última corrida: el informe registra la fecha de los datos y el caso puede quedar obsoleto; no se compara contra corridas de datos distintos sin aviso.
 - La medición se corre contra una base con otro modelo de vectores o dimensiones: debe avisar y no mezclar puntajes de bases incompatibles.
-- Un informe o salida de consola incluye por accidente texto de un fragmento: no debe ser posible; la medición no debe tener ninguna opción que lo imprima.
+- Las preguntas de la medición aparecen en el registro de Uso de producción y pueden distorsionar sus totales del día: las corridas se identifican por artefacto (uno propio de pruebas, si el usuario lo crea) para poder separarlas.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: Debe existir un conjunto de casos de prueba de búsqueda versionado en el repositorio, con por caso: id, categoría, dominios consultados, pregunta (o marcador), resultado esperado (respuesta con ciertos documentos, o "sin información suficiente") y, si aplica, la variante corta de la misma pregunta.
+- **FR-001**: Debe existir un conjunto de casos de prueba de búsqueda versionado en el repositorio, con por caso: id, categoría, dominios consultados, pregunta, resultado esperado (respuesta con ciertos documentos, o "sin información suficiente") y, si aplica, la variante corta de la misma pregunta.
 - **FR-002**: El conjunto debe incluir todos los casos de la batería de aceptación del MVP conservando sus ids y resultados esperados, los dos casos de la sección 2.2 de V3, preguntas indirectas, preguntas con siglas y preguntas sin respuesta en ningún dominio.
-- **FR-003**: Los archivos versionados no deben contener nombres reales de personas ni texto de documentos; las preguntas que necesiten un nombre real deben usar un marcador, y el valor debe leerse de un archivo local excluido del control de versiones.
-- **FR-004**: Debe existir una medición de puntajes que, por caso, consulte la base vectorial con la misma lógica de búsqueda que la API (mismos vectores de la pregunta, mismos dominios y mismo número de candidatos por modo) y registre por fragmento candidato: posición, puntaje, documento de origen y si supera el umbral configurado.
+- **FR-003**: Los archivos versionados no deben contener texto de documentos (ni fragmentos ni respuestas completas); las preguntas y los nombres de documento sí pueden contener nombres reales, porque la información cargada se considera pública para las pruebas.
+- **FR-004**: Debe existir una medición de puntajes que, por caso, consulte la base vectorial con la misma lógica de búsqueda que la API (mismos vectores de la pregunta, mismos dominios y mismo número de candidatos por modo) y registre por fragmento candidato: posición, puntaje, documento de origen (por nombre) y si supera el umbral configurado.
 - **FR-005**: La medición de puntajes debe ser de solo lectura: no debe crear, modificar ni borrar datos de la base vectorial ni de la base de uso, ni cambiar la configuración del producto.
-- **FR-006**: Ninguna salida de la medición (consola, archivos, informes) debe incluir texto de fragmentos ni nombres reales de personas; solo ids de caso, puntajes, posiciones y números, y los documentos se identifican por alias (`D01`...) en lo que se versiona, porque el nombre de archivo de un documento (por ejemplo, un trabajo de graduación) puede contener el nombre de una persona; los nombres de archivo solo pueden aparecer en la salida local no versionada. No debe existir una opción que imprima texto de fragmentos.
+- **FR-006**: Las salidas de la medición (consola, archivos, informes) no deben incluir el texto de los fragmentos ni el de las respuestas; solo ids de caso, puntajes, posiciones, números y nombres de documento. No debe existir una opción que los imprima: no hace falta para medir y evita llenar los informes de texto que no se necesita.
 - **FR-007**: La medición de puntajes debe poder reportar, para varios umbrales alternativos, qué casos cambiarían de resultado (responder o "sin información"), sin volver a consultar el modelo de lenguaje.
 - **FR-008**: Para los casos con variante corta, el informe debe mostrar pregunta completa y variante corta lado a lado, con el mejor puntaje de cada una y su distancia al umbral.
 - **FR-009**: Debe existir una medición de la respuesta completa que corra los casos contra la API como lo haría un artefacto, en los dos modos (literal y con razonamiento), y registre por caso: respondió o "sin información", fuentes mostradas, fuentes esperadas, fuentes sobrantes, tiempo total y costo.
@@ -119,7 +119,7 @@ Con las mediciones de las historias 2 y 3 se escribe un informe de línea base (
 
 ### Key Entities *(include if feature involves data)*
 
-- **Caso de prueba de búsqueda**: pregunta (o marcador), dominios, categoría, resultado esperado, documentos esperados como fuentes y, opcionalmente, variante corta.
+- **Caso de prueba de búsqueda**: pregunta, dominios, categoría, resultado esperado, documentos esperados como fuentes y, opcionalmente, variante corta.
 - **Medición de puntajes de un caso**: para una corrida, la lista de candidatos con posición, puntaje, documento y si pasa el umbral; resumen (mejor puntaje, cuántos pasan).
 - **Medición de respuesta de un caso**: resultado (respondió, "sin información" o no concluyente), fuentes mostradas y esperadas, tiempo, costo, modo.
 - **Corrida**: conjunto de mediciones con su contexto (fecha, commit, umbral, modo, identificación de datos) y resumen.
@@ -132,7 +132,7 @@ Con las mediciones de las historias 2 y 3 se escribe un informe de línea base (
 - **SC-001**: El 100 % de los casos de la batería existente del MVP están en el conjunto con su id original, y el conjunto cubre las cinco categorías pedidas (batería, casos de 2.2, indirectas, siglas, sin respuesta) con al menos tres casos nuevos en cada una de las tres últimas.
 - **SC-002**: Para los dos casos de la sección 2.2, el informe muestra el puntaje de la pregunta completa, el de la variante corta y su distancia al umbral, de modo que se puede afirmar con datos si la causa es el umbral.
 - **SC-003**: Para todas las preguntas sin respuesta del conjunto se conoce el mejor puntaje obtenido, de modo que se puede decir con datos cuánto se puede bajar el umbral sin que dejen de dar "sin información" (BUS-3).
-- **SC-004**: Una búsqueda de nombres reales de personas y de texto de fragmentos en todo lo producido y versionado por esta feature no encuentra nada.
+- **SC-004**: Ningún archivo producido por la medición (salida local e informe versionado) contiene texto de fragmentos ni de respuestas; una revisión de una muestra de ellos lo confirma.
 - **SC-005**: Una corrida completa de puntajes termina en menos de 10 minutos y no consume tokens del proveedor de modelos.
 - **SC-006**: Una corrida completa de respuestas de ambos modos queda dentro del tope de gasto fijado antes de correrla, y el costo medio por consulta del informe difiere en menos de 5 % del que muestra el módulo Uso.
 - **SC-007**: Repetir la corrida con el mismo código y los mismos datos da los mismos puntajes (diferencia menor a 0,001) y el mismo resultado de responder o "sin información" en todos los casos.
@@ -147,4 +147,4 @@ Con las mediciones de las historias 2 y 3 se escribe un informe de línea base (
 - La medición de respuestas completas usa una clave de artefacto con acceso a los dos programas, como hoy la batería del MVP.
 - Se mide primero el modo literal y luego el de razonamiento; el de razonamiento puede ser más caro, por lo que el tope de gasto se fija antes de cada corrida.
 - Quedan fuera de esta feature: cualquier mejora de la búsqueda (umbral, segundo intento, reranker, búsqueda híbrida, citas por fragmento), la evaluación automática de "calidad de la respuesta" con un modelo juez y los cambios de interfaz.
-- Las mediciones contra producción son opcionales y solo de confirmación; cada corrida contra producción requiere autorización explícita del usuario. Las corridas habituales usan la copia local.
+- Las mediciones se hacen directamente contra producción (aclaración del 2026-10-15). La medición de puntajes es de solo lectura; la de respuestas se limita con un tope de gasto. Las preguntas de las corridas quedan en el registro de Uso de producción, como cualquier consulta.

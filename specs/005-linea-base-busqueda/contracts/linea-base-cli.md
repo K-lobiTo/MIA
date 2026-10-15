@@ -1,10 +1,10 @@
 # Contrato: `scripts/linea_base.py`
 
-Herramienta de línea de comandos. No expone nada en la API de MIA. Todas las salidas por consola y por archivo cumplen FR-006 (sin texto de fragmentos ni de respuestas ni nombres reales).
+Herramienta de línea de comandos. No expone nada en la API de MIA. Todas las salidas por consola y por archivo cumplen FR-006 (sin texto de fragmentos ni de respuestas).
 
 ```text
-python scripts/linea_base.py puntajes   --etiqueta E [--env-file F] [--solo ID,ID] [--confirmo-produccion]
-python scripts/linea_base.py respuestas --etiqueta E --url URL --clave K --tope-usd N [--clave-admin A] [--modo literal|razonamiento|ambos] [--solo ID,ID] [--confirmo-produccion]
+python scripts/linea_base.py puntajes   --etiqueta E [--env-file F] [--solo ID,ID]
+python scripts/linea_base.py respuestas --etiqueta E --url URL --clave K --tope-usd N [--clave-admin A] [--modo literal|razonamiento|ambos] [--solo ID,ID]
 python scripts/linea_base.py informe    ETIQUETA [--salida docs/LINEA_BASE_BUSQUEDA.md]
 python scripts/linea_base.py comparar   ETIQUETA_A ETIQUETA_B
 ```
@@ -12,9 +12,9 @@ python scripts/linea_base.py comparar   ETIQUETA_A ETIQUETA_B
 ## `puntajes`
 
 - Carga `--env-file` (formato de `uvicorn --env-file`, tiene prioridad sobre `.env`) antes de importar `mia`.
-- Sale con error, sin consultar, si: el destino es remoto y falta `--confirmo-produccion`; la dimensión de la colección no coincide con la del proveedor de embeddings; no hay casos para correr.
-- Solo ejecuta lecturas (SELECT, `query_points`, `count`, `get_collection`).
-- Escribe `tmp/linea_base/<fecha>-<etiqueta>/puntajes.json` (corrida, mediciones y resumen) y un resumen por consola con ids, puntajes y alias.
+- Sale con error, sin consultar, si: la dimensión de la colección no coincide con la del proveedor de embeddings; no hay casos para correr.
+- Solo ejecuta lecturas (SELECT, `query_points`, `count`, `get_collection`); un guardia en el código impide cualquier otra operación.
+- Escribe `tmp/linea_base/<fecha>-<etiqueta>/puntajes.json` (corrida, mediciones y resumen) y un resumen por consola con ids, puntajes y nombres de documento.
 - No usa tokens de ningún proveedor de modelos.
 - Código de salida 0 aunque algún caso "falle": medir no es aprobar. 2 si no pudo medir.
 
@@ -28,8 +28,7 @@ python scripts/linea_base.py comparar   ETIQUETA_A ETIQUETA_B
 
 ## `informe`
 
-- Lee los dos archivos de la etiqueta y escribe Markdown con alias de documentos.
-- Aborta sin escribir si en el texto aparece un valor de `tmp/nombres_casos.json` o un nombre de archivo de los documentos.
+- Lee los dos archivos de la etiqueta y escribe el Markdown del informe (contexto, tabla por caso, resúmenes y ventana de separación).
 
 ## `comparar`
 
@@ -40,6 +39,5 @@ python scripts/linea_base.py comparar   ETIQUETA_A ETIQUETA_B
 | Archivo | Versionado | Contenido |
 |---|---|---|
 | `scripts/datos/casos_busqueda.json` | sí | Casos (ver [data-model.md](../data-model.md)). |
-| `tmp/nombres_casos.json` | no | Valores de los marcadores `{{clave}}`. |
-| `tmp/linea_base/<fecha>-<etiqueta>/*.json` | no | Salida cruda con nombres de archivo. |
-| `docs/LINEA_BASE_BUSQUEDA.md` | sí | Informe anonimizado. |
+| `tmp/linea_base/<fecha>-<etiqueta>/*.json` | no | Salida cruda de cada corrida. |
+| `docs/LINEA_BASE_BUSQUEDA.md` | sí | Informe de la línea base. |
