@@ -1,0 +1,252 @@
+[
+  {
+    "id": "A1",
+    "categoria": "mvp",
+    "grupo": "A",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Memoria del Consejo"
+    ],
+    "pregunta": "¿Qué se discutió sobre becas en caso de superar los 25 estudiantes admitidos?",
+    "espera": "respuesta",
+    "documentos": [
+      "04-2026"
+    ]
+  },
+  {
+    "id": "A2",
+    "categoria": "mvp",
+    "grupo": "A",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Memoria del Consejo"
+    ],
+    "pregunta": "¿Quién fue designado coordinador específico del proyecto ante FUNDATEC?",
+    "espera": "respuesta",
+    "documentos": [
+      "01-2026"
+    ],
+    "contiene": "Martín Solís"
+  },
+  {
+    "id": "A3",
+    "categoria": "mvp",
+    "grupo": "A",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Memoria del Consejo"
+    ],
+    "pregunta": "¿Qué se discutió sobre becas y descuentos para funcionarios del TEC?",
+    "espera": "respuesta",
+    "documentos": [
+      "03-2026"
+    ]
+  },
+  {
+    "id": "U1",
+    "categoria": "mvp",
+    "grupo": "U",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum"
+    ],
+    "pregunta": "¿Cuántas horas extraclase por semana tiene el curso Big Data para Negocios?",
+    "espera": "respuesta",
+    "documentos": [
+      "Big Data para Negocios"
+    ],
+    "contiene": "14"
+  },
+  {
+    "id": "U2",
+    "categoria": "mvp",
+    "grupo": "U",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum"
+    ],
+    "pregunta": "¿De qué curso es requisito Big Data para Negocios?",
+    "espera": "respuesta",
+    "documentos": [
+      "Big Data para Negocios"
+    ],
+    "contiene": "Big Data"
+  },
+  {
+    "id": "U3",
+    "categoria": "mvp",
+    "grupo": "U",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum"
+    ],
+    "pregunta": "¿Cada cuánto se abre el proceso de admisión al programa?",
+    "espera": "respuesta",
+    "documentos": [
+      "Reglamento del Programa"
+    ],
+    "contiene": "año"
+  },
+  {
+    "id": "U4",
+    "categoria": "mvp",
+    "grupo": "U",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum"
+    ],
+    "pregunta": "¿Cuáles son las líneas de TFG de la maestría?",
+    "espera": "respuesta",
+    "documentos": [
+      "Líneas de TFG"
+    ],
+    "contiene": "Analítica de Texto"
+  },
+  {
+    "id": "P1",
+    "categoria": "mvp",
+    "grupo": "P",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuántas horas extraclase por semana tiene el curso Cibercrimen?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC3010"
+    ],
+    "contiene": "14"
+  },
+  {
+    "id": "P2",
+    "categoria": "mvp",
+    "grupo": "P",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuántos créditos tiene el curso Cibercrimen y en qué área del plan de estudios se ubica?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC3010"
+    ],
+    "contiene": "4"
+  },
+  {
+    "id": "K1",
+    "categoria": "mvp",
+    "grupo": "K",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Memoria del Consejo"
+    ],
+    "pregunta": "¿Qué se aprobó sobre impartir el curso Deep Learning por tutoría?",
+    "espera": "respuesta",
+    "documentos": [
+      "CUP_002"
+    ]
+  },
+  {
+    "id": "K2",
+    "categoria": "mvp",
+    "grupo": "K",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Memoria del Consejo"
+    ],
+    "pregunta": "¿Qué se acordó sobre el cambio de nombre de la Maestría en Computación?",
+    "espera": "respuesta",
+    "documentos": [
+      "06-2025"
+    ]
+  },
+  {
+    "id": "CU1",
+    "categoria": "mvp",
+    "grupo": "CU",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Memoria del Consejo"
+    ],
+    "pregunta": "¿Qué se acordó en el Consejo de Unidad sobre la maestría de Ciberseguridad?",
+    "espera": "respuesta",
+    "documentos": [
+      "Acta"
+    ]
+  },
+  {
+    "id": "G1",
+    "categoria": "mvp",
+    "grupo": "G",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Qué trabajo de graduación trata sobre drones en aeropuertos?",
+    "espera": "respuesta",
+    "documentos": [
+      "Drones"
+    ]
+  },
+  {
+    "id": "G2",
+    "categoria": "mvp",
+    "grupo": "G",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis"
+    ],
+    "pregunta": "¿Qué compara el análisis de modelos centralizados y descentralizados en sistemas de pagos?",
+    "espera": "respuesta",
+    "documentos": [
+      "Luis Alvarado"
+    ]
+  },
+  {
+    "id": "N1",
+    "categoria": "mvp",
+    "grupo": "N",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Memoria del Consejo",
+      "Área académica de Analítica de Negocios / Currículum",
+      "Unidad de Postgrados de Computación / Currículum",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos",
+      "Unidad de Postgrados de Computación / Memoria del Consejo"
+    ],
+    "pregunta": "¿Cuál es la receta del gallo pinto?",
+    "espera": "sin_informacion"
+  },
+  {
+    "id": "X1",
+    "categoria": "mvp",
+    "grupo": "X",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum",
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuántas horas extraclase por semana tiene el curso Cibercrimen?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC3010"
+    ],
+    "contiene": "14"
+  },
+  {
+    "id": "I1",
+    "categoria": "mvp",
+    "grupo": "I",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum"
+    ],
+    "pregunta": "¿Cuántas horas extraclase por semana tiene el curso Cibercrimen?",
+    "espera": "sin_informacion"
+  },
+  {
+    "id": "I3",
+    "categoria": "mvp",
+    "grupo": "I",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Memoria del Consejo"
+    ],
+    "pregunta": "¿Qué se acordó sobre el cambio de nombre de la Maestría en Computación?",
+    "espera": "sin_informacion"
+  },
+  {
+    "id": "I2",
+    "categoria": "mvp",
+    "grupo": "I",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis"
+    ],
+    "pregunta": "¿Qué se discutió sobre becas en caso de superar los 25 estudiantes admitidos?",
+    "espera": "sin_informacion"
+  }
+]
