@@ -93,7 +93,7 @@ Con las mediciones de las historias 2 y 3 se escribe un informe de línea base (
 - El proveedor de modelos gratuito o de pago responde con error o se satura: se reintenta un número limitado de veces y el caso queda marcado como no concluyente, sin contarse como fallo de búsqueda.
 - Un documento fue reemplazado o eliminado desde la última corrida: el informe registra la fecha de los datos y el caso puede quedar obsoleto; no se compara contra corridas de datos distintos sin aviso.
 - La medición se corre contra una base con otro modelo de vectores o dimensiones: debe avisar y no mezclar puntajes de bases incompatibles.
-- Las preguntas de la medición aparecen en el registro de Uso de producción y pueden distorsionar sus totales del día: las corridas se identifican por artefacto (uno propio de pruebas, si el usuario lo crea) para poder separarlas.
+- Las preguntas de la medición aparecen en el registro de Uso de producción y pueden distorsionar sus totales del día: la medición usa un artefacto existente, así que comparte con el uso real su tope diario de gasto y sus totales: la corrida registra los ids de sus consultas para poder excluirlas, se detiene si el artefacto alcanza su tope y muestra el gasto del día antes de empezar.
 
 ## Requirements *(mandatory)*
 
@@ -131,17 +131,17 @@ Con las mediciones de las historias 2 y 3 se escribe un informe de línea base (
 
 - **SC-001**: El 100 % de los casos de la batería existente del MVP están en el conjunto con su id original, y el conjunto cubre las cinco categorías pedidas (batería, casos de 2.2, indirectas, siglas, sin respuesta) con al menos tres casos nuevos en cada una de las tres últimas.
 - **SC-002**: Para los dos casos de la sección 2.2, el informe muestra el puntaje de la pregunta completa, el de la variante corta y su distancia al umbral, de modo que se puede afirmar con datos si la causa es el umbral.
-- **SC-003**: Para todas las preguntas sin respuesta del conjunto se conoce el mejor puntaje obtenido, de modo que se puede decir con datos cuánto se puede bajar el umbral sin que dejen de dar "sin información" (BUS-3).
+- **SC-003**: Para todas las preguntas sin respuesta del conjunto (incluidas las de aislamiento de dominio, que se reportan también por separado) se conoce el mejor puntaje obtenido, de modo que se puede decir con datos cuánto se puede bajar el umbral sin que dejen de dar "sin información" (BUS-3).
 - **SC-004**: Ningún archivo producido por la medición (salida local e informe versionado) contiene texto de fragmentos ni de respuestas; una revisión de una muestra de ellos lo confirma.
 - **SC-005**: Una corrida completa de puntajes termina en menos de 10 minutos y no consume tokens del proveedor de modelos.
-- **SC-006**: Una corrida completa de respuestas de ambos modos queda dentro del tope de gasto fijado antes de correrla, y el costo medio por consulta del informe difiere en menos de 5 % del que muestra el módulo Uso.
+- **SC-006**: Una corrida completa de respuestas de ambos modos queda dentro del tope de gasto fijado antes de correrla, y la suma de costos del informe coincide con el aumento del total del módulo Uso para ese artefacto durante la corrida (diferencia menor a 5 %), contrastado además una vez con el detalle de gasto del proveedor de modelos.
 - **SC-007**: Repetir la corrida con el mismo código y los mismos datos da los mismos puntajes (diferencia menor a 0,001) y el mismo resultado de responder o "sin información" en todos los casos.
 - **SC-008**: Las decisiones 3 y 5 de la sección 2.8 de V3 quedan resueltas con enlace al informe, y las otras tres reciben los números que necesitan para decidirse.
 
 ## Assumptions
 
 - Quien opera MIA es una sola persona (el usuario), que además marca las fuentes esperadas de cada caso y autoriza el gasto de las corridas.
-- "La batería existente" es la que corre `scripts/pruebas_mvp.py` según [PRUEBAS_MVP.md](../../docs/PRUEBAS_MVP.md); sus ids son A, U, P, K, CU, G, N, X e I. El "15 casos" de V3 se refiere a ella y se contará con exactitud al armar el conjunto.
+- "La batería existente" es la que corre `scripts/pruebas_mvp.py` según [PRUEBAS_MVP.md](../../docs/PRUEBAS_MVP.md); sus ids son A, U, P, K, CU, G, N, X e I. Tiene 19 casos: los "15 casos" de V3 son los que esperan respuesta (14 más el multi-dominio `X1`), y los otros 4 esperan "sin información" (`N1` y los de aislamiento `I1` a `I3`).
 - Los datos consultados son los de los dominios ya cargados (actas, currículum y proyectos de graduación de los dos programas); la medición no ingesta ni cambia documentos.
 - Para consultar la base vectorial igual que la API se reutilizan los mismos componentes de embeddings y almacenamiento del producto, sin modificarlos.
 - La medición de respuestas completas usa una clave de artefacto con acceso a los dos programas, como hoy la batería del MVP.

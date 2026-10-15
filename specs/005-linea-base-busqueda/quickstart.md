@@ -6,7 +6,15 @@ Guía para validar la feature de punta a punta. Detalle de comandos en [contract
 
 1. Entorno del proyecto: `source .venv/bin/activate && pip install -e ".[dev]"`.
 2. `.env.produccion` (ignorado por git, ver [OPERACION.md](../../docs/OPERACION.md#cargar-documentos-ingesta)) con `DATABASE_URL` (Neon), `QDRANT_URL`, `QDRANT_API_KEY`, `QDRANT_COLLECTION` y `EMBEDDING_PROVIDER=local`.
-3. Para `respuestas`: la clave de un artefacto con acceso a los dos programas (idealmente uno propio de pruebas con tope diario bajo), la clave de administración para leer los costos y la API de Railway encendida (`python scripts/servicios.py encender MIA`, solo cuando se vaya a medir).
+3. Para `respuestas`: en `.env` (ignorado por git) `MIA_ARTIFACT_KEY` (artefacto existente, idealmente con acceso a los dos programas; si no, los casos de dominios inaccesibles se omiten con aviso) y `MIA_ADMIN_KEY` para leer los costos; el script las lee solo. Ojo: el artefacto comparte su tope diario con el uso real. La API de Railway debe estar encendida (`python scripts/servicios.py encender MIA`, solo cuando se vaya a medir).
+
+## 0. Inventario (solo lectura)
+
+```bash
+python scripts/linea_base.py inventario --env-file .env.produccion
+```
+
+Lista los dominios, sus documentos y cuántos fragmentos tienen; sirve para redactar los casos y comprobar que existen los dominios.
 
 ## 1. Puntajes (sin gasto de modelo)
 
@@ -14,7 +22,7 @@ Guía para validar la feature de punta a punta. Detalle de comandos en [contract
 python scripts/linea_base.py puntajes --etiqueta base --env-file .env.produccion
 ```
 
-Debe terminar en menos de 10 minutos, sin tokens, y mostrar por caso los puntajes ordenados, cuáles superan el umbral, la ventana de separación y el barrido de umbrales. Repetir con otra etiqueta y comparar:
+Antes, confirmar en Railway que el umbral y los límites coinciden con los de `.env.produccion` (ver R11 de [research.md](research.md)). Debe terminar en menos de 10 minutos, sin tokens, y mostrar por caso los puntajes ordenados, cuáles superan el umbral, la ventana de separación y el barrido de umbrales. Repetir con otra etiqueta y comparar:
 
 ```bash
 python scripts/linea_base.py puntajes --etiqueta base-2 --env-file .env.produccion
@@ -27,7 +35,7 @@ Con un tope fijado antes:
 
 ```bash
 python scripts/linea_base.py respuestas --etiqueta base --url https://mia-main.up.railway.app \
-  --clave "$MIA_ARTIFACT_KEY" --clave-admin "$ADMIN_KEY" --tope-usd 0.50 --modo ambos
+  --tope-usd 0.50 --modo ambos
 ```
 
 Primero con `--solo S22-1,A1,N1` para ver el costo de pocos casos. El gasto total debe quedar bajo el tope y coincidir con el módulo Uso.

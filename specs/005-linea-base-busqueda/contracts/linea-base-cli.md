@@ -3,11 +3,16 @@
 Herramienta de línea de comandos. No expone nada en la API de MIA. Todas las salidas por consola y por archivo cumplen FR-006 (sin texto de fragmentos ni de respuestas).
 
 ```text
+python scripts/linea_base.py inventario [--env-file F]
 python scripts/linea_base.py puntajes   --etiqueta E [--env-file F] [--solo ID,ID]
 python scripts/linea_base.py respuestas --etiqueta E --url URL --clave K --tope-usd N [--clave-admin A] [--modo literal|razonamiento|ambos] [--solo ID,ID]
 python scripts/linea_base.py informe    ETIQUETA [--salida docs/LINEA_BASE_BUSQUEDA.md]
 python scripts/linea_base.py comparar   ETIQUETA_A ETIQUETA_B
 ```
+
+## `inventario`
+
+- Solo lectura. Lista cada `Programa / Dominio` con cantidad de documentos y fragmentos y los nombres de archivo de los documentos. No guarda nada.
 
 ## `puntajes`
 
@@ -21,7 +26,7 @@ python scripts/linea_base.py comparar   ETIQUETA_A ETIQUETA_B
 ## `respuestas`
 
 - `--tope-usd` es obligatorio; imprime el número de consultas previstas y empieza. Se detiene al alcanzar el tope y escribe el informe parcial con `parcial: true`.
-- `--clave` es la del artefacto (o `MIA_ARTIFACT_KEY`); `--clave-admin` (o `MIA_ADMIN_KEY`) permite leer el costo; sin ella el costo queda `null` y se avisa.
+- Lee `.env` por sí mismo: `MIA_ARTIFACT_KEY` (o `--clave`) y `MIA_ADMIN_KEY` (o `--clave-admin`), que permite leer el costo; sin ella el costo queda `null` y se avisa. Omite con aviso los casos cuyos dominios el artefacto no puede consultar y se detiene ante un 429 de tope diario.
 - Reintenta 502 hasta 3 veces; si persiste, el caso queda `no_concluyente`.
 - Escribe `respuestas.json` en la misma carpeta de la etiqueta.
 - Código de salida 0, o 2 si no pudo correr.

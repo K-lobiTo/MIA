@@ -6,7 +6,7 @@
 
 ## Summary
 
-Armar un conjunto de casos de prueba de búsqueda y una herramienta de línea de comandos (`scripts/linea_base.py`) que mide cómo se comporta MIA hoy, **sin tocar nada de `src/`**: (1) la etapa `puntajes` consulta Qdrant de producción en solo lectura con los mismos componentes que la API (embedding local e5-small y `VectorStore`), registra posición, puntaje y documento de hasta 50 candidatos por caso y calcula, sin gastar tokens, qué casos cambiarían de resultado con otros umbrales; (2) la etapa `respuestas` corre los casos contra `POST /query` en los dos modos, con un tope de gasto obligatorio, y registra fuentes mostradas frente a esperadas, latencia y costo (leído del módulo Uso); (3) `informe` genera un resumen en Markdown sin datos personales y `comparar` contrasta dos corridas caso por caso. El resultado es `docs/LINEA_BASE_BUSQUEDA.md`, que responde las decisiones 3 y 5 de la sección 2.8 de V3 y sirve de vara para F, B y E.
+Armar un conjunto de casos de prueba de búsqueda y una herramienta de línea de comandos (`scripts/linea_base.py`) que mide cómo se comporta MIA hoy, **sin tocar nada de `src/`**: (0) `inventario` lista dominios y documentos para redactar los casos; (1) la etapa `puntajes` consulta Qdrant de producción en solo lectura con los mismos componentes que la API (embedding local e5-small y `VectorStore`), registra posición, puntaje y documento de hasta 50 candidatos por caso y calcula, sin gastar tokens, qué casos cambiarían de resultado con otros umbrales; (2) la etapa `respuestas` corre los casos contra `POST /query` en los dos modos, con un tope de gasto obligatorio, y registra fuentes mostradas frente a esperadas, latencia y costo (leído del módulo Uso); (3) `informe` genera un resumen en Markdown sin datos personales y `comparar` contrasta dos corridas caso por caso. El resultado es `docs/LINEA_BASE_BUSQUEDA.md`, que responde las decisiones 3 y 5 de la sección 2.8 de V3 y sirve de vara para F, B y E.
 
 ## Technical Context
 
@@ -65,7 +65,7 @@ specs/005-linea-base-busqueda/
 
 ```text
 scripts/
-├── linea_base.py                  # CLI: puntajes, respuestas, informe, comparar (nuevo)
+├── linea_base.py                  # CLI: inventario, puntajes, respuestas, informe, comparar (nuevo)
 ├── datos/
 │   └── casos_busqueda.json        # conjunto de casos versionado (nuevo)
 └── pruebas_mvp.py                 # batería existente: no se modifica

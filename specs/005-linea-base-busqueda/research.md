@@ -31,7 +31,7 @@ Todas las incógnitas de la spec quedaron resueltas; no hay marcadores `NEEDS CL
 **Decisión** (con la información considerada pública, 2026-10-15):
 1. Se permiten nombres reales en las preguntas, los casos y los nombres de documento, tanto en la salida local como en lo versionado. Se eliminan los marcadores `{{clave}}`, `tmp/nombres_casos.json`, los alias de documentos y la verificación de `informe` contra esos valores.
 2. Se conserva una sola regla de higiene, sin costo: ninguna estructura de la herramienta guarda el `text` de fragmentos, el texto de las respuestas ni el `excerpt` de las fuentes. De la respuesta solo quedan su longitud, si es "sin información" y si contiene el texto esperado (`contiene_ok`). No hace falta para medir, evita informes enormes y sigue valiendo si la política de datos cambia.
-3. Las preguntas de las corridas de `respuestas` quedan en el registro de Uso de producción y suman a sus totales y a los topes diarios. Para separarlas, se recomienda un artefacto propio de pruebas (con tope diario bajo) cuya clave se usa en `--clave`.
+3. Las preguntas de las corridas de `respuestas` quedan en el registro de Uso de producción y suman a sus totales y a los topes diarios. El usuario decidió (2026-10-15) usar un artefacto existente en lugar de crear uno propio de pruebas, así que la corrida comparte su tope diario con el uso real: `respuestas` muestra el gasto del día y el tope antes de empezar, se detiene ante un 429 y guarda los `consulta_id` para excluirlos de los totales de Uso.
 4. Si más adelante se agregan datos que no sean públicos, esta decisión debe revisarse antes de medir.
 
 **Alternativas descartadas**: mantener marcadores y alias (complejidad sin beneficio con datos públicos).
@@ -54,7 +54,7 @@ Todas las incógnitas de la spec quedaron resueltas; no hay marcadores `NEEDS CL
 
 El tope de gasto es **obligatorio** (`--tope-usd`): se acumula el costo tras cada consulta y la corrida se detiene al alcanzarlo (el sobregiro máximo es el de una consulta). Antes de empezar se imprime el número de consultas previstas. "Aportó" no se infiere: lo decide el usuario en `documentos` de cada caso (FR-010).
 
-Para SC-006 (costo del informe coincide con Uso) el costo ya sale del módulo Uso, así que se verifica contra el total del período que muestra `GET /usage` para el artefacto durante la corrida (suma de las consultas del script frente al total del artefacto en esa ventana) y, al menos una vez, contra OpenRouter Activity, como ya está pendiente en el criterio 15 de V2.
+Para SC-006: el costo sale del propio módulo Uso, así que compararlo con su total solo comprueba que no se perdieron consultas (suma del script frente al aumento del total del artefacto en la ventana). La verificación independiente es el detalle de gasto de OpenRouter, que mira el usuario (es el mismo pendiente 15 de V2).
 
 **Alternativas descartadas**: agregar costo a la respuesta de `/query` (toca el producto); leer la base de metadatos para el costo (obliga a tener credenciales de la base de producción en esta etapa).
 
@@ -66,13 +66,17 @@ Para SC-006 (costo del informe coincide con Uso) el costo ya sale del módulo Us
 
 ## R8. Cuántos casos y de qué categorías
 
-**Decisión**: la batería de aceptación completa (19 filas con ids A, U, P, K, CU, G, N, X, I; las que en V3 se llaman "los 15" son las de respuesta esperada; se conservan todas con sus ids), los dos casos de la sección 2.2 con su variante corta, y **al menos 3 casos nuevos** en cada una de: indirecta, sigla, sin respuesta (SC-001). Total previsto: unos 30. Los casos nuevos los redacta Claude como borrador a partir de los nombres de documentos y dominios, y el usuario marca los documentos esperados.
+**Decisión**: la batería de aceptación completa (19 filas con ids A, U, P, K, CU, G, N, X, I; los "15" de V3 son los 15 que esperan respuesta, incluido `X1`, y los otros 4 esperan "sin información"; se conservan todos con sus ids), los dos casos de la sección 2.2 con su variante corta, y **al menos 3 casos nuevos** en cada una de: indirecta, sigla, sin respuesta (SC-001). Total previsto: unos 30. Los casos nuevos los redacta Claude como borrador a partir de los nombres de documentos y dominios, y el usuario marca los documentos esperados.
 
 **Justificación**: con 3 por categoría se detecta un patrón sin multiplicar el costo del modo con razonamiento; si el informe muestra una categoría ambigua, se amplían después.
 
 ## R9. Reproducibilidad y comparación
 
 **Decisión**: cada corrida guarda su contexto (fecha, commit, umbral, límites, proveedor de embeddings, destino, conteo de fragmentos por dominio). `comparar A B` informa por caso los cambios de resultado, de mejor puntaje (diferencia mayor a 0,001, SC-007) y de fuentes, y avisa si el conteo de fragmentos por dominio difiere (datos distintos). La repetibilidad (SC-007) se comprueba corriendo `puntajes` dos veces y comparando.
+
+## R11. Parámetros declarados frente a los de Railway
+
+**Decisión**: el umbral y los límites de búsqueda se toman del entorno cargado (`.env.produccion`, hoy 0,82 y 8; el de razonamiento usa su valor por defecto, 16) y se registran como "declarados". La API no los expone, así que una tarea pide al usuario confirmar en Railway que coinciden antes de dar por buena la línea base.
 
 ## R10. Compatibilidad del modelo de vectores
 
