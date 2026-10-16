@@ -356,7 +356,7 @@ def test_informe_sin_guion_largo_ni_claves(tmp_path):
     corrida = {"puntajes": {"contexto": contexto, "mediciones": mediciones,
                             "resumen": lb.resumen_puntajes(mediciones, 0.82, limites)}, "respuestas": None}
     texto = lb.generar_informe(corrida)
-    assert "—" not in texto
+    assert chr(0x2014) not in texto
     assert "Ventana de separación" in texto and "Barrido de umbrales" in texto
     with pytest.raises(ValueError):
         lb.generar_informe({"puntajes": None, "respuestas": None})
@@ -498,7 +498,7 @@ def test_informe_muestra_los_casos_omitidos_de_respuestas():
     }
     texto = lb.generar_informe(corrida)
     assert "Casos omitidos en esta corrida: N1 (el artefacto no puede consultar)" in texto
-    assert "—" not in texto
+    assert chr(0x2014) not in texto
 
 
 def test_informe_conserva_la_lectura_al_regenerar(tmp_path, monkeypatch):
