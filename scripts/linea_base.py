@@ -57,6 +57,10 @@ REINTENTOS = 3
 ESPERA_REINTENTO = 20
 
 
+class ErrorMedicion(Exception):
+    """Una medición que no se puede hacer (configuración, conexión, sin casos). `main` la convierte en código 2."""
+
+
 def _nfc(texto: str) -> str:
     # Los nombres de archivo con tildes pueden venir en NFD según el sistema que los subió.
     return unicodedata.normalize("NFC", texto)
@@ -422,6 +426,9 @@ def correr_respuestas(casos, modos, consultar, leer_costo, tope_usd: float) -> d
                 if status == 429:
                     parada = "tope_diario_del_artefacto"
                     break
+                if status in (401, 403):
+                    parada = "clave_invalida_o_artefacto_desactivado"
+                    break
                 evaluacion = evaluar_respuesta(caso, status, body)
                 consulta_id = body.get("id") if status == 200 else None
                 costo = leer_costo(consulta_id) if consulta_id else None
@@ -603,6 +610,13 @@ def generar_informe(corrida: dict) -> str:
     if respuestas:
         lineas += ["## Respuesta completa", ""]
         rc = respuestas["contexto"]
+        if rc.get("casos_omitidos"):
+            lineas += [
+                "- Casos omitidos en esta corrida: "
+                + ", ".join(f"{o['id']} ({o['motivo']})" for o in rc["casos_omitidos"])
+                + ".",
+                "",
+            ]
         lineas += [
             (
                 f"- Corrida del {rc['fecha']} contra {rc['destino']}, artefacto \"{rc.get('artefacto')}\", "
@@ -653,26 +667,32 @@ class ClienteSoloLectura:
         return getattr(self._cliente, nombre)
 
 
-def abrir_mia(env_file: str | None):
-    """Prepara el acceso de solo lectura a la base de metadatos y a Qdrant. Nunca migra ni crea nada.
-
-    No se llama a `init_db()` (migraría la base) ni a `ensure_collection()` (crea índices en Qdrant).
-    """
-    if env_file and not cargar_env(env_file, sobrescribir=True):
-        sys.exit(f"No se pudo leer el archivo de entorno {env_file}.")
+def sesion_solo_lectura(engine):
+    """Sesión sobre la base de metadatos en la que cualquier escritura falla: transacción de solo
+    lectura en Postgres y `PRAGMA query_only` en SQLite."""
     from sqlalchemy import text
     from sqlalchemy.orm import Session
-
-    from mia.config import settings
-    from mia.storage.db import engine
-    from mia.storage.vector_store import get_vector_store
 
     conexion = engine.connect()
     if engine.dialect.name == "postgresql":
         conexion = conexion.execution_options(postgresql_readonly=True)
     elif engine.dialect.name == "sqlite":
         conexion.execute(text("PRAGMA query_only = ON"))
-    sesion = Session(bind=conexion)
+    return Session(bind=conexion)
+
+
+def abrir_mia(env_file: str | None):
+    """Prepara el acceso de solo lectura a la base de metadatos y a Qdrant. Nunca migra ni crea nada.
+
+    No se llama a `init_db()` (migraría la base) ni a `ensure_collection()` (crea índices en Qdrant).
+    """
+    if env_file and not cargar_env(env_file, sobrescribir=True):
+        raise ErrorMedicion(f"No se pudo leer el archivo de entorno {env_file}.")
+    from mia.config import settings
+    from mia.storage.db import engine
+    from mia.storage.vector_store import get_vector_store
+
+    sesion = sesion_solo_lectura(engine)
     almacen = get_vector_store()
     almacen.client = ClienteSoloLectura(almacen.client)
     return settings, sesion, almacen
@@ -722,6 +742,28 @@ def medir_caso(pregunta, dominio_ids, embedder, almacen, archivos, nombre_de) ->
     ]
 
 
+def exigir_casos(casos: list, omitidos: list) -> None:
+    """Sin ningún caso que correr no se mide nada ni se escribe ningún archivo."""
+    if not casos:
+        motivo = "; ".join(f"{o['id']} ({o['motivo']})" for o in omitidos)
+        raise ErrorMedicion("No queda ningún caso para correr" + (f": {motivo}." if motivo else " (revisar --solo)."))
+
+
+def parametros_de_puntajes(etiqueta: str) -> dict | None:
+    """Umbral, límites y fragmentos por dominio de la corrida de `puntajes` de la misma etiqueta (FR-014)."""
+    try:
+        puntajes = leer_corrida(etiqueta)["puntajes"]
+    except FileNotFoundError:
+        return None
+    if not puntajes:
+        return None
+    contexto = puntajes["contexto"]
+    return {
+        clave: contexto.get(clave)
+        for clave in ("umbral", "limite_literal", "limite_razonamiento", "fragmentos_por_dominio", "fecha")
+    }
+
+
 def comando_inventario(args) -> int:
     _, sesion, almacen = abrir_mia(args.env_file)
     por_nombre, _, _, docs_por_dominio = mapas_de_base(sesion)
@@ -743,7 +785,9 @@ def comando_puntajes(args) -> int:
     dimension = len(embedder.embed(["prueba"], is_query=True)[0])
     existente = almacen.client.get_collection(almacen.collection).config.params.vectors.size
     if existente != dimension:
-        sys.exit(f"La colección tiene vectores de dimensión {existente} y el proveedor genera {dimension}: no se mezclan puntajes.")
+        raise ErrorMedicion(
+            f"La colección tiene vectores de dimensión {existente} y el proveedor genera {dimension}: no se mezclan puntajes."
+        )
 
     casos = cargar_casos(Path(args.casos))
     solo = {c.strip() for c in args.solo.split(",") if c.strip()}
@@ -753,6 +797,7 @@ def comando_puntajes(args) -> int:
     umbral = settings.query_similarity_threshold
 
     mediciones, omitidos = [], []
+    exigir_casos(casos, [])
     for caso in casos:
         faltan = [d for d in caso["dominios"] if _nfc(d) not in por_nombre]
         if faltan:
@@ -788,6 +833,7 @@ def comando_puntajes(args) -> int:
                 + (f" | {esperado}" if esperado else "")
             )
 
+    exigir_casos(mediciones, omitidos)
     contexto = contexto_corrida(
         args.etiqueta,
         destino_de(settings.qdrant_url),
@@ -857,15 +903,15 @@ def comando_respuestas(args) -> int:
     clave = args.clave or os.environ.get("MIA_ARTIFACT_KEY", "")
     admin = args.clave_admin or os.environ.get("MIA_ADMIN_KEY", "")
     if not clave:
-        sys.exit("Falta la clave del artefacto: MIA_ARTIFACT_KEY en .env o --clave.")
+        raise ErrorMedicion("Falta la clave del artefacto: MIA_ARTIFACT_KEY en .env o --clave.")
     if args.tope_usd is None or args.tope_usd <= 0:
-        sys.exit("--tope-usd es obligatorio y debe ser mayor que cero.")
+        raise ErrorMedicion("--tope-usd es obligatorio y debe ser mayor que cero.")
     base = args.url.rstrip("/")
     modos = list(MODOS) if args.modo == "ambos" else [args.modo]
 
     status, dominios = _pedir(f"{base}/domains", clave_artefacto=clave, timeout=60)
     if status != 200:
-        sys.exit(f"No se pudo listar los dominios (HTTP {status}): ¿la API está encendida y la clave es válida?")
+        raise ErrorMedicion(f"No se pudo listar los dominios (HTTP {status}): ¿la API está encendida y la clave es válida?")
     por_nombre = {_nfc(f"{d.get('unit_name')}{SEPARADOR}{d['name']}"): d["id"] for d in dominios}
 
     solo = {c.strip() for c in args.solo.split(",") if c.strip()}
@@ -880,11 +926,12 @@ def comando_respuestas(args) -> int:
             continue
         casos.append(caso)
 
+    exigir_casos(casos, omitidos)
     estado = estado_artefacto(base, clave, admin) if admin else None
     if estado:
         print(f"Artefacto '{estado['name']}': gastó hoy {estado['today']['spent_usd']:.4f} USD de {estado['daily_cap_usd']:.2f} USD de tope diario.")
         if estado["today"]["cap_reached"]:
-            sys.exit("El artefacto ya alcanzó su tope diario: no se corre nada.")
+            raise ErrorMedicion("El artefacto ya alcanzó su tope diario: no se corre nada.")
     else:
         print("Aviso: sin clave de administración no se puede leer el costo ni el tope diario del artefacto.")
     previstas = sum(len(modos) * (2 if c.get("variante_corta") else 1) for c in casos)
@@ -908,6 +955,7 @@ def comando_respuestas(args) -> int:
     contexto = contexto_corrida(
         args.etiqueta, destino_de(base), modos=modos, tope_usd=args.tope_usd, casos_omitidos=omitidos,
         artefacto=estado["name"] if estado else None,
+        parametros_de_puntajes=parametros_de_puntajes(args.etiqueta),
     )
     resumen = resumen_respuestas(corrida["resultados"])
     ruta = guardar_json(
@@ -1000,7 +1048,11 @@ def main(argv: list[str] | None = None) -> int:
     comp.set_defaults(funcion=comando_comparar)
 
     args = parser.parse_args(argv)
-    return args.funcion(args)
+    try:
+        return args.funcion(args)
+    except ErrorMedicion as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

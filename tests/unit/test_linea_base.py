@@ -406,3 +406,106 @@ def test_archivo_de_casos_cubre_las_categorias():
         assert sum(1 for c in casos if c["categoria"] == categoria) >= 3
     con_variante = [c for c in casos if c["categoria"] == "seccion_2_2" and c.get("variante_corta")]
     assert len(con_variante) >= 2
+
+
+# --- Convergencia: solo lectura de la base, códigos de salida y paradas -------------
+
+
+def test_sesion_solo_lectura_en_sqlite(tmp_path):
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.exc import OperationalError
+
+    engine = create_engine(f"sqlite:///{tmp_path}/lectura.db")
+    with engine.begin() as conexion:
+        conexion.execute(text("CREATE TABLE t (x INTEGER)"))
+        conexion.execute(text("INSERT INTO t VALUES (1)"))
+    sesion = lb.sesion_solo_lectura(engine)
+    try:
+        assert sesion.execute(text("SELECT x FROM t")).scalar() == 1
+        with pytest.raises(OperationalError):
+            sesion.execute(text("INSERT INTO t VALUES (2)"))
+        sesion.rollback()
+    finally:
+        sesion.get_bind().close()
+        engine.dispose()
+
+
+def test_exigir_casos():
+    lb.exigir_casos([{"id": "A"}], [])
+    with pytest.raises(lb.ErrorMedicion, match="--solo"):
+        lb.exigir_casos([], [])
+    with pytest.raises(lb.ErrorMedicion, match="X1 \\(sin acceso\\)"):
+        lb.exigir_casos([], [{"id": "X1", "motivo": "sin acceso"}])
+
+
+def test_main_devuelve_2_cuando_no_puede_medir(monkeypatch, capsys):
+    # Sin tope de gasto
+    assert lb.main(["respuestas", "--etiqueta", "t", "--url", "http://x", "--clave", "k"]) == 2
+    assert "--tope-usd" in capsys.readouterr().err
+    # Archivo de entorno ilegible: no se llega a abrir nada
+    assert lb.main(["puntajes", "--etiqueta", "t", "--env-file", "/no/existe/.env"]) == 2
+    assert "archivo de entorno" in capsys.readouterr().err
+
+
+def test_correr_respuestas_se_detiene_ante_401_y_403():
+    for status in (401, 403):
+        corrida = lb.correr_respuestas(
+            [_caso(id="A"), _caso(id="B")], ["literal"], lambda c, v, m, st=status: (st, {}, 5), lambda _id: None, 1.0
+        )
+        assert corrida["resultados"] == [] and corrida["parcial"]
+        assert corrida["motivo_parada"] == "clave_invalida_o_artefacto_desactivado"
+
+
+def test_parametros_de_puntajes(monkeypatch):
+    contexto = {"umbral": 0.82, "limite_literal": 8, "limite_razonamiento": 16,
+                "fragmentos_por_dominio": {"P / D": 10}, "fecha": "2026-10-15", "otro": "no se copia"}
+    monkeypatch.setattr(lb, "leer_corrida", lambda etiqueta: {"puntajes": {"contexto": contexto}, "respuestas": None})
+    parametros = lb.parametros_de_puntajes("base")
+    assert parametros["umbral"] == 0.82 and parametros["fragmentos_por_dominio"] == {"P / D": 10}
+    assert "otro" not in parametros
+
+    def sin_corrida(etiqueta):
+        raise FileNotFoundError(etiqueta)
+
+    monkeypatch.setattr(lb, "leer_corrida", sin_corrida)
+    assert lb.parametros_de_puntajes("base") is None
+
+
+def test_informe_muestra_los_casos_omitidos_de_respuestas():
+    mediciones = [_med("A", "respuesta", [0.9], 0.9)]
+    for m in mediciones:
+        m["por_modo"] = {k: lb.resultado_por_modo(m["candidatos"], 8, 0.82) for k in lb.MODOS}
+    contexto = {
+        "etiqueta": "t", "fecha": "2026-10-15T10:00:00", "commit": "abc1234567", "cambios_sin_confirmar": False,
+        "destino": "produccion", "umbral": 0.82, "limite_literal": 8, "limite_razonamiento": 16,
+        "candidatos_pedidos": 50, "proveedor_embeddings": "local", "dimension": 384,
+        "fragmentos_por_dominio": {"P / D": 10}, "casos_omitidos": [],
+    }
+    resultados = [{
+        "caso_id": "A", "variante": "completa", "modo": "literal", "resultado": "respondio", "correcto": True,
+        "fuentes_mostradas": 1, "fuentes_sobrantes": 0, "latencia_cliente_ms": 1000, "costo_usd": 0.001,
+    }]
+    respuestas = {
+        "contexto": {"fecha": "2026-10-15T10:05:00", "destino": "produccion", "artefacto": "Prueba", "modos": ["literal"],
+                     "tope_usd": 0.2, "casos_omitidos": [{"id": "N1", "motivo": "el artefacto no puede consultar"}]},
+        "resultados": resultados, "parcial": False, "motivo_parada": None, "gasto_total_usd": 0.001,
+        "resumen": lb.resumen_respuestas(resultados),
+    }
+    corrida = {
+        "puntajes": {"contexto": contexto, "mediciones": mediciones,
+                     "resumen": lb.resumen_puntajes(mediciones, 0.82, {"literal": 8, "razonamiento": 16})},
+        "respuestas": respuestas,
+    }
+    texto = lb.generar_informe(corrida)
+    assert "Casos omitidos en esta corrida: N1 (el artefacto no puede consultar)" in texto
+    assert "—" not in texto
+
+
+def test_informe_conserva_la_lectura_al_regenerar(tmp_path, monkeypatch):
+    destino = tmp_path / "informe.md"
+    destino.write_text("# viejo\n\n## Lectura\n\nTexto escrito a mano.\n", encoding="utf-8")
+    monkeypatch.setattr(lb, "leer_corrida", lambda etiqueta: {"puntajes": {"x": 1}, "respuestas": None})
+    monkeypatch.setattr(lb, "generar_informe", lambda corrida: "# nuevo\n")
+    assert lb.main(["informe", "t", "--salida", str(destino)]) == 0
+    contenido = destino.read_text(encoding="utf-8")
+    assert contenido.startswith("# nuevo") and "Texto escrito a mano." in contenido and "viejo" not in contenido

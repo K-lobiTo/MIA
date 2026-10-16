@@ -4,11 +4,17 @@ Herramienta de línea de comandos. No expone nada en la API de MIA. Todas las sa
 
 ```text
 python scripts/linea_base.py inventario [--env-file F]
-python scripts/linea_base.py puntajes   --etiqueta E [--env-file F] [--solo ID,ID]
-python scripts/linea_base.py respuestas --etiqueta E --url URL --clave K --tope-usd N [--clave-admin A] [--modo literal|razonamiento|ambos] [--solo ID,ID]
+python scripts/linea_base.py puntajes   --etiqueta E [--env-file F] [--solo ID,ID] [--casos RUTA]
+python scripts/linea_base.py respuestas --etiqueta E --url URL --clave K --tope-usd N [--clave-admin A] [--modo literal|razonamiento|ambos] [--solo ID,ID] [--casos RUTA]
 python scripts/linea_base.py informe    ETIQUETA [--salida docs/LINEA_BASE_BUSQUEDA.md]
 python scripts/linea_base.py comparar   ETIQUETA_A ETIQUETA_B
 ```
+
+## Opciones comunes
+
+- `--casos RUTA` (en `puntajes` y `respuestas`): usa un archivo de casos distinto de `scripts/datos/casos_busqueda.json`, con el mismo formato. Sirve para probar borradores de casos sin tocar el archivo versionado.
+- Código de salida: `0` si midió, `2` si no pudo medir (archivo de entorno ilegible, dimensión incompatible, falta de clave o de tope, API apagada o clave inválida, ningún caso para correr). En esos casos no se escribe ningún archivo. `comparar` devuelve además `1` si hay diferencias.
+- `respuestas` se detiene, con informe parcial, ante un 429 (tope diario del artefacto) y ante un 401 o 403 (clave inválida o artefacto desactivado).
 
 ## `inventario`
 
@@ -33,7 +39,8 @@ python scripts/linea_base.py comparar   ETIQUETA_A ETIQUETA_B
 
 ## `informe`
 
-- Lee los dos archivos de la etiqueta y escribe el Markdown del informe (contexto, tabla por caso, resúmenes y ventana de separación).
+- Lee los archivos de la etiqueta (`puntajes.json` y `respuestas.json` pueden estar en corridas distintas: toma la más reciente de cada uno) y escribe el Markdown del informe (contexto, tabla por caso, resúmenes, ventana de separación y casos omitidos).
+- Si el archivo de salida ya existe y tiene una sección `## Lectura` escrita a mano, la conserva al regenerar.
 
 ## `comparar`
 
