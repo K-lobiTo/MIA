@@ -53,3 +53,9 @@ python scripts/linea_base.py comparar   ETIQUETA_A ETIQUETA_B
 | `scripts/datos/casos_busqueda.json` | sí | Casos (ver [data-model.md](../data-model.md)). |
 | `tmp/linea_base/<fecha>-<etiqueta>/*.json` | no | Salida cruda de cada corrida. |
 | `docs/LINEA_BASE_BUSQUEDA.md` | sí | Informe de la línea base. |
+
+## Ampliación de la feature 006
+
+- `respuestas` registra por consulta `regla_de_seguridad` (verdadero si el detalle de Uso trae la nota `Fuentes: sin citas utilizables...`, falso si no, nulo si no se pudo leer el detalle) y el resumen por modo suma `regla_de_seguridad_aplicada` y `proporcion_regla_de_seguridad` sobre las respuestas con contenido.
+- `comparar` muestra las diferencias de `regla_de_seguridad` y, cuando ambas corridas tienen `respuestas`, la **mediana de la razón (B sobre A) de costo y de latencia caso por caso** por modo. `informe` muestra la regla de seguridad en la sección de cada modo.
+- Las corridas anteriores a la 006 (sin `regla_de_seguridad`) se leen sin error.

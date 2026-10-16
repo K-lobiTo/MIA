@@ -8,6 +8,9 @@ principio V de la constitución). Ver specs/006-fuentes-que-aportaron/contracts/
 """
 
 import logging
+import re
+import unicodedata
+from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +32,6 @@ def cited_sources_enabled(value: str) -> bool:
         )
     return False
 
-import re
-import unicodedata
-from dataclasses import dataclass, field
 
 # Párrafo que se agrega a las instrucciones del modo cuando la opción está encendida.
 CITATION_INSTRUCTIONS = (

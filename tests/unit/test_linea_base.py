@@ -509,3 +509,96 @@ def test_informe_conserva_la_lectura_al_regenerar(tmp_path, monkeypatch):
     assert lb.main(["informe", "t", "--salida", str(destino)]) == 0
     contenido = destino.read_text(encoding="utf-8")
     assert contenido.startswith("# nuevo") and "Texto escrito a mano." in contenido and "viejo" not in contenido
+
+
+# --- Feature 006: regla de seguridad y medianas de razón -----------------------------------
+
+
+def test_correr_respuestas_registra_la_regla_de_seguridad():
+    notas = {
+        "q-con": "Fuentes: sin citas utilizables, se mostraron todas",
+        "q-sin": None,
+    }
+
+    def consultar(caso, variante, modo):
+        cuerpo = _body(docs=("acta.pdf",))
+        cuerpo["id"] = "q-con" if caso["id"] == "A" else "q-sin"
+        return 200, cuerpo, 100
+
+    def costo(consulta_id):
+        return {"cost_usd": 0.01, "reject_reason": notas[consulta_id]}
+
+    corrida = lb.correr_respuestas([_caso(id="A"), _caso(id="B")], ["literal"], consultar, costo, 1.0)
+    por_caso = {r["caso_id"]: r["regla_de_seguridad"] for r in corrida["resultados"]}
+    assert por_caso == {"A": True, "B": False}
+
+
+def test_regla_de_seguridad_nula_si_no_hay_detalle_de_uso():
+    corrida = lb.correr_respuestas(
+        [_caso(id="A")], ["literal"], lambda c, v, m: (200, _body(docs=("acta.pdf",)), 1), lambda _id: None, 1.0
+    )
+    assert corrida["resultados"][0]["regla_de_seguridad"] is None
+
+
+def test_resumen_respuestas_cuenta_la_regla_de_seguridad():
+    base = {"modo": "literal", "variante": "completa", "latencia_cliente_ms": 1000, "fuentes_sobrantes": 0,
+            "correcto": True, "costo_usd": 0.01}
+    resultados = [
+        {**base, "caso_id": "A", "resultado": "respondio", "regla_de_seguridad": True},
+        {**base, "caso_id": "B", "resultado": "respondio", "regla_de_seguridad": False},
+        {**base, "caso_id": "C", "resultado": "respondio", "regla_de_seguridad": False},
+        {**base, "caso_id": "D", "resultado": "respondio", "regla_de_seguridad": False},
+        {**base, "caso_id": "N", "resultado": "sin_informacion", "regla_de_seguridad": False},
+    ]
+    r = lb.resumen_respuestas(resultados)["literal"]
+    assert r["regla_de_seguridad_aplicada"] == 1
+    assert r["proporcion_regla_de_seguridad"] == pytest.approx(0.25)  # 1 de 4 respuestas con contenido
+
+
+def test_resumen_respuestas_sin_dato_de_regla_de_seguridad_no_falla():
+    base = {"modo": "literal", "variante": "completa", "latencia_cliente_ms": 1000, "fuentes_sobrantes": 0,
+            "correcto": True, "costo_usd": 0.01, "resultado": "respondio"}
+    r = lb.resumen_respuestas([{**base, "caso_id": "A"}])["literal"]  # corridas anteriores a la 006
+    assert r["regla_de_seguridad_aplicada"] == 0 and r["proporcion_regla_de_seguridad"] is None
+
+
+def _resp(caso, modo, costo, latencia, sobrantes=0, regla=None, mostradas=1):
+    return {
+        "caso_id": caso, "variante": "completa", "modo": modo, "resultado": "respondio", "correcto": True,
+        "fuentes_mostradas": mostradas, "fuentes_sobrantes": sobrantes, "costo_usd": costo,
+        "latencia_cliente_ms": latencia, "regla_de_seguridad": regla,
+    }
+
+
+def test_comparar_medianas_de_razon_de_costo_y_latencia():
+    a = {"puntajes": None, "respuestas": {"resultados": [
+        _resp("A", "literal", 0.010, 1000), _resp("B", "literal", 0.020, 2000), _resp("C", "literal", 0.040, 4000),
+        _resp("D", "literal", None, 500),
+    ]}}
+    b = {"puntajes": None, "respuestas": {"resultados": [
+        _resp("A", "literal", 0.011, 1100), _resp("B", "literal", 0.022, 2400), _resp("C", "literal", 0.100, 4400),
+        _resp("D", "literal", 0.5, 500),
+    ]}}
+    resultado = lb.comparar(a, b)
+    literal = resultado["medianas"]["literal"]
+    assert literal["casos"] == 3  # D se descarta: sin costo en una de las corridas
+    assert literal["razon_costo"] == pytest.approx(1.1)  # razones 1.1, 1.1 y 2.5: la mediana ignora el extremo
+    assert literal["razon_latencia"] == pytest.approx(1.1)  # razones 1.1, 1.2 y 1.1
+
+
+def test_comparar_informa_cambios_de_la_regla_de_seguridad_y_de_fuentes():
+    a = {"puntajes": None, "respuestas": {"resultados": [_resp("A", "literal", 0.01, 1000, sobrantes=3, mostradas=4)]}}
+    b = {"puntajes": None, "respuestas": {"resultados": [_resp("A", "literal", 0.01, 1000, sobrantes=0, regla=True)]}}
+    cambios = lb.comparar(a, b)["cambios"]
+    assert any("regla_de_seguridad" in c for c in cambios)
+    assert any("fuentes_sobrantes 3 -> 0" in c for c in cambios)
+
+
+def test_comparar_sin_respuestas_no_calcula_medianas():
+    assert lb.comparar(_corrida(), _corrida())["medianas"] == {}
+
+
+def test_comparar_corridas_viejas_sin_regla_de_seguridad_no_falla():
+    a = {"puntajes": None, "respuestas": {"resultados": [_resp("A", "literal", 0.01, 1000)]}}
+    del a["respuestas"]["resultados"][0]["regla_de_seguridad"]
+    assert lb.comparar(a, a)["cambios"] == []

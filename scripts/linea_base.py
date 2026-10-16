@@ -26,6 +26,7 @@ import json
 import math
 import os
 import re
+import statistics
 import subprocess
 import sys
 import time
@@ -44,6 +45,8 @@ ESPERAS = {"respuesta", "sin_informacion"}
 MODOS = ("literal", "razonamiento")
 SEPARADOR = " / "
 NO_INFO_PREFIX = "No encontré información suficiente"
+# Nota que la API deja en `reject_reason` cuando rigió la regla de seguridad de las citas (feature 006).
+NOTA_REGLA_DE_SEGURIDAD = "Fuentes: sin citas utilizables"
 
 # Candidatos que se piden a la base vectorial por pregunta (máximo que acepta QUERY_SEARCH_LIMIT).
 CANDIDATOS = 50
@@ -376,6 +379,16 @@ def _media(valores: list[float]) -> float | None:
     return sum(valores) / len(valores) if valores else None
 
 
+def _resumen_regla_de_seguridad(filas: list[dict]) -> dict:
+    """Cuántas respuestas con contenido cayeron en la regla de seguridad de las citas (feature 006)."""
+    con_contenido = [r for r in filas if r["resultado"] == "respondio" and r.get("regla_de_seguridad") is not None]
+    aplicada = sum(1 for r in con_contenido if r["regla_de_seguridad"])
+    return {
+        "regla_de_seguridad_aplicada": aplicada,
+        "proporcion_regla_de_seguridad": aplicada / len(con_contenido) if con_contenido else None,
+    }
+
+
 def resumen_respuestas(resultados: list[dict]) -> dict:
     """Resumen por modo de una corrida de `respuestas`."""
     resumen = {}
@@ -400,6 +413,7 @@ def resumen_respuestas(resultados: list[dict]) -> dict:
             "costo_medio_usd": _media(costos),
             "costo_medio_sin_info_usd": _media(costos_sin_info),
             "gasto_total_usd": sum(costos),
+            **_resumen_regla_de_seguridad(filas),
         }
     return resumen
 
@@ -445,6 +459,9 @@ def correr_respuestas(casos, modos, consultar, leer_costo, tope_usd: float) -> d
                         "costo_usd": costo.get("cost_usd") if costo else None,
                         "costo_estimado": costo.get("cost_estimated") if costo else None,
                         "tokens": costo.get("tokens") if costo else None,
+                        "regla_de_seguridad": (
+                            None if not costo else (costo.get("reject_reason") or "").startswith(NOTA_REGLA_DE_SEGURIDAD)
+                        ),
                         "consulta_id": consulta_id,
                     }
                 )
@@ -485,16 +502,44 @@ def comparar(a: dict, b: dict) -> dict:
                 if rx != ry:
                     cambios.append(f"{nombre}, modo {modo}: resultado {rx} -> {ry}.")
     ra, rb = a.get("respuestas"), b.get("respuestas")
+    medianas: dict = {}
     if ra and rb:
         xa = {(r["caso_id"], r["variante"], r["modo"]): r for r in ra["resultados"]}
         xb = {(r["caso_id"], r["variante"], r["modo"]): r for r in rb["resultados"]}
         for clave in sorted(xa.keys() & xb.keys()):
             x, y = xa[clave], xb[clave]
             nombre = f"{clave[0]} ({clave[1]}), modo {clave[2]}"
-            for campo in ("resultado", "correcto", "fuentes_mostradas", "fuentes_sobrantes"):
-                if x[campo] != y[campo]:
-                    cambios.append(f"{nombre}: {campo} {x[campo]} -> {y[campo]}.")
-    return {"cambios": cambios, "datos_distintos": datos_distintos}
+            for campo in ("resultado", "correcto", "fuentes_mostradas", "fuentes_sobrantes", "regla_de_seguridad"):
+                if x.get(campo) != y.get(campo):
+                    cambios.append(f"{nombre}: {campo} {x.get(campo)} -> {y.get(campo)}.")
+        medianas = _medianas_de_razon(xa, xb)
+    return {"cambios": cambios, "datos_distintos": datos_distintos, "medianas": medianas}
+
+
+def _medianas_de_razon(xa: dict, xb: dict) -> dict:
+    """Por modo, la mediana de la razón (B sobre A) de costo y de latencia caso por caso.
+
+    El costo de una consulta con razonamiento varía mucho de una corrida a otra; la mediana de las
+    razones por caso es más estable que el cociente de los promedios. Solo cuentan los casos con dato
+    positivo en las dos corridas.
+    """
+    salida: dict = {}
+    for modo in MODOS:
+        claves = [k for k in xa.keys() & xb.keys() if k[2] == modo]
+        razones_costo, razones_latencia = [], []
+        for clave in claves:
+            x, y = xa[clave], xb[clave]
+            if (x.get("costo_usd") or 0) > 0 and (y.get("costo_usd") or 0) > 0:
+                razones_costo.append(y["costo_usd"] / x["costo_usd"])
+            if (x.get("latencia_cliente_ms") or 0) > 0 and (y.get("latencia_cliente_ms") or 0) > 0:
+                razones_latencia.append(y["latencia_cliente_ms"] / x["latencia_cliente_ms"])
+        if razones_costo or razones_latencia:
+            salida[modo] = {
+                "casos": len(razones_costo),
+                "razon_costo": statistics.median(razones_costo) if razones_costo else None,
+                "razon_latencia": statistics.median(razones_latencia) if razones_latencia else None,
+            }
+    return salida
 
 
 def _fmt(valor, decimales: int = 3) -> str:
@@ -643,6 +688,16 @@ def generar_informe(corrida: dict) -> str:
                     f"el de las que terminan en \"sin información\": {_fmt(r['costo_medio_sin_info_usd'], 6)} USD."
                 ),
                 f"- Gasto total: {_fmt(r['gasto_total_usd'], 4)} USD.",
+                *(
+                    [
+                        (
+                            f"- Regla de seguridad de las citas: {r['regla_de_seguridad_aplicada']} respuestas con "
+                            f"contenido ({_fmt(100 * r['proporcion_regla_de_seguridad'], 1)} %)."
+                        )
+                    ]
+                    if r.get("proporcion_regla_de_seguridad") is not None
+                    else []
+                ),
                 "",
             ]
     return "\n".join(lineas) + "\n"
@@ -884,7 +939,12 @@ def leer_costo(base_url: str, clave_admin: str, consulta_id: str) -> dict | None
     status, cuerpo = _pedir(f"{base_url}/usage/queries/{consulta_id}", clave_admin=clave_admin, timeout=60)
     if status != 200:
         return None
-    return {"cost_usd": cuerpo.get("cost_usd"), "cost_estimated": cuerpo.get("cost_estimated"), "tokens": cuerpo.get("tokens")}
+    return {
+        "cost_usd": cuerpo.get("cost_usd"),
+        "cost_estimated": cuerpo.get("cost_estimated"),
+        "tokens": cuerpo.get("tokens"),
+        "reject_reason": cuerpo.get("reject_reason"),
+    }
 
 
 def estado_artefacto(base_url: str, clave_artefacto: str, clave_admin: str) -> dict | None:
@@ -1007,6 +1067,11 @@ def comando_comparar(args) -> int:
         print("AVISO: el conteo de fragmentos por dominio difiere entre las corridas: los datos no son los mismos.")
     for cambio in resultado["cambios"]:
         print(cambio)
+    for modo, m in resultado["medianas"].items():
+        print(
+            f"Mediana de la razón {args.etiqueta_b}/{args.etiqueta_a}, modo {modo} ({m['casos']} casos con costo): "
+            f"costo {_fmt(m['razon_costo'], 3)}, latencia {_fmt(m['razon_latencia'], 3)}."
+        )
     print(f"{len(resultado['cambios'])} diferencias.")
     return 1 if resultado["cambios"] else 0
 
