@@ -357,6 +357,7 @@ Por defecto la respuesta lista como fuentes todos los pasajes que se le entregar
 
 - Se cambia en las variables del servicio `MIA` en Railway y se reinicia (no hay migraciones ni despliegue de código). Volver a `off` devuelve el comportamiento anterior.
 - Cualquier valor que no sea `on`, `true`, `1`, `yes`, `off`, `false`, `0`, `no` o vacío se trata como apagado y deja un aviso en el registro del servidor.
+- **Cuidado con cómo se cambia la variable:** `railway variable set` sin `--skip-deploys` hace que Railway redespliegue desde la rama `main` de GitHub, no desde el código que se subió con `railway up`; si lo que está en producción viene de `dev` o de otra referencia, el servicio vuelve a correr `main` sin avisar. Para medir una versión que no es `main`: `railway variable set QUERY_CITED_SOURCES=on -s MIA --skip-deploys` y luego `python scripts/servicios.py encender MIA --ref origin/dev` (el despliegue lee la variable al arrancar). Se puede comprobar con `railway deployment list -s MIA --json` (un despliegue de `railway up` no trae `commitHash`).
 - Es una opción de prueba: se mide con `scripts/linea_base.py respuestas` y `comparar` (ver "Medir la búsqueda") antes de dejarla encendida. Diseño y criterios en `specs/006-fuentes-que-aportaron/`.
 
 ## Medir la búsqueda (línea base)

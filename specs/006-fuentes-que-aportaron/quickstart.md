@@ -24,7 +24,8 @@ Requisitos: `.env` con `MIA_ARTIFACT_KEY` (artefacto de prueba con acceso a los 
 ```bash
 # 1. Encender la opción y la API (solo para medir)
 railway variable set QUERY_CITED_SOURCES=on -s MIA --skip-deploys
-python scripts/servicios.py encender MIA --forzar
+python scripts/servicios.py encender MIA --forzar --ref origin/dev   # la rama con la feature; sin --ref se despliega main
+# Importante: cambiar la variable SIN --skip-deploys redespliega desde main y se pierde el código de dev (ver OPERACION.md)
 # 2. Medir los 32 casos en los dos modos (después del control del paso 2)
 python scripts/linea_base.py respuestas --etiqueta citas --url https://mia-main.up.railway.app --tope-usd 0.40
 # 3. Comparar con la línea base y con el control

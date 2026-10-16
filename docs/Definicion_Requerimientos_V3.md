@@ -31,7 +31,7 @@ Los dos casos tienen la misma causa: el sistema descarta los fragmentos cuya sim
 | BUS-2 | Una pregunta con la forma desarrollada de una sigla, o con la sigla cuando el documento usa la forma desarrollada, debe encontrar el mismo documento. |
 | BUS-3 | Ningún cambio debe aumentar de forma notable las respuestas inventadas: cuando los documentos de verdad no tienen la información, la respuesta sigue siendo "sin información suficiente". |
 | BUS-4 | Los topes de gasto (por artefacto y de toda la API) se siguen respetando, y el costo adicional por consulta, si lo hay, queda visible en el módulo Uso. |
-| BUS-5 | Las fuentes que muestra una respuesta son solo las que aportaron a ella, no todos los fragmentos que se le pasaron al modelo (hoy una respuesta puede listar documentos que no sirvieron, ver [PRUEBAS_MVP.md](PRUEBAS_MVP.md)). |
+| BUS-5 | Las fuentes que muestra una respuesta son solo las que aportaron a ella, no todos los fragmentos que se le pasaron al modelo (hoy una respuesta puede listar documentos que no sirvieron, ver [PRUEBAS_MVP.md](PRUEBAS_MVP.md)). **Implementado y medido el 2026-10-16** (feature [006](../specs/006-fuentes-que-aportaron/spec.md), variable `QUERY_CITED_SOURCES`, apagada por defecto): las fuentes que no aportaron bajan alrededor de 80 % sin cambiar respuestas, costo ni latencia de forma medible. Resultado en [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md). |
 | BUS-6 | Cualquier etapa nueva de búsqueda (reranker, búsqueda híbrida, reformulación) se puede apagar por configuración, igual que las demás piezas del pipeline (interfaz y fábrica por nombre), de modo que se pueda volver al comportamiento anterior sin desplegar código. |
 | BUS-7 | El segundo intento con la pregunta "limpia" (opción B) se hace por reglas de texto, sin llamar a un modelo de lenguaje: no consume tokens de OpenRouter. Solo suma un embedding local y una búsqueda en Qdrant. |
 
@@ -150,7 +150,7 @@ Además se recorta lo que sobre al final ("por favor", signos).
 
 Se acordó seguir esta recomendación como punto de partida y **probar un cross-encoder que corra en el servidor para medir cuánto cuesta y decidir después si se conserva**:
 
-1. **F. Citas por fragmento.** Resuelve el problema B sin reindexar ni costo extra.
+1. **F. Citas por fragmento.** Resuelve el problema B sin reindexar ni costo extra. **Hecha (2026-10-16, feature 006), apagada por defecto**: el modelo cierra la respuesta con una línea `FUENTES: 1, 3`, la API la valida y lista solo esos pasajes; sin citas válidas se listan todos (regla de seguridad, 2 % de las respuestas en la medición).
 2. **B. Segundo intento con la pregunta limpia** (solo si nada pasa el umbral). Cubre "¿Quién es X?" a bajo costo.
 3. **E. Reranker local, como prueba de costo** (plan en 2.7). Si se conserva, el corte de "sin información" pasa a su puntaje y se puede retirar el umbral de coseno.
 4. **D. Búsqueda híbrida** para nombres y siglas, cuando haya evidencia de que B y E no bastan.
@@ -204,7 +204,7 @@ Datos de la línea base medida el 2026-10-15 en [LINEA_BASE_BUSQUEDA.md](LINEA_B
 - Los casos de la sección 2.2 (`S22-1` a `S22-4`, nombres y apellidos y sigla) responden con la pregunta completa igual que con la variante corta (BUS-1 y BUS-2). Hoy fallan 7 de las 8 preguntas de esos casos en literal y 6 en razonamiento.
 - Los 19 casos de [PRUEBAS_MVP.md](PRUEBAS_MVP.md) (los 15 que esperan respuesta y los 4 de "sin información") siguen respondiendo bien, como hoy en los dos modos.
 - Una pregunta sobre un tema que no está en ningún documento sigue respondiendo "sin información suficiente" (BUS-3).
-- Las fuentes mostradas son las que aportaron a la respuesta; en los casos de prueba no se lista ningún documento que no sirvió (BUS-5). Línea base: 1,39 fuentes sobrantes por consulta en literal y 2,69 en razonamiento.
+- Las fuentes mostradas son las que aportaron a la respuesta; en los casos de prueba no se lista ningún documento que no sirvió (BUS-5). Línea base: 1,39 fuentes sobrantes por consulta en literal y 2,69 en razonamiento. **Con `QUERY_CITED_SOURCES=on` (feature 006): 0,28 y 0,47** (-80 %), a validar por el usuario los documentos que siguen apareciendo.
 - El costo medio por consulta de los modos literal y con razonamiento, medido en el módulo Uso, no sube más de lo que se decida en la decisión pendiente 1 (BUS-4).
 - Con `RERANK_PROVIDER=none` el comportamiento es el anterior (BUS-6).
 - El segundo intento no hace ninguna llamada a un modelo de lenguaje: una consulta sin respuesta en ninguna de las dos búsquedas sigue sin gastar tokens (BUS-7).

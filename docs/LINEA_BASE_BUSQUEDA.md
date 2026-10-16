@@ -173,3 +173,25 @@ La corrida completa (72 consultas) costó **0,2514 USD** y coincide con el aumen
 3. **Medir en producción:** resuelta, se midió en solo lectura (el usuario declaró públicos los datos para pruebas).
 4. **Qué modelo de reranker probar:** sin datos nuevos; el dato útil es que bastan unos 20 a 40 candidatos.
 5. **Cuántos casos:** el conjunto actual (32 casos, 36 preguntas por modo) alcanza para ver el patrón; faltan más casos de siglas y de pregunta indirecta con respuesta dudosa para calibrar un corte por puntaje.
+
+## Resultado de la feature 006 (fuentes que aportaron)
+
+Medido el 2026-10-16 en producción con el código de `dev` (commit `59ee6c9`), mismos 32 casos y 36 preguntas por modo que la línea base. Tres corridas: `base` (código anterior, 2026-10-15), `control` (código nuevo con `QUERY_CITED_SOURCES=off`) y `citas` (código nuevo con la opción en `on`). El control sirve para comprobar que apagada no cambia nada y para estimar el ruido entre corridas. Gasto: control 0,127 USD y citas 0,183 USD.
+
+| Criterio | Meta | Resultado | Veredicto |
+|---|---|---|---|
+| SC-001 fuentes que no aportaron por consulta | bajar al menos 50 % | literal 1,28 (control) a 0,28 (-78 %); razonamiento 2,69 a 0,47 (-82 %). Contra `base`: 1,39 a 0,28 y 2,69 a 0,47 | Cumple |
+| SC-002 batería del MVP | los 19 casos bien y su documento esperado | 30 de 30 consultas de los 15 casos que esperan respuesta correctas (15 casos por 2 modos) y los 4 de "sin información" correctos | Cumple |
+| SC-003 "sin información" | los mismos casos | el resultado (respondió, sin información) es idéntico al control en las 72 consultas | Cumple |
+| SC-004 costo medio | no sube más de 5 % | literal: 0,00076 USD frente a 0,00074 (base) y 0,00077 (control), mediana de la razón por caso 1,009 frente a `base` y 0,993 frente al control. Razonamiento: 0,00432 USD frente a 0,00624 (base) y 0,00277 (control), que ya difieren 2,3 veces entre sí; mediana de la razón 0,922 frente a `base` y 1,175 frente al control; los tokens totales medianos casi no cambian (11.143 a 11.231, +0,8 %) | Cumple en literal. En razonamiento el costo no se puede separar del ruido de la medición (rango por caso de 0,3 a 9,9 veces); los tokens, que son más estables, suben menos de 1 % |
+| SC-005 latencia p50 | no sube más de 10 % | literal 1.695 ms frente a 1.694 (base) y 1.760 (control). Razonamiento 3.346 ms frente a 3.381 (base) y 2.625 (control): mediana de la razón 0,899 frente a `base` y 1,086 frente al control | Cumple en literal; en razonamiento queda dentro del ruido (base y control difieren 29 % entre sí) |
+| SC-006 regla de seguridad | 10 % o menos | 1 de 46 respuestas con contenido (2,2 %): `X1` en literal; en razonamiento ninguna | Cumple |
+| SC-007 nunca sin fuentes | ninguna respuesta con contenido sin fuentes | ninguna | Cumple |
+| SC-008 apagada no cambia nada | cero diferencias de documentos mostrados | `base` contra `control`: una sola diferencia, `S22-2` en literal (respondió con 4 fuentes en una corrida y "sin información" en la otra, variación del modelo); los demás documentos mostrados son idénticos | Cumple |
+| SC-009 verificación por una persona | 3 respuestas | pendiente (la comprobación manual la hace el usuario) | Pendiente |
+
+**Fuentes que siguen apareciendo de más** (sobre los documentos marcados por una sola persona, así que algunos pueden haber aportado de verdad): `A1` y `IN3` muestran además el acta 03-2026; `K2` el acta CUP_001-2025; `X1` en literal cuatro documentos de Ciberseguridad (el caso es multi-programa); `SG1` y `P2` e `IN2` el plan de estudios de Ciberseguridad; `U1`, `U2`, `U4` y `SG2` el documento final del programa o el de IPA en Big Data. Quedan a validación del usuario.
+
+**Un incidente de la medición, que conviene recordar:** la primera corrida con la opción encendida no midió nada, porque cambiar una variable con `railway variable set` (sin `--skip-deploys`) hace que Railway **redespliegue desde la rama `main` de GitHub y no desde el código subido con `railway up`**: el servicio volvió a correr el código anterior sin que ningún mensaje lo avisara. Se detectó porque los tokens por consulta eran idénticos a los del control y los metadatos del despliegue mostraban el commit de `main`. La corrida se descartó (quedó guardada como `...-citas-invalida-codigo-main`, 0,09 USD) y se repitió cambiando la variable con `--skip-deploys` y redesplegando con `servicios.py encender --ref origin/dev`. Ver OPERACION.md.
+
+**Recomendación:** la opción reduce las fuentes que no aportaron en alrededor de 80 % sin cambiar ninguna respuesta ni subir el costo ni la latencia de forma medible, y la regla de seguridad se aplicó en el 2 % de las respuestas. Es seguro encenderla. La decisión de dejarla encendida por defecto es del usuario; apagada sigue siendo el valor por defecto de la configuración.

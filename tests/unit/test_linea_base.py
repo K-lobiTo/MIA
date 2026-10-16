@@ -587,7 +587,7 @@ def test_comparar_medianas_de_razon_de_costo_y_latencia():
 
 
 def test_comparar_informa_cambios_de_la_regla_de_seguridad_y_de_fuentes():
-    a = {"puntajes": None, "respuestas": {"resultados": [_resp("A", "literal", 0.01, 1000, sobrantes=3, mostradas=4)]}}
+    a = {"puntajes": None, "respuestas": {"resultados": [_resp("A", "literal", 0.01, 1000, sobrantes=3, mostradas=4, regla=False)]}}
     b = {"puntajes": None, "respuestas": {"resultados": [_resp("A", "literal", 0.01, 1000, sobrantes=0, regla=True)]}}
     cambios = lb.comparar(a, b)["cambios"]
     assert any("regla_de_seguridad" in c for c in cambios)
@@ -602,3 +602,9 @@ def test_comparar_corridas_viejas_sin_regla_de_seguridad_no_falla():
     a = {"puntajes": None, "respuestas": {"resultados": [_resp("A", "literal", 0.01, 1000)]}}
     del a["respuestas"]["resultados"][0]["regla_de_seguridad"]
     assert lb.comparar(a, a)["cambios"] == []
+
+
+def test_comparar_ignora_la_regla_de_seguridad_desconocida_en_una_corrida():
+    a = {"puntajes": None, "respuestas": {"resultados": [_resp("A", "literal", 0.01, 1000, regla=None)]}}
+    b = {"puntajes": None, "respuestas": {"resultados": [_resp("A", "literal", 0.01, 1000, regla=False)]}}
+    assert lb.comparar(a, b)["cambios"] == []

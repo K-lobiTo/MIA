@@ -510,6 +510,8 @@ def comparar(a: dict, b: dict) -> dict:
             x, y = xa[clave], xb[clave]
             nombre = f"{clave[0]} ({clave[1]}), modo {clave[2]}"
             for campo in ("resultado", "correcto", "fuentes_mostradas", "fuentes_sobrantes", "regla_de_seguridad"):
+                if campo == "regla_de_seguridad" and (x.get(campo) is None or y.get(campo) is None):
+                    continue  # dato desconocido en una de las corridas (p. ej. anteriores a la 006): no es un cambio
                 if x.get(campo) != y.get(campo):
                     cambios.append(f"{nombre}: {campo} {x.get(campo)} -> {y.get(campo)}.")
         medianas = _medianas_de_razon(xa, xb)
