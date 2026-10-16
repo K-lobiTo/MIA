@@ -78,4 +78,6 @@ Todas las incógnitas de la spec quedaron resueltas; no hay marcadores `NEEDS CL
 
 **Decisión**: se reutiliza la herramienta de la feature 005 con una etiqueta nueva (`citas`) para comparar contra `base`: fuentes sobrantes, resultado de cada caso, costo y latencia. Se extiende `respuestas` para registrar en cada consulta si rigió la regla de seguridad (leyendo `reject_reason` del detalle de Uso, que ya consulta para el costo), y el informe y `comparar` la muestran. `puntajes` no hace falta repetirlo: la recuperación no cambia.
 
+**Ruido de la medición**: el costo de una consulta con razonamiento varía hasta 50 veces entre consultas y no es el mismo entre corridas, así que con 36 consultas por modo un 5 % puede ser azar. Por eso se corre un **control** (el código nuevo con la opción apagada) además de `base`: sirve para comprobar SC-008 y para estimar el ruido, y la comparación de costo y de latencia se hace contra el promedio de ambas y por la mediana de la razón caso por caso.
+
 **Condición de la corrida**: se enciende la variable en Railway solo durante la medición y se vuelve a apagar, salvo que el usuario decida dejarla encendida.

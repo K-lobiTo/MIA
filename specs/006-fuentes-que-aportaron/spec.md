@@ -125,11 +125,11 @@ Quien opera MIA repite la medición de la feature 005 con la opción encendida y
 - **SC-001**: Con la opción encendida y el mismo conjunto de casos de la línea base, el promedio de fuentes que no aportaron por consulta baja al menos 50 % en cada modo (de 1,39 a 0,70 o menos en literal, y de 2,69 a 1,35 o menos en razonamiento).
 - **SC-002**: Los 19 casos de la batería del MVP siguen respondiendo bien en los dos modos (como hoy) y cada caso que espera respuesta sigue mostrando el documento esperado entre sus fuentes.
 - **SC-003**: Los casos que hoy responden "sin información" siguen respondiéndolo y los que hoy responden con contenido no pasan a "sin información" (diferencias atribuibles solo al comportamiento no determinista del modelo, que se confirman repitiendo el caso).
-- **SC-004**: El costo medio por consulta de cada modo, medido con el módulo Uso, no sube más de 5 % respecto a la línea base (0,00074 USD en literal y 0,00624 USD en razonamiento), y los topes de gasto siguen operando.
-- **SC-005**: La latencia p50 de cada modo no sube más de 10 % respecto a la línea base (1,7 s en literal y 3,4 s en razonamiento).
+- **SC-004**: El costo medio por consulta de cada modo, medido con el módulo Uso, no sube más de 5 % respecto a la línea base (0,00074 USD en literal y 0,00624 USD en razonamiento), y los topes de gasto siguen operando. Como el costo de una consulta con razonamiento varía mucho entre consultas y entre corridas, se compara contra el promedio de dos corridas de referencia (la línea base y un control con la opción apagada), y además por la mediana de la razón de costo caso por caso, para no confundir el ruido entre corridas con un efecto de la opción.
+- **SC-005**: La latencia p50 de cada modo no sube más de 10 % respecto a la línea base (1,7 s en literal y 3,4 s en razonamiento), con la misma comparación contra las dos corridas de referencia que SC-004.
 - **SC-006**: En la corrida de verificación, la regla de seguridad (sin citas utilizables) se aplica en no más del 10 % de las respuestas con contenido.
 - **SC-007**: Ninguna respuesta con contenido queda sin fuentes en toda la corrida de verificación.
-- **SC-008**: Con la opción apagada, repetir la línea base da la misma lista de fuentes por caso que antes de la feature (cero diferencias en documentos mostrados).
+- **SC-008**: Con la opción apagada, repetir la línea base da la misma lista de fuentes por caso que antes de la feature (cero diferencias en documentos mostrados). Se verifica con la corrida de control en producción y con las pruebas automáticas de la opción apagada.
 - **SC-009**: Una persona de Coordinación, ante tres respuestas filtradas al azar, puede identificar en cada una de qué documento sale la afirmación principal revisando solo las fuentes mostradas.
 
 ## Assumptions
