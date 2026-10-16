@@ -164,7 +164,7 @@ Contra los documentos que marqué como esperados por caso (una sola persona los 
 | Una "sin información" cortada por umbral | 0 | 0 |
 | Una "sin información" decidida por el modelo | 0,0008 a 0,0010 USD | 0,0006 a 0,0208 USD |
 
-La corrida completa (72 consultas) costó **0,2514 USD** y coincide con el aumento del total de Uso del artefacto en esa ventana (0,2514 USD). La comprobación independiente contra el detalle de gasto de OpenRouter (criterio 15 de V2) la debe hacer el usuario.
+La corrida completa (72 consultas) costó **0,2514 USD** y coincide con el aumento del total de Uso del artefacto en esa ventana (0,2514 USD). La comprobación independiente se hizo el mismo día en OpenRouter *Activity*: 0,242 USD en GLM 5.3 (modo razonamiento) y 0,27 USD en total con el modelo Flash (modo literal). Ese total equivale a la corrida (0,2514) más una prueba previa de tres casos del mismo día (0,0187), 0,2701 USD en el módulo Uso: diferencia menor al 1 %. Con eso se cerró también el criterio 15 de V2.
 
 ### Datos para las decisiones de la sección 2.8 de V3
 

@@ -423,12 +423,12 @@ Se armó leyendo la evidencia escrita (no se volvieron a ejecutar las pruebas): 
 | 12 | Cumplido | Regenerar (la anterior da 401), desactivar y reactivar (002, paso 5; 003, paso 6). |
 | 13 | Cumplido | Un cambio de tope hecho en el panel rige en la consulta siguiente (002, paso 5; 003, paso 6). |
 | 14 | Cubierto por pruebas | `test_query_access.py::test_el_tope_de_toda_la_api_bloquea_a_todos_aunque_no_alcancen_el_suyo`. |
-| 15 | **Sin constancia** | El paso está en el checklist (002, paso 6.5: comparar con el panel *Activity* de OpenRouter, diferencia menor al 5 %) pero no consta su resultado. El módulo Uso se verificó contra lo que calcula la API, no contra OpenRouter. |
+| 15 | Cumplido | 2026-10-15, durante la línea base de la búsqueda ([LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md)): 74 consultas desde dos artefactos (Consulta Postgrados Computación y PRUEBA Aceptación ambas unidades) sumaron 0,2701 USD en el módulo Uso (0,2514 de la corrida más 0,0187 de una prueba previa) y OpenRouter *Activity* mostró 0,242 en GLM 5.3 y 0,27 en total con el modelo Flash: diferencia menor al 1 %. |
 | 16 | Cumplido | El registro muestra las rechazadas con su motivo (002, paso 6; `test_usage.py`). |
 | 17 | Cumplido | Cada instancia ve solo sus dominios; consultar los de la otra da 403, en los dos sentidos (003, paso 5). |
 | 18 | Cumplido de forma indirecta | Con datos reales de producción la Unidad de Postgrados de Computación tiene 7 dominios y el Área de Analítica de Negocios 4, y la batería da 19 de 19 con los dominios nuevos, incluido el caso de Tesis (PRUEBAS_MVP, 2026-10-08). No consta por escrito el recuento de los 162 documentos en "Listo" después de reorganizar en producción. |
 
-**Resumen:** de los 18 criterios, 10 están cumplidos con datos reales o en un navegador (3, 6, 7, 8, 10, 11, 12, 13, 16 y 17; el 7 en lo esencial), 4 solo con pruebas automáticas (1, 5, 9 y 14), 1 de forma indirecta (18), 1 es parcial (2), 1 fue superado (4) y 1 no tiene constancia (15). Lo que falta para cerrarlos del todo: probar el criterio 1 en producción, una pregunta real sobre documentos recién subidos (2), y comparar el gasto del módulo Uso con el de OpenRouter (15).
+**Resumen:** de los 18 criterios, 11 están cumplidos con datos reales o en un navegador (3, 6, 7, 8, 10, 11, 12, 13, 15, 16 y 17; el 7 en lo esencial), 4 solo con pruebas automáticas (1, 5, 9 y 14), 1 de forma indirecta (18), 1 es parcial (2) y 1 fue superado (4). Lo que falta para cerrarlos del todo: probar el criterio 1 en producción y una pregunta real sobre documentos recién subidos (2). El criterio 15 se cerró el 2026-10-15.
 
 ## 9. Decisiones pendientes
 
