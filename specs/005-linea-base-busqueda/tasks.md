@@ -140,7 +140,7 @@ description: "Tareas de implementación de la línea base de la búsqueda"
 - [X] T039 [P] Agregar a [docs/PRUEBAS_MVP.md](../../docs/PRUEBAS_MVP.md) una nota que remita al conjunto de `scripts/datos/casos_busqueda.json` y al informe de la línea base para las mediciones de búsqueda posteriores a la versión 2
 - [X] T040 Correr `ruff check scripts tests` y `pytest` completo; corregir lo que falle. Verificar con `git diff --stat main..dev -- src alembic` que no hay cambios en `src/` ni en migraciones (FR-016) y con `grep -rnP "\x{2014}" scripts/linea_base.py scripts/datos/casos_busqueda.json docs/LINEA_BASE_BUSQUEDA.md specs/005-linea-base-busqueda` que no hay ningún guion largo
 - [X] T041 Revisar por muestreo `tmp/linea_base/*/` y `docs/LINEA_BASE_BUSQUEDA.md` para confirmar que no contienen texto de fragmentos ni de respuestas (SC-004). Marcar los criterios de aceptación de la sección 2.9 de V3 que esta feature deja medibles
-- [ ] T042 Hacer commit en `dev` por etapa (herramienta, casos, informe, documentación) con mensajes en español sin atribución y `git push origin dev`. Pedir al usuario si quiere apagar la API de Railway y dejar `main` para después (el merge lo hace él)
+- [X] T042 Hacer commit en `dev` por etapa (herramienta, casos, informe, documentación) con mensajes en español sin atribución y `git push origin dev`. Pedir al usuario si quiere apagar la API de Railway y dejar `main` para después (el merge lo hace él)
 
 ---
 
