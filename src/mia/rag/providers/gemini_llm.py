@@ -2,7 +2,7 @@ from google import genai
 from google.genai import types
 
 from mia.config import settings
-from mia.rag.llm import RAG_SYSTEM_PROMPT, LLMAnswer, LLMProvider, RagContext
+from mia.rag.llm import RAG_SYSTEM_PROMPT, LLMAnswer, LLMProvider, RagContext, format_context
 
 MODEL = "gemini-3.5-flash-lite"
 
@@ -24,9 +24,7 @@ class GeminiLLMProvider(LLMProvider):
     def answer(
         self, question: str, context: list[RagContext], instructions: str = RAG_SYSTEM_PROMPT
     ) -> LLMAnswer:
-        context_block = "\n\n".join(
-            f"[Fuente: dominio={c.domain}, documento={c.document}]\n{c.excerpt}" for c in context
-        )
+        context_block = format_context(context)
         interaction = self._client.interactions.create(
             model=MODEL,
             system_instruction=instructions,

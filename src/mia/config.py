@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     # Documentos de hasta esta cantidad de fragmentos (~800 caracteres nuevos cada uno) se pasan
     # completos al LLM si alguno de sus fragmentos es relevante. 0 lo desactiva.
     query_full_document_max_chunks: int = 12
+    # Mostrar solo las fuentes que el modelo dice haber usado (línea FUENTES: al final de su respuesta) en
+    # lugar de todas las que se le entregaron. Es texto y no bool para que un valor inválido no impida el
+    # arranque: se interpreta en mia.rag.citations.cited_sources_enabled ("on"/"off"; otro valor = off).
+    query_cited_sources: str = "off"
 
     # En Render free (512 MB) ingerir actas grandes agota la memoria: allí se desactiva y la ingesta
     # se hace desde una instancia local apuntando a las mismas bases (ver docs/OPERACION.md).

@@ -36,6 +36,7 @@ Guía práctica para desplegar, cargar documentos y mantener funcionando el prot
 | `LLM_PRICE_IN_*` / `LLM_PRICE_OUT_*` | `0` | USD por millón de tokens; solo estiman el costo si el proveedor no lo informa | no se usa |
 | `CORS_ORIGINS` | vacía (el panel usa el proxy de Vite) | direcciones de los sitios estáticos, separadas por comas | no se usa |
 | `QUERY_SEARCH_LIMIT` / `QUERY_SEARCH_LIMIT_RAZONAMIENTO` | `8` / `16` | resultados de la búsqueda en modo literal y con razonamiento (de 1 a 50) | no se usa al ingerir |
+| `QUERY_CITED_SOURCES` | `off` | `off` por defecto; `on` hace que la respuesta liste solo las fuentes que el modelo dice haber usado (ver más abajo) | no se usa |
 | `MAX_UPLOAD_MB` | `25` | `25` | `25` |
 | `OPENROUTER_MANAGEMENT_KEY` | vacía | vacía (no recomendada, ver "Topes de gasto y saldo") | no se usa |
 
@@ -350,6 +351,14 @@ Subir dos veces el mismo archivo al mismo dominio (en cualquier carpeta) no dupl
 
 Si un documento queda en `error`, ver el log de la API local (el mensaje empieza con "Fallo indexando documento"). Un documento que quedó en `processing` porque se cortó la API no se reintenta solo; hoy la forma de reintentar es borrar esa fila en Neon y sus puntos en Qdrant (filtro `document_id`) y volver a subir el archivo.
 
+## Mostrar solo las fuentes que aportaron (`QUERY_CITED_SOURCES`)
+
+Por defecto la respuesta lista como fuentes todos los pasajes que se le entregaron al modelo. Con `QUERY_CITED_SOURCES=on` se numeran los pasajes, se le pide al modelo cerrar la respuesta con una línea `FUENTES: 1, 3` y la API **quita esa línea del texto, la valida y lista solo esos pasajes**. Si no hay ninguna cita válida (el modelo no escribió la línea, escribió números inexistentes o se cortó), se listan todos, como siempre, y la consulta queda anotada en el módulo Uso con la nota `Fuentes: sin citas utilizables, se mostraron todas`.
+
+- Se cambia en las variables del servicio `MIA` en Railway y se reinicia (no hay migraciones ni despliegue de código). Volver a `off` devuelve el comportamiento anterior.
+- Cualquier valor que no sea `on`, `true`, `1`, `yes`, `off`, `false`, `0`, `no` o vacío se trata como apagado y deja un aviso en el registro del servidor.
+- Es una opción de prueba: se mide con `scripts/linea_base.py respuestas` y `comparar` (ver "Medir la búsqueda") antes de dejarla encendida. Diseño y criterios en `specs/006-fuentes-que-aportaron/`.
+
 ## Medir la búsqueda (línea base)
 
 `scripts/linea_base.py` mide la recuperación y la respuesta de MIA para comparar mejoras (ver `specs/005-linea-base-busqueda/quickstart.md` y [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md)). Se corre desde la raíz con el entorno virtual activado:
@@ -371,6 +380,7 @@ python scripts/linea_base.py comparar base mejora-1                             
 
 | Síntoma | Causa probable | Qué hacer |
 |---|---|---|
+| El módulo Uso muestra la nota "Fuentes: sin citas utilizables, se mostraron todas" en muchas consultas | Con `QUERY_CITED_SOURCES=on`, el modelo no escribió la línea `FUENTES:` (o la escribió con números inexistentes) y se listaron todas las fuentes, como con la opción apagada | Medirlo con `scripts/linea_base.py respuestas` (la herramienta cuenta la proporción); si pasa en más del 10 % de las respuestas, la opción no está aportando: apagarla con `QUERY_CITED_SOURCES=off` o ajustar la redacción de `CITATION_INSTRUCTIONS` en `src/mia/rag/citations.py` |
 | Render se reinicia con "Out of memory" | Se ingirió en Render, o se cambió a un modelo más pesado | Mantener `INGESTION_ENABLED=false` en Render e ingerir localmente |
 | Un sitio (Consulta o panel) responde 502 | El puerto del dominio no coincide con el que escucha el sitio (Railway inyecta `PORT=8080`) | Variable `PORT=3000` en el servicio y deploy; el puerto del dominio debe ser 3000 |
 | La Consulta o el panel dicen "No se pudo conectar" | La dirección del sitio no está en `CORS_ORIGINS`, o `VITE_API_URL` no lleva `https://` | Corregir la variable (la de CORS en la API, la otra en el sitio) y desplegar |

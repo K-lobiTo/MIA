@@ -1,7 +1,7 @@
 from openai import OpenAI
 
 from mia.config import settings
-from mia.rag.llm import RAG_SYSTEM_PROMPT, LLMAnswer, LLMProvider, RagContext
+from mia.rag.llm import RAG_SYSTEM_PROMPT, LLMAnswer, LLMProvider, RagContext, format_context
 
 MODEL = "glm-5.3"
 # La API de Z.ai es compatible con la de OpenAI: se usa su SDK cambiando la URL base.
@@ -19,9 +19,7 @@ class GLMLLMProvider(LLMProvider):
     def answer(
         self, question: str, context: list[RagContext], instructions: str = RAG_SYSTEM_PROMPT
     ) -> LLMAnswer:
-        context_block = "\n\n".join(
-            f"[Fuente: dominio={c.domain}, documento={c.document}]\n{c.excerpt}" for c in context
-        )
+        context_block = format_context(context)
         completion = self._client.chat.completions.create(
             model=MODEL,
             messages=[

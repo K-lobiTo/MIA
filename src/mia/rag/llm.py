@@ -54,6 +54,21 @@ class RagContext:
     domain: str
     document: str
     excerpt: str
+    # Número del pasaje dentro de la consulta (de 1 a N). Nulo cuando no se piden citas al modelo:
+    # entonces el contexto se formatea como siempre (ver format_context).
+    reference: int | None = None
+
+
+def format_context(context: list["RagContext"]) -> str:
+    """Bloque de contexto que se le entrega al modelo, igual para todos los proveedores.
+
+    Sin `reference` la etiqueta es `[Fuente: dominio=..., documento=...]` (el formato de siempre); con
+    `reference` lleva el número: `[Fuente 3: dominio=..., documento=...]`.
+    """
+    return "\n\n".join(
+        f"[Fuente{'' if c.reference is None else f' {c.reference}'}: dominio={c.domain}, documento={c.document}]\n{c.excerpt}"
+        for c in context
+    )
 
 
 @dataclass

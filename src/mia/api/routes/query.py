@@ -14,6 +14,13 @@ from mia.access.caps import CapStatus, check_caps, seconds_until
 from mia.access.permissions import allowed_domain_ids, allowed_modes
 from mia.api.security import require_artifact
 from mia.config import settings
+from mia.rag.citations import (
+    CITATION_INSTRUCTIONS,
+    SAFETY_RULE_NOTE,
+    cited_sources_enabled,
+    parse_citations,
+    select_sources,
+)
 from mia.rag.context import build_passages
 from mia.rag.embeddings import get_embedding_provider
 from mia.rag.llm import RagContext, get_llm_provider, is_no_info_answer
@@ -176,21 +183,33 @@ def query(
         settings.query_full_document_max_chunks,
     )
 
+    # Con QUERY_CITED_SOURCES encendida los pasajes se numeran y se le pide al modelo que cite los que usó.
+    # Se lee en cada consulta, así que cambiar la variable y reiniciar el servicio basta.
+    cite_sources = cited_sources_enabled(settings.query_cited_sources)
+
     sources: list[Source] = []
     context: list[RagContext] = []
-    for passage in passages:
+    for position, passage in enumerate(passages, start=1):
         document = session.get(Document, passage.document_id)
         domain = session.get(Domain, passage.domain)
         document_label = document.filename if document else passage.document_id
         domain_label = domain.name if domain else passage.domain
         sources.append(Source(domain=domain_label, document=document_label, excerpt=passage.text))
         context.append(
-            RagContext(domain=domain_label, document=document_label, excerpt=passage.text)
+            RagContext(
+                domain=domain_label,
+                document=document_label,
+                excerpt=passage.text,
+                reference=position if cite_sources else None,
+            )
         )
 
     try:
         llm_provider = get_llm_provider(config.provider, config.model, config.reasoning_effort)
-        answer = llm_provider.answer(payload.question, context, instructions=config.instructions)
+        instructions = config.instructions
+        if cite_sources:
+            instructions = f"{instructions}\n\n{CITATION_INSTRUCTIONS}"
+        answer = llm_provider.answer(payload.question, context, instructions=instructions)
     except Exception as exc:
         # Sin esto el motivo real (clave inválida, modelo inexistente, timeout...) no queda en el log.
         logger.exception("Falló el proveedor de LLM (%s, modo %s)", config.provider, payload.mode)
@@ -215,7 +234,20 @@ def query(
         log.cost_usd = estimate_cost(payload.mode, answer.prompt_tokens, answer.completion_tokens)
         log.cost_estimated = True
 
-    if is_no_info_answer(answer.text):
+    answer_text = answer.text
+    if cite_sources:
+        # Se quita la línea FUENTES: del texto y se eligen las fuentes que el modelo dice haber usado.
+        parsed = parse_citations(answer.text, len(passages))
+        answer_text = parsed.text
+        selection = select_sources(parsed, len(passages))
+        sources = [sources[i - 1] for i in selection.indexes]
+        if parsed.invalid:
+            logger.info("El modelo citó fragmentos inexistentes: %s (entregados: %d)", parsed.invalid, len(passages))
+        if selection.safety_rule and not is_no_info_answer(answer_text):
+            # Sin citas utilizables se listan todas las fuentes; la nota permite medir con qué frecuencia pasa.
+            log.reject_reason = SAFETY_RULE_NOTE
+
+    if is_no_info_answer(answer_text):
         return no_info(model=log.model)
 
     log.outcome = "answered"
@@ -227,7 +259,7 @@ def query(
     session.add(log)
     session.commit()
     return QueryResponse(
-        id=log.id, answer=answer.text, sources=sources, mode=payload.mode, latency_ms=log.latency_ms
+        id=log.id, answer=answer_text, sources=sources, mode=payload.mode, latency_ms=log.latency_ms
     )
 
 

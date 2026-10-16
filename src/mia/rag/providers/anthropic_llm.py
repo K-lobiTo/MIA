@@ -1,7 +1,7 @@
 import anthropic
 
 from mia.config import settings
-from mia.rag.llm import RAG_SYSTEM_PROMPT, LLMAnswer, LLMProvider, RagContext
+from mia.rag.llm import RAG_SYSTEM_PROMPT, LLMAnswer, LLMProvider, RagContext, format_context
 
 MODEL = "claude-sonnet-5"
 
@@ -13,9 +13,7 @@ class AnthropicLLMProvider(LLMProvider):
     def answer(
         self, question: str, context: list[RagContext], instructions: str = RAG_SYSTEM_PROMPT
     ) -> LLMAnswer:
-        context_block = "\n\n".join(
-            f"[Fuente: dominio={c.domain}, documento={c.document}]\n{c.excerpt}" for c in context
-        )
+        context_block = format_context(context)
         message = self._client.messages.create(
             model=MODEL,
             max_tokens=16000,
