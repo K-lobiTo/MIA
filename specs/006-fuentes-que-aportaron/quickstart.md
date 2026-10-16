@@ -23,7 +23,7 @@ Requisitos: `.env` con `MIA_ARTIFACT_KEY` (artefacto de prueba con acceso a los 
 
 ```bash
 # 1. Encender la opción y la API (solo para medir)
-railway variables -s MIA --set QUERY_CITED_SOURCES=on
+railway variable set QUERY_CITED_SOURCES=on -s MIA --skip-deploys
 python scripts/servicios.py encender MIA --forzar
 # 2. Medir los 32 casos en los dos modos
 python scripts/linea_base.py respuestas --etiqueta citas --url https://mia-main.up.railway.app --tope-usd 0.40
@@ -31,7 +31,7 @@ python scripts/linea_base.py respuestas --etiqueta citas --url https://mia-main.
 python scripts/linea_base.py comparar base citas
 python scripts/linea_base.py informe citas
 # 4. Volver a apagar
-railway variables -s MIA --set QUERY_CITED_SOURCES=off
+railway variable set QUERY_CITED_SOURCES=off -s MIA --skip-deploys
 python scripts/servicios.py apagar MIA --forzar
 ```
 
