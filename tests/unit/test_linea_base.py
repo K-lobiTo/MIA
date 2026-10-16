@@ -371,3 +371,30 @@ def test_cliente_solo_lectura_bloquea_escrituras():
         getattr(cliente, "upsert")  # noqa: B009
     with pytest.raises(PermissionError):
         getattr(cliente, "delete_collection")  # noqa: B009
+
+
+# --- Archivo real de casos ----------------------------------------------------------
+
+
+def _cargar_bateria():
+    return _cargar("pruebas_mvp")
+
+
+def test_archivo_de_casos_real():
+    casos = lb.cargar_casos()
+    por_id = {c["id"]: c for c in casos}
+    # Toda la batería del MVP está con la misma pregunta, dominios y resultado esperado (FR-002, SC-001).
+    for original in _cargar_bateria().CASOS:
+        caso = por_id[original.id]
+        assert caso["pregunta"] == original.pregunta
+        assert caso["dominios"] == original.dominios
+        assert caso["espera"] == original.espera
+        assert caso["categoria"] == "mvp"
+
+
+def test_archivo_de_casos_cubre_las_categorias():
+    casos = lb.cargar_casos()
+    for categoria in ("indirecta", "sigla", "sin_respuesta"):
+        assert sum(1 for c in casos if c["categoria"] == categoria) >= 3
+    con_variante = [c for c in casos if c["categoria"] == "seccion_2_2" and c.get("variante_corta")]
+    assert len(con_variante) >= 2

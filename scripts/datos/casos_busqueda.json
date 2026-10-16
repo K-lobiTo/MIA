@@ -248,5 +248,185 @@
     ],
     "pregunta": "¿Qué se discutió sobre becas en caso de superar los 25 estudiantes admitidos?",
     "espera": "sin_informacion"
+  },
+  {
+    "id": "S22-1",
+    "categoria": "seccion_2_2",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Quién es Natalia Soto Solís?",
+    "variante_corta": "Natalia Soto Solís",
+    "espera": "respuesta",
+    "documentos": [
+      "NataliaSoto"
+    ],
+    "nota": "Pregunta de identificación con nombre y apellidos (caso observado el 2026-10-13 con otra persona); la variante corta es solo el nombre."
+  },
+  {
+    "id": "S22-2",
+    "categoria": "seccion_2_2",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum"
+    ],
+    "pregunta": "¿Qué líneas de trabajo final de graduación ofrece la maestría?",
+    "variante_corta": "¿Qué líneas de TFG ofrece la maestría?",
+    "espera": "respuesta",
+    "documentos": [
+      "Líneas de TFG"
+    ],
+    "nota": "Forma desarrollada frente a la sigla (PRUEBAS_MVP 2026-10-06)."
+  },
+  {
+    "id": "S22-3",
+    "categoria": "seccion_2_2",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Quién es Joseph Obando Sandí?",
+    "variante_corta": "Joseph Obando Sandí",
+    "espera": "respuesta",
+    "documentos": [
+      "Joseph Obando"
+    ],
+    "nota": "Misma forma que S22-1 con otra persona."
+  },
+  {
+    "id": "S22-4",
+    "categoria": "seccion_2_2",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Quién es Luis Diego Cubillo Guevara?",
+    "variante_corta": "Luis Diego Cubillo Guevara",
+    "espera": "respuesta",
+    "documentos": [
+      "CUBILLO"
+    ],
+    "nota": "Misma forma que S22-1 con otra persona."
+  },
+  {
+    "id": "IN1",
+    "categoria": "indirecta",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum"
+    ],
+    "pregunta": "¿Qué materias hay que haber aprobado antes de poder llevar Aprendizaje Automático?",
+    "espera": "respuesta",
+    "documentos": [
+      "Aprendizaje Automático"
+    ],
+    "nota": "No usa la palabra requisito."
+  },
+  {
+    "id": "IN2",
+    "categoria": "indirecta",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuántas horas a la semana debo estudiar por mi cuenta en el curso de criptografía?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC1003"
+    ],
+    "nota": "No usa horas extraclase ni el nombre completo del curso."
+  },
+  {
+    "id": "IN3",
+    "categoria": "indirecta",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Memoria del Consejo"
+    ],
+    "pregunta": "¿Cómo se decidió apoyar económicamente a estudiantes si ingresa más gente de la prevista?",
+    "espera": "respuesta",
+    "documentos": [
+      "04-2026"
+    ],
+    "nota": "Paráfrasis de A1 sin becas, 25 ni admitidos."
+  },
+  {
+    "id": "SG1",
+    "categoria": "sigla",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿De qué trata el curso de IPA I?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC1004"
+    ],
+    "nota": "Sigla IPA."
+  },
+  {
+    "id": "SG2",
+    "categoria": "sigla",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum"
+    ],
+    "pregunta": "¿Cuántos créditos tiene el curso de IPA en Big Data?",
+    "espera": "respuesta",
+    "documentos": [
+      "IPA en Big Data"
+    ],
+    "nota": "Sigla IPA."
+  },
+  {
+    "id": "SG3",
+    "categoria": "sigla",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuál es el plan de estudios de la MGTI?",
+    "espera": "respuesta",
+    "documentos": [
+      "Plan 473",
+      "MGTI"
+    ],
+    "nota": "Sigla de la maestría; cualquiera de los dos documentos sirve."
+  },
+  {
+    "id": "SR1",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum",
+      "Área académica de Analítica de Negocios / Memoria del Consejo",
+      "Unidad de Postgrados de Computación / Currículum",
+      "Unidad de Postgrados de Computación / Memoria del Consejo"
+    ],
+    "pregunta": "¿Cuál es el horario de atención de la biblioteca?",
+    "espera": "sin_informacion",
+    "nota": "Tema lejano."
+  },
+  {
+    "id": "SR2",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum",
+      "Área académica de Analítica de Negocios / Memoria del Consejo",
+      "Unidad de Postgrados de Computación / Currículum",
+      "Unidad de Postgrados de Computación / Memoria del Consejo"
+    ],
+    "pregunta": "¿Quién ganó el premio al mejor trabajo de graduación del año pasado?",
+    "espera": "sin_informacion",
+    "nota": "Tema cercano a los documentos pero sin respuesta en ellos."
+  },
+  {
+    "id": "SR3",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum",
+      "Área académica de Analítica de Negocios / Memoria del Consejo",
+      "Unidad de Postgrados de Computación / Currículum",
+      "Unidad de Postgrados de Computación / Memoria del Consejo"
+    ],
+    "pregunta": "¿Qué dice la política de teletrabajo del instituto?",
+    "espera": "sin_informacion",
+    "nota": "Tema institucional ausente."
   }
 ]
