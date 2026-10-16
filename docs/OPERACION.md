@@ -350,6 +350,23 @@ Subir dos veces el mismo archivo al mismo dominio (en cualquier carpeta) no dupl
 
 Si un documento queda en `error`, ver el log de la API local (el mensaje empieza con "Fallo indexando documento"). Un documento que quedó en `processing` porque se cortó la API no se reintenta solo; hoy la forma de reintentar es borrar esa fila en Neon y sus puntos en Qdrant (filtro `document_id`) y volver a subir el archivo.
 
+## Medir la búsqueda (línea base)
+
+`scripts/linea_base.py` mide la recuperación y la respuesta de MIA para comparar mejoras (ver `specs/005-linea-base-busqueda/quickstart.md` y [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md)). Se corre desde la raíz con el entorno virtual activado:
+
+```bash
+python scripts/linea_base.py inventario --env-file .env.produccion                 # dominios, documentos y fragmentos (solo lectura)
+python scripts/linea_base.py puntajes --etiqueta base --env-file .env.produccion   # puntajes y umbrales (solo lectura, sin tokens, unos 15 s)
+python scripts/linea_base.py respuestas --etiqueta base --url https://mia-main.up.railway.app --tope-usd 0.40   # GASTA: exige tope
+python scripts/linea_base.py informe base --salida docs/LINEA_BASE_BUSQUEDA.md     # conserva la sección "Lectura"
+python scripts/linea_base.py comparar base mejora-1                                # diferencias caso por caso
+```
+
+- `puntajes` solo lee: la base y Qdrant de producción (con las credenciales de `.env.produccion`). `respuestas` envía preguntas reales a la API: gasta (la corrida completa de 72 consultas costó unos 0,25 USD) y las preguntas quedan en el registro de Uso. La API debe estar encendida.
+- Las claves salen de `.env`: `MIA_ARTIFACT_KEY` (artefacto con acceso a los dos programas; para esta medición se usó `PRUEBA Aceptación ambas unidades`, que se activa solo mientras se mide) y `MIA_ADMIN_KEY` (para leer el costo y el tope diario).
+- El umbral y los límites se toman del archivo de entorno, no de Railway: antes de dar por buena una medición, comprobar que coinciden (`railway variables -s MIA`).
+- La salida cruda queda en `tmp/linea_base/` (ignorado por git).
+
 ## Problemas frecuentes
 
 | Síntoma | Causa probable | Qué hacer |

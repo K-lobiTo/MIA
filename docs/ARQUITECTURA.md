@@ -123,6 +123,8 @@ El panel de administración y la Consulta administrativa (dos instancias) son lo
 
 `scripts/pruebas_mvp.py` usa la misma API para las pruebas de aceptación ([PRUEBAS_MVP.md](PRUEBAS_MVP.md)).
 
+**Medición de la búsqueda (diagnóstico, fuera del producto).** `scripts/linea_base.py` mide cómo se comporta la recuperación y la respuesta sin cambiar nada de `src/`: `puntajes` repite la parte de recuperación de `POST /query` (mismo embedding de la pregunta, mismos dominios, 50 candidatos y los límites de cada modo) con el cliente de Qdrant envuelto para que solo permita lecturas y la base en modo solo lectura (nunca llama a `init_db()` ni a `ensure_collection()`), y calcula qué casos cambiarían con otros umbrales; `respuestas` corre los casos contra la API como un artefacto y lee el costo del módulo Uso. Los casos están en `scripts/datos/casos_busqueda.json`; la salida cruda queda en `tmp/linea_base/` (ignorado por git) y no contiene texto de fragmentos ni de respuestas. El resultado de referencia está en [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md) (feature `specs/005-linea-base-busqueda/`).
+
 ## Qué funciona hoy vs. qué es interfaz sin implementar
 
 **Funciona (probado con tests unitarios y manualmente contra Qdrant y Gemini reales):**

@@ -1,0 +1,175 @@
+# Línea base de la búsqueda de MIA
+
+Generado de la corrida `base` por `scripts/linea_base.py` (feature [005](../specs/005-linea-base-busqueda/spec.md)). No contiene texto de fragmentos ni de respuestas.
+
+## Contexto de la corrida
+
+- Fecha: 2026-10-15T21:58:56-06:00
+- Commit: `09fc26aac4` (con cambios sin confirmar)
+- Destino: produccion
+- Umbral de similitud declarado: 0.82
+- Resultados de búsqueda por modo: literal 8, razonamiento 16
+- Candidatos pedidos por pregunta: 50
+- Embeddings: local (dimensión 384)
+- Fragmentos por dominio: Unidad de Postgrados de Computación / Apertura de promoción: 0; Unidad de Postgrados de Computación / Currículum: 1723; Unidad de Postgrados de Computación / Docentes: 0; Unidad de Postgrados de Computación / Memoria del Consejo: 429; Unidad de Postgrados de Computación / Proyectos de graduación: Artículos: 853; Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA: 755; Unidad de Postgrados de Computación / Proyectos de graduación: Tesis: 1918; Área académica de Analítica de Negocios / Apertura de promoción: 0; Área académica de Analítica de Negocios / Currículum: 505; Área académica de Analítica de Negocios / Docentes: 0; Área académica de Analítica de Negocios / Memoria del Consejo: 56
+
+## Resultados por caso
+
+| Caso | Categoría | Espera | Mejor puntaje | Posición esperado | Literal (retrieval) | Razonamiento (retrieval) | Literal: correcto / sobrantes / s / USD | Razonamiento: correcto / sobrantes / s / USD |
+|---|---|---|---|---|---|---|---|---|
+| A1 | mvp | respuesta | 0.875 | 1 | responde | responde | sí / 1 / 3.0 / 0.0009 | sí / 2 / 5.7 / 0.0031 |
+| A2 | mvp | respuesta | 0.879 | 2 | responde | responde | sí / 1 / 1.7 / 0.0001 | sí / 2 / 3.8 / 0.0010 |
+| A3 | mvp | respuesta | 0.903 | 1 | responde | responde | sí / 2 / 3.1 / 0.0010 | sí / 3 / 7.0 / 0.0069 |
+| U1 | mvp | respuesta | 0.906 | 1 | responde | responde | sí / 5 / 2.0 / 0.0016 | sí / 9 / 8.7 / 0.0019 |
+| U2 | mvp | respuesta | 0.912 | 1 | responde | responde | sí / 3 / 1.7 / 0.0012 | sí / 6 / 4.8 / 0.0024 |
+| U3 | mvp | respuesta | 0.876 | 1 | responde | responde | sí / 1 / 1.7 / 0.0006 | sí / 1 / 2.8 / 0.0013 |
+| U4 | mvp | respuesta | 0.859 | 1 | responde | responde | sí / 3 / 2.6 / 0.0013 | sí / 4 / 5.4 / 0.0027 |
+| P1 | mvp | respuesta | 0.871 | 2 | responde | responde | sí / 4 / 1.8 / 0.0014 | sí / 6 / 2.5 / 0.0195 |
+| P2 | mvp | respuesta | 0.888 | 4 | responde | responde | sí / 2 / 1.4 / 0.0008 | sí / 4 / 4.7 / 0.0075 |
+| K1 | mvp | respuesta | 0.890 | 1 | responde | responde | sí / 2 / 1.6 / 0.0007 | sí / 5 / 2.9 / 0.0165 |
+| K2 | mvp | respuesta | 0.900 | 1 | responde | responde | sí / 3 / 2.6 / 0.0009 | sí / 4 / 7.2 / 0.0044 |
+| CU1 | mvp | respuesta | 0.900 | 1 | responde | responde | sí / 0 / 4.5 / 0.0013 | sí / 0 / 12.7 / 0.0054 |
+| G1 | mvp | respuesta | 0.886 | 1 | responde | responde | sí / 0 / 2.2 / 0.0009 | sí / 0 / 2.7 / 0.0129 |
+| G2 | mvp | respuesta | 0.905 | 1 | responde | responde | sí / 0 / 5.0 / 0.0008 | sí / 0 / 4.4 / 0.0125 |
+| N1 | mvp | sin_informacion | 0.799 | - | sin_informacion | sin_informacion | sí / 0 / 0.5 / 0.0000 | sí / 0 / 0.4 / 0.0000 |
+| X1 | mvp | respuesta | 0.871 | 2 | responde | responde | sí / 4 / 1.7 / 0.0014 | sí / 6 / 2.5 / 0.0199 |
+| I1 | mvp | sin_informacion | 0.846 | - | responde | responde | sí / 0 / 1.1 / 0.0010 | sí / 0 / 1.8 / 0.0205 |
+| I3 | mvp | sin_informacion | 0.852 | - | responde | responde | sí / 0 / 1.3 / 0.0008 | sí / 0 / 2.3 / 0.0031 |
+| I2 | mvp | sin_informacion | 0.799 | - | sin_informacion | sin_informacion | sí / 0 / 0.4 / 0.0000 | sí / 0 / 0.4 / 0.0000 |
+| S22-1 | seccion_2_2 | respuesta | 0.798 | 3 | sin_informacion | sin_informacion | NO / 0 / 0.5 / 0.0000 | NO / 0 / 0.4 / 0.0000 |
+| S22-1 (corta) | seccion_2_2 | respuesta | 0.833 | 12 | responde | responde | NO / 0 / 1.5 / 0.0001 | sí / 9 / 3.4 / 0.0030 |
+| S22-2 | seccion_2_2 | respuesta | 0.873 | ausente | responde | responde | NO / 4 / 3.1 / 0.0009 | NO / 5 / 9.6 / 0.0053 |
+| S22-2 (corta) | seccion_2_2 | respuesta | 0.850 | 2 | responde | responde | sí / 1 / 5.1 / 0.0011 | sí / 2 / 5.9 / 0.0024 |
+| S22-3 | seccion_2_2 | respuesta | 0.775 | ausente | sin_informacion | sin_informacion | NO / 0 / 0.5 / 0.0000 | NO / 0 / 0.5 / 0.0000 |
+| S22-3 (corta) | seccion_2_2 | respuesta | 0.807 | 15 | sin_informacion | sin_informacion | NO / 0 / 0.5 / 0.0000 | NO / 0 / 0.6 / 0.0000 |
+| S22-4 | seccion_2_2 | respuesta | 0.802 | 19 | sin_informacion | sin_informacion | NO / 0 / 0.7 / 0.0000 | NO / 0 / 0.4 / 0.0000 |
+| S22-4 (corta) | seccion_2_2 | respuesta | 0.827 | 3 | responde | responde | NO / 0 / 1.1 / 0.0002 | NO / 0 / 1.0 / 0.0002 |
+| IN1 | indirecta | respuesta | 0.884 | 2 | responde | responde | sí / 4 / 2.4 / 0.0014 | sí / 8 / 6.4 / 0.0035 |
+| IN2 | indirecta | respuesta | 0.882 | 2 | responde | responde | sí / 3 / 1.6 / 0.0009 | sí / 9 / 11.2 / 0.0317 |
+| IN3 | indirecta | respuesta | 0.838 | 1 | responde | responde | sí / 1 / 3.3 / 0.0008 | sí / 2 / 6.2 / 0.0056 |
+| SG1 | sigla | respuesta | 0.873 | 6 | responde | responde | sí / 3 / 3.8 / 0.0011 | sí / 3 / 6.0 / 0.0034 |
+| SG2 | sigla | respuesta | 0.904 | 2 | responde | responde | sí / 2 / 2.0 / 0.0008 | sí / 6 / 3.6 / 0.0018 |
+| SG3 | sigla | respuesta | 0.900 | ausente, 38 | responde | responde | NO / 1 / 2.8 / 0.0010 | NO / 1 / 7.2 / 0.0050 |
+| SR1 | sin_respuesta | sin_informacion | 0.820 | - | sin_informacion | sin_informacion | sí / 0 / 0.5 / 0.0000 | sí / 0 / 0.4 / 0.0000 |
+| SR2 | sin_respuesta | sin_informacion | 0.827 | - | responde | responde | sí / 0 / 1.4 / 0.0009 | sí / 0 / 1.5 / 0.0006 |
+| SR3 | sin_respuesta | sin_informacion | 0.839 | - | responde | responde | sí / 0 / 1.9 / 0.0009 | sí / 0 / 2.4 / 0.0208 |
+
+## Ventana de separación (BUS-3)
+
+- Mayor mejor puntaje entre los casos que esperan "sin información": 0.852 (caso I3).
+- Sin contar los casos de aislamiento de dominio: 0.839 (caso SR3).
+- Menor puntaje del documento esperado entre los casos que esperan respuesta: 0.781 (caso S22-4).
+- ¿Algún umbral separa ambos grupos?: no.
+- Casos cuyo documento esperado no aparece entre los candidatos: S22-2, S22-3.
+
+## Pregunta completa frente a variante corta
+
+| Caso | Completa | Distancia al umbral | Corta | Distancia al umbral |
+|---|---|---|---|---|
+| S22-1 | 0.798 | -0.022 | 0.833 | 0.013 |
+| S22-2 | 0.873 | 0.053 | 0.850 | 0.030 |
+| S22-3 | 0.775 | -0.045 | 0.807 | -0.013 |
+| S22-4 | 0.802 | -0.018 | 0.827 | 0.007 |
+
+## Barrido de umbrales
+
+Modo literal (casos cuyo resultado cambia frente a 0.82):
+
+| Umbral | Pasan a responder | Pasan a "sin información" |
+|---|---|---|
+| 0.60 a 0.77 | N1, I2, S22-1, S22-3, S22-4, SR1 | - |
+| 0.78 a 0.79 | N1, I2, S22-1, S22-4, SR1 | - |
+| 0.80 | S22-4, SR1 | - |
+| 0.81 | SR1 | - |
+| 0.83 | - | SR2 |
+| 0.84 | - | IN3, SR2, SR3 |
+| 0.85 | - | I1, IN3, SR2, SR3 |
+| 0.86 a 0.87 | - | U4, I1, I3, IN3, SR2, SR3 |
+| 0.88 | - | A1, A2, U3, U4, P1, X1, I1, I3, S22-2, IN3, SG1, SR2, SR3 |
+| 0.89 | - | A1, A2, U3, U4, P1, P2, G1, X1, I1, I3, S22-2, IN1, IN2, IN3, SG1, SR2, SR3 |
+| 0.90 | - | A1, A2, U3, U4, P1, P2, K1, CU1, G1, X1, I1, I3, S22-2, IN1, IN2, IN3, SG1, SG3, SR2, SR3 |
+
+Modo razonamiento (casos cuyo resultado cambia frente a 0.82):
+
+| Umbral | Pasan a responder | Pasan a "sin información" |
+|---|---|---|
+| 0.60 a 0.77 | N1, I2, S22-1, S22-3, S22-4, SR1 | - |
+| 0.78 a 0.79 | N1, I2, S22-1, S22-4, SR1 | - |
+| 0.80 | S22-4, SR1 | - |
+| 0.81 | SR1 | - |
+| 0.83 | - | SR2 |
+| 0.84 | - | IN3, SR2, SR3 |
+| 0.85 | - | I1, IN3, SR2, SR3 |
+| 0.86 a 0.87 | - | U4, I1, I3, IN3, SR2, SR3 |
+| 0.88 | - | A1, A2, U3, U4, P1, X1, I1, I3, S22-2, IN3, SG1, SR2, SR3 |
+| 0.89 | - | A1, A2, U3, U4, P1, P2, G1, X1, I1, I3, S22-2, IN1, IN2, IN3, SG1, SR2, SR3 |
+| 0.90 | - | A1, A2, U3, U4, P1, P2, K1, CU1, G1, X1, I1, I3, S22-2, IN1, IN2, IN3, SG1, SG3, SR2, SR3 |
+
+## Respuesta completa
+
+- Corrida del 2026-10-15T22:12:18-06:00 contra produccion, artefacto "PRUEBA Aceptación ambas unidades", modos literal, razonamiento, tope de la corrida 0.4 USD, gasto 0.2514 USD.
+
+### Modo literal
+
+- Consultas: 36; correctos: 28; fallidos: S22-1, S22-1, S22-2, S22-3, S22-3, S22-4, S22-4, SG3; no concluyentes: ninguno.
+- Fuentes sobrantes promedio: 1.39.
+- Latencia p50 / p95: 1694 ms / 4953 ms.
+- Costo medio por consulta: 0.000744 USD; el de las que terminan en "sin información": 0.000306 USD.
+- Gasto total: 0.0268 USD.
+
+### Modo razonamiento
+
+- Consultas: 36; correctos: 29; fallidos: S22-1, S22-2, S22-3, S22-3, S22-4, S22-4, SG3; no concluyentes: ninguno.
+- Fuentes sobrantes promedio: 2.69.
+- Latencia p50 / p95: 3381 ms / 11214 ms.
+- Costo medio por consulta: 0.006241 USD; el de las que terminan en "sin información": 0.003767 USD.
+- Gasto total: 0.2247 USD.
+
+## Lectura
+
+Escrita a mano el 2026-10-15 a partir de las tablas anteriores (corrida `base`: puntajes y respuestas contra producción, 32 casos y 36 preguntas por modo con las variantes cortas). Es la lectura de los números, no una decisión: las decisiones son de la sección 2.8 de [Definicion_Requerimientos_V3.md](Definicion_Requerimientos_V3.md). Si se regenera el informe con `informe --salida`, esta sección se conserva.
+
+### Lo que hoy funciona
+
+- Los 19 casos de la batería del MVP responden bien en los dos modos. Los 4 que esperan "sin información" lo logran, pero no por igual: `N1` e `I2` (mejor puntaje 0,799) se cortan por el umbral sin llamar al modelo y cuestan 0; `I1` (0,846) e `I3` (0,852) **sí superan el umbral** y es el modelo el que dice "sin información" (cuestan entre 0,0008 y 0,0205 USD).
+- Las preguntas indirectas (`IN1` a `IN3`) y con sigla `SG1` y `SG2` responden bien. El documento esperado queda entre los 6 primeros candidatos.
+
+### Lo que hoy falla (los 8 casos de BUS-1 y BUS-2)
+
+- **Nombre y apellidos (`S22-1`, `S22-3`, `S22-4`):** con la pregunta completa el mejor puntaje es 0,775 a 0,802, bajo el umbral, y responde "sin información" en 0,4 a 0,7 s sin llamar al modelo. Con solo el nombre sube a 0,807 a 0,833: dos de las tres pasan el umbral, pero `S22-3` no, y en `S22-4` el documento esperado queda en el puesto 3 con 0,819, 0,001 bajo el umbral, así que tampoco llega al modelo.
+- **Sigla frente a forma desarrollada (`S22-2`):** con la pregunta larga el documento "Líneas de TFG" **no aparece entre los 50 candidatos** y el modelo responde con otros 4 documentos (respuesta que no cita lo esperado). Con "TFG" queda en el puesto 2.
+- **Sigla de la maestría (`SG3`, "MGTI"):** responde con un documento que no es el esperado; "Plan 473" no aparece entre los 50 candidatos y el otro documento esperado queda en el puesto 38.
+
+### Ventana de separación (BUS-3)
+
+No hay un umbral que separe los casos con respuesta de los que no la tienen: el mayor puntaje entre los "sin información" es 0,852 (`I3`; 0,839 sin contar los de aislamiento de dominio) y el menor puntaje de un documento esperado es 0,781 (`S22-4`). Solo con la batería original sí existía una ventana (0,852 a 0,859), pero muy estrecha. Consecuencias por opción:
+
+- **A, bajar el umbral:** no es viable. Para recuperar `S22-1` (0,798) hay que bajar a 0,79 o menos, y entonces dejan de cortarse `N1`, `I2` y `SR1`, que no tienen respuesta (el barrido de umbrales lo detalla); para `S22-3` (0,775) habría que bajar a 0,77.
+- **C, umbral distinto por modo:** el barrido sale idéntico en los dos modos (la decisión de responder depende del mejor candidato, que es el mismo; el modo solo cambia cuántos fragmentos pasan), así que un umbral por modo no cambia qué casos responden.
+- **B, segundo intento con pregunta limpia:** ayuda a las personas, porque la variante corta sube entre 0,025 y 0,035 sobre la completa, pero no alcanza sola: `S22-3` sigue bajo el umbral, y en `S22-1` el documento está en el puesto 12 con 0,824, así que el modo literal (que ve 8 resultados) no lo recibe y solo el de razonamiento (16) acierta. No resuelve las siglas.
+- **E, reranker:** el documento esperado aparece entre los 50 candidatos en todos los casos salvo `S22-2` (pregunta larga), `S22-3` (pregunta larga) y `SG3` (uno de los dos). Con 20 candidatos entran las variantes cortas de las tres personas (puestos 3 a 15) y las preguntas completas `S22-1` y `S22-4` (puestos 3 y 19); con 40 también `SG3` (puesto 38). Un corte por puntaje del reranker sustituiría al umbral de similitud, que no discrimina.
+- **D, búsqueda híbrida:** los fallos que quedan (sigla "TFG", sigla "MGTI", nombres propios) son de coincidencia exacta de términos, que es lo que aporta BM25.
+
+### Fuentes mostradas (BUS-5)
+
+Contra los documentos que marqué como esperados por caso (una sola persona los marcó, así que un documento extra puede haber aportado y contarse como sobrante), la respuesta lista en promedio **1,39 fuentes sobrantes en modo literal y 2,69 en razonamiento**, con casos de 9 y 10 fuentes para 1 esperada (`U1`, `IN2`, `S22-1` corta en razonamiento). Los casos de un solo documento (`G1`, `G2`) y `CU1` no tienen sobrantes.
+
+### Latencia y costo
+
+| | Literal | Razonamiento |
+|---|---|---|
+| Latencia p50 / p95 del cliente | 1,7 s / 5,0 s | 3,4 s / 11,2 s |
+| Costo medio por consulta | 0,00074 USD | 0,00624 USD |
+| Costo medio de las que terminan en "sin información" | 0,00031 USD | 0,00377 USD |
+| Una "sin información" cortada por umbral | 0 | 0 |
+| Una "sin información" decidida por el modelo | 0,0008 a 0,0010 USD | 0,0006 a 0,0208 USD |
+
+La corrida completa (72 consultas) costó **0,2514 USD** y coincide con el aumento del total de Uso del artefacto en esa ventana (0,2514 USD). La comprobación independiente contra el detalle de gasto de OpenRouter (criterio 15 de V2) la debe hacer el usuario.
+
+### Datos para las decisiones de la sección 2.8 de V3
+
+1. **Gasto extra por consulta sin respuesta:** hoy una consulta sin respuesta cuesta 0 si la corta el umbral, y entre 0,0008 y 0,02 USD si pasa al modelo. Un segundo intento (B) agrega a lo sumo una búsqueda local por consulta que no pasa el umbral; el reranker local no agrega costo de modelos.
+2. **Límites de memoria y latencia:** la latencia actual (arriba) es la vara; la memoria no se midió en esta línea base.
+3. **Medir en producción:** resuelta, se midió en solo lectura (el usuario declaró públicos los datos para pruebas).
+4. **Qué modelo de reranker probar:** sin datos nuevos; el dato útil es que bastan unos 20 a 40 candidatos.
+5. **Cuántos casos:** el conjunto actual (32 casos, 36 preguntas por modo) alcanza para ver el patrón; faltan más casos de siglas y de pregunta indirecta con respuesta dudosa para calibrar un corte por puntaje.

@@ -1,12 +1,12 @@
 # MIA: Definición de Requerimientos de la Versión 3
 
-**Qué es este documento:** punto de partida de los requerimientos de la tercera versión de MIA. **Es un borrador abierto: de momento solo recoge un tema, las consultas no directas, y su implementación se deja para después** (decisión del 2026-10-13). El 2026-10-14 se agregó la investigación de técnicas y proyectos similares (sección 2.4) y se acordó la recomendación provisional con una prueba de un reranker local (sección 2.6 y 2.7). Parte del estado descrito en [Definicion_Requerimientos_V2.md](Definicion_Requerimientos_V2.md) y [ARQUITECTURA.md](ARQUITECTURA.md). Los otros candidatos para esta versión ya están listados en la sección 10 del documento de la versión 2 y se incorporarán aquí cuando se decida su alcance.
+**Qué es este documento:** punto de partida de los requerimientos de la tercera versión de MIA. **Es un borrador abierto: de momento solo recoge un tema, las consultas no directas, y su implementación se deja para después** (decisión del 2026-10-13). El 2026-10-14 se agregó la investigación de técnicas y proyectos similares (sección 2.4) y se acordó la recomendación provisional con una prueba de un reranker local (sección 2.6 y 2.7). El 2026-10-15 se midió la línea base de la búsqueda en producción (feature [005](../specs/005-linea-base-busqueda/spec.md), informe en [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md)). Parte del estado descrito en [Definicion_Requerimientos_V2.md](Definicion_Requerimientos_V2.md) y [ARQUITECTURA.md](ARQUITECTURA.md). Los otros candidatos para esta versión ya están listados en la sección 10 del documento de la versión 2 y se incorporarán aquí cuando se decida su alcance.
 
 ## 1. Alcance acordado hasta ahora
 
 | Id | Tema | Estado |
 |---|---|---|
-| BUS-1 a BUS-7 | Responder consultas que no coinciden de forma directa con el texto de los documentos y mostrar solo las fuentes que sirvieron (sección 2) | Requerimientos definidos, **implementación pendiente**; la prueba del reranker local (2.7) está planificada, no ejecutada |
+| BUS-1 a BUS-7 | Responder consultas que no coinciden de forma directa con el texto de los documentos y mostrar solo las fuentes que sirvieron (sección 2) | Requerimientos definidos, **implementación pendiente**; línea base medida el 2026-10-15 ([informe](LINEA_BASE_BUSQUEDA.md)); la prueba del reranker local (2.7) está planificada, no ejecutada |
 
 ## 2. Consultas no directas
 
@@ -191,18 +191,20 @@ Antes de implementar cualquiera: armar el conjunto de casos de prueba (ver 2.9) 
 
 ### 2.8 Decisiones pendientes
 
-1. **Cuánto gasto extra por consulta sin respuesta se acepta** (decide entre A y C, y entre B y E).
-2. **Límites aceptables de memoria y de latencia** para conservar el reranker (propuesta en 2.7).
-3. **Si se permite consultar a Qdrant de producción para medir los puntajes.** La medición solo imprimiría puntajes, nunca el texto de los fragmentos, porque contienen datos personales.
-4. **Qué modelo probar primero** (candidatos en 2.7, por verificar).
-5. **Cuántos casos de prueba hacen falta** para calibrar y para comprobar BUS-3. Se propone reutilizar los 15 de [PRUEBAS_MVP.md](PRUEBAS_MVP.md) y sumar los dos de 2.2, preguntas indirectas, siglas y preguntas sin respuesta.
+Datos de la línea base medida el 2026-10-15 en [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md) (sección "Lectura").
+
+1. **Cuánto gasto extra por consulta sin respuesta se acepta** (decide entre A y C, y entre B y E). *Datos:* hoy una consulta sin respuesta cuesta 0 si la corta el umbral y entre 0,0008 y 0,02 USD si llega al modelo (0,0008 a 0,001 en modo literal). El segundo intento (B) y el reranker local no agregan costo de modelos; las opciones A y C quedan descartadas por los datos (punto siguiente). **Pendiente de decidir.**
+2. **Límites aceptables de memoria y de latencia** para conservar el reranker (propuesta en 2.7). *Datos:* latencia actual del cliente, p50 / p95: 1,7 s / 5,0 s en literal y 3,4 s / 11,2 s en razonamiento; la memoria no se midió. **Pendiente de decidir.**
+3. ~~Si se permite consultar a Qdrant de producción para medir los puntajes.~~ **Resuelta (2026-10-15):** el usuario declaró públicos los datos para pruebas; se midió directamente contra producción en solo lectura. Ver [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md).
+4. **Qué modelo probar primero** (candidatos en 2.7, por verificar). *Dato:* para capturar el documento esperado bastan 20 a 40 candidatos antes del reranker. **Pendiente de decidir.**
+5. ~~Cuántos casos de prueba hacen falta.~~ **Resuelta (2026-10-15):** el conjunto es `scripts/datos/casos_busqueda.json` con 32 casos (los 19 de la batería de [PRUEBAS_MVP.md](PRUEBAS_MVP.md), 4 de la sección 2.2 con su variante corta, 3 indirectos, 3 con siglas y 3 sin respuesta). Alcanza para ver el patrón; para calibrar un corte por puntaje del reranker convendrá sumar más casos de siglas y de preguntas dudosas.
 
 ### 2.9 Criterios de aceptación (borrador)
 
-- Los dos casos de la sección 2.2 responden con la pregunta completa igual que con la variante corta (BUS-1 y BUS-2).
-- Los 15 casos de [PRUEBAS_MVP.md](PRUEBAS_MVP.md) siguen respondiendo bien.
+- Los casos de la sección 2.2 (`S22-1` a `S22-4`, nombres y apellidos y sigla) responden con la pregunta completa igual que con la variante corta (BUS-1 y BUS-2). Hoy fallan 7 de las 8 preguntas de esos casos en literal y 6 en razonamiento.
+- Los 19 casos de [PRUEBAS_MVP.md](PRUEBAS_MVP.md) (los 15 que esperan respuesta y los 4 de "sin información") siguen respondiendo bien, como hoy en los dos modos.
 - Una pregunta sobre un tema que no está en ningún documento sigue respondiendo "sin información suficiente" (BUS-3).
-- Las fuentes mostradas son las que aportaron a la respuesta; en los 15 casos de prueba no se lista ningún documento que no sirvió (BUS-5).
+- Las fuentes mostradas son las que aportaron a la respuesta; en los casos de prueba no se lista ningún documento que no sirvió (BUS-5). Línea base: 1,39 fuentes sobrantes por consulta en literal y 2,69 en razonamiento.
 - El costo medio por consulta de los modos literal y con razonamiento, medido en el módulo Uso, no sube más de lo que se decida en la decisión pendiente 1 (BUS-4).
 - Con `RERANK_PROVIDER=none` el comportamiento es el anterior (BUS-6).
 - El segundo intento no hace ninguna llamada a un modelo de lenguaje: una consulta sin respuesta en ninguna de las dos búsquedas sigue sin gastar tokens (BUS-7).

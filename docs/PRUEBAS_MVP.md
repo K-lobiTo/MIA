@@ -2,6 +2,8 @@
 
 Estado de los criterios de aceptación de la sección 11 de [Definicion_Requerimientos_MVP.md](Definicion_Requerimientos_MVP.md), con el conjunto de datos y las preguntas usadas para verificarlos. Las preguntas se corren con `scripts/pruebas_mvp.py`, así que cualquiera puede repetir la verificación.
 
+> **Mediciones de la búsqueda después de la versión 2 (2026-10-15):** los casos de esta batería, más los de la sección 2.2 de V3, preguntas indirectas, siglas y preguntas sin respuesta, están en `scripts/datos/casos_busqueda.json` y se miden con `scripts/linea_base.py` (puntajes de similitud, fuentes mostradas, latencia y costo). Resultado: [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md). Esta batería sigue siendo la de aceptación (pasa o falla).
+
 ## Datos cargados (desde 2026-10-06)
 
 Documentos reales entregados por Mauricio Arroyo (Unidad de Posgrado en Computación) y Martín Solís (Maestría en Analítica de Negocios). Reemplazaron a los datos de prueba del MVP (ver "Historial" al final). Los archivos no se versionan (`tmp/` está en `.gitignore`).
