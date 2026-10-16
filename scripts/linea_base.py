@@ -170,12 +170,15 @@ def leer_corrida(etiqueta: str, base: Path = SALIDA) -> dict:
     )
     if not candidatas:
         raise FileNotFoundError(f"No hay ninguna corrida con la etiqueta '{etiqueta}' en {base}.")
-    carpeta = candidatas[-1]
-    corrida: dict = {"carpeta": carpeta, "puntajes": None, "respuestas": None}
+    corrida: dict = {"carpeta": candidatas[-1], "puntajes": None, "respuestas": None}
+    # `puntajes` y `respuestas` se corren por separado y quedan en carpetas distintas: de cada una se
+    # toma la más reciente que tenga ese archivo.
     for nombre in ("puntajes", "respuestas"):
-        ruta = carpeta / f"{nombre}.json"
-        if ruta.is_file():
-            corrida[nombre] = json.loads(ruta.read_text(encoding="utf-8"))
+        for carpeta in reversed(candidatas):
+            ruta = carpeta / f"{nombre}.json"
+            if ruta.is_file():
+                corrida[nombre] = json.loads(ruta.read_text(encoding="utf-8"))
+                break
     return corrida
 
 
@@ -583,15 +586,31 @@ def generar_informe(corrida: dict) -> str:
     for modo in MODOS:
         lineas += [f"Modo {modo} (casos cuyo resultado cambia frente a {umbral}):", ""]
         lineas += ["| Umbral | Pasan a responder | Pasan a \"sin información\" |", "|---|---|---|"]
+        # Los umbrales consecutivos con el mismo resultado se agrupan en un rango.
+        grupos: list[list] = []
         for fila in resumen["barrido_umbrales"][modo]:
-            if fila["pasan_a_responder"] or fila["pasan_a_sin_info"]:
-                lineas.append(
-                    f"| {fila['umbral']:.2f} | {', '.join(fila['pasan_a_responder']) or '-'} "
-                    f"| {', '.join(fila['pasan_a_sin_info']) or '-'} |"
-                )
+            if not (fila["pasan_a_responder"] or fila["pasan_a_sin_info"]):
+                continue
+            clave = (fila["pasan_a_responder"], fila["pasan_a_sin_info"])
+            if grupos and grupos[-1][2] == clave and abs(fila["umbral"] - grupos[-1][1] - 0.01) < 1e-9:
+                grupos[-1][1] = fila["umbral"]
+            else:
+                grupos.append([fila["umbral"], fila["umbral"], clave])
+        for desde, hasta, (a_responder, a_sin_info) in grupos:
+            rango = f"{desde:.2f}" if desde == hasta else f"{desde:.2f} a {hasta:.2f}"
+            lineas.append(f"| {rango} | {', '.join(a_responder) or '-'} | {', '.join(a_sin_info) or '-'} |")
         lineas.append("")
     if respuestas:
         lineas += ["## Respuesta completa", ""]
+        rc = respuestas["contexto"]
+        lineas += [
+            (
+                f"- Corrida del {rc['fecha']} contra {rc['destino']}, artefacto \"{rc.get('artefacto')}\", "
+                f"modos {', '.join(rc['modos'])}, tope de la corrida {rc['tope_usd']} USD, "
+                f"gasto {_fmt(respuestas['gasto_total_usd'], 4)} USD."
+            ),
+            "",
+        ]
         if respuestas.get("parcial"):
             lineas.append(f"**Corrida parcial** (motivo: {respuestas['motivo_parada']}).\n")
         for modo, r in respuestas["resumen"].items():
@@ -916,7 +935,13 @@ def comando_informe(args) -> int:
         print(error, file=sys.stderr)
         return 2
     if args.salida:
-        Path(args.salida).write_text(texto, encoding="utf-8")
+        destino = Path(args.salida)
+        if destino.is_file():
+            previo = destino.read_text(encoding="utf-8")
+            if "\n## Lectura" in previo:
+                # La lectura la escribe una persona: regenerar el informe no debe borrarla.
+                texto = texto.rstrip("\n") + "\n" + previo[previo.index("\n## Lectura") :]
+        destino.write_text(texto, encoding="utf-8")
         print(f"Informe escrito en {args.salida}")
     else:
         print(texto)

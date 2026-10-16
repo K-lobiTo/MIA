@@ -121,6 +121,14 @@ def test_guardar_y_leer_corrida(tmp_path, monkeypatch):
         lb.leer_corrida("otra", base=tmp_path)
 
 
+def test_leer_corrida_une_puntajes_y_respuestas_de_carpetas_distintas(tmp_path):
+    lb.guardar_json(tmp_path / "20260101-101010-base", "puntajes.json", {"contexto": {}, "n": 1})
+    lb.guardar_json(tmp_path / "20260101-111111-base", "respuestas.json", {"n": 2})
+    lb.guardar_json(tmp_path / "20260101-121212-base", "puntajes.json", {"contexto": {}, "n": 3})
+    corrida = lb.leer_corrida("base", base=tmp_path)
+    assert corrida["puntajes"]["n"] == 3 and corrida["respuestas"]["n"] == 2
+
+
 def test_tmp_esta_ignorado_por_git():
     gitignore = (RAIZ_REPO / ".gitignore").read_text(encoding="utf-8").splitlines()
     assert "tmp/" in gitignore
