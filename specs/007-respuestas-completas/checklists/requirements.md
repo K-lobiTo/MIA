@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,5 +31,5 @@
 
 ## Notes
 
-- Queda 1 marcador [NEEDS CLARIFICATION] (tolerancia de costo y de latencia), que es de SC-005 y SC-006: el usuario propuso 25 % y pidió confirmarlo.
+- La aclaración de la tolerancia de costo y latencia se resolvió el 2026-10-16: 25 % en ambos (opción A).
 - La spec nombra términos del producto ya existentes (módulo Uso, Consulta administrativa, feature 005 y 006) y los límites medidos del contexto; el cómo (ampliar vecinos, subir el límite de documento completo, leer el motivo de fin del proveedor) es del plan.

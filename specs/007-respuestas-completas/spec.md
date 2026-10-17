@@ -14,7 +14,7 @@ Contexto: la Consulta administrativa se usa para preguntas como "¿cuáles son l
 
 ### Session 2026-10-16
 
-- Q: ¿Cuánto pueden subir el costo medio y la latencia p50 por consulta al entregar más contexto? → A: [NEEDS CLARIFICATION: el usuario propuso 25 % para ambos y pidió confirmarlo. Opciones: (A) 25 % en costo y 25 % en latencia p50, (B) 50 % en ambos, (C) 10 % en ambos, (D) otros valores]
+- Q: ¿Cuánto pueden subir el costo medio y la latencia p50 por consulta al entregar más contexto? → A: Opción A: hasta 25 % en el costo medio y hasta 25 % en la latencia p50 (confirmado por el usuario el 2026-10-16).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -140,8 +140,8 @@ Quien opera MIA agrega al conjunto de casos de la feature 005 casos de listas la
 - **SC-002**: En la corrida de verificación (al menos 80 consultas), ninguna respuesta se entrega cortada sin aviso: toda respuesta que terminó de forma anormal fue reintentada o lleva el aviso.
 - **SC-003**: Los 19 casos de la batería del MVP siguen respondiendo bien, con su documento esperado, y los que hoy responden "sin información" siguen haciéndolo.
 - **SC-004**: El porcentaje de consultas que necesita reintento es de 5 % o menos.
-- **SC-005**: El costo medio por consulta de cada modo, medido con el módulo Uso, no sube más de [NEEDS CLARIFICATION: tolerancia de costo, ver Clarifications] respecto a la línea base, comparado contra el promedio de la línea base y un control con la opción apagada, y la mediana de la razón por caso lo confirma; los topes de gasto se siguen respetando.
-- **SC-006**: La latencia p50 de cada modo no sube más de [NEEDS CLARIFICATION: tolerancia de latencia, ver Clarifications] respecto a la línea base, con la misma comparación.
+- **SC-005**: El costo medio por consulta de cada modo, medido con el módulo Uso, no sube más de 25 % respecto a la línea base, comparado contra el promedio de la línea base y un control con la opción apagada, y la mediana de la razón por caso lo confirma; los topes de gasto se siguen respetando.
+- **SC-006**: La latencia p50 de cada modo no sube más de 25 % respecto a la línea base, con la misma comparación.
 - **SC-007**: Con ambas opciones apagadas, la lista de fuentes y el texto de cada caso son los de la línea base (sin diferencias atribuibles a la feature).
 - **SC-008**: Con la feature 006 encendida, la regla de seguridad de las citas se aplica en 10 % o menos de las respuestas con contenido, igual que antes.
 - **SC-009**: Una persona de Coordinación, ante tres preguntas de temarios largos, confirma que la respuesta es la lista completa del documento.
