@@ -14,7 +14,7 @@ Contexto: la Consulta administrativa se usa para preguntas como "¿cuáles son l
 
 ### Session 2026-10-16
 
-- Q: ¿Cuánto pueden subir el costo medio y la latencia p50 por consulta al entregar más contexto? → A: Opción A: hasta 25 % en el costo medio y hasta 25 % en la latencia p50 (confirmado por el usuario el 2026-10-16).
+- Q: ¿Cuánto pueden subir el costo medio y la latencia p50 por consulta al entregar más contexto? → A: Opción A: hasta 25 % en el costo medio y hasta 25 % en la latencia p50 (confirmado por el usuario el 2026-10-16). El 2026-10-18 el usuario aceptó mantener 25 % como tope; el margen hasta 50 % solo se usaría si la medición muestra que alguna lista de un documento grande sigue saliendo cortada y subir las variables de alcance la resuelve, y exigiría una decisión explícita del usuario.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -149,6 +149,7 @@ Quien opera MIA agrega al conjunto de casos de la feature 005 casos de listas la
 ## Assumptions
 
 - Quien opera MIA es una sola persona (el usuario), y quien consulta es el personal de Coordinación mediante la Consulta administrativa.
+- El tope de 25 % es un tope sobre el promedio: una consulta concreta cuyo documento principal se entrega completo (por ejemplo, un programa de curso de 15 a 21 fragmentos) puede subir bastante más que el promedio. Se acepta.
 - Se considera "documento de tamaño moderado" el que cabe en unos 25 fragmentos (el mayor programa de curso conocido tiene 21); el valor exacto y el tope de contexto por consulta se fijan en el plan a partir de la medición del costo.
 - El motivo de fin de la generación lo informan los proveedores compatibles con el formato de OpenAI (entre ellos OpenRouter); los demás proveedores, si no lo informan, quedan como "desconocido" y no se reintenta.
 - El reintento es uno solo y con la misma pregunta y contexto; un segundo corte no se vuelve a reintentar.
