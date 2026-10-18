@@ -51,6 +51,19 @@ class Settings(BaseSettings):
     # lugar de todas las que se le entregaron. Es texto y no bool para que un valor inválido no impida el
     # arranque: se interpreta en mia.rag.citations.cited_sources_enabled ("on"/"off"; otro valor = off).
     query_cited_sources: str = "off"
+    # Respuestas completas (feature 007, ver mia.rag.completeness). Contexto completo del documento principal:
+    # "on"/"off" (otro valor = off, con aviso). Si el documento principal tiene hasta `document_max_chunks`
+    # fragmentos se entrega entero; si es más largo, a cada resultado se le suman `forward_neighbors`
+    # fragmentos posteriores. `query_complete_documents` es cuántos documentos (por mejor resultado) reciben
+    # ese trato y `query_context_max_chars` el tope del contexto por consulta (solo con la opción encendida).
+    query_complete_context: str = "off"
+    query_complete_documents: int = Field(default=1, ge=1, le=8)
+    query_complete_document_max_chunks: int = Field(default=25, ge=1, le=100)
+    query_complete_forward_neighbors: int = Field(default=4, ge=0, le=20)
+    query_context_max_chars: int = Field(default=80000, ge=5000, le=400000)
+    # Si el modelo termina la generación de forma anormal (límite de longitud u otro motivo) se reintenta una
+    # vez, respetando los topes de gasto, y si vuelve a cortarse se entrega con un aviso. "on"/"off".
+    query_retry_cut_answers: str = "off"
 
     # En Render free (512 MB) ingerir actas grandes agota la memoria: allí se desactiva y la ingesta
     # se hace desde una instancia local apuntando a las mismas bases (ver docs/OPERACION.md).

@@ -1,7 +1,14 @@
 from openai import OpenAI
 
 from mia.config import settings
-from mia.rag.llm import RAG_SYSTEM_PROMPT, LLMAnswer, LLMProvider, RagContext, format_context
+from mia.rag.llm import (
+    RAG_SYSTEM_PROMPT,
+    LLMAnswer,
+    LLMProvider,
+    RagContext,
+    format_context,
+    normalize_finish_reason,
+)
 
 MODEL = "glm-5.3"
 # La API de Z.ai es compatible con la de OpenAI: se usa su SDK cambiando la URL base.
@@ -33,6 +40,7 @@ class GLMLLMProvider(LLMProvider):
         return LLMAnswer(
             text=completion.choices[0].message.content or "",
             model=MODEL,
+            finish_reason=normalize_finish_reason(getattr(completion.choices[0], "finish_reason", None), "openai"),
             prompt_tokens=getattr(usage, "prompt_tokens", None),
             completion_tokens=getattr(usage, "completion_tokens", None),
             reasoning_tokens=getattr(details, "reasoning_tokens", None) if details else None,

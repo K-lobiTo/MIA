@@ -1,7 +1,14 @@
 import anthropic
 
 from mia.config import settings
-from mia.rag.llm import RAG_SYSTEM_PROMPT, LLMAnswer, LLMProvider, RagContext, format_context
+from mia.rag.llm import (
+    RAG_SYSTEM_PROMPT,
+    LLMAnswer,
+    LLMProvider,
+    RagContext,
+    format_context,
+    normalize_finish_reason,
+)
 
 MODEL = "claude-sonnet-5"
 
@@ -25,6 +32,7 @@ class AnthropicLLMProvider(LLMProvider):
         return LLMAnswer(
             text=next((block.text for block in message.content if block.type == "text"), ""),
             model=MODEL,
+            finish_reason=normalize_finish_reason(getattr(message, "stop_reason", None), "anthropic"),
             prompt_tokens=getattr(usage, "input_tokens", None),
             completion_tokens=getattr(usage, "output_tokens", None),
         )

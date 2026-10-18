@@ -82,6 +82,23 @@ class LLMAnswer:
     completion_tokens: int | None = None
     reasoning_tokens: int | None = None
     cost_usd: float | None = None
+    # Por qué terminó la generación, normalizado: "stop" (fin normal), "length" (límite de longitud), "other"
+    # (cualquier otro motivo) o None si el proveedor no lo informa (ver normalize_finish_reason).
+    finish_reason: str | None = None
+
+
+def normalize_finish_reason(raw: str | None, kind: str) -> str | None:
+    """Motivo de fin de la generación en los tres valores comunes. `kind` es el formato del proveedor:
+    "openai" (OpenRouter y GLM: stop, length, content_filter...) o "anthropic" (end_turn, max_tokens...)."""
+    if not raw:
+        return None
+    if kind == "anthropic":
+        if raw in ("end_turn", "stop_sequence"):
+            return "stop"
+        return "length" if raw == "max_tokens" else "other"
+    if raw == "stop":
+        return "stop"
+    return "length" if raw == "length" else "other"
 
 
 class LLMProvider(ABC):

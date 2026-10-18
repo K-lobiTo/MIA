@@ -43,3 +43,15 @@ def test_glm_usa_la_instruccion_recibida_como_mensaje_de_sistema():
 
     mensajes = client.chat.completions.create.call_args.kwargs["messages"]
     assert mensajes[0] == {"role": "system", "content": "Instrucción propia de la prueba."}
+
+
+def test_glm_informa_el_motivo_de_fin_de_la_generacion():
+    for motivo, esperado in (("stop", "stop"), ("length", "length"), (None, None)):
+        completion = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="Ok."), finish_reason=motivo)]
+        )
+        client = MagicMock()
+        client.chat.completions.create.return_value = completion
+        with patch.object(glm_llm, "OpenAI", return_value=client):
+            answer = glm_llm.GLMLLMProvider().answer("¿?", [RagContext(domain="P", document="D.docx", excerpt="x")])
+        assert answer.finish_reason == esperado

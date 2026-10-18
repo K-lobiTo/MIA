@@ -115,3 +115,21 @@ def test_el_mensaje_de_sistema_es_la_instruccion_recibida():
 
     mensajes = client.chat.completions.create.call_args.kwargs["messages"]
     assert mensajes[0] == {"role": "system", "content": "Instrucción propia de la prueba."}
+
+
+@pytest.mark.parametrize(
+    "motivo, esperado",
+    [("stop", "stop"), ("length", "length"), ("content_filter", "other"), (None, None)],
+)
+def test_informa_el_motivo_de_fin_de_la_generacion(motivo, esperado):
+    client = MagicMock()
+    client.chat.completions.create.return_value = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content="Texto."), finish_reason=motivo)]
+    )
+    provider = _provider(client)
+    assert provider.answer("¿?", []).finish_reason == esperado
+
+
+def test_sin_el_campo_de_motivo_queda_desconocido():
+    # Las respuestas simuladas de las demás pruebas no traen finish_reason: debe quedar en None, no fallar.
+    assert _provider(_client()).answer("¿?", []).finish_reason is None
