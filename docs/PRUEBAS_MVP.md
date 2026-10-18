@@ -140,7 +140,7 @@ Antes de esa carga: **15 de 15 casos correctos** contra `https://mia-production-
 ## Resultado (2026-10-06, API local con los datos de producción + Gemini)
 
 **15 de 15 casos correctos.** Observaciones:
-- **U4 (líneas de TFG):** con solo los fragmentos relevantes y sus vecinos, la respuesta listaba 3 de las 6 líneas sin avisar que faltaban. La lista ocupa casi todo el documento (9 fragmentos). Se resolvió pasando completos al LLM los documentos de hasta 12 fragmentos (`QUERY_FULL_DOCUMENT_MAX_CHUNKS`, ver `src/mia/rag/context.py`).
+- **U4 (líneas de TFG):** con solo los fragmentos relevantes y sus vecinos, la respuesta listaba 3 de las 6 líneas sin avisar que faltaban. La lista ocupa casi todo el documento (9 fragmentos). Para documentos de 13 a 25 fragmentos (los programas de curso más largos) el mismo límite cortaba la lista; la feature 007 lo mitiga con `QUERY_COMPLETE_CONTEXT` y la detección de respuestas cortadas con `QUERY_RETRY_CUT_ANSWERS` (ver [OPERACION.md](OPERACION.md)). Se resolvió pasando completos al LLM los documentos de hasta 12 fragmentos (`QUERY_FULL_DOCUMENT_MAX_CHUNKS`, ver `src/mia/rag/context.py`).
 - **Siglas:** "¿Qué líneas de trabajo final de graduación ofrece la maestría?" responde "sin información", mientras que con "TFG" responde bien: la forma desarrollada no alcanza el umbral de similitud contra un documento que usa la sigla. Limitación conocida de la búsqueda; candidata a resolverse en la versión 3 (expansión de la pregunta o búsqueda híbrida por palabras clave).
 - **Fuentes:** como en el MVP, la lista de fuentes incluye documentos que se pasaron al LLM aunque no aportaron a la respuesta (p. ej. U1 lista seis documentos).
 
