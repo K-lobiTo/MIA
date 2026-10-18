@@ -23,8 +23,15 @@ from mia.rag.citations import (
 )
 from mia.rag.completeness import (
     COMPLETENESS_INSTRUCTIONS,
+    NOTE_NOTICE,
+    NOTE_RETRIED,
+    combine_notes,
     complete_context_enabled,
     mark_continuation,
+    merge_attempts,
+    needs_retry,
+    retry_cut_enabled,
+    with_notice,
 )
 from mia.rag.context import ContextPolicy, build_passages
 from mia.rag.embeddings import get_embedding_provider
@@ -244,6 +251,53 @@ def query(
             status_code=502, detail="El proveedor de LLM no está disponible en este momento."
         ) from exc
 
+    # Motivo de fin de la generación: se deja siempre en el registro del servidor, con cualquier combinación
+    # de opciones, para poder contar cuántas respuestas terminan de forma anormal.
+    logger.info("Fin de la generación: %s (modo %s)", answer.finish_reason or "desconocido", payload.mode)
+
+    def interpret(model_answer):
+        """El texto sin la línea FUENTES: (si las citas están encendidas) y su interpretación."""
+        if not cite_sources:
+            return model_answer.text, None
+        parsed_citations = parse_citations(model_answer.text, len(passages))
+        return parsed_citations.text, parsed_citations
+
+    answer_text, parsed = interpret(answer)
+
+    # Una generación que no terminó con normalidad se reintenta una vez, si los topes de gasto lo permiten; si
+    # sigue cortada, el texto se entrega con un aviso (feature 007).
+    cut_note: str | None = None
+    notice = False
+    if retry_cut_enabled(settings.query_retry_cut_answers) and needs_retry(
+        answer.finish_reason, is_no_info_answer(answer_text)
+    ):
+        first_cost = (
+            Decimal(str(answer.cost_usd))
+            if answer.cost_usd is not None
+            else estimate_cost(payload.mode, answer.prompt_tokens, answer.completion_tokens)
+        )
+        second = None
+        if check_caps(session, artifact, payload.mode, extra=first_cost) is None:
+            try:
+                second = llm_provider.answer(payload.question, context, instructions=instructions)
+                logger.info(
+                    "Fin de la generación (reintento): %s (modo %s)", second.finish_reason or "desconocido", payload.mode
+                )
+            except Exception:
+                logger.exception("Falló el reintento de una respuesta cortada (modo %s)", payload.mode)
+        if second is None:
+            notice, cut_note = True, NOTE_NOTICE
+        else:
+            second_text, second_parsed = interpret(second)
+            if needs_retry(second.finish_reason, is_no_info_answer(second_text)):
+                notice, cut_note = True, NOTE_NOTICE
+                if len(second_text) >= len(answer_text):
+                    answer_text, parsed = second_text, second_parsed
+            else:
+                cut_note = NOTE_RETRIED
+                answer_text, parsed = second_text, second_parsed
+            answer = merge_attempts(answer, second)
+
     # El costo real lo informa el proveedor; si no, se estima con los precios de respaldo del modo.
     log.model = answer.model or config.model
     log.prompt_tokens = answer.prompt_tokens
@@ -256,22 +310,23 @@ def query(
         log.cost_usd = estimate_cost(payload.mode, answer.prompt_tokens, answer.completion_tokens)
         log.cost_estimated = True
 
-    answer_text = answer.text
-    if cite_sources:
-        # Se quita la línea FUENTES: del texto y se eligen las fuentes que el modelo dice haber usado.
-        parsed = parse_citations(answer.text, len(passages))
-        answer_text = parsed.text
+    safety_note: str | None = None
+    if parsed is not None:
+        # Con la línea FUENTES: ya quitada del texto, se eligen las fuentes que el modelo dice haber usado.
         selection = select_sources(parsed, len(passages))
         sources = [sources[i - 1] for i in selection.indexes]
         if parsed.invalid:
             logger.info("El modelo citó fragmentos inexistentes: %s (entregados: %d)", parsed.invalid, len(passages))
         if selection.safety_rule and not is_no_info_answer(answer_text):
             # Sin citas utilizables se listan todas las fuentes; la nota permite medir con qué frecuencia pasa.
-            log.reject_reason = SAFETY_RULE_NOTE
+            safety_note = SAFETY_RULE_NOTE
 
     if is_no_info_answer(answer_text):
         return no_info(model=log.model)
 
+    if notice:
+        answer_text = with_notice(answer_text)
+    log.reject_reason = combine_notes(cut_note, safety_note)
     log.outcome = "answered"
     log.sources = json.dumps(
         [{"domain": d, "document": n} for d, n in dict.fromkeys((s.domain, s.document) for s in sources)],

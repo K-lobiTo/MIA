@@ -57,3 +57,49 @@ COMPLETENESS_INSTRUCTIONS = (
 def mark_continuation(text: str, continues: bool) -> str:
     """El texto del pasaje con la marca de continuación como última línea, si el documento continúa."""
     return f"{text}\n{CONTINUES_MARKER}" if continues else text
+
+
+# --- Reintento de respuestas cortadas ------------------------------------------------------------------
+
+CUT_NOTICE = "Aviso: la respuesta pudo quedar incompleta."
+# Notas que quedan en el registro de Uso (campo reject_reason) en las consultas respondidas con un corte.
+NOTE_RETRIED = "Respuesta cortada: se reintentó"
+NOTE_NOTICE = "Respuesta cortada: se entregó con aviso"
+
+
+def needs_retry(finish_reason: str | None, is_no_info: bool) -> bool:
+    """Si una generación terminó de forma anormal y vale la pena reintentarla. Un motivo desconocido (el
+    proveedor no lo informa) o una respuesta "sin información" no se reintentan."""
+    return finish_reason in ("length", "other") and not is_no_info
+
+
+def with_notice(text: str) -> str:
+    """El texto con el aviso de posible corte como última línea (sin repetirlo)."""
+    if text.rstrip().endswith(CUT_NOTICE):
+        return text
+    return f"{text.rstrip()}\n\n{CUT_NOTICE}"
+
+
+def _sum[T: (int, float)](a: T | None, b: T | None) -> T | None:
+    return None if a is None and b is None else (a or 0) + (b or 0)
+
+
+def merge_attempts(first, second):
+    """Un solo LLMAnswer con el texto y el motivo de fin del segundo intento y el uso (tokens y costo) de los
+    dos. Los datos nulos cuentan como cero; si ninguno de los dos informa un dato, queda nulo."""
+    from dataclasses import replace
+
+    return replace(
+        second,
+        model=second.model or first.model,
+        prompt_tokens=_sum(first.prompt_tokens, second.prompt_tokens),
+        completion_tokens=_sum(first.completion_tokens, second.completion_tokens),
+        reasoning_tokens=_sum(first.reasoning_tokens, second.reasoning_tokens),
+        cost_usd=_sum(first.cost_usd, second.cost_usd),
+    )
+
+
+def combine_notes(*notes: str | None) -> str | None:
+    """Une con "; " las notas que no son nulas; nulo si no hay ninguna."""
+    presentes = [n for n in notes if n]
+    return "; ".join(presentes) if presentes else None

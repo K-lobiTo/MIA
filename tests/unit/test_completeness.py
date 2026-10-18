@@ -90,3 +90,52 @@ def test_instruccion_de_completitud():
     assert completeness.CONTINUES_MARKER in texto
     assert "lista" in texto and "no escribas" in texto.lower()
     assert chr(0x2014) not in texto
+
+
+# --- Reintento de respuestas cortadas ----------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "motivo, sin_informacion, esperado",
+    [("length", False, True), ("other", False, True), ("stop", False, False), (None, False, False),
+     ("length", True, False), ("other", True, False)],
+)
+def test_needs_retry(motivo, sin_informacion, esperado):
+    assert completeness.needs_retry(motivo, sin_informacion) is esperado
+
+
+def test_aviso_de_corte():
+    assert completeness.CUT_NOTICE == "Aviso: la respuesta pudo quedar incompleta."
+    assert completeness.with_notice("Texto.") == "Texto.\n\nAviso: la respuesta pudo quedar incompleta."
+    ya = completeness.with_notice("Texto.")
+    assert completeness.with_notice(ya) == ya  # no se repite
+
+
+def test_merge_attempts_suma_el_uso_y_trata_los_nulos_como_cero():
+    from mia.rag.llm import LLMAnswer
+
+    primero = LLMAnswer(text="a", model="m1", prompt_tokens=100, completion_tokens=10, reasoning_tokens=None,
+                        cost_usd=0.01, finish_reason="length")
+    segundo = LLMAnswer(text="b", model="m2", prompt_tokens=100, completion_tokens=30, reasoning_tokens=5,
+                        cost_usd=0.02, finish_reason="stop")
+    junto = completeness.merge_attempts(primero, segundo)
+    assert junto.text == "b" and junto.model == "m2" and junto.finish_reason == "stop"
+    assert (junto.prompt_tokens, junto.completion_tokens, junto.reasoning_tokens) == (200, 40, 5)
+    assert junto.cost_usd == pytest.approx(0.03)
+
+
+def test_merge_attempts_sin_costo_en_ninguno_queda_nulo():
+    from mia.rag.llm import LLMAnswer
+
+    junto = completeness.merge_attempts(LLMAnswer(text="a"), LLMAnswer(text="b"))
+    assert junto.cost_usd is None and junto.prompt_tokens is None
+    uno = completeness.merge_attempts(LLMAnswer(text="a", cost_usd=0.01), LLMAnswer(text="b"))
+    assert uno.cost_usd == pytest.approx(0.01)
+
+
+def test_combine_notes():
+    assert completeness.combine_notes(None, None) is None
+    assert completeness.combine_notes("A", None) == "A"
+    assert completeness.combine_notes("A", "B") == "A; B"
+    assert completeness.NOTE_RETRIED == "Respuesta cortada: se reintentó"
+    assert completeness.NOTE_NOTICE == "Respuesta cortada: se entregó con aviso"

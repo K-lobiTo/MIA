@@ -175,3 +175,220 @@ def test_con_las_citas_de_la_006_la_numeracion_usa_los_pasajes_finales(client, b
     assert [c.document for c in contexto] == ["curso-1.pdf", "curso-2.pdf"]
     assert [c.reference for c in contexto] == [1, 2]
     assert [f["document"] for f in respuesta.json()["sources"]] == ["curso-2.pdf"]
+
+
+# --- US2: respuestas cortadas ------------------------------------------------------------------
+
+
+def _registro(db, respuesta):
+    from mia.storage.models import QueryLog
+
+    with db() as session:
+        return session.get(QueryLog, respuesta.json()["id"])
+
+
+def _respuesta(texto, motivo="stop", costo=0.01):
+    return LLMAnswer(text=texto, finish_reason=motivo, cost_usd=costo, prompt_tokens=100, completion_tokens=20)
+
+
+def test_motivo_normal_o_desconocido_no_reintenta(client, base, make_artifact):
+    artefacto = make_artifact(units=["u1"])
+    for motivo in ("stop", None):
+        respuesta, modelo = _consultar(
+            client, artefacto, [_respuesta("Lista completa.", motivo)], query_retry_cut_answers="on"
+        )
+        assert modelo.answer.call_count == 1
+        assert respuesta.json()["answer"] == "Lista completa."
+
+
+def test_corte_con_reintento_exitoso_entrega_el_segundo_y_suma_los_costos(client, db, base, make_artifact):
+    artefacto = make_artifact(units=["u1"])
+    respuesta, modelo = _consultar(
+        client, artefacto,
+        [_respuesta("Lista cortada a la mi", "length", 0.01), _respuesta("Lista completa.", "stop", 0.02)],
+        query_retry_cut_answers="on",
+    )
+    assert modelo.answer.call_count == 2
+    assert respuesta.json()["answer"] == "Lista completa."
+    registro = _registro(db, respuesta)
+    assert registro.reject_reason == completeness.NOTE_RETRIED and registro.outcome == "answered"
+    assert float(registro.cost_usd) == pytest.approx(0.03)
+    assert registro.prompt_tokens == 200 and registro.completion_tokens == 40
+
+
+def test_dos_cortes_seguidos_entregan_el_texto_mas_largo_con_aviso(client, db, base, make_artifact):
+    artefacto = make_artifact(units=["u1"])
+    respuesta, modelo = _consultar(
+        client, artefacto,
+        [_respuesta("Corta", "length", 0.01), _respuesta("Un poco más larga pero cortada", "length", 0.01)],
+        query_retry_cut_answers="on",
+    )
+    texto = respuesta.json()["answer"]
+    assert modelo.answer.call_count == 2
+    assert texto.startswith("Un poco más larga pero cortada") and texto.endswith(completeness.CUT_NOTICE)
+    registro = _registro(db, respuesta)
+    assert registro.reject_reason == completeness.NOTE_NOTICE
+    assert float(registro.cost_usd) == pytest.approx(0.02)
+
+
+def test_sin_informacion_con_motivo_anormal_no_se_reintenta(client, db, base, make_artifact):
+    artefacto = make_artifact(units=["u1"])
+    respuesta, modelo = _consultar(
+        client, artefacto, [_respuesta("SIN_INFORMACION", "length")], query_retry_cut_answers="on"
+    )
+    assert modelo.answer.call_count == 1
+    cuerpo = respuesta.json()
+    assert cuerpo["no_info"] is True and cuerpo["sources"] == []
+    assert _registro(db, respuesta).reject_reason is None
+
+
+def test_un_tope_de_gasto_alcanzado_con_el_primer_intento_impide_reintentar(client, db, base, make_artifact):
+    artefacto = make_artifact(units=["u1"], cap=0.005)  # el primer intento (0,01) ya lo supera
+    respuesta, modelo = _consultar(
+        client, artefacto, [_respuesta("Cortada", "length", 0.01)], query_retry_cut_answers="on"
+    )
+    assert modelo.answer.call_count == 1
+    assert respuesta.json()["answer"].endswith(completeness.CUT_NOTICE)
+    assert _registro(db, respuesta).reject_reason == completeness.NOTE_NOTICE
+
+
+def test_si_el_reintento_falla_se_entrega_el_primer_texto_con_aviso(client, db, base, make_artifact):
+    artefacto = make_artifact(units=["u1"])
+    respuesta, modelo = _consultar(
+        client, artefacto, [_respuesta("Cortada a la mi", "length"), RuntimeError("proveedor caído")],
+        query_retry_cut_answers="on",
+    )
+    assert respuesta.status_code == 200
+    assert modelo.answer.call_count == 2
+    assert respuesta.json()["answer"].startswith("Cortada a la mi")
+    assert respuesta.json()["answer"].endswith(completeness.CUT_NOTICE)
+    assert _registro(db, respuesta).reject_reason == completeness.NOTE_NOTICE
+
+
+def test_con_las_citas_de_la_006_las_notas_se_unen_y_el_aviso_va_despues_de_quitar_la_linea(
+    client, db, base, make_artifact
+):
+    artefacto = make_artifact(units=["u1"])
+    # Reintento exitoso, pero el segundo texto no cita nada válido: rige la regla de seguridad de las citas.
+    respuesta, _ = _consultar(
+        client, artefacto,
+        [_respuesta("Cortada\nFUENTES: 9", "length"), _respuesta("Completa.\nFUENTES: 9", "stop")],
+        query_retry_cut_answers="on", query_cited_sources="on",
+    )
+    assert respuesta.json()["answer"] == "Completa."
+    assert _registro(db, respuesta).reject_reason == f"{completeness.NOTE_RETRIED}; {citations.SAFETY_RULE_NOTE}"
+
+    # Dos cortes: la línea de fuentes se quita y el aviso queda como última línea.
+    respuesta, _ = _consultar(
+        client, artefacto,
+        [_respuesta("Cortada\nFUENTES: 1", "length"), _respuesta("Cortada también\nFUENTES: 1", "length")],
+        query_retry_cut_answers="on", query_cited_sources="on",
+    )
+    texto = respuesta.json()["answer"]
+    assert "FUENTES" not in texto and texto.endswith(completeness.CUT_NOTICE)
+
+
+def test_con_la_opcion_apagada_no_se_reintenta_pero_si_se_registra_el_motivo_de_fin(
+    client, base, make_artifact, caplog
+):
+    import logging
+
+    artefacto = make_artifact(units=["u1"])
+    with caplog.at_level(logging.INFO, logger="mia.api.routes.query"):
+        respuesta, modelo = _consultar(client, artefacto, [_respuesta("Cortada", "length")])
+    assert modelo.answer.call_count == 1
+    assert respuesta.json()["answer"] == "Cortada"
+    assert any("length" in r.getMessage() and "literal" in r.getMessage() for r in caplog.records)
+    with caplog.at_level(logging.INFO, logger="mia.api.routes.query"):
+        caplog.clear()
+        _consultar(client, artefacto, [_respuesta("Completa.", "stop")])
+    assert any("stop" in r.getMessage() for r in caplog.records)
+
+
+# --- US3: independencia y apagado ---------------------------------------------------------------
+
+
+def test_con_ambas_opciones_apagadas_todo_es_como_antes(client, db, base, make_artifact):
+    from mia.rag.llm import RAG_SYSTEM_PROMPT
+
+    artefacto = make_artifact(units=["u1"])
+    assert settings.query_complete_context == "off" and settings.query_retry_cut_answers == "off"
+    texto = "Lista que termina con la línea\nFUENTES: 1"
+    respuesta, modelo = _consultar(
+        client, artefacto, [_respuesta(texto, "length")],
+        query_complete_context=settings.query_complete_context,
+        query_retry_cut_answers=settings.query_retry_cut_answers,
+    )
+    contexto = _contexto_entregado(modelo)
+    assert modelo.answer.call_count == 1  # sin reintento aunque el motivo sea "length"
+    assert all(completeness.CONTINUES_MARKER not in c.excerpt for c in contexto)
+    assert [c.reference for c in contexto] == [None] * len(contexto)
+    # Contexto de siempre: el fragmento relevante con un vecino a cada lado (3), o completo si es corto (doc-1 15 > 12).
+    por_doc = _por_documento(contexto)
+    assert por_doc["curso-1.pdf"].excerpt.count("doc-1:") == 3
+    assert modelo.answer.call_args.kwargs["instructions"] == RAG_SYSTEM_PROMPT
+    assert respuesta.json()["answer"] == texto  # intacto
+    assert len(respuesta.json()["sources"]) == len(contexto)
+    assert _registro(db, respuesta).reject_reason is None
+
+
+def test_solo_el_contexto_completo_no_reintenta_aunque_el_motivo_sea_length(client, base, make_artifact):
+    artefacto = make_artifact(units=["u1"])
+    respuesta, modelo = _consultar(
+        client, artefacto, [_respuesta("Cortada", "length")], query_complete_context="on"
+    )
+    assert modelo.answer.call_count == 1
+    assert completeness.COMPLETENESS_INSTRUCTIONS in modelo.answer.call_args.kwargs["instructions"]
+    assert "Aviso" not in respuesta.json()["answer"]
+
+
+def test_solo_el_reintento_deja_el_contexto_de_siempre(client, base, make_artifact):
+    from mia.rag.llm import RAG_SYSTEM_PROMPT
+
+    artefacto = make_artifact(units=["u1"])
+    respuesta, modelo = _consultar(
+        client, artefacto, [_respuesta("Cortada", "length"), _respuesta("Completa.", "stop")],
+        query_retry_cut_answers="on",
+    )
+    assert modelo.answer.call_count == 2
+    assert modelo.answer.call_args.kwargs["instructions"] == RAG_SYSTEM_PROMPT
+    assert all(completeness.CONTINUES_MARKER not in c.excerpt for c in _contexto_entregado(modelo))
+    assert respuesta.json()["answer"] == "Completa."
+
+
+def test_un_valor_invalido_se_comporta_como_apagado_y_avisa_una_sola_vez(client, base, make_artifact, caplog):
+    import logging
+
+    completeness._INVALID_VALUES_WARNED.clear()
+    artefacto = make_artifact(units=["u1"])
+    with caplog.at_level(logging.WARNING, logger=completeness.__name__):
+        for _ in range(2):
+            respuesta, modelo = _consultar(
+                client, artefacto, [_respuesta("Cortada", "length")],
+                query_complete_context="quizas", query_retry_cut_answers="tal vez",
+            )
+            assert respuesta.status_code == 200 and modelo.answer.call_count == 1
+            assert all(completeness.CONTINUES_MARKER not in c.excerpt for c in _contexto_entregado(modelo))
+    avisos = [r.getMessage() for r in caplog.records]
+    assert sum("QUERY_COMPLETE_CONTEXT" in a for a in avisos) == 1
+    assert sum("QUERY_RETRY_CUT_ANSWERS" in a for a in avisos) == 1
+    completeness._INVALID_VALUES_WARNED.clear()
+
+
+@pytest.mark.parametrize("valor", ["ON", " true ", "1", "yes"])
+def test_los_valores_de_encendido_con_otra_forma(client, base, make_artifact, valor):
+    artefacto = make_artifact(units=["u1"])
+    _, modelo = _consultar(
+        client, artefacto, [_respuesta("Cortada", "length"), _respuesta("Completa.")],
+        query_complete_context=valor, query_retry_cut_answers=valor,
+    )
+    assert modelo.answer.call_count == 2
+    assert completeness.COMPLETENESS_INSTRUCTIONS in modelo.answer.call_args.kwargs["instructions"]
+
+
+def test_las_opciones_se_leen_en_cada_consulta(client, base, make_artifact):
+    artefacto = make_artifact(units=["u1"])
+    _, primera = _consultar(client, artefacto, [_respuesta("Ok.")], query_complete_context="on")
+    _, segunda = _consultar(client, artefacto, [_respuesta("Ok.")], query_complete_context="off")
+    assert completeness.COMPLETENESS_INSTRUCTIONS in primera.answer.call_args.kwargs["instructions"]
+    assert completeness.COMPLETENESS_INSTRUCTIONS not in segunda.answer.call_args.kwargs["instructions"]
