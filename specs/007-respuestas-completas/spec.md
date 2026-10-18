@@ -30,7 +30,7 @@ Una persona de Coordinación pregunta "¿cuáles son los contenidos del curso Di
 
 1. **Given** un programa de curso de 15 fragmentos como el de Diseño de Experimentos, **When** se pregunta por sus contenidos, **Then** la respuesta incluye todas las secciones del temario hasta la última y no dice que la lista está incompleta.
 2. **Given** un programa de curso de más de 20 fragmentos como el de Deep Learning, **When** se pregunta por sus contenidos, **Then** la respuesta incluye el último ítem del temario.
-3. **Given** una lista o sección que continúa más allá del fragmento encontrado en un documento largo (un reglamento, un acta), **When** se pregunta por ella, **Then** la respuesta incluye el resto de la lista o sección, hasta donde termina en el documento.
+3. **Given** una lista o sección que continúa más allá del fragmento encontrado en un documento largo (un reglamento, un acta), **When** se pregunta por ella, **Then** la respuesta incluye lo que sigue dentro del alcance configurado (los fragmentos posteriores que se entregan) y, si la lista continúa más allá de ese alcance, lo dice (ver escenario 4).
 4. **Given** un documento tan largo que la lista o sección no cabe en el contexto máximo permitido por consulta, **When** se pregunta por ella, **Then** la respuesta dice de forma explícita que es parcial y en qué documento continúa, en lugar de presentarse como completa.
 5. **Given** una pregunta cuya respuesta cabe en un solo fragmento, **When** se pregunta, **Then** la respuesta no cambia respecto de hoy (misma información, misma forma).
 
@@ -57,16 +57,16 @@ A veces el modelo termina su respuesta antes de tiempo: a media frase, a mitad d
 
 ### User Story 3 - Poder apagarlo y volver al comportamiento anterior (Priority: P2)
 
-Quien opera MIA puede encender o apagar el contexto ampliado y la detección de cortes con variables de configuración independientes, sin desplegar código ni migrar la base. Mientras no se decida lo contrario, el valor por defecto es el comportamiento actual. Se enciende en producción cuando la medición de la historia 4 demuestra que mejora y no rompe nada.
+Quien opera MIA puede encender o apagar el contexto completo y la detección de cortes con variables de configuración independientes, sin desplegar código ni migrar la base. Mientras no se decida lo contrario, el valor por defecto es el comportamiento actual. Se enciende en producción cuando la medición de la historia 4 demuestra que mejora y no rompe nada.
 
-**Why this priority**: es la salvaguarda (BUS-6) para probar en producción y poder retroceder en minutos, y para separar el efecto del contexto ampliado del efecto del reintento.
+**Why this priority**: es la salvaguarda (BUS-6) para probar en producción y poder retroceder en minutos, y para separar el efecto del contexto completo del efecto del reintento.
 
 **Independent Test**: con ambas opciones apagadas, repetir la línea base y comprobar que las respuestas y las fuentes son las de antes; encender cada una por separado y comprobar que solo cambia lo suyo.
 
 **Acceptance Scenarios**:
 
 1. **Given** la configuración por defecto, **When** MIA responde, **Then** el contexto entregado, el texto y las fuentes son idénticos a los de antes de la feature.
-2. **Given** solo el contexto ampliado encendido, **When** se pregunta por un temario largo, **Then** la respuesta es completa y no hay reintentos.
+2. **Given** solo el contexto completo encendido, **When** se pregunta por un temario largo, **Then** la respuesta es completa y no hay reintentos.
 3. **Given** solo la detección de cortes encendida, **When** el modelo termina de forma anormal, **Then** se reintenta o se avisa, y el contexto es el de siempre.
 4. **Given** un valor inválido en cualquiera de las dos opciones, **When** el servicio arranca o responde, **Then** usa el comportamiento anterior y deja un aviso en el registro en vez de fallar.
 
@@ -92,7 +92,7 @@ Quien opera MIA agrega al conjunto de casos de la feature 005 casos de listas la
 ### Edge Cases
 
 - Un documento de más de 100 fragmentos (un acta larga, una tesis): no se puede entregar entero; la lista o sección debe completarse hasta donde la necesite la pregunta y, si aun así no cabe en el tope de contexto, la respuesta lo dice.
-- La lista completa está repartida entre dos documentos: cada documento aporta su parte; el tope de contexto por consulta aplica al total.
+- La lista completa está repartida entre dos documentos: por defecto solo el documento de mejor resultado recibe el trato ampliado; el segundo queda como hoy y la variable que fija cuántos documentos principales se amplían (por defecto 1) permite aumentarlo. El tope de contexto por consulta aplica al total.
 - El documento mismo está incompleto o truncado: MIA no puede inventar lo que no está; la respuesta puede decir que el documento no continúa.
 - Una pregunta amplia ("háblame del programa") que atraería muchos documentos largos: el tope de contexto por consulta evita que el costo se dispare; se prioriza lo más relevante.
 - El segundo intento tras un corte tarda más o falla por proveedor: la consulta termina con el texto del primer intento y el aviso, o con el error que ya hoy se devuelve si el proveedor no responde; nunca queda colgada.
@@ -104,18 +104,18 @@ Quien opera MIA agrega al conjunto de casos de la feature 005 casos de listas la
 
 ### Functional Requirements
 
-- **FR-001**: Cuando la respuesta es una lista o una sección de un documento que continúa más allá del fragmento encontrado, MIA debe entregar al modelo el resto de esa lista o sección, de modo que la respuesta la incluya completa hasta donde termina en el documento.
+- **FR-001**: Cuando la respuesta es una lista o una sección de un documento que continúa más allá del fragmento encontrado, MIA debe entregar al modelo lo que sigue dentro de un alcance configurable; si el documento es de tamaño moderado (FR-002) debe poder entregarse la lista o sección completa, y si no lo es, la respuesta debe decir cuándo la lista puede continuar fuera de lo entregado (FR-004). MIA no promete detectar dónde termina una lista en un documento largo.
 - **FR-002**: Los documentos de tamaño moderado (cubriendo al menos los programas de curso conocidos, hasta unos 25 fragmentos) deben poder entregarse completos al modelo.
 - **FR-003**: Para documentos más largos, MIA debe ampliar el contexto alrededor de lo encontrado hasta cubrir la lista o sección, dentro de un tope de tamaño de contexto por consulta fijado por configuración.
 - **FR-004**: Si, aun con el tope, la lista o sección no cabe completa, la respuesta debe indicar de forma explícita que es parcial y en qué documento continúa; no debe presentarse como completa.
 - **FR-005**: El tamaño total del contexto por consulta debe tener un tope, para acotar el costo y respetar los topes de gasto vigentes (por artefacto y de toda la API).
-- **FR-006**: MIA debe registrar, para cada respuesta del modelo, el motivo por el que terminó la generación (fin normal, límite de longitud u otro), de forma que se pueda contar cuántas terminan de forma anormal.
+- **FR-006**: MIA debe conocer, para cada respuesta del modelo, el motivo por el que terminó la generación (fin normal, límite de longitud u otro) y dejarlo registrado en el registro informativo del servidor, independientemente de que las opciones estén encendidas, para poder contar cuántas terminan de forma anormal; en el registro de Uso solo se anotan los cortes que se reintentaron o se entregaron con aviso (FR-007 a FR-009).
 - **FR-007**: Ante una generación que no terminó con normalidad, MIA no debe entregar el texto como completo: debe reintentar una vez y entregar el segundo intento si termina con normalidad.
 - **FR-008**: Si el segundo intento también termina de forma anormal, MIA debe entregar el texto con un aviso al final que diga que la respuesta pudo quedar incompleta, y el registro de Uso debe anotarlo.
 - **FR-009**: El costo de ambos intentos debe quedar registrado en el módulo Uso; si reintentar haría superar un tope de gasto, no se reintenta y se entrega el texto con el aviso.
 - **FR-010**: No se reintenta una respuesta "sin información" ni una respuesta rechazada por permisos o topes.
 - **FR-011**: El contexto ampliado y la detección de cortes deben poder encenderse y apagarse cada uno por separado mediante configuración, sin cambiar código ni base de datos; por defecto el comportamiento es el anterior a la feature.
-- **FR-012**: Un valor de configuración inválido debe tratarse como apagado y dejar un aviso en el registro, sin hacer fallar la consulta.
+- **FR-012**: Un valor inválido en cualquiera de las dos opciones de encendido (contexto completo y detección de cortes) debe tratarse como apagado y dejar un aviso en el registro, sin hacer fallar la consulta. Los valores numéricos de configuración (tamaños y topes) fuera de su rango sí impiden el arranque, a propósito, como ya ocurre con las demás variables numéricas de consulta.
 - **FR-013**: Con ambas opciones apagadas, el contexto entregado, la respuesta, las fuentes, el costo y el registro deben ser idénticos a los de antes de la feature.
 - **FR-014**: La feature no debe cambiar cuándo MIA responde "sin información suficiente".
 - **FR-015**: La trazabilidad de la feature 006 debe seguir funcionando con contextos más largos: la numeración de pasajes, la línea de fuentes, su validación y la regla de seguridad siguen aplicando.
