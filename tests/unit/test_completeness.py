@@ -74,3 +74,19 @@ def test_llm_answer_finish_reason_es_opcional():
     from mia.rag.llm import LLMAnswer
 
     assert LLMAnswer(text="x").finish_reason is None
+
+
+# --- Marca de continuación e instrucción de completitud -------------------------------------
+
+
+def test_marca_de_continuacion():
+    assert completeness.CONTINUES_MARKER == "[...el documento continúa]"
+    assert completeness.mark_continuation("Texto.", True) == "Texto.\n[...el documento continúa]"
+    assert completeness.mark_continuation("Texto.", False) == "Texto."
+
+
+def test_instruccion_de_completitud():
+    texto = completeness.COMPLETENESS_INSTRUCTIONS
+    assert completeness.CONTINUES_MARKER in texto
+    assert "lista" in texto and "no escribas" in texto.lower()
+    assert chr(0x2014) not in texto

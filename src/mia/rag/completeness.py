@@ -40,3 +40,20 @@ def complete_context_enabled(value: str) -> bool:
 
 def retry_cut_enabled(value: str) -> bool:
     return switch_enabled(value, "QUERY_RETRY_CUT_ANSWERS")
+
+
+# Línea que se agrega, solo en el texto que ve el modelo, a un pasaje al que le siguen fragmentos del documento
+# que no se entregaron.
+CONTINUES_MARKER = "[...el documento continúa]"
+
+# Párrafo que se agrega a las instrucciones del modo cuando QUERY_COMPLETE_CONTEXT está encendida.
+COMPLETENESS_INSTRUCTIONS = (
+    "Si la respuesta es una lista o una sección y el fragmento termina con la marca "
+    f"{CONTINUES_MARKER}, indica al final de tu respuesta, en una línea aparte, que la lista puede continuar "
+    "en ese documento y nómbralo. No escribas esa advertencia si el fragmento no lleva la marca."
+)
+
+
+def mark_continuation(text: str, continues: bool) -> str:
+    """El texto del pasaje con la marca de continuación como última línea, si el documento continúa."""
+    return f"{text}\n{CONTINUES_MARKER}" if continues else text

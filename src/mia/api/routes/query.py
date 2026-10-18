@@ -21,7 +21,12 @@ from mia.rag.citations import (
     parse_citations,
     select_sources,
 )
-from mia.rag.context import build_passages
+from mia.rag.completeness import (
+    COMPLETENESS_INSTRUCTIONS,
+    complete_context_enabled,
+    mark_continuation,
+)
+from mia.rag.context import ContextPolicy, build_passages
 from mia.rag.embeddings import get_embedding_provider
 from mia.rag.llm import RagContext, get_llm_provider, is_no_info_answer
 from mia.rag.modes import estimate_cost, mode_available, mode_config
@@ -176,11 +181,25 @@ def query(
     if not relevant:
         return no_info()
 
+    # Con QUERY_COMPLETE_CONTEXT encendida el documento principal se entrega completo o prolongado hacia
+    # adelante (feature 007). Se lee en cada consulta, como las demás opciones.
+    complete_context = complete_context_enabled(settings.query_complete_context)
+    policy = (
+        ContextPolicy(
+            documents=settings.query_complete_documents,
+            document_max_chunks=settings.query_complete_document_max_chunks,
+            forward_neighbors=settings.query_complete_forward_neighbors,
+            max_chars=settings.query_context_max_chars,
+        )
+        if complete_context
+        else None
+    )
     passages = build_passages(
         relevant,
         vector_store,
         settings.query_context_neighbors,
         settings.query_full_document_max_chunks,
+        policy,
     )
 
     # Con QUERY_CITED_SOURCES encendida los pasajes se numeran y se le pide al modelo que cite los que usó.
@@ -199,7 +218,8 @@ def query(
             RagContext(
                 domain=domain_label,
                 document=document_label,
-                excerpt=passage.text,
+                # La marca de continuación la ve el modelo; la persona ve el texto original en las fuentes.
+                excerpt=mark_continuation(passage.text, passage.continues) if complete_context else passage.text,
                 reference=position if cite_sources else None,
             )
         )
@@ -207,6 +227,8 @@ def query(
     try:
         llm_provider = get_llm_provider(config.provider, config.model, config.reasoning_effort)
         instructions = config.instructions
+        if complete_context:
+            instructions = f"{instructions}\n\n{COMPLETENESS_INSTRUCTIONS}"
         if cite_sources:
             instructions = f"{instructions}\n\n{CITATION_INSTRUCTIONS}"
         answer = llm_provider.answer(payload.question, context, instructions=instructions)
