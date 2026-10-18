@@ -455,7 +455,7 @@
       "MC8840"
     ],
     "contiene": "Structural Learning",
-    "nota": "Programa de 21 fragmentos."
+    "nota": "Programa de 21 fragmentos, en inglés. Falla por recuperación, ajena a la feature 007: el programa MC8840 aparece en el puesto 50 de la búsqueda con esta pregunta (y en el 14 aun con el código del curso, detrás del catálogo de cursos), así que nunca llega al modelo. Se conserva como caso conocido; la completitud de un programa de 21 fragmentos se comprueba con LL3 (20 fragmentos)."
   },
   {
     "id": "LL3",
