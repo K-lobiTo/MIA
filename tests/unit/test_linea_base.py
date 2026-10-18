@@ -737,3 +737,10 @@ def test_el_informe_muestra_reintentos_avisos_y_terminaciones():
     texto = lb.generar_informe(corrida)
     assert "Reintentos" in texto and "avisos de posible corte" in texto and "sin puntuación" in texto
     assert chr(0x2014) not in texto
+
+
+def test_el_archivo_de_casos_trae_las_listas_largas_con_su_ultimo_item():
+    listas = [c for c in lb.cargar_casos() if c["categoria"] == "lista_larga"]
+    assert len(listas) >= 8
+    assert all(c["contiene"] for c in listas)
+    assert {"MC6104", "MC8840", "MC8850", "MC8803", "MC7201", "MC6004"} <= {c["documentos"][0] for c in listas}

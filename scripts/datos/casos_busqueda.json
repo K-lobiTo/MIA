@@ -428,5 +428,131 @@
     "pregunta": "¿Qué dice la política de teletrabajo del instituto?",
     "espera": "sin_informacion",
     "nota": "Tema institucional ausente."
+  },
+  {
+    "id": "LL1",
+    "categoria": "lista_larga",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuáles son los contenidos del curso Diseño de Experimentos?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC6104"
+    ],
+    "contiene": "Factores confundidos",
+    "nota": "Programa de 15 fragmentos; hoy el temario sale cortado en la sección B (caso que originó la feature 007)."
+  },
+  {
+    "id": "LL2",
+    "categoria": "lista_larga",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuáles son los contenidos del curso Deep Learning?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC8840"
+    ],
+    "contiene": "Structural Learning",
+    "nota": "Programa de 21 fragmentos."
+  },
+  {
+    "id": "LL3",
+    "categoria": "lista_larga",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuáles son los contenidos del curso Procesamiento de Lenguaje Natural?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC8850"
+    ],
+    "contiene": "dependency parsing",
+    "nota": "Programa de 20 fragmentos."
+  },
+  {
+    "id": "LL4",
+    "categoria": "lista_larga",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuáles son los contenidos del curso Redes Neuronales?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC8803"
+    ],
+    "contiene": "Otras arquitecturas de redes neuronales",
+    "nota": "Programa de 17 fragmentos."
+  },
+  {
+    "id": "LL5",
+    "categoria": "lista_larga",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuáles son los contenidos del curso Introducción a la Investigación?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC7201"
+    ],
+    "contiene": "Administración del Tiempo",
+    "nota": "Programa de 17 fragmentos."
+  },
+  {
+    "id": "LL6",
+    "categoria": "lista_larga",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuáles son los contenidos del curso Sistemas Operativos Avanzados?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC6004"
+    ],
+    "contiene": "Cloud Computing",
+    "nota": "Programa de 14 fragmentos."
+  },
+  {
+    "id": "LL7",
+    "categoria": "lista_larga",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Memoria del Consejo"
+    ],
+    "pregunta": "¿Qué puntos se trataron en la sesión ordinaria 04-2026 del Consejo del Área Académica de Analítica de Negocios?",
+    "espera": "respuesta",
+    "documentos": [
+      "04-2026"
+    ],
+    "contiene": "Varios",
+    "nota": "Lista de 10 artículos en un acta de 20 fragmentos."
+  },
+  {
+    "id": "LL8",
+    "categoria": "lista_larga",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum"
+    ],
+    "pregunta": "¿Cuáles son los criterios de selección y su peso en el puntaje de admisión?",
+    "espera": "respuesta",
+    "documentos": [
+      "Reglamento del Programa"
+    ],
+    "contiene": "Carta motivacional",
+    "nota": "Lista en un documento de 37 fragmentos (más largo que el límite para entregarlo completo)."
+  },
+  {
+    "id": "LL9",
+    "categoria": "lista_larga",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuáles son los cursos del plan de estudios de la Maestría en Ciberseguridad?",
+    "espera": "respuesta",
+    "documentos": [
+      "Plan de Estudios Maestría en Ciberseguridad"
+    ],
+    "contiene": "Criptografía",
+    "nota": "Documento de 309 fragmentos: la lista no cabe completa; `contiene` es un ítem temprano y se juzga a mano si la respuesta sale completa o dice que continúa (FR-004)."
   }
 ]
