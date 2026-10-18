@@ -59,3 +59,9 @@ python scripts/linea_base.py comparar   ETIQUETA_A ETIQUETA_B
 - `respuestas` registra por consulta `regla_de_seguridad` (verdadero si el detalle de Uso trae la nota `Fuentes: sin citas utilizables...`, falso si no, nulo si no se pudo leer el detalle) y el resumen por modo suma `regla_de_seguridad_aplicada` y `proporcion_regla_de_seguridad` sobre las respuestas con contenido.
 - `comparar` muestra las diferencias de `regla_de_seguridad` y, cuando ambas corridas tienen `respuestas`, la **mediana de la razón (B sobre A) de costo y de latencia caso por caso** por modo. `informe` muestra la regla de seguridad en la sección de cada modo.
 - Las corridas anteriores a la 006 (sin `regla_de_seguridad`) se leen sin error.
+
+## Ampliación de la feature 007
+
+- Categoría de caso `lista_larga`: exige `contiene` con el último ítem esperado de la lista.
+- `respuestas` registra por consulta `reintento` (nota de Uso `Respuesta cortada: se reintentó`), `aviso_de_corte` (el texto trae el aviso `Aviso: la respuesta pudo quedar incompleta.` o la nota de Uso `Respuesta cortada: se entregó con aviso`) y `termina_sin_puntuacion` (el texto no termina en un signo de cierre; el texto no se guarda). El resumen por modo suma `reintentos`, `avisos_de_corte` y `terminan_sin_puntuacion` con sus proporciones sobre las respuestas con contenido.
+- `comparar` informa las diferencias de esos tres datos (ignorando los que una corrida no registra) e `informe` los muestra.

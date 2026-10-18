@@ -608,3 +608,132 @@ def test_comparar_ignora_la_regla_de_seguridad_desconocida_en_una_corrida():
     a = {"puntajes": None, "respuestas": {"resultados": [_resp("A", "literal", 0.01, 1000, regla=None)]}}
     b = {"puntajes": None, "respuestas": {"resultados": [_resp("A", "literal", 0.01, 1000, regla=False)]}}
     assert lb.comparar(a, b)["cambios"] == []
+
+
+# --- Feature 007: listas largas, reintentos y cortes ----------------------------------------------
+
+
+def test_la_categoria_lista_larga_exige_contiene(tmp_path):
+    ok = _caso(id="L1", categoria="lista_larga", contiene="Control de calidad")
+    assert lb.cargar_casos(_escribir(tmp_path, [ok]))[0]["categoria"] == "lista_larga"
+    sin = _caso(id="L2", categoria="lista_larga")
+    with pytest.raises(ValueError, match="contiene"):
+        lb.cargar_casos(_escribir(tmp_path, [sin]))
+
+
+@pytest.mark.parametrize(
+    "texto, esperado",
+    [
+        ("Termina con punto.", False),
+        ("Termina con pregunta?", False),
+        ("Termina entre paréntesis (ver arriba)", False),
+        ("- Último ítem de una lista **Control de calidad**", False),  # cierra con negritas
+        ("Dos puntos:", False),
+        ("Cortada a la mi", True),
+        ("(valor de beca de", True),
+        ("Lista\n10. Experimentos y Control de Calidad", True),
+    ],
+)
+def test_termina_sin_puntuacion(texto, esperado):
+    r = lb.evaluar_respuesta(_caso(documentos=["acta"]), 200, _body(answer=texto))
+    assert r["termina_sin_puntuacion"] is esperado
+    assert texto not in json.dumps(r)  # el texto no se conserva
+
+
+def test_aviso_de_corte_y_sin_informacion():
+    con = lb.evaluar_respuesta(_caso(), 200, _body(answer="Texto\n\nAviso: la respuesta pudo quedar incompleta."))
+    assert con["aviso_de_corte"] is True and con["termina_sin_puntuacion"] is False
+    sin = lb.evaluar_respuesta(_caso(), 200, _body(answer="Texto completo."))
+    assert sin["aviso_de_corte"] is False
+    no_info = lb.evaluar_respuesta(
+        _caso(espera="sin_informacion", documentos=[]), 200, _body(answer=lb.NO_INFO_PREFIX, docs=(), no_info=True)
+    )
+    assert no_info["termina_sin_puntuacion"] is False and no_info["aviso_de_corte"] is False
+    assert lb.evaluar_respuesta(_caso(), 502, {})["termina_sin_puntuacion"] is None
+
+
+def test_correr_respuestas_registra_el_reintento_y_el_aviso_desde_el_registro_de_uso():
+    notas = {
+        "q-reintento": "Respuesta cortada: se reintentó",
+        "q-aviso": "Respuesta cortada: se entregó con aviso",
+        "q-ninguna": None,
+    }
+    ids = {"A": "q-reintento", "B": "q-aviso", "C": "q-ninguna"}
+
+    def consultar(caso, variante, modo):
+        cuerpo = _body(answer="Texto completo.", docs=("acta.pdf",))
+        cuerpo["id"] = ids[caso["id"]]
+        return 200, cuerpo, 100
+
+    corrida = lb.correr_respuestas(
+        [_caso(id="A"), _caso(id="B"), _caso(id="C")], ["literal"], consultar,
+        lambda consulta_id: {"cost_usd": 0.01, "reject_reason": notas[consulta_id]}, 1.0,
+    )
+    por_caso = {r["caso_id"]: (r["reintento"], r["aviso_de_corte"]) for r in corrida["resultados"]}
+    assert por_caso == {"A": (True, False), "B": (False, True), "C": (False, False)}
+
+
+def test_reintento_nulo_si_no_hay_detalle_de_uso():
+    corrida = lb.correr_respuestas(
+        [_caso(id="A")], ["literal"], lambda c, v, m: (200, _body(docs=("acta.pdf",)), 1), lambda _id: None, 1.0
+    )
+    assert corrida["resultados"][0]["reintento"] is None
+
+
+def test_resumen_respuestas_suma_reintentos_avisos_y_terminaciones():
+    base = {"modo": "literal", "variante": "completa", "latencia_cliente_ms": 1000, "fuentes_sobrantes": 0,
+            "correcto": True, "costo_usd": 0.01, "resultado": "respondio", "regla_de_seguridad": False}
+    resultados = [
+        {**base, "caso_id": "A", "reintento": True, "aviso_de_corte": False, "termina_sin_puntuacion": False},
+        {**base, "caso_id": "B", "reintento": False, "aviso_de_corte": True, "termina_sin_puntuacion": False},
+        {**base, "caso_id": "C", "reintento": False, "aviso_de_corte": False, "termina_sin_puntuacion": True},
+        {**base, "caso_id": "D", "reintento": False, "aviso_de_corte": False, "termina_sin_puntuacion": False},
+    ]
+    r = lb.resumen_respuestas(resultados)["literal"]
+    assert (r["reintentos"], r["avisos_de_corte"], r["terminan_sin_puntuacion"]) == (1, 1, 1)
+    assert r["proporcion_reintentos"] == pytest.approx(0.25)
+    assert r["proporcion_terminan_sin_puntuacion"] == pytest.approx(0.25)
+
+
+def test_resumen_de_corridas_anteriores_a_la_007_no_falla():
+    base = {"modo": "literal", "variante": "completa", "latencia_cliente_ms": 1000, "fuentes_sobrantes": 0,
+            "correcto": True, "costo_usd": 0.01, "resultado": "respondio"}
+    r = lb.resumen_respuestas([{**base, "caso_id": "A"}])["literal"]
+    assert r["reintentos"] == 0 and r["proporcion_reintentos"] is None and r["terminan_sin_puntuacion"] == 0
+
+
+def test_comparar_informa_cambios_de_reintento_y_aviso_e_ignora_los_desconocidos():
+    def resp(**extra):
+        return {"puntajes": None, "respuestas": {"resultados": [_resp("A", "literal", 0.01, 1000) | extra]}}
+
+    cambios = lb.comparar(resp(reintento=False, aviso_de_corte=False), resp(reintento=True, aviso_de_corte=True))["cambios"]
+    assert any("reintento False -> True" in c for c in cambios) and any("aviso_de_corte" in c for c in cambios)
+    assert lb.comparar(resp(), resp(reintento=True))["cambios"] == []  # una corrida vieja no trae el dato
+
+
+def test_el_informe_muestra_reintentos_avisos_y_terminaciones():
+    mediciones = [_med("A", "respuesta", [0.9], 0.9)]
+    for m in mediciones:
+        m["por_modo"] = {k: lb.resultado_por_modo(m["candidatos"], 8, 0.82) for k in lb.MODOS}
+    contexto = {
+        "etiqueta": "t", "fecha": "2026-10-15T10:00:00", "commit": "abc1234567", "cambios_sin_confirmar": False,
+        "destino": "produccion", "umbral": 0.82, "limite_literal": 8, "limite_razonamiento": 16,
+        "candidatos_pedidos": 50, "proveedor_embeddings": "local", "dimension": 384,
+        "fragmentos_por_dominio": {"P / D": 10}, "casos_omitidos": [],
+    }
+    resultados = [{
+        "caso_id": "A", "variante": "completa", "modo": "literal", "resultado": "respondio", "correcto": True,
+        "fuentes_mostradas": 1, "fuentes_sobrantes": 0, "latencia_cliente_ms": 1000, "costo_usd": 0.001,
+        "reintento": True, "aviso_de_corte": False, "termina_sin_puntuacion": False,
+    }]
+    corrida = {
+        "puntajes": {"contexto": contexto, "mediciones": mediciones,
+                     "resumen": lb.resumen_puntajes(mediciones, 0.82, {"literal": 8, "razonamiento": 16})},
+        "respuestas": {"contexto": {"fecha": "2026-10-16", "destino": "produccion", "artefacto": "P", "modos": ["literal"],
+                                    "tope_usd": 0.2, "casos_omitidos": []},
+                       "resultados": resultados, "parcial": False, "motivo_parada": None, "gasto_total_usd": 0.001,
+                       "resumen": lb.resumen_respuestas(resultados)},
+    }
+    texto = lb.generar_informe(corrida)
+    assert "Reintentos" in texto and "avisos de posible corte" in texto and "sin puntuación" in texto
+    assert chr(0x2014) not in texto

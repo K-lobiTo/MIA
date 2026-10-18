@@ -40,13 +40,19 @@ RAIZ = Path(__file__).resolve().parent.parent
 RUTA_CASOS = RAIZ / "scripts" / "datos" / "casos_busqueda.json"
 SALIDA = RAIZ / "tmp" / "linea_base"
 
-CATEGORIAS = {"mvp", "seccion_2_2", "indirecta", "sigla", "sin_respuesta"}
+CATEGORIAS = {"mvp", "seccion_2_2", "indirecta", "sigla", "sin_respuesta", "lista_larga"}
 ESPERAS = {"respuesta", "sin_informacion"}
 MODOS = ("literal", "razonamiento")
 SEPARADOR = " / "
 NO_INFO_PREFIX = "No encontré información suficiente"
 # Nota que la API deja en `reject_reason` cuando rigió la regla de seguridad de las citas (feature 006).
 NOTA_REGLA_DE_SEGURIDAD = "Fuentes: sin citas utilizables"
+# Notas de la feature 007 en `reject_reason` y aviso al final de una respuesta con posible corte.
+NOTA_REINTENTO = "Respuesta cortada: se reintentó"
+NOTA_AVISO_DE_CORTE = "Respuesta cortada: se entregó con aviso"
+AVISO_DE_CORTE = "Aviso: la respuesta pudo quedar incompleta."
+# Una respuesta que no termina con uno de estos caracteres es una candidata a corte que el modelo no declaró.
+CIERRES_DE_FRASE = ".!?):;\"'”»*"
 
 # Candidatos que se piden a la base vectorial por pregunta (máximo que acepta QUERY_SEARCH_LIMIT).
 CANDIDATOS = 50
@@ -101,6 +107,8 @@ def cargar_casos(ruta: Path = RUTA_CASOS) -> list[dict]:
             raise ValueError(f"Caso {id_}: espera inválida {caso.get('espera')!r}.")
         if caso["espera"] == "respuesta" and not caso.get("documentos"):
             raise ValueError(f"Caso {id_}: espera respuesta pero no declara los documentos que aportan.")
+        if caso["categoria"] == "lista_larga" and not caso.get("contiene"):
+            raise ValueError(f"Caso {id_}: una lista larga debe declarar en `contiene` el último ítem esperado.")
     return casos
 
 
@@ -340,6 +348,8 @@ def evaluar_respuesta(caso: dict, status: int, body: dict) -> dict:
         "fuentes_sobrantes": 0,
         "documentos_mostrados": [],
         "contiene_ok": None,
+        "termina_sin_puntuacion": None,
+        "aviso_de_corte": None,
     }
     if status != 200:
         return vacio
@@ -363,6 +373,9 @@ def evaluar_respuesta(caso: dict, status: int, body: dict) -> dict:
         "fuentes_sobrantes": len(sobrantes),
         "documentos_mostrados": documentos,
         "contiene_ok": contiene_ok,
+        # Solo se conserva si la respuesta parece cortada, nunca su texto.
+        "termina_sin_puntuacion": (not sin_info) and bool(texto.strip()) and texto.rstrip()[-1] not in CIERRES_DE_FRASE,
+        "aviso_de_corte": AVISO_DE_CORTE in texto,
     }
 
 
@@ -377,6 +390,28 @@ def percentil(valores: list[float], p: float) -> float | None:
 
 def _media(valores: list[float]) -> float | None:
     return sum(valores) / len(valores) if valores else None
+
+
+def _resumen_cortes(filas: list[dict]) -> dict:
+    """Reintentos, avisos de posible corte y respuestas que terminan sin puntuación (feature 007)."""
+    con_contenido = [r for r in filas if r["resultado"] == "respondio"]
+
+    def contar(campo):
+        conocidas = [r for r in con_contenido if r.get(campo) is not None]
+        n = sum(1 for r in conocidas if r[campo])
+        return n, (n / len(conocidas) if conocidas else None)
+
+    reintentos, p_reintentos = contar("reintento")
+    avisos, p_avisos = contar("aviso_de_corte")
+    sin_punto, p_sin_punto = contar("termina_sin_puntuacion")
+    return {
+        "reintentos": reintentos,
+        "proporcion_reintentos": p_reintentos,
+        "avisos_de_corte": avisos,
+        "proporcion_avisos_de_corte": p_avisos,
+        "terminan_sin_puntuacion": sin_punto,
+        "proporcion_terminan_sin_puntuacion": p_sin_punto,
+    }
 
 
 def _resumen_regla_de_seguridad(filas: list[dict]) -> dict:
@@ -414,6 +449,7 @@ def resumen_respuestas(resultados: list[dict]) -> dict:
             "costo_medio_sin_info_usd": _media(costos_sin_info),
             "gasto_total_usd": sum(costos),
             **_resumen_regla_de_seguridad(filas),
+            **_resumen_cortes(filas),
         }
     return resumen
 
@@ -460,8 +496,11 @@ def correr_respuestas(casos, modos, consultar, leer_costo, tope_usd: float) -> d
                         "costo_estimado": costo.get("cost_estimated") if costo else None,
                         "tokens": costo.get("tokens") if costo else None,
                         "regla_de_seguridad": (
-                            None if not costo else (costo.get("reject_reason") or "").startswith(NOTA_REGLA_DE_SEGURIDAD)
+                            None if not costo else NOTA_REGLA_DE_SEGURIDAD in (costo.get("reject_reason") or "")
                         ),
+                        "reintento": None if not costo else NOTA_REINTENTO in (costo.get("reject_reason") or ""),
+                        "aviso_de_corte": bool(evaluacion["aviso_de_corte"])
+                        or NOTA_AVISO_DE_CORTE in ((costo or {}).get("reject_reason") or ""),
                         "consulta_id": consulta_id,
                     }
                 )
@@ -475,6 +514,10 @@ def correr_respuestas(casos, modos, consultar, leer_costo, tope_usd: float) -> d
 # ---------------------------------------------------------------------------
 # Comparación e informe
 # ---------------------------------------------------------------------------
+
+
+# Datos que las corridas anteriores no registran: si falta en una de las dos, no cuenta como un cambio.
+CAMPOS_OPCIONALES = {"regla_de_seguridad", "reintento", "aviso_de_corte", "termina_sin_puntuacion"}
 
 
 def comparar(a: dict, b: dict) -> dict:
@@ -509,8 +552,12 @@ def comparar(a: dict, b: dict) -> dict:
         for clave in sorted(xa.keys() & xb.keys()):
             x, y = xa[clave], xb[clave]
             nombre = f"{clave[0]} ({clave[1]}), modo {clave[2]}"
-            for campo in ("resultado", "correcto", "fuentes_mostradas", "fuentes_sobrantes", "regla_de_seguridad"):
-                if campo == "regla_de_seguridad" and (x.get(campo) is None or y.get(campo) is None):
+            campos = (
+                "resultado", "correcto", "fuentes_mostradas", "fuentes_sobrantes", "regla_de_seguridad",
+                "reintento", "aviso_de_corte", "termina_sin_puntuacion",
+            )
+            for campo in campos:
+                if campo in CAMPOS_OPCIONALES and (x.get(campo) is None or y.get(campo) is None):
                     continue  # dato desconocido en una de las corridas (p. ej. anteriores a la 006): no es un cambio
                 if x.get(campo) != y.get(campo):
                     cambios.append(f"{nombre}: {campo} {x.get(campo)} -> {y.get(campo)}.")
@@ -690,6 +737,17 @@ def generar_informe(corrida: dict) -> str:
                     f"el de las que terminan en \"sin información\": {_fmt(r['costo_medio_sin_info_usd'], 6)} USD."
                 ),
                 f"- Gasto total: {_fmt(r['gasto_total_usd'], 4)} USD.",
+                *(
+                    [
+                        (
+                            f"- Reintentos: {r['reintentos']}; avisos de posible corte: {r['avisos_de_corte']}; "
+                            f"respuestas que terminan sin puntuación: {r['terminan_sin_puntuacion']} "
+                            f"({_fmt(100 * r['proporcion_terminan_sin_puntuacion'], 1)} % de las que tienen contenido)."
+                        )
+                    ]
+                    if r.get("proporcion_terminan_sin_puntuacion") is not None
+                    else []
+                ),
                 *(
                     [
                         (
