@@ -81,7 +81,8 @@ class _Almacen:
             time.sleep(self.pausa)
         if self.error is not None:
             raise self.error
-        return list(self.indice.get(text, []))[:limit]
+        # (id del fragmento, id de su documento): el del fragmento conocido o uno propio para cada fragmento.
+        return [(i, self.por_id[i].document_id if i in self.por_id else f"doc-{i}") for i in self.indice.get(text, [])][:limit]
 
     def score_chunks(self, embedding, domains, chunk_ids):
         self.puntuaciones.append({"domains": list(domains), "ids": list(chunk_ids)})
@@ -117,7 +118,7 @@ def consultar(client, artefacto, almacen, respuestas=(), pregunta=PREGUNTA, modo
         "query_similarity_threshold": UMBRAL, "query_search_limit": 8, "query_search_limit_razonamiento": 16,
         "query_clean_question": "off", "query_complete_context": "off", "query_retry_cut_answers": "off",
         "query_cited_sources": "off", "rerank_provider": "none", "query_hybrid_search": "on",
-        "hybrid_max_doc_freq": 5, "hybrid_lexical_limit": 20, "hybrid_lexical_slots": 3, "hybrid_budget_ms": 2000,
+        "hybrid_max_docs": 5, "hybrid_term_chunks": 50, "hybrid_lexical_limit": 20, "hybrid_lexical_slots": 3, "hybrid_budget_ms": 2000,
         "hybrid_equivalences_ttl_seconds": 0,
     }
     valores.update(opciones)
@@ -166,7 +167,7 @@ def test_un_documento_bajo_el_umbral_llega_al_modelo_por_palabras(client, base, 
     assert {tuple(p["domains"]) for p in almacen.palabras} == {("dom-1",)}
     assert almacen.puntuaciones[0]["domains"] == ["dom-1"]
     assert {p["text"] for p in almacen.palabras} == {"joseph", "obando", "sandi"}
-    assert all(p["limit"] == 6 for p in almacen.palabras)  # hybrid_max_doc_freq + 1
+    assert all(p["limit"] == 50 for p in almacen.palabras)  # hybrid_term_chunks
     assert registro(db, http).reject_reason == "Búsqueda híbrida: 1 por palabras, 1 nuevos"
 
 

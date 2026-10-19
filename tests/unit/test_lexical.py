@@ -150,27 +150,32 @@ def test_la_sigla_corta_de_una_equivalencia_no_se_filtra_por_largo():
 # --- Búsqueda y regla de la mayoría -------------------------------------------------------------
 
 
-def grupo(*terminos, ids=()):
-    return LexicalGroup(terms=tuple(terminos), chunk_ids=frozenset(ids))
+def grupo(*terminos, ids=(), docs=None):
+    """Un grupo con esos fragmentos; por defecto cada fragmento es de un documento distinto."""
+    return LexicalGroup(terms=tuple(terminos), chunk_ids=frozenset(ids), documents=len(ids) if docs is None else docs)
 
 
 def ids(prefijo, n):
     return {f"{prefijo}{i}" for i in range(n)}
 
 
-def test_lexical_lookup_une_las_alternativas_y_pide_un_fragmento_de_mas():
+def test_lexical_lookup_une_las_alternativas_y_cuenta_los_documentos():
     llamadas = []
 
     class Almacen:
         def match_chunks(self, domains, text, limit):
             llamadas.append((tuple(domains), text, limit))
-            return {"tfg": ["a", "b"], "trabajo final de graduacion": ["b", "c"], "x": []}[text]
+            return {
+                "tfg": [("a", "doc1"), ("b", "doc1")],
+                "trabajo final de graduacion": [("b", "doc1"), ("c", "doc2")],
+                "x": [],
+            }[text]
 
-    resultado = lexical_lookup(Almacen(), ["d1"], [grupo("tfg", "trabajo final de graduacion"), grupo("x")], 60)
-    assert resultado[0].chunk_ids == frozenset({"a", "b", "c"})
-    assert resultado[1].chunk_ids == frozenset()
+    resultado = lexical_lookup(Almacen(), ["d1"], [grupo("tfg", "trabajo final de graduacion"), grupo("x")], 200)
+    assert resultado[0].chunk_ids == frozenset({"a", "b", "c"}) and resultado[0].documents == 2
+    assert resultado[1].chunk_ids == frozenset() and resultado[1].documents == 0
     assert sorted(llamadas) == sorted(
-        [(("d1",), "tfg", 61), (("d1",), "trabajo final de graduacion", 61), (("d1",), "x", 61)]
+        [(("d1",), "tfg", 200), (("d1",), "trabajo final de graduacion", 200), (("d1",), "x", 200)]
     )
     assert lexical_lookup(Almacen(), ["d1"], [], 60) == []
 
@@ -194,6 +199,20 @@ def test_un_fragmento_pasa_con_mas_de_la_mitad_de_los_grupos_especificos(n, nece
     candidatos = [c.chunk_id for c in pick_candidates(grupos, 60, 20).candidates]
     assert "ok" in candidatos
     assert "corto" not in candidatos
+
+
+def test_una_palabra_repetida_en_un_solo_documento_es_especifica_aunque_tenga_muchos_fragmentos():
+    # El apellido de una tesis aparece en cada página (123 fragmentos) pero es un solo documento.
+    grupos = [grupo("jose", ids=ids("j", 134), docs=9), grupo("medrano", ids=ids("m", 123) | {"j0"}, docs=1)]
+    resultado = pick_candidates(grupos, 10, 200)
+    assert resultado.specific == 2
+    assert [c.chunk_id for c in resultado.candidates] == ["j0"]  # el único fragmento con las dos palabras
+
+
+def test_una_palabra_en_muchos_documentos_es_comun_aunque_tenga_pocos_fragmentos():
+    grupos = [grupo("curso", ids=ids("c", 30), docs=25), grupo("cibercrimen", ids={"c0", "z"}, docs=2)]
+    resultado = pick_candidates(grupos, 10, 200)
+    assert resultado.specific == 1 and {c.chunk_id for c in resultado.candidates} == {"c0", "z"}
 
 
 def test_un_grupo_ausente_cuenta_como_especifico_sin_coincidencias():
@@ -233,7 +252,7 @@ def test_orden_por_grupos_coincidentes_luego_peso_y_recorte_al_limite():
     resultado = pick_candidates(grupos, 60, 2)
     assert [c.chunk_id for c in resultado.candidates] == ["x", "y"]
     assert resultado.candidates[0].matched == 3 and resultado.candidates[1].matched == 2
-    # el grupo más raro pesa más
+    # el grupo en menos documentos pesa más
     peso_raro = math.log(1 + 61 / 1)
     assert resultado.candidates[0].weight == pytest.approx(
         math.log(1 + 61 / 3) + math.log(1 + 61 / 2) + peso_raro

@@ -134,7 +134,7 @@ class _HybridRun:
 
     def _lookup(self, groups):
         started = time.perf_counter()
-        found = lexical_lookup(self.store, self.domains, groups, settings.hybrid_max_doc_freq)
+        found = lexical_lookup(self.store, self.domains, groups, settings.hybrid_term_chunks)
         return found, _elapsed_ms(started)
 
     def _resolve(self) -> None:
@@ -146,12 +146,14 @@ class _HybridRun:
         try:
             budget = settings.hybrid_budget_ms / 1000 if settings.hybrid_budget_ms > 0 else None
             found, thread_ms = self._future.result(timeout=budget)
-            outcome = pick_candidates(found, settings.hybrid_max_doc_freq, settings.hybrid_lexical_limit, thread_ms)
+            outcome = pick_candidates(found, settings.hybrid_max_docs, settings.hybrid_term_chunks, thread_ms)
             if outcome.candidates:
                 scored = self.store.score_chunks(
                     self.embedding, self.domains, [c.chunk_id for c in outcome.candidates]
                 )
-                self.results = order_lexical(outcome.candidates, scored)
+                # Se puntúan por coseno todos los candidatos que cumplen la regla (hasta `hybrid_term_chunks`) y pasan a
+                # la fusión los mejores `hybrid_lexical_limit`: el coseno desempata entre fragmentos con las mismas palabras.
+                self.results = order_lexical(outcome.candidates, scored)[: settings.hybrid_lexical_limit]
                 present = {r.chunk_id for r in self.results}
                 outcome.candidates = [c for c in outcome.candidates if c.chunk_id in present]
             self.outcome = outcome

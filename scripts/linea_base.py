@@ -9,7 +9,7 @@ Subcomandos:
                 Con --rerank agrega el puntaje del reranker local (feature 009): puesto del documento esperado,
                 barrido del mínimo y ventana de separación (sin tokens de modelos de lenguaje).
                 Con --palabras agrega la búsqueda por palabras de la feature 010: grupos y candidatos léxicos, puesto del
-                documento esperado antes y después de la fusión y barrido de la frecuencia máxima y de las ranuras
+                documento esperado antes y después de la fusión y barrido del máximo de documentos y de las ranuras
                 (solo lectura, sin tokens de modelos de lenguaje; exige el índice de texto de Qdrant).
     rendimiento Memoria y latencia del reranker local por candidatos, tokens por pasaje e hilos (feature 009).
     registro    Resume la salida de `railway logs`: latencia p50 y p95 del reranker y de la búsqueda híbrida, memoria y
@@ -68,8 +68,8 @@ NOTA_RERANK_CAIDA = "Reranker no disponible: se usó la similitud"
 # Notas de la feature 010 en `reject_reason`: lo que aportó la búsqueda por palabras o su caída al significado.
 PATRON_HIBRIDA_CON = re.compile(r"Búsqueda híbrida: (\d+) por palabras, (\d+) nuevos")
 NOTA_HIBRIDA_CAIDA = "Búsqueda por palabras no disponible"
-# Barridos de la feature 010: frecuencia máxima de una palabra específica y lugares para los solo léxicos.
-BARRIDO_FRECUENCIAS = (20, 40, 60, 100, 200)
+# Barridos de la feature 010: máximo de documentos de una palabra específica y lugares para los solo léxicos.
+BARRIDO_DOCUMENTOS = (3, 5, 10, 20, 50)
 BARRIDO_RANURAS = (0, 1, 2, 3, 4, 5)
 # Equivalencias de siglas por defecto si la base no tiene la tabla (anterior a la migración 0005).
 SEMILLAS_EQUIVALENCIAS = (
@@ -617,8 +617,8 @@ def _puesto_en(lista: list, documentos: list[str], archivos: dict) -> int | None
 def medir_palabras(pregunta, dominio_ids, vector, almacen, archivos, equivalencias, ajustes, limites, umbral,
                    documentos, reloj=time.perf_counter) -> dict:
     """La búsqueda por palabras de un caso con el mismo código que la API: grupos, candidatos, y por modo la lista
-    de significado antes y la fusionada después. Con los datos del barrido de la frecuencia máxima y de las ranuras.
-    El texto de los fragmentos no se guarda. `ajustes`: frecuencia, limite, ranuras, grupos_max, largo_min, rrf_k."""
+    de significado antes y la fusionada después. Con los datos del barrido del máximo de documentos y de las ranuras.
+    El texto de los fragmentos no se guarda. `ajustes`: documentos, fragmentos, limite, ranuras, grupos_max, largo_min, rrf_k."""
     from mia.rag.lexical import (
         lexical_lookup,
         merge_hybrid,
@@ -629,15 +629,17 @@ def medir_palabras(pregunta, dominio_ids, vector, almacen, archivos, equivalenci
 
     grupos = query_groups(pregunta, equivalencias, ajustes["grupos_max"], ajustes["largo_min"])
     inicio = reloj()
-    mayor = max((*BARRIDO_FRECUENCIAS, ajustes["frecuencia"]))
-    encontrados = lexical_lookup(almacen, dominio_ids, grupos, mayor) if grupos else []
-    por_k = {k: pick_candidates(encontrados, k, ajustes["limite"]) for k in sorted({*BARRIDO_FRECUENCIAS, ajustes["frecuencia"]})}
+    encontrados = lexical_lookup(almacen, dominio_ids, grupos, ajustes["fragmentos"]) if grupos else []
+    por_k = {
+        k: pick_candidates(encontrados, k, ajustes["fragmentos"])
+        for k in sorted({*BARRIDO_DOCUMENTOS, ajustes["documentos"]})
+    }
     ids = sorted({c.chunk_id for resultado in por_k.values() for c in resultado.candidates})
     puntuados = almacen.score_chunks(vector, dominio_ids, ids) if ids else []
     ms = (reloj() - inicio) * 1000
     por_id = {r.chunk_id: r for r in puntuados}
-    principal = por_k[ajustes["frecuencia"]]
-    lexicos = order_lexical(principal.candidates, puntuados)
+    principal = por_k[ajustes["documentos"]]
+    lexicos = order_lexical(principal.candidates, puntuados)[: ajustes["limite"]]
     vectores = almacen.search(vector, dominio_ids, CANDIDATOS)
 
     def lado_significado(modo):
@@ -667,10 +669,10 @@ def medir_palabras(pregunta, dominio_ids, vector, almacen, archivos, equivalenci
             "despues": {"pasan": len(despues), "resultado": "responde" if despues else "sin_informacion"},
             "esperados": esperados,
         }
-    barrido_frecuencia = {}
+    barrido_documentos = {}
     for k, resultado in por_k.items():
-        ordenados = order_lexical(resultado.candidates, puntuados)
-        barrido_frecuencia[str(k)] = {
+        ordenados = order_lexical(resultado.candidates, puntuados)[: ajustes["limite"]]
+        barrido_documentos[str(k)] = {
             "especificos": resultado.specific,
             "candidatos": len(resultado.candidates),
             "esperado": bool(documentos) and _puesto_en(ordenados, documentos, archivos) is not None,
@@ -686,7 +688,8 @@ def medir_palabras(pregunta, dominio_ids, vector, almacen, archivos, equivalenci
             }
     return {
         "grupos": [
-            {"terminos": list(g.terms), "fragmentos": len(g.chunk_ids), "especifico": len(g.chunk_ids) <= ajustes["frecuencia"]}
+            {"terminos": list(g.terms), "fragmentos": len(g.chunk_ids), "documentos": g.documents,
+             "especifico": g.documents <= ajustes["documentos"]}
             for g in encontrados
         ],
         "especificos": principal.specific,
@@ -702,7 +705,7 @@ def medir_palabras(pregunta, dominio_ids, vector, almacen, archivos, equivalenci
             for c in principal.candidates
         ],
         "por_modo": por_modo,
-        "barrido_frecuencia": barrido_frecuencia,
+        "barrido_documentos": barrido_documentos,
         "barrido_ranuras": barrido_ranuras,
     }
 
@@ -741,19 +744,22 @@ def resumen_palabras(mediciones: list[dict]) -> dict:
                 and m["palabras"]["por_modo"][modo]["despues"]["resultado"] == "responde"
             ],
         }
-    resumen["barrido_frecuencia"] = {
+    resumen["barrido_documentos"] = {
         k: {
-            "objetivos_acertados": sum(1 for m in objetivos if m["palabras"]["barrido_frecuencia"][k]["esperado"]),
-            "sin_info_con_candidatos": [nombre(m) for m in sin_info if m["palabras"]["barrido_frecuencia"][k]["candidatos"] > 0],
+            "objetivos_acertados": sum(1 for m in objetivos if m["palabras"]["barrido_documentos"][k]["esperado"]),
+            "sin_info_con_candidatos": [nombre(m) for m in sin_info if m["palabras"]["barrido_documentos"][k]["candidatos"] > 0],
         }
-        for k in (con[0]["palabras"]["barrido_frecuencia"] if con else {})
+        for k in (con[0]["palabras"]["barrido_documentos"] if con else {})
     }
     resumen["barrido_ranuras"] = {
         r: {
             modo: {
                 "objetivos_con_esperado": sum(1 for m in objetivos if m["palabras"]["barrido_ranuras"][r][modo]["esperado"]),
+                # Los que antes no respondían y con la fusión sí: lo que la parte léxica agrega al costo.
                 "sin_info_que_responden": [
-                    nombre(m) for m in sin_info if m["palabras"]["barrido_ranuras"][r][modo]["resultado"] == "responde"
+                    nombre(m) for m in sin_info
+                    if m["palabras"]["barrido_ranuras"][r][modo]["resultado"] == "responde"
+                    and m["palabras"]["por_modo"][modo]["antes"]["resultado"] == "sin_informacion"
                 ],
             }
             for modo in MODOS
@@ -1219,7 +1225,8 @@ def _seccion_palabras(puntajes: dict) -> list[str]:
         "## Búsqueda por palabras (feature 010)",
         "",
         (
-            f"Frecuencia máxima {ctx.get('frecuencia', '?')}, hasta {ctx.get('limite', '?')} candidatos léxicos, "
+            f"Palabra específica: hasta {ctx.get('documentos', '?')} documentos; {ctx.get('fragmentos', '?')} fragmentos por palabra, "
+            f"hasta {ctx.get('limite', '?')} candidatos léxicos, "
             f"{ctx.get('ranuras', '?')} ranuras, {ctx.get('equivalencias', '?')} equivalencias de siglas."
         ),
         "",
@@ -1253,8 +1260,8 @@ def _seccion_palabras(puntajes: dict) -> list[str]:
         )
     lat = resumen["latencia_ms"]
     lineas += ["", f"Latencia de la parte léxica medida aquí (hilo, sin red de Railway): p50 {_fmt(lat['p50'], 0)} ms, p95 {_fmt(lat['p95'], 0)} ms.", "",
-               "Barrido de la frecuencia máxima:", "", "| Frecuencia máxima | Objetivos con su documento entre los candidatos | \"Sin información\" con candidatos léxicos |", "|---|---|---|"]
-    for k, f in resumen["barrido_frecuencia"].items():
+               "Barrido del máximo de documentos de una palabra específica:", "", "| Máximo de documentos | Objetivos con su documento entre los candidatos | \"Sin información\" con candidatos léxicos |", "|---|---|---|"]
+    for k, f in resumen["barrido_documentos"].items():
         lineas.append(f"| {k} | {f['objetivos_acertados']} | {', '.join(f['sin_info_con_candidatos']) or 'ninguno'} |")
     lineas += ["", "Barrido de las ranuras para fragmentos que solo llegaron por palabras:", "",
                "| Ranuras | Literal: objetivos con esperado | Literal: sin información que responden | Razonamiento: objetivos con esperado | Razonamiento: sin información que responden |", "|---|---|---|---|---|"]
@@ -1668,7 +1675,7 @@ def comando_puntajes(args) -> int:
                 "exige autorización) o medir contra una copia local con scripts/copiar_coleccion.py --indice."
             )
         ajustes_palabras = {
-            "frecuencia": settings.hybrid_max_doc_freq, "limite": settings.hybrid_lexical_limit,
+            "documentos": settings.hybrid_max_docs, "fragmentos": settings.hybrid_term_chunks, "limite": settings.hybrid_lexical_limit,
             "ranuras": settings.hybrid_lexical_slots, "grupos_max": settings.hybrid_max_groups,
             "largo_min": settings.hybrid_min_token_len, "rrf_k": settings.hybrid_rrf_k,
         }

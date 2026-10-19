@@ -53,13 +53,15 @@ def test_el_indice_de_texto_busca_por_inicio_de_palabra_sin_tildes_ni_mayusculas
     assert estado["exists"] is True and estado["points"] == 4
     assert estado["params"]["tokenizer"] == "prefix"
 
-    assert set(almacen.match_chunks(["d1"], "obando", 61)) == {joseph.id, kenneth.id}
-    assert almacen.match_chunks(["d1"], "joseph obando", 61) == [joseph.id]
-    assert almacen.match_chunks(["d1"], "sandi", 61) == []
-    assert almacen.match_chunks(["d1"], "LÍNEAS", 61) == almacen.match_chunks(["d1"], "lineas", 61) == [lineas.id]
+    assert set(almacen.match_chunks(["d1"], "obando", 200)) == {(joseph.id, "joseph"), (kenneth.id, "kenneth")}
+    assert almacen.match_chunks(["d1"], "joseph obando", 200) == [(joseph.id, "joseph")]
+    assert almacen.match_chunks(["d1"], "sandi", 200) == []
+    assert almacen.match_chunks(["d1"], "LÍNEAS", 200) == almacen.match_chunks(["d1"], "lineas", 200) == [
+        (lineas.id, "lineas")
+    ]
     # Un dominio distinto no se ve (FR-004).
-    assert almacen.match_chunks(["d1"], "otro", 61) == []
-    assert almacen.match_chunks(["d2"], "obando", 61) == [otro.id]
+    assert almacen.match_chunks(["d1"], "otro", 200) == []
+    assert almacen.match_chunks(["d2"], "obando", 200) == [(otro.id, "otro")]
     # El límite se respeta.
     assert len(almacen.match_chunks(["d1"], "obando", 1)) == 1
 
@@ -80,10 +82,10 @@ def test_mover_un_documento_de_dominio_se_ve_en_el_filtro_sin_recrear_el_indice(
     pieza = _chunk("Joseph Obando2023800202", dominio="d1", documento="doc-mover")
     almacen.upsert([pieza])
     almacen.ensure_text_index()
-    assert almacen.match_chunks(["d1"], "obando", 61) == [pieza.id]
+    assert almacen.match_chunks(["d1"], "obando", 200) == [(pieza.id, "doc-mover")]
     almacen.set_domain("doc-mover", "d2")
-    assert almacen.match_chunks(["d1"], "obando", 61) == []
-    assert almacen.match_chunks(["d2"], "obando", 61) == [pieza.id]
+    assert almacen.match_chunks(["d1"], "obando", 200) == []
+    assert almacen.match_chunks(["d2"], "obando", 200) == [(pieza.id, "doc-mover")]
 
 
 def test_quitar_el_indice_lo_deja_como_antes(almacen):

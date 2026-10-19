@@ -92,8 +92,9 @@ class VectorStore(ABC):
     def drop_text_index(self) -> None:
         raise NotImplementedError("Este almacén no tiene búsqueda por palabras")
 
-    def match_chunks(self, domains: list[str], text: str, limit: int) -> list[str]:
-        """Ids de fragmentos de los dominios cuyo texto contiene todas las palabras de `text`, como mucho `limit`."""
+    def match_chunks(self, domains: list[str], text: str, limit: int) -> list[tuple[str, str]]:
+        """(id del fragmento, id del documento) de los fragmentos de los dominios cuyo texto contiene todas las
+        palabras de `text`, como mucho `limit`."""
         raise NotImplementedError("Este almacén no tiene búsqueda por palabras")
 
     def score_chunks(
@@ -222,7 +223,7 @@ class QdrantVectorStore(VectorStore):
             return None
         return getattr(schema, "params", None) or TEXT_INDEX_PARAMS
 
-    def match_chunks(self, domains: list[str], text: str, limit: int) -> list[str]:
+    def match_chunks(self, domains: list[str], text: str, limit: int) -> list[tuple[str, str]]:
         points, _ = self.client.scroll(
             collection_name=self.collection,
             scroll_filter=Filter(
@@ -232,10 +233,10 @@ class QdrantVectorStore(VectorStore):
                 ]
             ),
             limit=limit,
-            with_payload=False,
+            with_payload=["document_id"],
             with_vectors=False,
         )
-        return [str(point.id) for point in points]
+        return [(str(point.id), point.payload["document_id"]) for point in points]
 
     def score_chunks(
         self, embedding: list[float], domains: list[str], chunk_ids: list[str]

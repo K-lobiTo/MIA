@@ -63,10 +63,12 @@ class Equivalence:
 
 @dataclass(frozen=True)
 class LexicalGroup:
-    """Una palabra de la pregunta, o una sigla con su forma desarrollada, que se busca como un solo término."""
+    """Una palabra de la pregunta, o una sigla con su forma desarrollada, que se busca como un solo término.
+    `documents` es cuántos documentos distintos contienen alguna alternativa (entre los fragmentos pedidos)."""
 
     terms: tuple[str, ...]
     chunk_ids: frozenset[str] = frozenset()
+    documents: int = 0
     specific: bool = False
 
 
@@ -160,18 +162,18 @@ def query_groups(
 # --- Búsqueda en el almacén y regla de la mayoría ------------------------------------------------
 
 
-def lexical_lookup(store, domains: list[str], groups: list[LexicalGroup], max_doc_freq: int,
+def lexical_lookup(store, domains: list[str], groups: list[LexicalGroup], term_chunks: int,
                    executor: ThreadPoolExecutor | None = None) -> list[LexicalGroup]:
-    """Los grupos con los fragmentos que contienen alguna de sus alternativas. Una consulta al almacén por
-    alternativa, en paralelo, de a lo sumo `max_doc_freq + 1` fragmentos: pasar de `max_doc_freq` basta para saber que
-    la palabra es común. Cualquier excepción del almacén sube sin capturarse."""
+    """Los grupos con los fragmentos (y el número de documentos) que contienen alguna de sus alternativas. Una
+    consulta al almacén por alternativa, en paralelo, de a lo sumo `term_chunks` fragmentos. Cualquier excepción del
+    almacén sube sin capturarse."""
     if not groups:
         return []
     tasks = [(index, term) for index, group in enumerate(groups) for term in group.terms]
 
     def lookup(task):
         _, term = task
-        return store.match_chunks(domains, term, max_doc_freq + 1)
+        return store.match_chunks(domains, term, term_chunks)
 
     if executor is not None:
         found = list(executor.map(lookup, tasks))
@@ -180,16 +182,23 @@ def lexical_lookup(store, domains: list[str], groups: list[LexicalGroup], max_do
             found = list(own.map(lookup, tasks))
 
     ids: list[set[str]] = [set() for _ in groups]
-    for (index, _), chunk_ids in zip(tasks, found, strict=True):
-        ids[index].update(chunk_ids)
-    return [replace(group, chunk_ids=frozenset(chunk_ids)) for group, chunk_ids in zip(groups, ids, strict=True)]
+    documents: list[set[str]] = [set() for _ in groups]
+    for (index, _), hits in zip(tasks, found, strict=True):
+        for chunk_id, document_id in hits:
+            ids[index].add(chunk_id)
+            documents[index].add(document_id)
+    return [
+        replace(group, chunk_ids=frozenset(chunk_ids), documents=len(docs))
+        for group, chunk_ids, docs in zip(groups, ids, documents, strict=True)
+    ]
 
 
-def pick_candidates(groups: list[LexicalGroup], max_doc_freq: int, limit: int, elapsed_ms: int = 0) -> LexicalOutcome:
-    """Regla de la mayoría: un grupo es específico si aparece en como máximo `max_doc_freq` fragmentos (uno que no
+def pick_candidates(groups: list[LexicalGroup], max_docs: int, limit: int, elapsed_ms: int = 0) -> LexicalOutcome:
+    """Regla de la mayoría: un grupo es específico si aparece en como máximo `max_docs` documentos (uno que no
     aparece en ninguno cuenta como específico, sin coincidencias); con `n` grupos específicos, un fragmento pasa si
-    contiene `n // 2 + 1` o más. Se ordena por grupos coincidentes y por peso (más peso cuanto más raro el grupo)."""
-    marked = [replace(g, specific=len(g.chunk_ids) <= max_doc_freq) for g in groups]
+    contiene `n // 2 + 1` o más. Se ordena por grupos coincidentes y por peso (más peso cuanto menos documentos
+    contienen el grupo) y se queda con los primeros `limit`."""
+    marked = [replace(g, specific=g.documents <= max_docs) for g in groups]
     specific = [g for g in marked if g.specific]
     n = len(specific)
     if n == 0:
@@ -200,7 +209,7 @@ def pick_candidates(groups: list[LexicalGroup], max_doc_freq: int, limit: int, e
     for group in specific:
         if not group.chunk_ids:
             continue
-        group_weight = math.log(1 + (max_doc_freq + 1) / len(group.chunk_ids))
+        group_weight = math.log(1 + (max_docs + 1) / max(group.documents, 1))
         for chunk_id in group.chunk_ids:
             matched[chunk_id] = matched.get(chunk_id, 0) + 1
             weight[chunk_id] = weight.get(chunk_id, 0.0) + group_weight

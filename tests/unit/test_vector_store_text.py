@@ -39,13 +39,17 @@ def _coleccion(esquema=None, points_count=10):
 
 
 def test_match_chunks_arma_el_filtro_de_dominios_mas_texto(almacen):
-    almacen.client.scroll.return_value = ([SimpleNamespace(id="a"), SimpleNamespace(id="b")], None)
-    ids = almacen.match_chunks(["d1", "d2"], "obando", 61)
-    assert ids == ["a", "b"]
+    almacen.client.scroll.return_value = (
+        [SimpleNamespace(id="a", payload={"document_id": "doc1"}), SimpleNamespace(id="b", payload={"document_id": "doc2"})],
+        None,
+    )
+    hits = almacen.match_chunks(["d1", "d2"], "obando", 200)
+    assert hits == [("a", "doc1"), ("b", "doc2")]
     kwargs = almacen.client.scroll.call_args.kwargs
     assert kwargs["collection_name"] == "mia_prueba"
-    assert kwargs["limit"] == 61
-    assert kwargs["with_payload"] is False and kwargs["with_vectors"] is False
+    assert kwargs["limit"] == 200
+    # Solo el id del documento: no se trae el texto de los fragmentos.
+    assert kwargs["with_payload"] == ["document_id"] and kwargs["with_vectors"] is False
     must = kwargs["scroll_filter"].must
     assert FieldCondition(key="domain", match=MatchAny(any=["d1", "d2"])) in must
     assert FieldCondition(key="text", match=MatchText(text="obando")) in must

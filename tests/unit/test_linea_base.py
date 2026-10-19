@@ -1371,7 +1371,7 @@ class _AlmacenPalabras:
 
     def match_chunks(self, domains, text, limit):
         self.llamadas.append(text)
-        return list(self.indice.get(text, []))[:limit]
+        return [(i, self.fragmentos[i].document_id if i in self.fragmentos else f"doc-{i}") for i in self.indice.get(text, [])][:limit]
 
     def score_chunks(self, embedding, domains, chunk_ids):
         return [self.fragmentos[i] for i in chunk_ids if i in self.fragmentos]
@@ -1380,7 +1380,7 @@ class _AlmacenPalabras:
         return self.vectores[:limit]
 
 
-AJUSTES = {"frecuencia": 60, "limite": 20, "ranuras": 3, "grupos_max": 8, "largo_min": 3, "rrf_k": 60}
+AJUSTES = {"documentos": 10, "fragmentos": 200, "limite": 20, "ranuras": 3, "grupos_max": 8, "largo_min": 3, "rrf_k": 60}
 LIMITES = {"literal": 8, "razonamiento": 16}
 ARCHIVOS_P = {"doc-j": "IPA Joseph Obando Sandi.pdf", "doc-k": "Acta 04.pdf", "doc-v": "Otro.pdf"}
 
@@ -1415,8 +1415,9 @@ def test_medir_palabras_trae_el_documento_que_el_significado_no_traia():
     # Con ranuras en 0 el documento no entra: lo dice el barrido.
     assert medicion["barrido_ranuras"]["0"]["literal"]["esperado"] is False
     assert medicion["barrido_ranuras"]["3"]["literal"]["esperado"] is True
-    assert medicion["barrido_frecuencia"]["60"] == {"especificos": 3, "candidatos": 1, "esperado": True}
-    assert set(medicion["barrido_frecuencia"]) == {"20", "40", "60", "100", "200"}
+    assert medicion["barrido_documentos"]["10"] == {"especificos": 3, "candidatos": 1, "esperado": True}
+    assert set(medicion["barrido_documentos"]) == {"3", "5", "10", "20", "50"}
+    assert [g["documentos"] for g in medicion["grupos"]] == [2, 1, 0]
     # No se guarda texto de fragmentos.
     assert "texto" not in json.dumps(medicion)
 
@@ -1425,7 +1426,7 @@ def test_medir_palabras_de_una_persona_inventada_no_deja_candidatos():
     medicion, _ = _medir_joseph({"zacarias": [], "fernandez": ["k1"], "pizarro": []})
     assert medicion["candidatos"] == [] and medicion["especificos"] == 3
     assert medicion["por_modo"]["literal"]["despues"] == medicion["por_modo"]["literal"]["antes"]
-    assert medicion["barrido_frecuencia"]["20"]["candidatos"] == 0
+    assert medicion["barrido_documentos"]["3"]["candidatos"] == 0
 
 
 def test_resumen_palabras_cuenta_objetivos_sin_informacion_y_barridos():
@@ -1445,7 +1446,7 @@ def test_resumen_palabras_cuenta_objetivos_sin_informacion_y_barridos():
     assert literal["mejoran"] == ["S22-3"] and literal["empeoran"] == []
     assert literal["bus1_bus2"] == {"preguntas": 1, "pasan_antes": 0, "pasan_despues": 1}
     assert literal["sin_info_que_llegan_al_modelo"] == ["HS3"]
-    assert resumen["barrido_frecuencia"]["60"] == {"objetivos_acertados": 1, "sin_info_con_candidatos": ["HS3"]}
+    assert resumen["barrido_documentos"]["10"] == {"objetivos_acertados": 1, "sin_info_con_candidatos": ["HS3"]}
     assert resumen["barrido_ranuras"]["0"]["literal"]["objetivos_con_esperado"] == 0
     assert resumen["barrido_ranuras"]["3"]["literal"]["objetivos_con_esperado"] == 1
     assert resumen["latencia_ms"]["n"] == 3
