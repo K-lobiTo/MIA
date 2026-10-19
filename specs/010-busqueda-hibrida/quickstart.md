@@ -77,3 +77,7 @@ Comprobar que `upgrade` aplica la `0005` sin tocar filas existentes, que `downgr
 ## 7. Cierre
 
 Con la opción apagada: la línea base se repite sin diferencias (SC-005). Con la opción encendida y el índice quitado (`scripts/palabras.py quitar`): las consultas responden por significado con la nota de caída (SC-009). Los resultados van a `docs/LINEA_BASE_BUSQUEDA.md` y a la tabla de resultados de [spec.md](spec.md), con la recomendación de SC-011.
+
+## Verificado
+
+- **Panel de siglas (T047, 2026-10-19)**: con el Microsoft simulado (`scripts/idp_simulado.py`) y el panel en desarrollo, manejado con un Chromium automatizado (Playwright, ignorando el certificado autofirmado): la cuenta global (`operador@itcr.ac.cr`) ve las semillas (MGTI con las dos redacciones y TFG), agrega "PLN" = "Procesamiento de Lenguaje Natural", el duplicado `t.f.g` = `TRABAJO final de graduación` se rechaza con «Ya existe la equivalencia «TFG» = «Trabajo Final de Graduación».», una sigla de 2 letras se rechaza antes de enviar ("La sigla debe tener de 3 a 20 caracteres."), editar y borrar (con diálogo de confirmación que explica el efecto) funcionan, y la página no registró errores de JavaScript. Con `coord.comp@itcr.ac.cr` (alcance de programa) la tabla se ve sin botones de agregar, editar ni borrar y con el aviso "Solo el alcance global puede agregar, editar o borrar equivalencias"; la escritura por fuera responde 403 `global_only` (prueba automática `tests/unit/test_equivalences.py`).
