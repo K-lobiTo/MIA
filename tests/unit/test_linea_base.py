@@ -874,3 +874,38 @@ def test_el_informe_cuenta_los_segundos_intentos_sin_guion_largo():
     texto = lb.generar_informe(corrida)
     assert "Segundos intentos: 2; con resultados: 1; negativos reformulados: N1" in texto
     assert chr(0x2014) not in texto
+
+
+def test_correr_respuestas_registra_el_texto_de_la_pregunta_limpia():
+    notas = {
+        "q-1": "Pregunta limpia: «Natalia Soto Solís» (con resultados)",
+        "q-2": "Pregunta limpia: «a; b (c)» (sin resultados); Respuesta cortada: se reintentó",
+        "q-3": None,
+    }
+
+    def consultar(caso, variante, modo):
+        cuerpo = _body(docs=("acta.pdf",))
+        cuerpo["id"] = {"A": "q-1", "B": "q-2"}.get(caso["id"], "q-3")
+        return 200, cuerpo, 100
+
+    corrida = lb.correr_respuestas(
+        [_caso(id="A"), _caso(id="B"), _caso(id="C")], ["literal"], consultar,
+        lambda consulta_id: {"cost_usd": 0.01, "reject_reason": notas[consulta_id]}, 1.0,
+    )
+    por_caso = {r["caso_id"]: r["pregunta_limpia_texto"] for r in corrida["resultados"]}
+    assert por_caso == {"A": "Natalia Soto Solís", "B": "a; b (c)", "C": None}
+    assert {r["caso_id"]: r["pregunta_limpia_ayudo"] for r in corrida["resultados"]} == {"A": True, "B": False, "C": False}
+
+
+def test_el_texto_de_la_pregunta_limpia_es_nulo_sin_detalle_de_uso_y_comparar_lo_ignora_si_falta():
+    corrida = lb.correr_respuestas(
+        [_caso()], ["literal"], lambda c, v, m: (200, _body(docs=("acta.pdf",)), 1), lambda _id: None, 1.0
+    )
+    assert corrida["resultados"][0]["pregunta_limpia_texto"] is None
+    a = {"puntajes": None, "respuestas": {"resultados": [_resp("A", "literal", 0.01, 1000)]}}
+    b = {"puntajes": None, "respuestas": {"resultados": [{**_resp("A", "literal", 0.01, 1000),
+                                                          "pregunta_limpia_texto": "Natalia"}]}}
+    assert lb.comparar(a, b)["cambios"] == []
+    c = {"puntajes": None, "respuestas": {"resultados": [{**_resp("A", "literal", 0.01, 1000),
+                                                          "pregunta_limpia_texto": "Otro"}]}}
+    assert any("pregunta_limpia_texto" in x for x in lb.comparar(c, b)["cambios"])

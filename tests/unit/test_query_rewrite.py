@@ -67,6 +67,13 @@ def test_clean_question_enabled_invalido_apaga_y_avisa_una_vez(caplog):
         ("  ¿Quién es Natalia Soto Solís?  .", "Natalia Soto Solís"),
         ("¿Quién es Natalia Soto Solís, por favor?", "Natalia Soto Solís"),
         ("¿Quién es Natalia Soto Solís? Gracias", "Natalia Soto Solís"),
+        # "por favor" y "gracias" solo se quitan como palabras completas y tras puntuación (T031)
+        ("¿Quién es Santa Desgracias?", "Santa Desgracias"),
+        ("¿Quién es Juan Gracias?", "Juan Gracias"),
+        ("¿Qué es el IPA, gracias?", "IPA"),
+        ("¿Qué es el TFG? Gracias", "TFG"),
+        ("¿Qué es el TFG por favor", "TFG"),
+        ("¿Qué es el Sopor Favor?", "Sopor Favor"),
         # Espacios dobles en el medio: el corte del original debe seguir siendo correcto
         ("¿Quién   es   Natalia  Soto Solís?", "Natalia Soto Solís"),
     ],

@@ -52,7 +52,7 @@ NOTA_REINTENTO = "Respuesta cortada: se reintentó"
 NOTA_AVISO_DE_CORTE = "Respuesta cortada: se entregó con aviso"
 AVISO_DE_CORTE = "Aviso: la respuesta pudo quedar incompleta."
 # Nota de la feature 008 en `reject_reason`: «Pregunta limpia: «texto» (con resultados)» o «(sin resultados)».
-PATRON_PREGUNTA_LIMPIA = re.compile(r"Pregunta limpia: «.*?» \((con|sin) resultados\)", re.DOTALL)
+PATRON_PREGUNTA_LIMPIA = re.compile(r"Pregunta limpia: «(.*?)» \((con|sin) resultados\)", re.DOTALL)
 # Una respuesta que no termina con uno de estos caracteres es una candidata a corte que el modelo no declaró.
 CIERRES_DE_FRASE = ".!?):;\"'”»*"
 
@@ -534,7 +534,8 @@ def correr_respuestas(casos, modos, consultar, leer_costo, tope_usd: float) -> d
                         "aviso_de_corte": bool(evaluacion["aviso_de_corte"])
                         or NOTA_AVISO_DE_CORTE in ((costo or {}).get("reject_reason") or ""),
                         "pregunta_limpia": None if not costo else nota_limpia is not None,
-                        "pregunta_limpia_ayudo": None if not costo else bool(nota_limpia and nota_limpia.group(1) == "con"),
+                        "pregunta_limpia_ayudo": None if not costo else bool(nota_limpia and nota_limpia.group(2) == "con"),
+                        "pregunta_limpia_texto": nota_limpia.group(1) if nota_limpia else None,
                         "negativo_de_pregunta_limpia": bool(caso.get("sin_pregunta_limpia")),
                         "consulta_id": consulta_id,
                     }
@@ -554,7 +555,7 @@ def correr_respuestas(casos, modos, consultar, leer_costo, tope_usd: float) -> d
 # Datos que las corridas anteriores no registran: si falta en una de las dos, no cuenta como un cambio.
 CAMPOS_OPCIONALES = {
     "regla_de_seguridad", "reintento", "aviso_de_corte", "termina_sin_puntuacion", "pregunta_limpia",
-    "pregunta_limpia_ayudo",
+    "pregunta_limpia_ayudo", "pregunta_limpia_texto",
 }
 
 
@@ -593,6 +594,7 @@ def comparar(a: dict, b: dict) -> dict:
             campos = (
                 "resultado", "correcto", "fuentes_mostradas", "fuentes_sobrantes", "regla_de_seguridad",
                 "reintento", "aviso_de_corte", "termina_sin_puntuacion", "pregunta_limpia", "pregunta_limpia_ayudo",
+                "pregunta_limpia_texto",
             )
             for campo in campos:
                 if campo in CAMPOS_OPCIONALES and (x.get(campo) is None or y.get(campo) is None):

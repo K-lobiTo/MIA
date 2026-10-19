@@ -27,7 +27,7 @@ Los dos casos tienen la misma causa: el sistema descarta los fragmentos cuya sim
 
 | Id | Requerimiento |
 |---|---|
-| BUS-1 | Una pregunta sobre un nombre propio, una sigla o un término que aparece en los documentos debe encontrar esos documentos aunque la pregunta tenga palabras de más ("¿Quién es X?", "¿Qué es el TFG?", "háblame de X"). |
+| BUS-1 | Una pregunta sobre un nombre propio, una sigla o un término que aparece en los documentos debe encontrar esos documentos aunque la pregunta tenga palabras de más ("¿Quién es X?", "¿Qué es el TFG?", "háblame de X"). **Avance del 2026-10-18** (feature [008](../specs/008-pregunta-limpia/spec.md), `QUERY_CLEAN_QUESTION`, apagada por defecto): el segundo intento con la pregunta limpia resuelve una de las tres personas de la línea base y solo con razonamiento; el resto queda pendiente de la recuperación (el documento aparece en los puestos 12 a 43 o puntúa justo bajo el umbral) y de las siglas (reranker E y búsqueda híbrida D). Ver [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md). |
 | BUS-2 | Una pregunta con la forma desarrollada de una sigla, o con la sigla cuando el documento usa la forma desarrollada, debe encontrar el mismo documento. |
 | BUS-3 | Ningún cambio debe aumentar de forma notable las respuestas inventadas: cuando los documentos de verdad no tienen la información, la respuesta sigue siendo "sin información suficiente". |
 | BUS-4 | Los topes de gasto (por artefacto y de toda la API) se siguen respetando, y el costo adicional por consulta, si lo hay, queda visible en el módulo Uso. |
@@ -202,7 +202,7 @@ Datos de la línea base medida el 2026-10-15 en [LINEA_BASE_BUSQUEDA.md](LINEA_B
 
 ### 2.9 Criterios de aceptación (borrador)
 
-- Los casos de la sección 2.2 (`S22-1` a `S22-4`, nombres y apellidos y sigla) responden con la pregunta completa igual que con la variante corta (BUS-1 y BUS-2). Hoy fallan 7 de las 8 preguntas de esos casos en literal y 6 en razonamiento.
+- Los casos de la sección 2.2 (`S22-1` a `S22-4`, nombres y apellidos y sigla) responden con la pregunta completa igual que con la variante corta (BUS-1 y BUS-2). Hoy fallan 7 de las 8 preguntas de esos casos en literal y 6 en razonamiento. Con `QUERY_CLEAN_QUESTION=on` (feature 008) la pregunta completa de `S22-1` responde con su documento en razonamiento (no en literal); `S22-3` y `S22-4` siguen en "sin información" (medido el 2026-10-18).
 - Los 19 casos de [PRUEBAS_MVP.md](PRUEBAS_MVP.md) (los 15 que esperan respuesta y los 4 de "sin información") siguen respondiendo bien, como hoy en los dos modos.
 - Una pregunta sobre un tema que no está en ningún documento sigue respondiendo "sin información suficiente" (BUS-3).
 - Ninguna respuesta se entrega cortada sin aviso y las listas de documentos de hasta 25 fragmentos salen completas (BUS-8). Línea base de la feature 007: de las 6 listas de programas de curso medidas solo la de Diseño de Experimentos salía cortada; con `QUERY_COMPLETE_CONTEXT=on` sale completa. El reintento no se necesitó en la medición (ningún fin anormal en unas 230 llamadas al modelo).

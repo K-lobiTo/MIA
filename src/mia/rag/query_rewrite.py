@@ -38,7 +38,9 @@ _COURTESIES = re.compile(
     r"|(?:quiero|necesito|quisiera|me gustaria)\s+saber"
     r")(?=[\s,]|$)[\s,]*"
 )
-_TRAILING_COURTESY = re.compile(r"[\s,.;:?!¡¿]*(?:por favor|gracias)$")
+# "por favor" como palabra completa; "gracias" solo tras un signo de puntuación, para no recortar un apellido
+# final ("Juan Gracias") ni el final de una palabra ("Desgracias").
+_TRAILING_COURTESY = re.compile(r"(?:[\s,.;:?!¡¿]*(?<!\w)por favor|[,.;:?!][\s,.;:?!¡¿]*(?<!\w)gracias)$")
 
 # Envolturas al inicio de la pregunta. Lo que sigue es el candidato.
 _WRAPPERS = (
