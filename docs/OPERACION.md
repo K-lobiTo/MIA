@@ -39,6 +39,13 @@ Guía práctica para desplegar, cargar documentos y mantener funcionando el prot
 | `QUERY_COMPLETE_CONTEXT` / `QUERY_RETRY_CUT_ANSWERS` | `off` / `off` | contexto completo del documento principal y reintento de respuestas cortadas (ver "Respuestas completas y sin cortes") | no se usa |
 | `QUERY_COMPLETE_DOCUMENTS` / `QUERY_COMPLETE_DOCUMENT_MAX_CHUNKS` / `QUERY_COMPLETE_FORWARD_NEIGHBORS` / `QUERY_CONTEXT_MAX_CHARS` | `1` / `25` / `4` / `80000` | alcance del contexto completo: cuántos documentos (por mejor resultado), tamaño máximo en fragmentos para entregarlos enteros, fragmentos posteriores en documentos más largos y tope de caracteres por consulta | no se usa |
 | `QUERY_CLEAN_QUESTION` | `off` | `on` hace un segundo intento de búsqueda con la pregunta reducida a lo que se busca ("¿Quién es X?" busca "X") cuando la primera no deja nada sobre el umbral (ver "Pregunta limpia") | no se usa |
+| `RERANK_PROVIDER` | `none` | `local` activa el reranker local (feature 009): un modelo dentro de la API reordena los candidatos y decide el corte de "sin información". No usa servicios externos (ver "Reranker local") | no se usa |
+| `RERANK_CANDIDATES` | `30` | Candidatos que se recuperan y puntúan (5 a 60; nunca menos que el límite del modo) | no se usa |
+| `RERANK_MIN_SCORE` | `0.06` | Puntaje mínimo del reranker, de 0 a 1 (calibrado; con 0,5 rechaza documentos que hoy se responden bien) | no se usa |
+| `RERANK_MIN_SIMILARITY` | `0` | Coseno mínimo para puntuar un candidato (0 lo apaga; no ayudó con los datos actuales) | no se usa |
+| `RERANK_PASSAGE_TOKENS` | `128` | Tokens de cada fragmento que lee el reranker (32 a 480; más tokens, más latencia) | no se usa |
+| `RERANK_THREADS` | `4` | Hilos de cálculo del reranker (1 a 8) | no se usa |
+| `RERANK_BUDGET_MS` | `2500` | Tiempo máximo de puntuación por consulta (0 lo desactiva); superado, la consulta usa la similitud | no se usa |
 | `QUERY_CITED_SOURCES` | `off` | `off` por defecto; `on` hace que la respuesta liste solo las fuentes que el modelo dice haber usado (ver más abajo) | no se usa |
 | `MAX_UPLOAD_MB` | `25` | `25` | `25` |
 | `OPENROUTER_MANAGEMENT_KEY` | vacía | vacía (no recomendada, ver "Topes de gasto y saldo") | no se usa |
@@ -381,6 +388,17 @@ Con `QUERY_CLEAN_QUESTION=on`, si la primera búsqueda de una consulta no deja n
 - **Uso:** la consulta con segundo intento deja en `reject_reason` la nota `Pregunta limpia: «texto» (con resultados)` o `(sin resultados)`, también si termina en "sin información". Sirve para contar cuántas veces se usó y cuántas ayudó. Sin migraciones.
 - Un valor distinto de `on`, `true`, `1`, `yes`, `off`, `false`, `0`, `no` o vacío se trata como apagado y deja un aviso en el registro. Se cambia en las variables de `MIA` en Railway y se reinicia; volver a `off` devuelve el comportamiento anterior (cuidado con `--skip-deploys`, ver "Mostrar solo las fuentes que aportaron").
 - Efecto medido (2026-10-18): ayuda poco. Con las tres personas de la línea base, una (solo con razonamiento) pasa de "sin información" a respuesta con su documento; no inventa respuestas con personas o términos inexistentes; una consulta que antes era "sin información" gratis cuesta cerca de 0,001 USD cuando el segundo intento encuentra fragmentos. Ver [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md). Queda apagada.
+
+## Reranker local (`RERANK_PROVIDER`)
+
+Con `RERANK_PROVIDER=local`, `POST /query` recupera `RERANK_CANDIDATES` fragmentos (30), un cross-encoder que corre dentro de la API los puntúa contra la pregunta y el corte de "sin información" pasa a ser el puntaje del reranker (`RERANK_MIN_SCORE`) en lugar del umbral de coseno. Al modelo de lenguaje siguen llegando como mucho 8 fragmentos (16 con razonamiento): el costo de los modelos no sube. No se usa ningún servicio externo de reranking (feature `specs/009-reranker-local/`).
+
+- **Costo medido (2026-10-18):** el modelo ocupa unos 158 MB más de RAM (366 MB sin él, 522 a 524 MB con él en reposo en Railway, picos de 600 MB) y puntuar tarda unos 0,3 s por consulta con 4 hilos. Con el límite de 512 MB de la prueba, queda unos 10 MB sobre; el costo mensual adicional estimado es de 1 a 1,6 USD. **Está apagado hasta que se acepte ese costo.** Detalle en [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md).
+- **Encender:** `railway variable set RERANK_PROVIDER=local -s MIA --skip-deploys` y `python scripts/servicios.py encender MIA --forzar` (sin `--skip-deploys`, Railway redespliega desde `main`). El modelo se descarga en el build de la imagen (119 MB más) y se carga al arrancar: el registro dice `Reranker cargado: RSS 366 -> 524 MB, pico 593 MB`. Volver a `none` devuelve el comportamiento anterior.
+- **Uso:** la consulta con reranker deja en `reject_reason` la nota `Reranker: mejor 0.987, 3 de 30 sobre el mínimo 0.06` (o `Reranker: ninguno sobre el mínimo 0.06, mejor 0.003 de 30` si termina en "sin información"). El registro del servidor lleva `Reranker: 30 candidatos en 298 ms, pico de memoria 597 MB (modo literal)` por consulta, de donde salen la latencia y la memoria bajo carga.
+- **Si falla:** si el modelo no carga, o puntuar falla o supera `RERANK_BUDGET_MS`, la consulta sigue con el orden y el umbral de coseno de siempre, con la nota `Reranker no disponible: se usó la similitud` y un aviso (como mucho uno por minuto). Nunca devuelve un error por esta causa.
+- **Mínimo:** se calibró con 57 casos (`python scripts/linea_base.py puntajes --etiqueta x --env-file .env.produccion --rerank`, gratis): con 0,06 ninguna pregunta sin respuesta pasa, pero el margen es estrecho (0,057 contra 0,06) y el reranker rechaza 1 documento que hoy se encuentra (`IN3`). Antes de encenderlo conviene repetir la calibración con más casos sin respuesta. `python scripts/linea_base.py rendimiento ...` mide memoria y latencia (gratis).
+- Un nombre distinto de `none` y `local` se trata como `none` con un aviso.
 
 ## Medir la búsqueda (línea base)
 

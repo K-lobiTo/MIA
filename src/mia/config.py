@@ -79,7 +79,7 @@ class Settings(BaseSettings):
     # `rerank_threads` los hilos de cálculo (4 cumplió la latencia en la laptop de desarrollo); `rerank_budget_ms`
     # el tiempo máximo de puntuación por consulta (0 lo desactiva): superado, la consulta sigue por similitud.
     rerank_provider: str = "none"
-    rerank_candidates: int = Field(default=20, ge=5, le=60)
+    rerank_candidates: int = Field(default=30, ge=5, le=60)
     rerank_min_score: float = Field(default=0.06, ge=0, le=1)
     rerank_min_similarity: float = Field(default=0.0, ge=0, le=1)
     rerank_passage_tokens: int = Field(default=128, ge=32, le=480)

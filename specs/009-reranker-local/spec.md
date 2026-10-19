@@ -155,6 +155,22 @@ Quien opera MIA mide el reranker en local con los datos de producción y, si el 
 - **SC-008**: Si el reranker falla (modelo ausente o error al puntuar), el 100 % de las consultas simuladas con esa falla responden como sin reranker, con aviso y nota, y ninguna devuelve error (prueba automática).
 - **SC-009**: El informe de la prueba de costo concluye explícitamente, con los datos medidos, una de tres recomendaciones (conservar, dejar apagado, pasar a la búsqueda híbrida) y lista para cada criterio de conservación si se cumple o no.
 
+### Resultados medidos (2026-10-18)
+
+Detalle en [LINEA_BASE_BUSQUEDA.md](../../docs/LINEA_BASE_BUSQUEDA.md) y [research.md](research.md) (R13 y R14). Medición local gratuita (57 casos, 28 variantes) más una medición reducida en Railway autorizada por el usuario (12 casos, ambos modos).
+
+| Criterio | Resultado | Veredicto |
+|---|---|---|
+| SC-001 | De los casos con el documento esperado entre los puestos 9 y 40 por coseno, los cinco que quedan dentro de los 30 candidatos (`S22-1`, `S22-4`, `EN2`, `EN5`, `EN6`) responden con su documento en Railway en los dos modos. `EN1` (puesto 43), Deep Learning (puesto 50) y las siglas quedan fuera de los candidatos y se reportan como límite de la recuperación. | Cumple |
+| SC-002 | Con el mínimo 0,06 ninguno de los 14 casos "sin información" pasa (localmente) y los 5 medidos en Railway terminaron en "sin información" sin llamar al modelo. El margen es estrecho: el mayor puntaje es 0,057 (`SR6`). | Cumple, con margen estrecho |
+| SC-003 | La batería del MVP no se midió completa en Railway (solo `G1` y `N1`, sin cambios). Con el mismo código, el cálculo local de recuperación no muestra ninguna regresión en los 15 casos con respuesta de la batería; la única regresión del conjunto es `IN3` (indirecta). | Cumple por cálculo local, parcialmente medido |
+| SC-004 | Pruebas automáticas: con `none` el almacén se llama con el límite del modo, el orden y el umbral de coseno son los de siempre, y el módulo del modelo no se importa. La corrida de control no registra notas del reranker. | Cumple |
+| SC-005 | Ninguna llamada nueva al modelo de lenguaje; el gasto de las corridas fue 0,014 USD el control y 0,005 y 0,006 USD con reranker. | Cumple |
+| SC-006 | En Railway, puntuar 20 o 30 candidatos con 128 tokens y 4 hilos tarda 0,30 s en p50 y 0,34 s en p95. En la laptop de desarrollo 0,82 s y 0,95 s con 20 candidatos. | Cumple en Railway |
+| SC-007 | 522 a 524 MB en reposo con el reranker (366 MB sin él) y picos de 600 MB; el límite era 512 MB. El costo mensual estimado sube unos 1 a 1,6 USD sobre los 5 USD incluidos. | No cumple por unos 10 MB; la decisión de aceptarlo es del usuario |
+| SC-008 | 20 consultas simuladas con el reranker caído (excepción y tiempo agotado): todas responden con aviso y nota, ninguna devuelve error. | Cumple |
+| SC-009 | Recomendación: **conservar apagado y encender cuando se acepte el exceso de memoria y el costo estimado**; antes, afianzar el mínimo con más casos sin respuesta. La búsqueda híbrida (D) sigue siendo necesaria para siglas, Obando y las líneas de TFG. | Cumple |
+
 ## Assumptions
 
 - Para cumplir los límites de memoria y latencia el plan expone palancas de configuración medibles, además del número de candidatos y del mínimo: un piso de similitud de vectores previo al reranking (candidatos claramente ajenos no se puntúan), la cantidad de texto de cada fragmento que lee el reranker, el número de hilos de cálculo y un presupuesto de tiempo por consulta. No cambian el comportamiento descrito: solo acotan el costo.

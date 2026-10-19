@@ -209,3 +209,18 @@ Los 30 candidatos puntúan entre 0,78 y 0,91 en todos los casos: un piso de 0,78
 ### Valores por defecto elegidos
 
 `RERANK_CANDIDATES=20`, `RERANK_MIN_SCORE=0.06`, `RERANK_PASSAGE_TOKENS=128`, `RERANK_THREADS=4`, `RERANK_BUDGET_MS=2500`, `RERANK_MIN_SIMILARITY=0`. Calibrados con los mismos casos con los que se miden (riesgo de sobreajuste: 57 casos, margen estrecho del mínimo). La medición en Railway (T043 y T044) confirma memoria, hilos disponibles y latencia en el servidor real.
+
+## R14. Medición en Railway (2026-10-18)
+
+Autorizada por el usuario: medición reducida, 12 casos (14 consultas por modo con las variantes cortas de `S22-1` y `S22-4`), tope de 0,10 USD el control y 0,20 USD cada corrida con reranker. Se desplegó `origin/dev` (commit `7b56c31`) en `MIA`, con `QUERY_CITED_SOURCES=on` como en producción. Corridas `control9` (reranker apagado), `rerank9` (20 candidatos) y `rerank9-30` (30 candidatos), ambas con 128 tokens por pasaje, 4 hilos y mínimo 0,06. Gasto real: 0,0141, 0,0049 y 0,0065 USD. Al terminar: `RERANK_PROVIDER=none`, servicio apagado, artefacto de prueba desactivado y su clave regenerada.
+
+| Medida | Resultado |
+|---|---|
+| Memoria al arrancar | `Reranker cargado: RSS 366 -> 524 MB, pico 593 MB` (20 candidatos) y `365 -> 522 MB, pico 597 MB` (30). El reranker suma 157 a 158 MB. Pico durante las consultas: 602 a 610 MB. |
+| Latencia de la puntuación | 20 candidatos: p50 297 ms, p95 331 ms; 30 candidatos: p50 298 ms, p95 336 ms (28 puntuaciones por corrida, máximo 353 ms). El número de candidatos casi no cambió el tiempo, quizá porque el costo fijo por lote domina con 4 hilos; no se investigó. En la laptop de desarrollo, 2,7 veces más lento (R13). |
+| Latencia de punta a punta | Una consulta sin respuesta pasó de 0,4 s (control) a 0,6 a 0,8 s con el reranker. |
+| Calidad con 20 candidatos | Respondieron con el documento esperado: `S22-1`, `S22-4` y `EN5`; no `EN2` ni `EN6` (sus documentos están en el puesto 25 por coseno). `IN3` pierde su respuesta. |
+| Calidad con 30 candidatos | Además `EN2` y `EN6`: 13 de 14 consultas correctas por modo (solo falla `IN3`), contra 7 u 8 en el control. Los casos sin respuesta (`N1`, `EN7`, `EN8`, `SR4`, `SR6`) terminaron en "sin información" sin llamar al modelo; el mayor puntaje fue 0,057 (`SR6`) contra el mínimo 0,06. |
+| Costo | Sin llamadas nuevas a modelos de lenguaje. Los gastos de las corridas son centavos. |
+
+Se deja `RERANK_CANDIDATES=30` como valor por defecto (mismo tiempo que 20 y captura dos casos más). La variable `RERANK_CANDIDATES=30` quedó puesta en las variables de `MIA` en Railway con `RERANK_PROVIDER=none`: no tiene efecto.
