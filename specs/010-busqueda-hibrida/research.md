@@ -77,7 +77,7 @@ Un K bajo deja pasar casos raros porque palabras de uso corriente pasan a ser es
 
 ## R5. Regla de la mayoría
 
-**Decision** (acordada el 2026-10-19): un fragmento que solo llegó por palabras pasa si contiene **más de la mitad** de los grupos específicos de la pregunta (1 de 1, 2 de 2, 2 de 3, 3 de 4, 3 de 5...). Se ordena por grupos coincidentes y, a igualdad, por la suma del peso de cada grupo (`ln(1 + (K + 1) / fragmentos_del_grupo)`, más peso cuanto más raro) y luego por el coseno con la pregunta.
+**Decision** (acordada el 2026-10-19): un fragmento que solo llegó por palabras pasa si contiene **más de la mitad** de los grupos específicos de la pregunta (1 de 1, 2 de 2, 2 de 3, 3 de 4, 3 de 5...). Se ordena por grupos coincidentes y, a igualdad, por la suma del peso de cada grupo (`ln(1 + (max_docs + 1) / documentos_del_grupo)`, con `max_docs` igual a `HYBRID_MAX_DOCS`, más peso cuanto menos documentos contienen el grupo; la primera versión usaba fragmentos y `K`, ver R16) y luego por el coseno con la pregunta.
 
 **Resultados del análisis** (57 casos; K = 60; con los dominios reales de cada caso):
 
@@ -153,7 +153,7 @@ Un K bajo deja pasar casos raros porque palabras de uso corriente pasan a ser es
 
 ## R14. Riesgos conocidos
 
-- **Frecuencia relativa a los dominios**: la misma palabra puede ser común o específica según los dominios del artefacto (R4); se mide con casos de dominios distintos y es el motivo de que `HYBRID_MAX_DOC_FREQ` sea configurable.
+- **Frecuencia relativa a los dominios**: la misma palabra puede ser común o específica según los dominios del artefacto (R4); se mide con casos de dominios distintos y es el motivo de que `HYBRID_MAX_DOCS` sea configurable (la frecuencia se mide en documentos, no en fragmentos; ver R16).
 - **Prefijos que sobran**: `curso` trae `cursos` y `cursor`; `linea` trae `lineamientos`. Es parte del recorte de "común" (se mide con la misma semántica) y se vigila en las pruebas con casos negativos.
 - **Palabras con menos de 3 letras** (por ejemplo la sigla "TI") no se indexan ni se buscan.
 - **Variantes de una sigla escritas con puntos o con guiones** ("T.F.G.", "TFG-I"): la pregunta se normaliza, el texto del documento lo normaliza el tokenizador (la primera queda como `t`, `f`, `g` y no coincide); se anota como límite y se resuelve con una equivalencia si hace falta.
