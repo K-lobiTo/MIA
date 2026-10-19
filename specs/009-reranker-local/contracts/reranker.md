@@ -29,7 +29,7 @@ Con `RERANK_PROVIDER=none` (o inválido): idéntico a hoy.
 Con `local`:
 
 1. Permisos, modo, dominios y topes de gasto: como hoy, antes de buscar.
-2. Embedding local de la pregunta; búsqueda con `limit = RERANK_CANDIDATES`.
+2. Embedding local de la pregunta; búsqueda con `limit = max(RERANK_CANDIDATES, límite del modo)`, de modo que nunca se piden menos candidatos que hoy.
 3. Se descartan los candidatos con coseno menor que `RERANK_MIN_SIMILARITY` (si es mayor que 0).
 4. El reranker puntúa los candidatos contra `payload.question` (se reutilizan los puntajes ya calculados en la consulta).
 5. `rerank_candidates`: puntaje = sigmoide del logit; orden descendente (empates por orden de coseno); se descartan los menores que `RERANK_MIN_SCORE`; se queda con los primeros `config.search_limit` del modo. A cada uno se le reemplaza `score` por su puntaje del reranker.
@@ -45,8 +45,8 @@ Ver [data-model.md](../data-model.md). Orden: reranker, pregunta limpia, corte (
 
 ## 5. Registro del servidor (nivel INFO)
 
-- Al arrancar con `local`: `Reranker cargado: RSS <antes> -> <después> MB`.
-- Por consulta con reranker: `Reranker: <n> candidatos en <ms> ms (modo <m>)`.
+- Al arrancar con `local`: `Reranker cargado: RSS <antes> -> <después> MB, pico <VmHWM> MB`.
+- Por consulta con reranker: `Reranker: <n> candidatos en <ms> ms, pico de memoria <VmHWM> MB (modo <m>)`. Es la fuente de la latencia añadida (tiempo de puntuación en el servidor) y del pico de memoria que se miden en Railway.
 - Aviso de fallo: como máximo uno por minuto.
 
 ## 6. Herramienta (`scripts/linea_base.py`)

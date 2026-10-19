@@ -7,7 +7,7 @@ Sin tablas ni columnas nuevas: no hay migraciones y los documentos no se reindex
 | Variable | Tipo | Por defecto | Validación |
 |---|---|---|---|
 | `RERANK_PROVIDER` | texto | `none` | `none` o `local`; cualquier otro valor se trata como `none` con un aviso (una vez) |
-| `RERANK_CANDIDATES` | entero | `30` | de 5 a 60 |
+| `RERANK_CANDIDATES` | entero | `30` | de 5 a 60; la búsqueda pide `max(RERANK_CANDIDATES, límite del modo)` |
 | `RERANK_MIN_SCORE` | decimal | `0.5` (provisional, se calibra) | de 0 a 1, escala de probabilidad del reranker |
 | `RERANK_MIN_SIMILARITY` | decimal | `0` (apagado) | de 0 a 1; coseno mínimo para que un candidato se puntúe |
 | `RERANK_PASSAGE_TOKENS` | entero | `192` | de 32 a 480 |
