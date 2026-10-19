@@ -48,7 +48,8 @@ def test_migra_una_base_anterior_con_datos_y_todas_las_verificaciones_pasan(tmp_
     assert resultado.ok, [paso for paso in resultado.pasos if not paso[1]]
     nombres = [nombre for nombre, _, _ in resultado.pasos]
     assert "se conservan todos los datos" in nombres
-    assert "se puede volver a la revisión 0001" in nombres and "se puede subir de nuevo a 0005" in nombres
+    assert "se puede volver a la revisión 0004" in nombres and "se puede subir de nuevo a 0005" in nombres
+    assert "al volver, la tabla de equivalencias de siglas ya no existe" in nombres
     # Quedó migrada y con sus datos.
     engine = create_engine(url)
     with engine.connect() as conexion:
@@ -145,3 +146,32 @@ def test_la_linea_de_comandos_con_una_copia_distinta_migra_y_termina_bien(tmp_pa
     assert "TODO BIEN" in capsys.readouterr().out
     with create_engine(produccion).connect() as conexion:  # la "producción" no se tocó
         assert "units" not in inspect(conexion).get_table_names()
+
+
+def test_la_ida_y_vuelta_hasta_0001_sigue_disponible_en_una_base_sin_dominios_repetidos(tmp_path):
+    url = _base_anterior(tmp_path / "copia.db")
+
+    resultado = script.probar(url, bajar_a="0001")
+
+    assert resultado.ok, [paso for paso in resultado.pasos if not paso[1]]
+    nombres = [nombre for nombre, _, _ in resultado.pasos]
+    assert "se puede volver a la revisión 0001" in nombres
+    assert "al volver, el nombre de dominio vuelve a ser único" in nombres
+
+
+def test_la_ida_y_vuelta_por_defecto_funciona_con_el_mismo_nombre_de_dominio_en_dos_programas(tmp_path):
+    """Es el caso de producción: bajar hasta 0001 fallaba; hasta 0004 no, y no pierde datos."""
+    url = _base_anterior(tmp_path / "copia.db")
+    script.probar(url, ida_y_vuelta=False)
+    engine = create_engine(url)
+    with engine.begin() as conexion:
+        conexion.execute(text("INSERT INTO units VALUES ('u1', 'Computación', '', '2026-10-01 00:00:00')"))
+        conexion.execute(text("INSERT INTO units VALUES ('u2', 'Analítica', '', '2026-10-01 00:00:00')"))
+        conexion.execute(text("INSERT INTO domains (id, unit_id, name, description, created_at) VALUES ('x1', 'u1', 'Currículum', '', '2026-10-01 00:00:00')"))
+        conexion.execute(text("INSERT INTO domains (id, unit_id, name, description, created_at) VALUES ('x2', 'u2', 'Currículum', '', '2026-10-01 00:00:00')"))
+
+    resultado = script.probar(url)
+
+    assert resultado.ok, [paso for paso in resultado.pasos if not paso[1]]
+    with engine.connect() as conexion:
+        assert conexion.execute(text("SELECT COUNT(*) FROM domains WHERE name = 'Currículum'")).scalar() == 2

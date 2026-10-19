@@ -51,5 +51,6 @@ El índice no es una entidad que la API lea: es la capacidad que Qdrant da a los
 
 Sin columnas nuevas. La nota de la búsqueda híbrida se une con "; " a las demás notas, en este orden estable: reranker (009), búsqueda híbrida (010), pregunta limpia (008), corte (007), regla de seguridad (006). Formas posibles ([contracts/busqueda-hibrida.md](contracts/busqueda-hibrida.md), sección 5):
 
-- `Búsqueda híbrida: N por palabras, M nuevos`
-- `Búsqueda por palabras no disponible: se usó el significado`
+- `Búsqueda híbrida: N por palabras, M nuevos` (candidatos léxicos y cuántos entraron a la lista final sin estar por significado), con el sufijo `, principal por palabras` si el fragmento principal de la lista final (el primero, que ordena el contexto) llegó solo por palabras (parámetro `main_by_words` de `hybrid_note`)
+- `Búsqueda por palabras no disponible: se usó el significado` (la parte léxica falló)
+- `Lista de siglas no disponible: se buscó sin equivalencias` (la tabla de siglas no se pudo leer; la parte léxica siguió; puede ir junto a la primera nota)

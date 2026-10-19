@@ -41,17 +41,30 @@ def score_chunks(self, embedding: list[float], domains: list[str], chunk_ids: li
 ```text
 def hybrid_enabled(value: str) -> bool
 def normalize(text: str) -> str                                  # minúsculas, sin tildes, "T.F.G." -> "tfg"
+def words_of(text: str) -> list[str]                              # palabras (letras y dígitos) del texto normalizado
 def query_groups(question: str, equivalences: list[Equivalence], max_groups: int, min_len: int) -> list[LexicalGroup]
+def lexical_lookup(store, domains: list[str], groups: list[LexicalGroup], term_chunks: int, executor=None) -> list[LexicalGroup]
 def pick_candidates(groups: list[LexicalGroup], max_docs: int, limit: int, elapsed_ms: int = 0, ratio: float = 0.5) -> LexicalOutcome
+def order_lexical(candidates: list[LexicalCandidate], scored: list[SearchResult]) -> list[SearchResult]
 def merge_hybrid(vector_results, lexical_results, limit: int, slots: int, k: int) -> list[SearchResult]
 def hybrid_note(outcome: LexicalOutcome, merged_new: int, main_by_words: bool = False) -> str | None
 def failure_note() -> str
+def equivalences_failure_note() -> str
 def warn_lexical_failure(exc: Exception) -> None                  # a lo sumo un aviso por minuto
 ```
 
 - `query_groups`: normaliza la pregunta; si una palabra es la sigla de una equivalencia, el grupo lleva la sigla y cada forma desarrollada como alternativas; si la pregunta contiene la forma desarrollada como palabras consecutivas, esas palabras se reemplazan por un grupo con la forma y la sigla. Descarta palabras vacías y de menos de `min_len` letras (las alternativas que vienen de una equivalencia no se filtran), quita duplicados, no encadena equivalencias y devuelve como mucho `max_groups` grupos en el orden de la pregunta.
+- `lexical_lookup`: una consulta `store.match_chunks(domains, alternativa, term_chunks)` por alternativa de cada grupo (en paralelo, con un `ThreadPoolExecutor` propio de hasta 8 hilos o el `executor` dado) y devuelve los grupos con `chunk_ids` (unión de las alternativas) y `documents` (documentos distintos de esos fragmentos). Cualquier excepción del almacén sube.
+- `order_lexical`: los resultados de los candidatos (con su coseno) en el orden léxico: más grupos coincidentes, más peso y, a igualdad, más coseno; descarta los candidatos que no volvieron del almacén (fuera de los dominios).
 - `pick_candidates`: recibe los grupos con `chunk_ids` y `documents` ya consultados y aplica la regla: específico si `documents <= max_docs`; con `n` grupos específicos (los ausentes cuentan) un fragmento pasa si coincide con más de `ratio * n` (`min(n, floor(n * ratio) + 1)`; con 0,5, `n // 2 + 1`); ordena por grupos coincidentes, peso por rareza y a igualdad queda a la espera del desempate por coseno; devuelve los mejores `limit`. Con `n = 0` no hay candidatos.
 - `merge_hybrid`: RRF con `k` sobre la lista de significado (en su orden) y la léxica (ya con coseno, ordenada por grupos, peso y coseno). Los fragmentos solo léxicos son como mucho `slots`; el total no supera `limit`; si `lexical_results` está vacía devuelve `vector_results` sin cambios (mismo objeto, mismo orden, mismos `score`). Si actúa, cada resultado se devuelve en una copia con `score` igual a su valor de fusión.
+
+Módulo `mia.rag.equivalences` (lectura de la lista de siglas, con la tabla `sigla_equivalences`):
+
+```text
+def get_equivalences(session) -> list[Equivalence]       # normalizada; caché en proceso de HYBRID_EQUIVALENCES_TTL_SECONDS (0 la desactiva)
+def invalidate_equivalences() -> None                    # la llaman las rutas /equivalences tras cada escritura y las pruebas
+```
 
 ## 4. Comportamiento de `POST /query`
 
