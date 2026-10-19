@@ -554,5 +554,172 @@
     ],
     "contiene": "Criptografía",
     "nota": "Documento de 309 fragmentos: la lista no cabe completa; `contiene` es un ítem temprano y se juzga a mano si la respuesta sale completa o dice que continúa (FR-004)."
+  },
+  {
+    "id": "EN1",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "Háblame de Natalia Soto Solís",
+    "espera": "respuesta",
+    "documentos": [
+      "NataliaSoto"
+    ],
+    "nota": "Otra redacción de la pregunta de identificación de S22-1 (feature 008); el segundo intento busca solo el nombre."
+  },
+  {
+    "id": "EN2",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Qué se sabe de Natalia Soto Solís?",
+    "espera": "respuesta",
+    "documentos": [
+      "NataliaSoto"
+    ],
+    "nota": "Otra redacción de la pregunta de identificación de S22-1 (feature 008); el segundo intento busca solo el nombre."
+  },
+  {
+    "id": "EN3",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "Háblame de Joseph Obando Sandí",
+    "espera": "respuesta",
+    "documentos": [
+      "Joseph Obando"
+    ],
+    "nota": "Otra redacción de la pregunta de identificación de S22-3 (feature 008); el segundo intento busca solo el nombre."
+  },
+  {
+    "id": "EN4",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Qué se sabe de Joseph Obando Sandí?",
+    "espera": "respuesta",
+    "documentos": [
+      "Joseph Obando"
+    ],
+    "nota": "Otra redacción de la pregunta de identificación de S22-3 (feature 008); el segundo intento busca solo el nombre."
+  },
+  {
+    "id": "EN5",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "Háblame de Luis Diego Cubillo Guevara",
+    "espera": "respuesta",
+    "documentos": [
+      "CUBILLO"
+    ],
+    "nota": "Otra redacción de la pregunta de identificación de S22-4 (feature 008); el segundo intento busca solo el nombre."
+  },
+  {
+    "id": "EN6",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Qué se sabe de Luis Diego Cubillo Guevara?",
+    "espera": "respuesta",
+    "documentos": [
+      "CUBILLO"
+    ],
+    "nota": "Otra redacción de la pregunta de identificación de S22-4 (feature 008); el segundo intento busca solo el nombre."
+  },
+  {
+    "id": "EN7",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Quién es Zacarías Fernández Pizarro?",
+    "espera": "sin_informacion",
+    "nota": "Persona inventada: el segundo intento no debe hacer que se invente una respuesta (BUS-3)."
+  },
+  {
+    "id": "EN8",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Qué es el Departamento de Hidrología Lunar?",
+    "espera": "sin_informacion",
+    "nota": "Término inventado: el segundo intento no debe hacer que se invente una respuesta (BUS-3)."
+  },
+  {
+    "id": "EN9",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Qué es obligatorio en el trabajo de Joseph Obando Sandí?",
+    "espera": "sin_informacion",
+    "sin_pregunta_limpia": true,
+    "nota": "Negativo: empieza con una envoltura pero pide un dato, así que la API no debe reformularla. En estos dominios la primera búsqueda no suele pasar el umbral, que es cuando el segundo intento podría activarse."
+  },
+  {
+    "id": "EN10",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Cuál es la fecha de defensa de Natalia Soto Solís?",
+    "espera": "respuesta",
+    "sin_pregunta_limpia": true,
+    "nota": "Negativo: pregunta de dato con 'cuál es'; no debe haber segundo intento.",
+    "documentos": [
+      "NataliaSoto"
+    ]
+  },
+  {
+    "id": "EN11",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Qué es el Cibercrimen?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC3010"
+    ],
+    "nota": "Término que es el nombre de un curso; el segundo intento busca solo 'Cibercrimen'."
+  },
+  {
+    "id": "EN12",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "Háblame de Derecho Informático",
+    "espera": "respuesta",
+    "documentos": [
+      "MC4003"
+    ],
+    "nota": "Término que es el nombre de un curso; el segundo intento busca solo 'Derecho Informático'."
   }
 ]

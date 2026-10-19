@@ -47,7 +47,8 @@ Todas con límite de palabra (`\b`) y separadas por un espacio. La lista es ampl
 1. Al menos 3 caracteres, sin contar signos ni espacios de los extremos, y distinto de la pregunta normalizada.
 2. A lo sumo 8 palabras.
 3. No empieza con "lo" ni "que" y no contiene "que", "cuando", "donde", "cuanto", "cuanta", "cuantos", "cuantas" ni "porque" como palabra completa. Tampoco empieza con un adjetivo o atributo que indica que la pregunta pide un dato y no un nombre: "necesario", "necesaria", "obligatorio", "obligatoria", "posible", "suficiente", "importante", "mejor", "igual", "diferente", "nuevo", "nueva" (cubre "¿Qué hay de nuevo en la maestría?").
-4. No contiene `¿ ? ¡ !`.
+4. Si la envoltura usa un verbo en pasado ("era", "eran", "fue", "fueron"), la primera palabra del candidato no es un participio (termina en -ado, -ada, -ados, -adas, -ido, -ida, -idos, -idas): "¿Quién fue designado coordinador del proyecto?" pide un dato y no un nombre. Con "es" y "son" no se aplica, porque hay apellidos como "Alvarado".
+5. No contiene `¿ ? ¡ !`.
 
 ## Casos de la tabla de pruebas (resumen)
 
@@ -67,6 +68,8 @@ Todas con límite de palabra (`\b`) y separadas por un espacio. La lista es ampl
 | ¿Cuál es el costo del curso X? | `None` |
 | ¿Qué es lo que establece el reglamento sobre las becas? | `None` |
 | ¿Qué es necesario para graduarse? | `None` |
+| ¿Quién fue designado coordinador del proyecto ante FUNDATEC? | `None` (voz pasiva) |
+| ¿Quién fue Alan Turing? | Alan Turing |
 | ¿Qué es obligatorio en el TFG? | `None` |
 | Who is Natalia Soto? | `None` (sin envoltura en español) |
 | ¿Qué es el TFG que ofrece la maestría? | `None` |

@@ -102,6 +102,8 @@ def test_el_resultado_conserva_tildes_y_mayusculas_del_original():
         "¿Qué es necesario para graduarse?",
         "¿Qué es obligatorio en el TFG?",
         "¿Qué hay de nuevo en la maestría?",
+        "¿Quién fue designado coordinador específico del proyecto ante FUNDATEC?",
+        "¿Quiénes fueron elegidas representantes del Consejo?",
         "Who is Natalia Soto?",
         "",
         "   ",
@@ -133,6 +135,8 @@ def test_clean_question_negativos_no_se_reformulan(pregunta):
         # Palabras que solo contienen las prohibidas no activan la guarda
         ("¿Quién es Francisco Quevedo?", "Francisco Quevedo"),
         ("¿Quién es Ana Dondelio?", "Ana Dondelio"),
+        ("¿Quién fue Alan Turing?", "Alan Turing"),
+        ("¿Quién es Alvarado Rojas?", "Alvarado Rojas"),  # el participio solo cuenta tras un verbo en pasado
     ],
 )
 def test_clean_question_guardas_del_candidato(pregunta, esperado):

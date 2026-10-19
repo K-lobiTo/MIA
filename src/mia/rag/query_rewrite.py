@@ -44,7 +44,7 @@ _TRAILING_COURTESY = re.compile(r"[\s,.;:?!¡¿]*(?:por favor|gracias)$")
 _WRAPPERS = (
     # Identificación: "quién es X", "qué es el X", "qué significa X"
     re.compile(
-        r"^(?:quien|quienes|que)\s+(?:es|son|era|eran|fue|fueron|significa|significan)\s+"
+        r"^(?:quien|quienes|que)\s+(?P<verbo>es|son|era|eran|fue|fueron|significa|significan)\s+"
         r"(?:(?:el|la|los|las|un|una)\s+)?"
     ),
     # Pedir información: "dame información sobre X"
@@ -64,6 +64,12 @@ _START_WORDS = {"lo", "que"} | {
     "necesario", "necesaria", "obligatorio", "obligatoria", "posible", "suficiente", "importante",
     "mejor", "igual", "diferente", "nuevo", "nueva",
 }
+
+
+# Tras un verbo en pasado, un participio ("fue designado", "fueron elegidas") es una voz pasiva: la pregunta
+# pide un dato y no un nombre.
+_PAST_VERBS = {"era", "eran", "fue", "fueron"}
+_PARTICIPLE = re.compile(r"\w+(?:ado|ada|ados|adas|ido|ida|idos|idas)$")
 
 
 def _fold(text: str) -> str:
@@ -120,6 +126,7 @@ def clean_question(question: str) -> str | None:
         match = wrapper.match(folded[start:end])
         if match:
             candidate_start = start + match.end()
+            past = match.groupdict().get("verbo") in _PAST_VERBS
             break
     else:
         return None
@@ -135,6 +142,8 @@ def clean_question(question: str) -> str | None:
     if not words or len(words) > MAX_WORDS:
         return None
     if words[0] in _START_WORDS or any(word in _CLAUSE_WORDS for word in words):
+        return None
+    if past and _PARTICIPLE.match(words[0]):
         return None
     if any(ch in SIGNS for ch in candidate):
         return None

@@ -34,6 +34,8 @@ Decisiones de diseño con su razón y las alternativas. Las cifras de la línea 
 4. La pregunta es una sola: después de quitar los signos de los extremos no quedan signos `¿ ? ¡ !` en el interior.
 
 
+5. Con un verbo en pasado ("era", "eran", "fue", "fueron"), la primera palabra del candidato no es un participio (-ado, -ada, -ido, -ida y plurales): "¿Quién fue designado coordinador específico del proyecto ante FUNDATEC?" (caso A2 de la batería del MVP) se reduciría a "designado coordinador específico del proyecto ante FUNDATEC", que no es un nombre. Se descubrió al listar con `clean_question` las preguntas del conjunto de casos (R11). Con "es" y "son" no se aplica por apellidos como "Alvarado".
+
 **Rationale**: son los casos negativos de la sección 2.5 y de User Story 2. El límite de 8 palabras cubre nombres de personas con cuatro palabras y nombres de programas largos ("Maestría Profesional en Analítica de Negocios", 6 palabras) sin dejar pasar oraciones.
 
 **Alternatives considered**: sin límite de palabras (deja pasar oraciones largas); límite de 5 (corta nombres de programas).
@@ -81,3 +83,26 @@ Decisiones de diseño con su razón y las alternativas. Las cifras de la línea 
 - **Siglas**: "¿qué es el TFG?" se reduce a "TFG"; que el vocabulario coincida con "trabajo final de graduación" no depende de la envoltura (lo cubren D o E).
 - **Documento más allá del número de resultados**: S22-1 con el nombre solo trae el documento en el puesto 12; el modo literal trae 8. El segundo intento no cambia el límite de resultados. Se reporta en la medición y es argumento para el reranker con más candidatos.
 - **S22-3 corta** sigue bajo el umbral (0,807): no se resuelve con esta opción y se reporta aparte (SC-001).
+
+## R11. Medición gratuita previa (`puntajes`, 2026-10-18)
+
+Corrida `limpia-previa` (solo lectura sobre producción, 12 s, sin costo): umbral 0,82, modo literal con 8 resultados y modo con razonamiento con 16. "Doc" es el mejor fragmento del documento esperado: puesto y puntaje. La variante `limpia` de S22-1, S22-3 y S22-4 coincide con su variante corta.
+
+| Caso | Pregunta | Completa (mejor, doc) | Limpia (mejor, doc) | Efecto esperado del segundo intento |
+|---|---|---|---|---|
+| S22-1 | ¿Quién es Natalia Soto Solís? | 0,798, #3 0,789 | 0,833, #12 0,824 | Pasa el umbral. El documento queda en el puesto 12: entra con razonamiento (16) y **no** en literal (8). |
+| S22-3 | ¿Quién es Joseph Obando Sandí? | 0,775, ausente | 0,807, #15 0,793 | No pasa el umbral: sigue "sin información". |
+| S22-4 | ¿Quién es Luis Diego Cubillo Guevara? | 0,802, #19 0,781 | 0,827, #3 0,819 | Pasan 2 fragmentos de **otro** documento; el esperado queda en 0,819, una milésima bajo el umbral. |
+| EN1, EN3, EN5 | Háblame de (las tres personas) | 0,843, 0,837, 0,838 (documento en el puesto 43, 20 y 17) | no aplica | La primera búsqueda **ya pasa** el umbral con otros documentos: no hay segundo intento. |
+| EN2, EN4, EN6 | ¿Qué se sabe de (las tres personas)? | 0,813, 0,796, 0,810 | 0,833, 0,807, 0,827 | Igual que S22-1, S22-3 y S22-4. |
+| EN7 | ¿Quién es Zacarías Fernández Pizarro? (persona inventada) | 0,798 | **0,828** | Pasa el umbral con 8 fragmentos: el modelo se llama para una persona que no existe. |
+| EN8 | ¿Qué es el Departamento de Hidrología Lunar? (inventado) | 0,817 | **0,854** | Pasa el umbral con 8 (literal) y 16 (razonamiento) fragmentos. |
+| EN9, EN10 | Negativos (¿Qué es obligatorio...?, ¿Cuál es la fecha...?) | 0,811, 0,813 | no aplica | Ni siquiera se intenta. |
+| EN11, EN12 | ¿Qué es el Cibercrimen?, Háblame de Derecho Informático | 0,868, 0,880 (puesto 1) | no aplica | Ya funcionan: la primera búsqueda pasa. |
+
+Lectura:
+
+1. **La mejora real es menor que la anticipada en la spec.** De las tres personas, el segundo intento deja pasar el umbral en dos (S22-1 y S22-4), pero el documento esperado solo entra en una (Natalia Soto Solís) y solo en el modo con razonamiento. En Cubillo entran fragmentos de otro documento y en Obando no pasa nada. SC-001 se lee entonces: "de los dos casos cuya forma corta pasa el umbral, el documento esperado aparece en las fuentes cuando está dentro del límite de resultados del modo y sobre el umbral". Se medirá y se reportará, sin ajustar la spec.
+2. **Las preguntas "háblame de..." ya pasan el umbral en la primera búsqueda** (puntajes de 0,84) pero con documentos ajenos (el de la persona está en el puesto 17 a 43): no es un problema de envoltura sino de que el umbral no separa (hallazgo de la feature 005). Esta opción no los toca.
+3. **Riesgo para BUS-3 confirmado en los puntajes.** Una persona o un término inventado, reducido a su nombre, puntúa 0,828 y 0,854: más alto que varios casos legítimos. El segundo intento les entrega fragmentos al modelo, que debe responder "sin información". Es la razón de ser de EN7 y EN8 en la medición con respuestas: se verá si el modelo se contiene y cuánto cuesta cada llamada que antes no se hacía.
+4. **Un falso positivo de las reglas encontrado y corregido al listar el conjunto de casos**: el caso A2 del MVP ("¿Quién fue designado coordinador...?") se reduciría a un fragmento de oración. Se agregó la guarda 5 de R4.

@@ -744,3 +744,133 @@ def test_el_archivo_de_casos_trae_las_listas_largas_con_su_ultimo_item():
     assert len(listas) >= 8
     assert all(c["contiene"] for c in listas)
     assert {"MC6104", "MC8840", "MC8850", "MC8803", "MC7201", "MC6004"} <= {c["documentos"][0] for c in listas}
+
+
+# --- Feature 008: pregunta limpia ------------------------------------------------------------------
+
+
+def test_cargar_casos_acepta_envoltura_y_sin_pregunta_limpia(tmp_path):
+    casos = lb.cargar_casos(_escribir(tmp_path, [_caso(categoria="envoltura", sin_pregunta_limpia=True)]))
+    assert casos[0]["sin_pregunta_limpia"] is True
+
+
+def test_cargar_casos_rechaza_un_sin_pregunta_limpia_que_no_es_booleano(tmp_path):
+    with pytest.raises(ValueError, match="sin_pregunta_limpia"):
+        lb.cargar_casos(_escribir(tmp_path, [_caso(sin_pregunta_limpia="si")]))
+
+
+def test_variante_limpia_se_calcula_con_clean_question():
+    assert lb.variante_limpia(_caso(pregunta="¿Quién es Natalia Soto Solís?")) == "Natalia Soto Solís"
+
+
+def test_variante_limpia_es_nula_si_no_aplica_o_coincide_con_la_corta():
+    assert lb.variante_limpia(_caso(pregunta="¿Cuántos créditos tiene el curso?")) is None
+    caso = _caso(pregunta="¿Quién es Natalia Soto Solís?", variante_corta="Natalia Soto Solís")
+    assert lb.variante_limpia(caso) is None
+    caso = _caso(pregunta="¿Quién es Natalia Soto Solís?", variante_corta="Natalia Soto")
+    assert lb.variante_limpia(caso) == "Natalia Soto Solís"
+
+
+def test_correr_respuestas_registra_la_pregunta_limpia():
+    notas = {
+        "q-ayudo": "Pregunta limpia: «Natalia» (con resultados)",
+        "q-no-ayudo": "Pregunta limpia: «Zacarías» (sin resultados); Respuesta cortada: se reintentó",
+        "q-sin": None,
+    }
+
+    def consultar(caso, variante, modo):
+        cuerpo = _body(docs=("acta.pdf",))
+        cuerpo["id"] = {"A": "q-ayudo", "B": "q-no-ayudo"}.get(caso["id"], "q-sin")
+        return 200, cuerpo, 100
+
+    def costo(consulta_id):
+        return {"cost_usd": 0.01, "reject_reason": notas[consulta_id]}
+
+    corrida = lb.correr_respuestas([_caso(id="A"), _caso(id="B"), _caso(id="C")], ["literal"], consultar, costo, 1.0)
+    por_caso = {r["caso_id"]: (r["pregunta_limpia"], r["pregunta_limpia_ayudo"]) for r in corrida["resultados"]}
+    assert por_caso == {"A": (True, True), "B": (True, False), "C": (False, False)}
+
+
+def test_pregunta_limpia_nula_si_no_hay_detalle_de_uso():
+    corrida = lb.correr_respuestas(
+        [_caso()], ["literal"], lambda c, v, m: (200, _body(docs=("acta.pdf",)), 1), lambda _id: None, 1.0
+    )
+    fila = corrida["resultados"][0]
+    assert fila["pregunta_limpia"] is None and fila["pregunta_limpia_ayudo"] is None
+
+
+def test_resumen_respuestas_cuenta_los_segundos_intentos_y_los_negativos_reformulados():
+    base = {"modo": "literal", "variante": "completa", "latencia_cliente_ms": 1000, "fuentes_sobrantes": 0,
+            "correcto": True, "costo_usd": 0.01, "resultado": "respondio"}
+    resultados = [
+        {**base, "caso_id": "A", "pregunta_limpia": True, "pregunta_limpia_ayudo": True},
+        {**base, "caso_id": "B", "pregunta_limpia": True, "pregunta_limpia_ayudo": False, "resultado": "sin_informacion"},
+        {**base, "caso_id": "C", "pregunta_limpia": False, "pregunta_limpia_ayudo": False},
+        {**base, "caso_id": "N1", "pregunta_limpia": True, "pregunta_limpia_ayudo": False, "negativo_de_pregunta_limpia": True},
+        {**base, "caso_id": "N2", "pregunta_limpia": False, "pregunta_limpia_ayudo": False, "negativo_de_pregunta_limpia": True},
+    ]
+    r = lb.resumen_respuestas(resultados)["literal"]
+    assert r["segundos_intentos"] == 3
+    assert r["segundos_intentos_con_resultados"] == 1
+    assert r["negativos_reformulados"] == ["N1"]
+
+
+def test_resumen_respuestas_sin_dato_de_pregunta_limpia_no_falla():
+    base = {"modo": "literal", "variante": "completa", "latencia_cliente_ms": 1000, "fuentes_sobrantes": 0,
+            "correcto": True, "costo_usd": 0.01, "resultado": "respondio"}
+    r = lb.resumen_respuestas([{**base, "caso_id": "A"}])["literal"]  # corridas anteriores a la 008
+    assert r["segundos_intentos"] == 0 and r["negativos_reformulados"] == []
+
+
+def test_comparar_ignora_la_pregunta_limpia_desconocida_en_una_corrida():
+    a = {"puntajes": None, "respuestas": {"resultados": [_resp("A", "literal", 0.01, 1000)]}}
+    b = {"puntajes": None, "respuestas": {"resultados": [{**_resp("A", "literal", 0.01, 1000), "pregunta_limpia": True,
+                                                          "pregunta_limpia_ayudo": True}]}}
+    assert lb.comparar(a, b)["cambios"] == []
+    # Conocida en las dos corridas, un cambio sí se informa.
+    c = {"puntajes": None, "respuestas": {"resultados": [{**_resp("A", "literal", 0.01, 1000), "pregunta_limpia": False,
+                                                          "pregunta_limpia_ayudo": False}]}}
+    assert any("pregunta_limpia" in x for x in lb.comparar(c, b)["cambios"])
+
+
+def test_parejas_incluye_la_variante_limpia_si_existe():
+    meds = [
+        _med("S", "respuesta", [0.70]),
+        _med("S", "respuesta", [0.85], variante="corta"),
+        _med("S", "respuesta", [0.84], variante="limpia"),
+    ]
+    fila = lb.parejas(meds, 0.82)[0]
+    assert fila["limpia"]["distancia_umbral"] == 0.02
+
+
+def test_el_informe_cuenta_los_segundos_intentos_sin_guion_largo():
+    mediciones = [_med("A", "respuesta", [0.9], 0.9)]
+    for m in mediciones:
+        m["por_modo"] = {k: lb.resultado_por_modo(m["candidatos"], 8, 0.82) for k in lb.MODOS}
+    contexto = {
+        "etiqueta": "t", "fecha": "2026-10-15T10:00:00", "commit": "abc1234567", "cambios_sin_confirmar": False,
+        "destino": "produccion", "umbral": 0.82, "limite_literal": 8, "limite_razonamiento": 16,
+        "candidatos_pedidos": 50, "proveedor_embeddings": "local", "dimension": 384,
+        "fragmentos_por_dominio": {"P / D": 10}, "casos_omitidos": [],
+    }
+    base = {"variante": "completa", "modo": "literal", "resultado": "respondio", "correcto": True,
+            "fuentes_mostradas": 1, "fuentes_sobrantes": 0, "latencia_cliente_ms": 1000, "costo_usd": 0.001}
+    resultados = [
+        {**base, "caso_id": "A", "pregunta_limpia": True, "pregunta_limpia_ayudo": True},
+        {**base, "caso_id": "N1", "pregunta_limpia": True, "pregunta_limpia_ayudo": False,
+         "negativo_de_pregunta_limpia": True},
+    ]
+    respuestas = {
+        "contexto": {"fecha": "2026-10-15T10:05:00", "destino": "produccion", "artefacto": "Prueba",
+                     "modos": ["literal"], "tope_usd": 0.2, "casos_omitidos": []},
+        "resultados": resultados, "parcial": False, "motivo_parada": None, "gasto_total_usd": 0.002,
+        "resumen": lb.resumen_respuestas(resultados),
+    }
+    corrida = {
+        "puntajes": {"contexto": contexto, "mediciones": mediciones,
+                     "resumen": lb.resumen_puntajes(mediciones, 0.82, {"literal": 8, "razonamiento": 16})},
+        "respuestas": respuestas,
+    }
+    texto = lb.generar_informe(corrida)
+    assert "Segundos intentos: 2; con resultados: 1; negativos reformulados: N1" in texto
+    assert chr(0x2014) not in texto

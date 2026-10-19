@@ -40,7 +40,7 @@ RAIZ = Path(__file__).resolve().parent.parent
 RUTA_CASOS = RAIZ / "scripts" / "datos" / "casos_busqueda.json"
 SALIDA = RAIZ / "tmp" / "linea_base"
 
-CATEGORIAS = {"mvp", "seccion_2_2", "indirecta", "sigla", "sin_respuesta", "lista_larga"}
+CATEGORIAS = {"mvp", "seccion_2_2", "indirecta", "sigla", "sin_respuesta", "lista_larga", "envoltura"}
 ESPERAS = {"respuesta", "sin_informacion"}
 MODOS = ("literal", "razonamiento")
 SEPARADOR = " / "
@@ -51,6 +51,8 @@ NOTA_REGLA_DE_SEGURIDAD = "Fuentes: sin citas utilizables"
 NOTA_REINTENTO = "Respuesta cortada: se reintentó"
 NOTA_AVISO_DE_CORTE = "Respuesta cortada: se entregó con aviso"
 AVISO_DE_CORTE = "Aviso: la respuesta pudo quedar incompleta."
+# Nota de la feature 008 en `reject_reason`: «Pregunta limpia: «texto» (con resultados)» o «(sin resultados)».
+PATRON_PREGUNTA_LIMPIA = re.compile(r"Pregunta limpia: «.*?» \((con|sin) resultados\)", re.DOTALL)
 # Una respuesta que no termina con uno de estos caracteres es una candidata a corte que el modelo no declaró.
 CIERRES_DE_FRASE = ".!?):;\"'”»*"
 
@@ -107,6 +109,8 @@ def cargar_casos(ruta: Path = RUTA_CASOS) -> list[dict]:
             raise ValueError(f"Caso {id_}: espera inválida {caso.get('espera')!r}.")
         if caso["espera"] == "respuesta" and not caso.get("documentos"):
             raise ValueError(f"Caso {id_}: espera respuesta pero no declara los documentos que aportan.")
+        if "sin_pregunta_limpia" in caso and not isinstance(caso["sin_pregunta_limpia"], bool):
+            raise ValueError(f"Caso {id_}: sin_pregunta_limpia debe ser verdadero o falso.")
         if caso["categoria"] == "lista_larga" and not caso.get("contiene"):
             raise ValueError(f"Caso {id_}: una lista larga debe declarar en `contiene` el último ítem esperado.")
     return casos
@@ -299,8 +303,22 @@ def ventana_separacion(mediciones: list[dict]) -> dict:
     }
 
 
+def variante_limpia(caso: dict) -> str | None:
+    """La pregunta limpia del caso (feature 008), o None si no aplica o ya es la variante corta del caso.
+
+    Se calcula con el mismo código que usa la API, así que `puntajes` anticipa sin costo qué buscaría el
+    segundo intento.
+    """
+    from mia.rag.query_rewrite import clean_question
+
+    limpia = clean_question(caso["pregunta"])
+    if limpia is None or limpia == caso.get("variante_corta"):
+        return None
+    return limpia
+
+
 def parejas(mediciones: list[dict], umbral: float) -> list[dict]:
-    """Pregunta completa y variante corta lado a lado, con su distancia al umbral."""
+    """Pregunta completa y variante corta lado a lado (y la limpia, si se midió), con su distancia al umbral."""
     por_caso: dict[str, dict[str, dict]] = {}
     for m in mediciones:
         por_caso.setdefault(m["caso_id"], {})[m["variante"]] = m
@@ -309,7 +327,9 @@ def parejas(mediciones: list[dict], umbral: float) -> list[dict]:
         if "completa" not in variantes or "corta" not in variantes:
             continue
         fila = {"caso_id": caso_id}
-        for nombre in ("completa", "corta"):
+        for nombre in ("completa", "corta", "limpia"):
+            if nombre not in variantes:
+                continue
             candidatos = variantes[nombre]["candidatos"]
             mejor = max((c["puntaje"] for c in candidatos), default=None)
             fila[nombre] = {
@@ -414,6 +434,16 @@ def _resumen_cortes(filas: list[dict]) -> dict:
     }
 
 
+def _resumen_pregunta_limpia(filas: list[dict]) -> dict:
+    """Segundos intentos con la pregunta limpia, cuántos encontraron fragmentos y negativos reformulados (008)."""
+    intentos = [r for r in filas if r.get("pregunta_limpia")]
+    return {
+        "segundos_intentos": len(intentos),
+        "segundos_intentos_con_resultados": sum(1 for r in intentos if r.get("pregunta_limpia_ayudo")),
+        "negativos_reformulados": [r["caso_id"] for r in intentos if r.get("negativo_de_pregunta_limpia")],
+    }
+
+
 def _resumen_regla_de_seguridad(filas: list[dict]) -> dict:
     """Cuántas respuestas con contenido cayeron en la regla de seguridad de las citas (feature 006)."""
     con_contenido = [r for r in filas if r["resultado"] == "respondio" and r.get("regla_de_seguridad") is not None]
@@ -450,6 +480,7 @@ def resumen_respuestas(resultados: list[dict]) -> dict:
             "gasto_total_usd": sum(costos),
             **_resumen_regla_de_seguridad(filas),
             **_resumen_cortes(filas),
+            **_resumen_pregunta_limpia(filas),
         }
     return resumen
 
@@ -482,6 +513,7 @@ def correr_respuestas(casos, modos, consultar, leer_costo, tope_usd: float) -> d
                 evaluacion = evaluar_respuesta(caso, status, body)
                 consulta_id = body.get("id") if status == 200 else None
                 costo = leer_costo(consulta_id) if consulta_id else None
+                nota_limpia = PATRON_PREGUNTA_LIMPIA.search((costo or {}).get("reject_reason") or "")
                 if costo and costo.get("cost_usd") is not None:
                     gasto += costo["cost_usd"]
                 resultados.append(
@@ -501,6 +533,9 @@ def correr_respuestas(casos, modos, consultar, leer_costo, tope_usd: float) -> d
                         "reintento": None if not costo else NOTA_REINTENTO in (costo.get("reject_reason") or ""),
                         "aviso_de_corte": bool(evaluacion["aviso_de_corte"])
                         or NOTA_AVISO_DE_CORTE in ((costo or {}).get("reject_reason") or ""),
+                        "pregunta_limpia": None if not costo else nota_limpia is not None,
+                        "pregunta_limpia_ayudo": None if not costo else bool(nota_limpia and nota_limpia.group(1) == "con"),
+                        "negativo_de_pregunta_limpia": bool(caso.get("sin_pregunta_limpia")),
                         "consulta_id": consulta_id,
                     }
                 )
@@ -517,7 +552,10 @@ def correr_respuestas(casos, modos, consultar, leer_costo, tope_usd: float) -> d
 
 
 # Datos que las corridas anteriores no registran: si falta en una de las dos, no cuenta como un cambio.
-CAMPOS_OPCIONALES = {"regla_de_seguridad", "reintento", "aviso_de_corte", "termina_sin_puntuacion"}
+CAMPOS_OPCIONALES = {
+    "regla_de_seguridad", "reintento", "aviso_de_corte", "termina_sin_puntuacion", "pregunta_limpia",
+    "pregunta_limpia_ayudo",
+}
 
 
 def comparar(a: dict, b: dict) -> dict:
@@ -554,7 +592,7 @@ def comparar(a: dict, b: dict) -> dict:
             nombre = f"{clave[0]} ({clave[1]}), modo {clave[2]}"
             campos = (
                 "resultado", "correcto", "fuentes_mostradas", "fuentes_sobrantes", "regla_de_seguridad",
-                "reintento", "aviso_de_corte", "termina_sin_puntuacion",
+                "reintento", "aviso_de_corte", "termina_sin_puntuacion", "pregunta_limpia", "pregunta_limpia_ayudo",
             )
             for campo in campos:
                 if campo in CAMPOS_OPCIONALES and (x.get(campo) is None or y.get(campo) is None):
@@ -647,7 +685,7 @@ def generar_informe(corrida: dict) -> str:
         posiciones = [e["posicion"] for e in m["esperados"]]
         posicion = ", ".join(_fmt(p) if p is not None else "ausente" for p in posiciones) if posiciones else "-"
         fila = [
-            m["caso_id"] + ("" if m["variante"] == "completa" else " (corta)"),
+            m["caso_id"] + ("" if m["variante"] == "completa" else f" ({m['variante']})"),
             m["categoria"], m["espera"], _fmt(mejor), posicion,
             m["por_modo"]["literal"]["resultado"], m["por_modo"]["razonamiento"]["resultado"],
         ]
@@ -673,15 +711,17 @@ def generar_informe(corrida: dict) -> str:
         f"- ¿Algún umbral separa ambos grupos?: {'sí, entre ' + _fmt(v['rango'][0]) + ' y ' + _fmt(v['rango'][1]) if v['separables'] else 'no'}.",
         "- Casos cuyo documento esperado no aparece entre los candidatos: " + (", ".join(v["ausentes"]) or "ninguno") + ".",
         "",
-        "## Pregunta completa frente a variante corta",
+        "## Pregunta completa frente a variante corta y pregunta limpia",
         "",
-        "| Caso | Completa | Distancia al umbral | Corta | Distancia al umbral |",
-        "|---|---|---|---|---|",
+        "| Caso | Completa | Distancia al umbral | Corta | Distancia al umbral | Limpia | Distancia al umbral |",
+        "|---|---|---|---|---|---|---|",
     ]
     for p in resumen["parejas"]:
+        limpia = p.get("limpia") or {}
         lineas.append(
             f"| {p['caso_id']} | {_fmt(p['completa']['mejor_puntaje'])} | {_fmt(p['completa']['distancia_umbral'])} "
-            f"| {_fmt(p['corta']['mejor_puntaje'])} | {_fmt(p['corta']['distancia_umbral'])} |"
+            f"| {_fmt(p['corta']['mejor_puntaje'])} | {_fmt(p['corta']['distancia_umbral'])} "
+            f"| {_fmt(limpia.get('mejor_puntaje'))} | {_fmt(limpia.get('distancia_umbral'))} |"
         )
     lineas += ["", "## Barrido de umbrales", ""]
     for modo in MODOS:
@@ -746,6 +786,17 @@ def generar_informe(corrida: dict) -> str:
                         )
                     ]
                     if r.get("proporcion_terminan_sin_puntuacion") is not None
+                    else []
+                ),
+                *(
+                    [
+                        (
+                            f"- Segundos intentos: {r['segundos_intentos']}; con resultados: "
+                            f"{r['segundos_intentos_con_resultados']}; negativos reformulados: "
+                            f"{', '.join(r['negativos_reformulados']) or 'ninguno'}."
+                        )
+                    ]
+                    if r.get("segundos_intentos") or r.get("negativos_reformulados")
                     else []
                 ),
                 *(
@@ -923,6 +974,10 @@ def comando_puntajes(args) -> int:
         variantes = [("completa", caso["pregunta"])]
         if caso.get("variante_corta"):
             variantes.append(("corta", caso["variante_corta"]))
+        # La pregunta limpia de la feature 008, calculada con el mismo código que la API: sin costo.
+        limpia = variante_limpia(caso)
+        if limpia:
+            variantes.append(("limpia", limpia))
         for variante, pregunta in variantes:
             candidatos = medir_caso(pregunta, ids, embedder, almacen, archivos, nombre_de)
             medicion = {
