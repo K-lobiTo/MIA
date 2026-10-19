@@ -78,3 +78,14 @@ Solo `"length"` y `"other"` disparan reintento; `None` (desconocido) no (FR-016)
 Estimaciones de costo medio (literal / razonamiento) para el avance hacia adelante y los documentos principales, con los mismos supuestos de R1: plan actual (4 fragmentos, 1 documento) +21 % / +11 %; 8 fragmentos hacia adelante +34 % / +19 %; 8 fragmentos y 2 documentos principales entre +50 % y +60 % / +30 %. Un documento de cientos de fragmentos (el plan de estudios de Ciberseguridad tiene 309) no cabe aunque la tolerancia fuera mayor: entregarlo entero serían unos 75.000 tokens, diez veces el contexto actual. Para esos documentos el diseño garantiza que la respuesta diga que la lista es parcial (R3); garantizar listas completas exigiría fragmentar por secciones y reindexar, que queda fuera de esta feature.
 
 **Criterio acordado el 2026-10-18**: se mantiene el tope de 25 %, todo es configurable por variable y, si la medición muestra listas cortadas en documentos grandes, se sube el alcance (`QUERY_COMPLETE_FORWARD_NEIGHBORS`, `QUERY_COMPLETE_DOCUMENTS`) hasta un máximo de 50 % solo con la aprobación del usuario.
+
+## R12. Registro informativo de MIA por la salida estándar (agregado durante la implementación)
+
+**Hallazgo** (2026-10-18): el motivo de fin de la generación se registra con `logger.info`, pero en Railway no aparecía nada: el servidor (uvicorn) solo configura sus propios registros y Python muestra de los demás únicamente los de nivel WARNING. Sin verlo, FR-006 (conocer el motivo de fin de cada respuesta) no se cumplía en producción y no se podían contar los cortes del control.
+
+**Decisión**: `mia.api.main` agrega al registro `mia` un manejador hacia la salida estándar y fija su nivel en INFO, con el mismo patrón que ya usa el registro de auditoría `mia.admin` (que tiene su propio manejador y no propaga, así que no se duplica). Prueba en `tests/unit/test_logging.py`.
+
+**Efecto**: ahora también salen a la salida estándar los mensajes de nivel INFO de los demás módulos `mia.*` (por ejemplo, los números de cita inexistentes de la feature 006); antes se descartaban. Es más ruido en el registro de Railway, pero útil para diagnosticar.
+
+**Alternativas descartadas**: pasar el nivel de registro por una variable de entorno (más superficie para un solo mensaje); usar `print` (no permite pruebas con `caplog` ni niveles).
+

@@ -35,13 +35,9 @@ Mismos campos que hoy (`domain`, `document`, `excerpt`, `reference` de la 006). 
 | `text`, `model`, `prompt_tokens`, `completion_tokens`, `reasoning_tokens`, `cost_usd` | ya existentes | Sin cambios. |
 | `finish_reason` | `"stop"`, `"length"`, `"other"` o nulo (**nuevo**) | Motivo de fin normalizado. Nulo si el proveedor no lo informa. |
 
-## Decisión de completitud (`CompletenessOutcome`, nuevo, en `rag/completeness.py`)
+## Decisión de completitud (sin estructura propia)
 
-| Campo | Tipo | Descripción |
-|---|---|---|
-| `retried` | booleano | Se hizo un segundo intento. |
-| `still_cut` | booleano | La respuesta entregada sigue con un fin anormal. |
-| `note` | texto o nulo | Nota para el registro de Uso (ver abajo). |
+No hay una estructura de datos dedicada: la ruta de consulta lleva el estado en dos variables locales, `cut_note` (la nota del corte: `None`, `NOTE_RETRIED` o `NOTE_NOTICE`) y `notice` (si al texto final se le agrega el aviso), y las funciones de `rag/completeness.py` son puras (`needs_retry`, `with_notice`, `merge_attempts`, `combine_notes`). La nota final de la consulta se arma con `combine_notes(cut_note, safety_note)`, donde `safety_note` es la de la regla de seguridad de las citas de la feature 006; el resultado va a `QueryLog.reject_reason`.
 
 ## Registro de consultas (campos existentes de `QueryLog`)
 

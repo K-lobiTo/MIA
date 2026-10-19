@@ -136,7 +136,7 @@ Quien opera MIA agrega al conjunto de casos de la feature 005 casos de listas la
 
 ### Measurable Outcomes
 
-- **SC-001**: En el conjunto de casos de listas largas (al menos 8: seis programas de curso largos, las líneas de TFG y una lista de un acta), el 100 % de las respuestas incluye el último ítem esperado en los dos modos.
+- **SC-001**: En el conjunto de casos de listas largas (al menos 8: seis programas de curso largos, las líneas de TFG y una lista de un acta), el 100 % de las respuestas cuyo documento llega al modelo y cabe en el contexto (hasta 25 fragmentos) incluye el último ítem esperado en los dos modos. Los casos cuya falla es de recuperación (el documento no llega al modelo, como el programa de Deep Learning) y los de documentos enormes (donde la respuesta debe decir que la lista continúa, FR-004) se reportan aparte y no cuentan contra este criterio, porque no dependen del contexto que esta feature entrega.
 - **SC-002**: En la corrida de verificación (al menos 80 consultas), ninguna respuesta se entrega cortada sin aviso: toda respuesta que terminó de forma anormal fue reintentada o lleva el aviso.
 - **SC-003**: Los 19 casos de la batería del MVP siguen respondiendo bien, con su documento esperado, y los que hoy responden "sin información" siguen haciéndolo.
 - **SC-004**: El porcentaje de consultas que necesita reintento es de 5 % o menos.
