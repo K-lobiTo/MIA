@@ -1516,3 +1516,14 @@ def test_el_cliente_de_solo_lectura_deja_pasar_scroll_y_rechaza_escrituras():
         cliente.upsert(collection_name="c", points=[])
     with pytest.raises(PermissionError):
         cliente.create_payload_index(collection_name="c")
+
+
+def test_pedir_devuelve_estado_cero_si_no_hay_respuesta(monkeypatch):
+    """Un tiempo agotado no tumba la corrida completa: queda como estado 0 (no concluyente) tras los reintentos."""
+
+    def sin_respuesta(*args, **kwargs):
+        raise TimeoutError("The read operation timed out")
+
+    monkeypatch.setattr(lb.urllib.request, "urlopen", sin_respuesta)
+    assert lb._pedir("https://ejemplo.invalid/query", payload={"a": 1}) == (0, {})
+    assert lb.evaluar_respuesta(_caso(), 0, {})["resultado"] == "no_concluyente"

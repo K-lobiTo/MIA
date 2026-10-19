@@ -1961,6 +1961,9 @@ def _pedir(url: str, clave_artefacto: str = "", clave_admin: str = "", payload: 
             return error.code, json.load(error)
         except json.JSONDecodeError:
             return error.code, {}
+    except (TimeoutError, urllib.error.URLError, ConnectionError):
+        # Sin respuesta (tiempo agotado, conexión cortada): estado 0, que la corrida trata como no concluyente o reintenta.
+        return 0, {}
 
 
 def leer_costo(base_url: str, clave_admin: str, consulta_id: str) -> dict | None:
@@ -2033,7 +2036,7 @@ def comando_respuestas(args) -> int:
             inicio = time.perf_counter()
             status, cuerpo = _pedir(f"{base}/query", clave_artefacto=clave, payload=payload)
             ms = int((time.perf_counter() - inicio) * 1000)
-            if status != 502 or intento == REINTENTOS:
+            if status not in (0, 502) or intento == REINTENTOS:
                 print(f"{caso['id']:<6}{variante:<9}{modo:<13} HTTP {status} {ms / 1000:.1f} s")
                 return status, cuerpo, ms
             time.sleep(ESPERA_REINTENTO)
