@@ -35,7 +35,7 @@ Un par entre una sigla y una forma desarrollada. Es global: vale para todos los 
 | Tokenizador | `prefix`, `min_token_len = 3`, `max_token_len = 15` |
 | Normalización | `lowercase = true`, `ascii_folding = true` |
 | Almacenamiento | `on_disk = true` (se confirma al medir) |
-| Quién lo crea | `ensure_collection` si `QUERY_HYBRID_SEARCH=on`, o `scripts/palabras.py preparar` |
+| Quién lo crea | el arranque de la API (`ensure_text_index` en `lifespan`) si `QUERY_HYBRID_SEARCH=on`, o `scripts/palabras.py preparar` |
 | Cómo se quita | `scripts/palabras.py quitar` (no toca vectores, payload ni puntos) |
 
 El índice no es una entidad que la API lea: es la capacidad que Qdrant da a los filtros `MatchText`. Los puntos nuevos entran con el `upsert` de siempre.

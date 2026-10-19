@@ -474,3 +474,53 @@ def test_una_consulta_rechazada_no_llama_a_la_parte_lexical(client, base, make_a
     http, almacen, _ = consultar(client, artefacto, almacen, [])
     assert http.status_code in (403, 429)
     assert almacen.palabras == [] and almacen.puntuaciones == []
+
+
+# --- US5: el índice de texto al arrancar ---------------------------------------------------------------------
+
+
+def _arrancar(almacen, **opciones):
+    from fastapi.testclient import TestClient
+
+    from mia.api import main as api_main
+
+    with (
+        patch.multiple(settings, **opciones),
+        patch.object(api_main, "init_db"),
+        patch.object(api_main, "get_vector_store", return_value=almacen),
+        patch.object(api_main, "get_embedding_provider", return_value=MagicMock(dimension=384)),
+        patch.object(api_main, "warm_up_rerank_provider"),
+        TestClient(api_main.app) as cliente,
+    ):
+        return cliente.get("/health").status_code
+
+
+def test_con_la_opcion_encendida_el_arranque_asegura_el_indice_de_texto():
+    almacen = MagicMock()
+    assert _arrancar(almacen, query_hybrid_search="on") == 200
+    almacen.ensure_text_index.assert_called_once_with()
+
+
+@pytest.mark.parametrize("valor", ["off", "", "si"])
+def test_con_la_opcion_apagada_el_arranque_no_toca_el_indice(valor):
+    almacen = MagicMock()
+    assert _arrancar(almacen, query_hybrid_search=valor) == 200
+    almacen.ensure_text_index.assert_not_called()
+    almacen.ensure_collection.assert_called_once_with(384)
+
+
+def test_si_no_se_puede_crear_el_indice_la_api_arranca_igual_y_avisa(caplog):
+    almacen = MagicMock()
+    almacen.ensure_text_index.side_effect = RuntimeError("otros parámetros")
+    with caplog.at_level(logging.WARNING):
+        assert _arrancar(almacen, query_hybrid_search="on") == 200
+    assert [r for r in caplog.records if "índice de texto" in r.getMessage()]
+
+
+def test_la_ingesta_no_necesita_pasos_lexicales_adicionales():
+    import inspect
+
+    from mia.ingestion import pipeline
+
+    fuente = inspect.getsource(pipeline)
+    assert "match_chunks" not in fuente and "ensure_text_index" not in fuente
