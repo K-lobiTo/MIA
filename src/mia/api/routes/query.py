@@ -46,6 +46,7 @@ from mia.rag.rerank import (
     read_memory_mb,
     rerank_candidates,
     rerank_note,
+    rerank_requested,
     warn_rerank_failure,
 )
 from mia.storage.db import get_session
@@ -183,6 +184,13 @@ def query(
     rerank_logits: dict[str, float] = {}  # chunk_id -> logit, para no puntuar dos veces el mismo fragmento
     rerank_failed = False
     rerank_outcome: RerankOutcome | None = None
+    if rerank_provider is None and rerank_requested(settings.rerank_provider):
+        # Pedido pero sin modelo (no cargó): la consulta sigue por similitud y lo deja dicho, como cuando falla al puntuar.
+        warn_rerank_failure(RuntimeError("el modelo del reranker no está cargado"))
+        rerank_failed = True
+        rerank_outcome = RerankOutcome(
+            results=[], best=None, scored=0, passed=0, fell_back=True, min_score=settings.rerank_min_score
+        )
 
     def by_similarity(results):
         return [r for r in results[: config.search_limit] if r.score >= settings.query_similarity_threshold]

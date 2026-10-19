@@ -82,6 +82,11 @@ def get_rerank_provider(name: str) -> RerankProvider | None:
     return provider
 
 
+def rerank_requested(name: str) -> bool:
+    """Si la configuración pide el reranker local (aunque el modelo no haya cargado)."""
+    return (name or "").strip().lower() == "local"
+
+
 # --- Selección ----------------------------------------------------------------------------------
 
 

@@ -396,3 +396,68 @@ def test_una_consulta_rechazada_no_busca_ni_puntua(client, base, make_artifact):
     )
     assert respuesta2.status_code == 403
     assert almacen2.llamadas == [] and reranker2.llamadas == []
+
+
+# --- Convergencia: el modelo del reranker no cargó ---------------------------------------------
+
+
+def _consultar_con_fabrica_real(client, artefacto, valor, error_de_carga=None, **opciones):
+    """Como `_consultar`, pero sin parchear `get_rerank_provider`: la fábrica real decide si hay proveedor."""
+    almacen = _Almacen([CANDIDATOS])
+    embeddings = MagicMock()
+    embeddings.embed.side_effect = lambda textos, is_query=False: [[1.0, 0.2]]
+    modelo = MagicMock()
+    modelo.answer.side_effect = [_respuesta()]
+    with (
+        patch.multiple(
+            settings,
+            **{"rerank_provider": valor, "query_similarity_threshold": UMBRAL, "query_search_limit": 8, **opciones},
+        ),
+        patch("mia.rag.providers.local_rerank.LocalRerankProvider", side_effect=error_de_carga or RuntimeError("x")),
+        patch.object(query_routes, "get_vector_store", return_value=almacen),
+        patch.object(query_routes, "get_embedding_provider", return_value=embeddings),
+        patch.object(query_routes, "get_llm_provider", return_value=modelo),
+    ):
+        respuesta = client.post(
+            "/query", json={"domains": ["dom-1"], "question": PREGUNTA, "mode": "literal"}, headers=artefacto.headers
+        )
+    return respuesta, almacen, modelo
+
+
+def test_si_el_modelo_no_cargo_se_responde_por_similitud_con_nota_y_aviso(client, db, base, make_artifact, caplog):
+    artefacto = make_artifact(units=["u1"])
+    with caplog.at_level(logging.WARNING):
+        respuesta, almacen, modelo = _consultar_con_fabrica_real(client, artefacto, "local")
+    assert respuesta.status_code == 200 and respuesta.json()["no_info"] is False
+    assert [c["limit"] for c in almacen.llamadas] == [8]  # el límite del modo, como sin reranker
+    assert _documentos(modelo) == [f"Doc{i}.pdf" for i in range(1, 9)]  # el orden y el umbral de coseno
+    assert _registro(db, respuesta).reject_reason == "Reranker no disponible: se usó la similitud"
+    assert any("reranker falló" in m for m in caplog.messages)
+
+
+def test_si_el_modelo_no_cargo_y_no_hay_nada_sobre_el_umbral_la_nota_queda_en_sin_informacion(
+    client, db, base, make_artifact
+):
+    artefacto = make_artifact(units=["u1"])
+    respuesta, _, modelo = _consultar_con_fabrica_real(client, artefacto, "local", query_similarity_threshold=0.99)
+    assert respuesta.json()["no_info"] is True and modelo.answer.call_count == 0
+    assert _registro(db, respuesta).reject_reason == "Reranker no disponible: se usó la similitud"
+
+
+def test_el_aviso_por_consulta_del_modelo_ausente_sale_como_maximo_una_vez_por_minuto(
+    client, base, make_artifact, caplog
+):
+    artefacto = make_artifact(units=["u1"], cap=5)
+    with caplog.at_level(logging.WARNING):
+        for _ in range(3):
+            respuesta, _, _ = _consultar_con_fabrica_real(client, artefacto, "local")
+            assert respuesta.status_code == 200
+    assert len([m for m in caplog.messages if "reranker falló" in m]) == 1
+
+
+@pytest.mark.parametrize("valor", ["none", "xyz", ""])
+def test_sin_reranker_pedido_no_hay_nota_aunque_el_modelo_no_exista(client, db, base, make_artifact, valor):
+    artefacto = make_artifact(units=["u1"])
+    respuesta, _, _ = _consultar_con_fabrica_real(client, artefacto, valor)
+    assert respuesta.status_code == 200
+    assert _registro(db, respuesta).reject_reason is None

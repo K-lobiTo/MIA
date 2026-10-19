@@ -15,6 +15,7 @@ from mia.rag.rerank import (
     get_rerank_provider,
     rerank_candidates,
     rerank_note,
+    rerank_requested,
     sigmoid,
     warm_up_rerank_provider,
 )
@@ -189,3 +190,11 @@ def test_el_arranque_no_lanza_si_la_carga_falla(monkeypatch):
     with patch("mia.rag.providers.local_rerank.LocalRerankProvider", side_effect=RuntimeError("sin archivo")):
         warm_up_rerank_provider()
         assert get_rerank_provider("local") is None
+
+
+# --- rerank_requested ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(("nombre", "esperado"), [("local", True), (" LOCAL ", True), ("none", False), ("", False), ("xyz", False)])
+def test_rerank_requested(nombre, esperado):
+    assert rerank_requested(nombre) is esperado
