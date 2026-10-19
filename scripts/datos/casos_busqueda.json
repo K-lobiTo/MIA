@@ -721,5 +721,47 @@
       "MC4003"
     ],
     "nota": "Término que es el nombre de un curso; el segundo intento busca solo 'Derecho Informático'."
+  },
+  {
+    "id": "SR4",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Quién es Ernestina Valverde Quirós?",
+    "espera": "sin_informacion",
+    "nota": "Persona inventada con un nombre plausible (feature 009): calibra el mínimo del reranker."
+  },
+  {
+    "id": "SR5",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Qué es el curso de Computación Cuántica Aplicada a la Ganadería?",
+    "espera": "sin_informacion",
+    "nota": "Curso inventado con vocabulario del dominio (feature 009): calibra el mínimo del reranker."
+  },
+  {
+    "id": "SR6",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Qué es el PRGX?",
+    "espera": "sin_informacion",
+    "nota": "Sigla inventada (feature 009): calibra el mínimo del reranker."
+  },
+  {
+    "id": "SR7",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "Háblame de la Facultad de Oceanografía Computacional",
+    "espera": "sin_informacion",
+    "nota": "Unidad inventada, sin signos de interrogación (feature 009): calibra el mínimo del reranker."
   }
 ]

@@ -6,6 +6,9 @@ Subcomandos:
     inventario  Lista dominios, documentos y fragmentos (solo lectura).
     puntajes    Puntajes de similitud por caso, barrido de umbrales y ventana de separación
                 (solo lectura, sin tokens de modelos).
+                Con --rerank agrega el puntaje del reranker local (feature 009): puesto del documento esperado,
+                barrido del mínimo y ventana de separación (sin tokens de modelos de lenguaje).
+    rendimiento Memoria y latencia del reranker local por candidatos, tokens por pasaje e hilos (feature 009).
     respuestas  Corre los casos contra POST /query: fuentes, tiempo y costo (gasta; exige --tope-usd).
     informe     Genera el informe en Markdown de una corrida.
     comparar    Compara dos corridas caso por caso.
@@ -53,6 +56,10 @@ NOTA_AVISO_DE_CORTE = "Respuesta cortada: se entregó con aviso"
 AVISO_DE_CORTE = "Aviso: la respuesta pudo quedar incompleta."
 # Nota de la feature 008 en `reject_reason`: «Pregunta limpia: «texto» (con resultados)» o «(sin resultados)».
 PATRON_PREGUNTA_LIMPIA = re.compile(r"Pregunta limpia: «(.*?)» \((con|sin) resultados\)", re.DOTALL)
+# Notas de la feature 009 en `reject_reason`: el puntaje del reranker o la caída a la similitud.
+PATRON_RERANK_CON = re.compile(r"Reranker: mejor (\d\.\d{3}), (\d+) de (\d+) sobre el mínimo \d\.\d{2}")
+PATRON_RERANK_NINGUNO = re.compile(r"Reranker: ninguno sobre el mínimo \d\.\d{2}, mejor (\d\.\d{3}) de (\d+)")
+NOTA_RERANK_CAIDA = "Reranker no disponible: se usó la similitud"
 # Una respuesta que no termina con uno de estos caracteres es una candidata a corte que el modelo no declaró.
 CIERRES_DE_FRASE = ".!?):;\"'”»*"
 
@@ -303,6 +310,135 @@ def ventana_separacion(mediciones: list[dict]) -> dict:
     }
 
 
+# Mínimos del reranker que recorre el barrido, en la escala del logit (el puntaje es su sigmoide y se satura).
+BARRIDO_RERANK_LOGITS = tuple(range(-8, 9))
+
+
+def puesto_rerank(candidatos: list[dict], documentos: list[str], minimo: float | None = None,
+                  limites: dict[str, int] | None = None) -> list[dict]:
+    """Por cada fragmento de nombre de `documentos`: puesto por coseno y por reranker, y puntaje del mejor candidato de
+    ese documento (el de mayor puntaje del reranker), o todo None si no aparece entre los candidatos.
+
+    Con `minimo` y `limites` agrega `entra`: por modo, si ese candidato llegaría al modelo (está entre los primeros
+    `limite` por reranker y supera el mínimo)."""
+    salida = []
+    for fragmento in documentos:
+        coinciden = [c for c in candidatos if _contiene(c["documento"], fragmento)]
+        if not coinciden:
+            salida.append({"fragmento": fragmento, "posicion": None, "posicion_rerank": None, "puntaje_rerank": None,
+                           "logit": None, "entra": {}})
+            continue
+        mejor = max(coinciden, key=lambda c: c["logit"])
+        entra = {}
+        if minimo is not None and limites:
+            entra = {m: mejor["posicion_rerank"] <= limite and mejor["puntaje"] >= minimo for m, limite in limites.items()}
+        salida.append({"fragmento": fragmento, "posicion": mejor["posicion"], "posicion_rerank": mejor["posicion_rerank"],
+                       "puntaje_rerank": mejor["puntaje"], "logit": mejor["logit"], "entra": entra})
+    return salida
+
+
+def resultado_por_modo_rerank(candidatos: list[dict], limite: int, minimo: float) -> dict:
+    """Lo que decidiría la API con el reranker: responde si algún candidato supera el mínimo; al modelo llegan como
+    mucho `limite` fragmentos."""
+    sobre = [c for c in candidatos if c["puntaje"] >= minimo]
+    return {
+        "pasan": min(len(sobre), limite),
+        "mejor_puntaje": max((c["puntaje"] for c in candidatos), default=None),
+        "resultado": "responde" if sobre else "sin_informacion",
+    }
+
+
+def _sigmoide(x: float) -> float:
+    from mia.rag.rerank import sigmoid
+
+    return sigmoid(x)
+
+
+def _con_rerank(mediciones: list[dict]) -> list[dict]:
+    return [m for m in _completas(mediciones) if m.get("rerank") is not None]
+
+
+def barrido_minimos(mediciones: list[dict], minimos: list[float] | None = None) -> list[dict]:
+    """Por mínimo del reranker, qué casos con respuesta responderían y qué casos de "sin información" pasarían.
+
+    Sin `minimos` recorre el logit de -8 a 8 (el puntaje se satura y una malla uniforme en 0 a 1 no separa nada).
+    Un caso responde si su mejor candidato supera el mínimo; para los casos con respuesta además se pide que el
+    documento esperado esté entre los candidatos y lo supere."""
+    if minimos is None:
+        mallas = [(x, _sigmoide(x)) for x in BARRIDO_RERANK_LOGITS]
+    else:
+        mallas = [(None, m) for m in minimos]
+    filas = []
+    for logit, minimo in mallas:
+        responden, no_responden, sin_info_que_pasan, bloqueados = [], [], [], 0
+        for m in _con_rerank(mediciones):
+            candidatos = m["rerank"]["candidatos"]
+            if m["espera"] == "sin_informacion":
+                if any(c["puntaje"] >= minimo for c in candidatos):
+                    sin_info_que_pasan.append(m["caso_id"])
+                else:
+                    bloqueados += 1
+            else:
+                esperados = m["rerank"].get("esperados") or []
+                pasa = any(e["puntaje_rerank"] is not None and e["puntaje_rerank"] >= minimo for e in esperados)
+                (responden if pasa else no_responden).append(m["caso_id"])
+        filas.append({"minimo": minimo, "logit": logit, "responden": responden, "no_responden": no_responden,
+                      "sin_info_que_pasan": sin_info_que_pasan, "sin_info_bloqueados": bloqueados})
+    return filas
+
+
+def ventana_rerank(mediciones: list[dict]) -> dict:
+    """Si algún mínimo del reranker separa los casos con respuesta de los de "sin información" (BUS-3), como
+    `ventana_separacion` pero con el puntaje del reranker (comparado en logit para que la saturación no empate)."""
+    sin_info, respuesta, ausentes = [], [], []
+    for m in _con_rerank(mediciones):
+        candidatos = m["rerank"]["candidatos"]
+        if m["espera"] == "sin_informacion":
+            sin_info.append((max((c["logit"] for c in candidatos), default=float("-inf")), m["caso_id"]))
+        else:
+            logits = [e["logit"] for e in (m["rerank"].get("esperados") or []) if e["logit"] is not None]
+            if logits:
+                respuesta.append((max(logits), m["caso_id"]))
+            else:
+                ausentes.append(m["caso_id"])
+    max_sin = max(sin_info, default=(None, None))
+    min_resp = min(respuesta, default=(None, None))
+    separables = max_sin[0] is not None and min_resp[0] is not None and min_resp[0] > max_sin[0]
+    return {
+        "max_sin_info_logit": max_sin[0], "max_sin_info": None if max_sin[0] is None else _sigmoide(max_sin[0]),
+        "max_sin_info_caso": max_sin[1],
+        "min_respuesta_logit": min_resp[0], "min_respuesta": None if min_resp[0] is None else _sigmoide(min_resp[0]),
+        "min_respuesta_caso": min_resp[1],
+        "separables": separables,
+        "rango_logit": [max_sin[0], min_resp[0]] if separables else None,
+        "ausentes": ausentes,
+    }
+
+
+def leer_nota_rerank(texto: str | None) -> dict | None:
+    """Datos de la nota del reranker en `reject_reason`, o None si no hay nota."""
+    if not texto:
+        return None
+    if NOTA_RERANK_CAIDA in texto:
+        return {"mejor": None, "candidatos": None, "sobre_minimo": None, "cayo": True, "ninguno": False}
+    con = PATRON_RERANK_CON.search(texto)
+    if con:
+        return {"mejor": float(con.group(1)), "candidatos": int(con.group(3)), "sobre_minimo": int(con.group(2)),
+                "cayo": False, "ninguno": False}
+    ninguno = PATRON_RERANK_NINGUNO.search(texto)
+    if ninguno:
+        return {"mejor": float(ninguno.group(1)), "candidatos": int(ninguno.group(2)), "sobre_minimo": 0,
+                "cayo": False, "ninguno": True}
+    return None
+
+
+def resumen_rendimiento(medidas_ms: list[float], p50_max_ms: float, p95_max_ms: float) -> dict:
+    """p50 y p95 de una lista de latencias y si cumplen los límites de la feature 009 (SC-006)."""
+    p50, p95 = percentil(medidas_ms, 50), percentil(medidas_ms, 95)
+    cumple = p50 is not None and p95 is not None and p50 <= p50_max_ms and p95 <= p95_max_ms
+    return {"n": len(medidas_ms), "p50_ms": p50, "p95_ms": p95, "cumple": cumple}
+
+
 def variante_limpia(caso: dict) -> str | None:
     """La pregunta limpia del caso (feature 008), o None si no aplica o ya es la variante corta del caso.
 
@@ -444,6 +580,17 @@ def _resumen_pregunta_limpia(filas: list[dict]) -> dict:
     }
 
 
+def _resumen_rerank(filas: list[dict]) -> dict:
+    """Consultas en las que intervino el reranker, cuántas cayeron a la similitud y cuántas no dejaron candidatos
+    sobre el mínimo (feature 009)."""
+    con_reranker = [r for r in filas if r.get("rerank_mejor") is not None or r.get("rerank_cayo")]
+    return {
+        "consultas_con_reranker": len(con_reranker),
+        "caidas_a_coseno": sum(1 for r in filas if r.get("rerank_cayo")),
+        "ninguno_sobre_minimo": sum(1 for r in filas if r.get("rerank_ninguno_sobre_minimo")),
+    }
+
+
 def _resumen_regla_de_seguridad(filas: list[dict]) -> dict:
     """Cuántas respuestas con contenido cayeron en la regla de seguridad de las citas (feature 006)."""
     con_contenido = [r for r in filas if r["resultado"] == "respondio" and r.get("regla_de_seguridad") is not None]
@@ -481,6 +628,7 @@ def resumen_respuestas(resultados: list[dict]) -> dict:
             **_resumen_regla_de_seguridad(filas),
             **_resumen_cortes(filas),
             **_resumen_pregunta_limpia(filas),
+            **_resumen_rerank(filas),
         }
     return resumen
 
@@ -514,6 +662,7 @@ def correr_respuestas(casos, modos, consultar, leer_costo, tope_usd: float) -> d
                 consulta_id = body.get("id") if status == 200 else None
                 costo = leer_costo(consulta_id) if consulta_id else None
                 nota_limpia = PATRON_PREGUNTA_LIMPIA.search((costo or {}).get("reject_reason") or "")
+                nota_rerank = leer_nota_rerank((costo or {}).get("reject_reason"))
                 if costo and costo.get("cost_usd") is not None:
                     gasto += costo["cost_usd"]
                 resultados.append(
@@ -537,6 +686,9 @@ def correr_respuestas(casos, modos, consultar, leer_costo, tope_usd: float) -> d
                         "pregunta_limpia_ayudo": None if not costo else bool(nota_limpia and nota_limpia.group(2) == "con"),
                         "pregunta_limpia_texto": nota_limpia.group(1) if nota_limpia else None,
                         "negativo_de_pregunta_limpia": bool(caso.get("sin_pregunta_limpia")),
+                        "rerank_mejor": nota_rerank["mejor"] if nota_rerank else None,
+                        "rerank_cayo": None if not costo else bool(nota_rerank and nota_rerank["cayo"]),
+                        "rerank_ninguno_sobre_minimo": None if not costo else bool(nota_rerank and nota_rerank["ninguno"]),
                         "consulta_id": consulta_id,
                     }
                 )
@@ -555,7 +707,7 @@ def correr_respuestas(casos, modos, consultar, leer_costo, tope_usd: float) -> d
 # Datos que las corridas anteriores no registran: si falta en una de las dos, no cuenta como un cambio.
 CAMPOS_OPCIONALES = {
     "regla_de_seguridad", "reintento", "aviso_de_corte", "termina_sin_puntuacion", "pregunta_limpia",
-    "pregunta_limpia_ayudo", "pregunta_limpia_texto",
+    "pregunta_limpia_ayudo", "pregunta_limpia_texto", "rerank_cayo", "rerank_ninguno_sobre_minimo",
 }
 
 
@@ -594,7 +746,7 @@ def comparar(a: dict, b: dict) -> dict:
             campos = (
                 "resultado", "correcto", "fuentes_mostradas", "fuentes_sobrantes", "regla_de_seguridad",
                 "reintento", "aviso_de_corte", "termina_sin_puntuacion", "pregunta_limpia", "pregunta_limpia_ayudo",
-                "pregunta_limpia_texto",
+                "pregunta_limpia_texto", "rerank_cayo", "rerank_ninguno_sobre_minimo",
             )
             for campo in campos:
                 if campo in CAMPOS_OPCIONALES and (x.get(campo) is None or y.get(campo) is None):
@@ -637,6 +789,68 @@ def _fmt(valor, decimales: int = 3) -> str:
     if isinstance(valor, float):
         return f"{valor:.{decimales}f}"
     return str(valor)
+
+
+def _seccion_rerank(puntajes: dict) -> list[str]:
+    """Sección del informe con el reranker (feature 009); vacía si la corrida no lo midió."""
+    mediciones = [m for m in puntajes["mediciones"] if m.get("rerank") is not None]
+    if not mediciones:
+        return []
+    ctx = puntajes["contexto"].get("reranker") or {}
+    resumen = puntajes["resumen"]
+    lineas = [
+        "## Reranker local (feature 009)",
+        "",
+        (
+            f"Modelo {ctx.get('modelo', '?')}, {ctx.get('candidatos', '?')} candidatos, mínimo {ctx.get('minimo', '?')}, "
+            f"piso de similitud {ctx.get('piso_de_similitud', '?')}, {ctx.get('tokens_por_pasaje', '?')} tokens por pasaje, "
+            f"{ctx.get('hilos', '?')} hilos."
+        ),
+        "",
+        "| Caso | Espera | Esperado: puesto coseno -> reranker | Puntaje del esperado | Mejor puntaje | Literal | Razonamiento | ms |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+    for m in mediciones:
+        rr = m["rerank"]
+        mejor = max((c["puntaje"] for c in rr["candidatos"]), default=None)
+        if rr["esperados"]:
+            puestos = ", ".join(
+                "ausente" if e["posicion_rerank"] is None else f"#{e['posicion']} -> #{e['posicion_rerank']}"
+                for e in rr["esperados"]
+            )
+            puntajes_esperado = ", ".join(_fmt(e["puntaje_rerank"]) for e in rr["esperados"])
+        else:
+            puestos, puntajes_esperado = "-", "-"
+        lineas.append(
+            f"| {m['caso_id']}" + ("" if m["variante"] == "completa" else f" ({m['variante']})")
+            + f" | {m['espera']} | {puestos} | {puntajes_esperado} | {_fmt(mejor)} "
+            f"| {rr['por_modo']['literal']['resultado']} | {rr['por_modo']['razonamiento']['resultado']} | {_fmt(rr['ms'], 0)} |"
+        )
+    w = resumen.get("ventana_rerank")
+    if w:
+        lineas += [
+            "",
+            (
+                f"- Mayor puntaje entre los casos que esperan \"sin información\": logit {_fmt(w['max_sin_info_logit'], 2)} "
+                f"(caso {w['max_sin_info_caso']})."
+            ),
+            (
+                f"- Menor puntaje del documento esperado entre los casos que esperan respuesta: logit "
+                f"{_fmt(w['min_respuesta_logit'], 2)} (caso {w['min_respuesta_caso']})."
+            ),
+            f"- ¿Algún mínimo separa ambos grupos?: {'sí, entre logit ' + _fmt(w['rango_logit'][0], 2) + ' y ' + _fmt(w['rango_logit'][1], 2) if w['separables'] else 'no'}.",
+            "- Casos cuyo documento esperado no aparece entre los candidatos: " + (", ".join(w["ausentes"]) or "ninguno") + ".",
+        ]
+    barrido = resumen.get("barrido_minimos")
+    if barrido:
+        lineas += ["", "Barrido del mínimo (casos de la variante completa):", "",
+                   "| Logit | Mínimo | Casos con respuesta que responden | Casos de \"sin información\" que pasarían |", "|---|---|---|---|"]
+        for f in barrido:
+            lineas.append(
+                f"| {_fmt(f['logit'], 0)} | {_fmt(f['minimo'], 4)} | {len(f['responden'])} de {len(f['responden']) + len(f['no_responden'])} "
+                f"| {', '.join(f['sin_info_que_pasan']) or 'ninguno'} |"
+            )
+    return [*lineas, ""]
 
 
 def generar_informe(corrida: dict) -> str:
@@ -713,6 +927,7 @@ def generar_informe(corrida: dict) -> str:
         f"- ¿Algún umbral separa ambos grupos?: {'sí, entre ' + _fmt(v['rango'][0]) + ' y ' + _fmt(v['rango'][1]) if v['separables'] else 'no'}.",
         "- Casos cuyo documento esperado no aparece entre los candidatos: " + (", ".join(v["ausentes"]) or "ninguno") + ".",
         "",
+        *_seccion_rerank(puntajes),
         "## Pregunta completa frente a variante corta y pregunta limpia",
         "",
         "| Caso | Completa | Distancia al umbral | Corta | Distancia al umbral | Limpia | Distancia al umbral |",
@@ -799,6 +1014,16 @@ def generar_informe(corrida: dict) -> str:
                         )
                     ]
                     if r.get("segundos_intentos") or r.get("negativos_reformulados")
+                    else []
+                ),
+                *(
+                    [
+                        (
+                            f"- Consultas con reranker: {r['consultas_con_reranker']}; caídas a coseno: "
+                            f"{r['caidas_a_coseno']}; sin candidatos sobre el mínimo: {r['ninguno_sobre_minimo']}."
+                        )
+                    ]
+                    if r.get("consultas_con_reranker")
                     else []
                 ),
                 *(
@@ -910,6 +1135,52 @@ def medir_caso(pregunta, dominio_ids, embedder, almacen, archivos, nombre_de) ->
     ]
 
 
+def medir_caso_rerank(pregunta_busqueda, pregunta_rerank, dominio_ids, embedder, almacen, archivos, nombre_de,
+                      reranker, candidatos_pedidos: int, piso: float, reloj=time.perf_counter):
+    """Candidatos de una pregunta puntuados por el reranker, como los puntúa la API: se busca con la pregunta (o la
+    variante) y se puntúa contra `pregunta_rerank` (la pregunta completa). Devuelve (candidatos, milisegundos)."""
+    from mia.rag.rerank import sigmoid
+
+    vector = embedder.embed([pregunta_busqueda], is_query=True)[0]
+    resultados = almacen.search(vector, domains=dominio_ids, limit=candidatos_pedidos)
+    elegidos = [(i, r) for i, r in enumerate(resultados, start=1) if piso <= 0 or r.score >= piso]
+    if not elegidos:
+        return [], 0.0
+    inicio = reloj()
+    logits = reranker.score(pregunta_rerank, [r.text for _, r in elegidos])
+    ms = (reloj() - inicio) * 1000
+    filas = [
+        {
+            "posicion": i,
+            "puntaje_coseno": round(float(r.score), 6),
+            "logit": round(float(logit), 4),
+            "puntaje": round(sigmoid(float(logit)), 6),
+            "documento": archivos.get(r.document_id, r.document_id),
+            "dominio": nombre_de.get(r.domain, r.domain),
+        }
+        for (i, r), logit in zip(elegidos, logits, strict=True)
+    ]
+    orden = sorted(range(len(filas)), key=lambda k: -filas[k]["logit"])
+    for rango, k in enumerate(orden, start=1):
+        filas[k]["posicion_rerank"] = rango
+    return filas, ms
+
+
+def medir_combinacion(reranker, tareas: list[tuple[str, list[str]]], repeticiones: int,
+                      reloj=time.perf_counter) -> list[float]:
+    """Milisegundos de cada puntuación de `tareas` (pregunta, pasajes) repetida `repeticiones` veces, después de una
+    pasada de calentamiento que no se cuenta."""
+    for pregunta, pasajes in tareas:
+        reranker.score(pregunta, pasajes)
+    medidas = []
+    for _ in range(repeticiones):
+        for pregunta, pasajes in tareas:
+            inicio = reloj()
+            reranker.score(pregunta, pasajes)
+            medidas.append((reloj() - inicio) * 1000)
+    return medidas
+
+
 def exigir_casos(casos: list, omitidos: list) -> None:
     """Sin ningún caso que correr no se mide nada ni se escribe ningún archivo."""
     if not casos:
@@ -964,6 +1235,16 @@ def comando_puntajes(args) -> int:
     limites = {"literal": settings.query_search_limit, "razonamiento": settings.query_search_limit_razonamiento}
     umbral = settings.query_similarity_threshold
 
+    reranker = None
+    minimo = settings.rerank_min_score
+    if args.rerank:
+        from mia.rag.rerank import get_rerank_provider
+
+        reranker = get_rerank_provider("local")
+        if reranker is None:
+            raise ErrorMedicion("No se pudo cargar el reranker local (ver el registro): revisar el modelo y las dependencias.")
+    candidatos_rerank = max(settings.rerank_candidates, *limites.values())
+
     mediciones, omitidos = [], []
     exigir_casos(casos, [])
     for caso in casos:
@@ -992,6 +1273,19 @@ def comando_puntajes(args) -> int:
                 "por_modo": {m: resultado_por_modo(candidatos, limites[m], umbral) for m in MODOS},
                 "esperados": posicion_esperados(candidatos, caso.get("documentos", [])),
             }
+            if reranker is not None:
+                # La API puntúa siempre contra la pregunta completa, incluso cuando busca con la variante limpia.
+                pregunta_rerank = caso["pregunta"] if variante == "limpia" else pregunta
+                candidatos_r, ms = medir_caso_rerank(
+                    pregunta, pregunta_rerank, ids, embedder, almacen, archivos, nombre_de, reranker,
+                    candidatos_rerank, settings.rerank_min_similarity,
+                )
+                medicion["rerank"] = {
+                    "candidatos": candidatos_r,
+                    "ms": round(ms, 1),
+                    "por_modo": {m: resultado_por_modo_rerank(candidatos_r, limites[m], minimo) for m in MODOS},
+                    "esperados": puesto_rerank(candidatos_r, caso.get("documentos", []), minimo, limites),
+                }
             mediciones.append(medicion)
             esperado = ", ".join(
                 f"{e['fragmento'][:18]}: " + ("ausente" if e["posicion"] is None else f"#{e['posicion']} {e['puntaje']:.3f}")
@@ -1004,6 +1298,19 @@ def comando_puntajes(args) -> int:
                 f"({medicion['por_modo']['razonamiento']['pasan']}) | espera {caso['espera']}"
                 + (f" | {esperado}" if esperado else "")
             )
+            if "rerank" in medicion:
+                rr = medicion["rerank"]
+                mejor_r = max((c["puntaje"] for c in rr["candidatos"]), default=0.0)
+                esperado_r = ", ".join(
+                    f"{e['fragmento'][:18]}: " + ("ausente" if e["posicion_rerank"] is None else
+                                                  f"#{e['posicion']}->#{e['posicion_rerank']} {e['puntaje_rerank']:.3f}")
+                    for e in rr["esperados"]
+                )
+                print(
+                    f"{'':<15}rerank mejor {mejor_r:.3f} | literal {rr['por_modo']['literal']['resultado']} "
+                    f"| razonamiento {rr['por_modo']['razonamiento']['resultado']} | {rr['ms']:.0f} ms"
+                    + (f" | {esperado_r}" if esperado_r else "")
+                )
 
     exigir_casos(mediciones, omitidos)
     contexto = contexto_corrida(
@@ -1018,12 +1325,110 @@ def comando_puntajes(args) -> int:
         fragmentos_por_dominio={nombre_de[i]: contar_fragmentos(almacen, i) for i in nombre_de},
         casos_omitidos=omitidos,
         parametros="declarados en el archivo de entorno, no necesariamente los de Railway",
+        **(
+            {
+                "reranker": {
+                    "modelo": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1 (ONNX int8)",
+                    "candidatos": candidatos_rerank,
+                    "minimo": minimo,
+                    "piso_de_similitud": settings.rerank_min_similarity,
+                    "tokens_por_pasaje": settings.rerank_passage_tokens,
+                    "hilos": settings.rerank_threads,
+                }
+            }
+            if reranker is not None
+            else {}
+        ),
     )
     resumen = resumen_puntajes(mediciones, umbral, limites)
+    if reranker is not None:
+        resumen["barrido_minimos"] = barrido_minimos(mediciones)
+        resumen["ventana_rerank"] = ventana_rerank(mediciones)
     ruta = guardar_json(carpeta_de(contexto), "puntajes.json", {"contexto": contexto, "mediciones": mediciones, "resumen": resumen})
     v = resumen["ventana_separacion"]
     print(f"\nVentana de separación: sin información hasta {v['max_sin_info']}, con respuesta desde {v['min_respuesta']} -> "
           + ("separables" if v["separables"] else "NO separables por umbral"))
+    if reranker is not None:
+        w = resumen["ventana_rerank"]
+        print(
+            f"Ventana del reranker (logit): sin información hasta {_fmt(w['max_sin_info_logit'], 2)} (caso {w['max_sin_info_caso']}), "
+            f"con respuesta desde {_fmt(w['min_respuesta_logit'], 2)} (caso {w['min_respuesta_caso']}) -> "
+            + ("separables" if w["separables"] else "NO separables por mínimo")
+            + (f"; ausentes entre los candidatos: {', '.join(w['ausentes'])}" if w["ausentes"] else "")
+        )
+    print(f"Duración: {time.perf_counter() - inicio:.0f} s. Guardado en {ruta.relative_to(RAIZ)}")
+    return 0
+
+
+def _enteros(texto: str) -> list[int]:
+    return [int(x) for x in texto.split(",") if x.strip()]
+
+
+def comando_rendimiento(args) -> int:
+    """Memoria y latencia del reranker local por número de candidatos, tokens por pasaje e hilos (feature 009)."""
+    settings, sesion, almacen = abrir_mia(args.env_file)
+    from mia.rag.embeddings import get_embedding_provider
+    from mia.rag.providers.local_rerank import LocalRerankProvider
+    from mia.rag.rerank import format_memory, read_memory_mb
+
+    inicio = time.perf_counter()
+    embedder = get_embedding_provider(settings.embedding_provider)
+    embedder.embed(["prueba"], is_query=True)
+    memoria_embeddings, _ = read_memory_mb()
+
+    casos = cargar_casos(Path(args.casos))
+    por_nombre, _, _, _ = mapas_de_base(sesion)
+    tareas: list[tuple[str, list[str]]] = []
+    for caso in casos:
+        if len(tareas) >= args.n_casos:
+            break
+        if any(_nfc(d) not in por_nombre for d in caso["dominios"]):
+            continue
+        ids = [por_nombre[_nfc(d)] for d in caso["dominios"]]
+        vector = embedder.embed([caso["pregunta"]], is_query=True)[0]
+        textos = [r.text for r in almacen.search(vector, domains=ids, limit=max(_enteros(args.candidatos)))]
+        if textos:
+            tareas.append((caso["pregunta"], textos))
+    if not tareas:
+        raise ErrorMedicion("No se encontraron pasajes reales para medir (revisar el archivo de entorno y los casos).")
+    print(f"{len(tareas)} casos con pasajes reales; embeddings cargados ({format_memory(memoria_embeddings)} MB).")
+
+    filas = []
+    memoria = {"embeddings_mb": memoria_embeddings}
+    for hilos in _enteros(args.hilos):
+        settings.rerank_threads = hilos
+        antes, _ = read_memory_mb()
+        reranker = LocalRerankProvider()
+        despues, pico = read_memory_mb()
+        memoria.setdefault("reranker_cargado_mb", despues)
+        memoria["pico_mb"] = pico
+        if "reranker_antes_mb" not in memoria:
+            memoria["reranker_antes_mb"] = antes
+        for tokens in _enteros(args.tokens):
+            settings.rerank_passage_tokens = tokens
+            for n in _enteros(args.candidatos):
+                trabajo = [(pregunta, textos[:n]) for pregunta, textos in tareas]
+                medidas = medir_combinacion(reranker, trabajo, args.repeticiones)
+                resumen = resumen_rendimiento(medidas, args.p50_max_ms, args.p95_max_ms)
+                memoria["bajo_carga_mb"], memoria["pico_mb"] = read_memory_mb()
+                filas.append({"candidatos": n, "tokens": tokens, "hilos": hilos, **resumen})
+                print(
+                    f"hilos {hilos} | tokens {tokens:>3} | candidatos {n:>2} | p50 {resumen['p50_ms']:.0f} ms "
+                    f"| p95 {resumen['p95_ms']:.0f} ms | {'CUMPLE' if resumen['cumple'] else 'no cumple'}"
+                )
+        del reranker
+    contexto = contexto_corrida(
+        args.etiqueta, destino_de(settings.qdrant_url), casos_usados=len(tareas), repeticiones=args.repeticiones,
+        limites_ms={"p50": args.p50_max_ms, "p95": args.p95_max_ms}, memoria=memoria,
+    )
+    ruta = guardar_json(carpeta_de(contexto), "rendimiento.json", {"contexto": contexto, "combinaciones": filas})
+    cumplen = [f for f in filas if f["cumple"]]
+    print(
+        f"\nMemoria (MB): embeddings {format_memory(memoria['embeddings_mb'])}, con el reranker cargado "
+        f"{format_memory(memoria.get('reranker_cargado_mb'))}, bajo carga {format_memory(memoria.get('bajo_carga_mb'))}, "
+        f"pico {format_memory(memoria.get('pico_mb'))}."
+    )
+    print(f"Combinaciones que cumplen {args.p50_max_ms:.0f}/{args.p95_max_ms:.0f} ms: {len(cumplen)} de {len(filas)}.")
     print(f"Duración: {time.perf_counter() - inicio:.0f} s. Guardado en {ruta.relative_to(RAIZ)}")
     return 0
 
@@ -1206,7 +1611,21 @@ def main(argv: list[str] | None = None) -> int:
     pun.add_argument("--env-file", default=None)
     pun.add_argument("--solo", default="", help="Ids de casos separados por coma")
     pun.add_argument("--casos", default=str(RUTA_CASOS), help="Archivo de casos (por defecto el versionado)")
+    pun.add_argument("--rerank", action="store_true", help="Puntúa también con el reranker local (feature 009)")
     pun.set_defaults(funcion=comando_puntajes)
+
+    ren = sub.add_parser("rendimiento", help="Memoria y latencia del reranker local (solo lectura, sin tokens)")
+    ren.add_argument("--etiqueta", required=True)
+    ren.add_argument("--env-file", default=None)
+    ren.add_argument("--casos", default=str(RUTA_CASOS), help="Archivo de casos (por defecto el versionado)")
+    ren.add_argument("--n-casos", type=int, default=4, help="Cuántos casos con pasajes reales se usan")
+    ren.add_argument("--candidatos", default="10,20,30", help="Números de candidatos separados por coma")
+    ren.add_argument("--tokens", default="128,192,256", help="Tokens por pasaje separados por coma")
+    ren.add_argument("--hilos", default="1,2,4", help="Hilos de cálculo separados por coma")
+    ren.add_argument("--repeticiones", type=int, default=2)
+    ren.add_argument("--p50-max-ms", type=float, default=500, help="Límite de p50 (SC-006)")
+    ren.add_argument("--p95-max-ms", type=float, default=1500, help="Límite de p95 (SC-006)")
+    ren.set_defaults(funcion=comando_rendimiento)
 
     res = sub.add_parser("respuestas", help="Respuesta completa contra POST /query (gasta; exige --tope-usd)")
     res.add_argument("--etiqueta", required=True)

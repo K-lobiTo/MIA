@@ -909,3 +909,338 @@ def test_el_texto_de_la_pregunta_limpia_es_nulo_sin_detalle_de_uso_y_comparar_lo
     c = {"puntajes": None, "respuestas": {"resultados": [{**_resp("A", "literal", 0.01, 1000),
                                                           "pregunta_limpia_texto": "Otro"}]}}
     assert any("pregunta_limpia_texto" in x for x in lb.comparar(c, b)["cambios"])
+
+
+# --- Feature 009: reranker local ---------------------------------------------------------------
+
+
+def _cr(*pares):
+    """Candidatos puntuados por el reranker: (documento, logit) en el orden de coseno."""
+    from mia.rag.rerank import sigmoid
+
+    filas = [
+        {"posicion": i, "documento": doc, "dominio": "P / D", "logit": logit, "puntaje": sigmoid(logit)}
+        for i, (doc, logit) in enumerate(pares, start=1)
+    ]
+    ordenados = sorted(filas, key=lambda f: -f["logit"])
+    for rango, fila in enumerate(ordenados, start=1):
+        fila["posicion_rerank"] = rango
+    return filas
+
+
+def test_puesto_rerank_da_el_puesto_por_coseno_y_por_reranker_del_documento_esperado():
+    candidatos = _cr(("otro-1.pdf", -5.0), ("otro-2.pdf", -6.0), ("acta-07.pdf", 8.0))
+    [fila] = lb.puesto_rerank(candidatos, ["acta-07"])
+    assert fila["fragmento"] == "acta-07"
+    assert (fila["posicion"], fila["posicion_rerank"]) == (3, 1)
+    assert fila["puntaje_rerank"] > 0.999 and fila["logit"] == 8.0
+
+
+def test_puesto_rerank_elige_el_mejor_fragmento_del_documento_y_marca_ausentes():
+    candidatos = _cr(("acta-07.pdf", -2.0), ("otro.pdf", -9.0), ("acta-07.pdf", 3.0))
+    asi = lb.puesto_rerank(candidatos, ["acta-07", "inexistente"])
+    assert asi[0]["posicion"] == 3 and asi[0]["posicion_rerank"] == 1
+    assert asi[1] == {
+        "fragmento": "inexistente", "posicion": None, "posicion_rerank": None, "puntaje_rerank": None, "logit": None,
+        "entra": {},
+    }
+
+
+def test_puesto_rerank_dice_si_el_esperado_entra_en_cada_modo():
+    candidatos = _cr(*[(f"o{i}.pdf", 5.0 - i * 0.1) for i in range(10)], ("acta.pdf", 4.0))  # puesto 11 de 11 por reranker
+    [fila] = lb.puesto_rerank(candidatos, ["acta"], minimo=0.5, limites={"literal": 8, "razonamiento": 16})
+    assert fila["posicion_rerank"] == 11
+    assert fila["entra"] == {"literal": False, "razonamiento": True}
+    [bajo] = lb.puesto_rerank(_cr(("acta.pdf", -3.0)), ["acta"], minimo=0.5, limites={"literal": 8})
+    assert bajo["entra"] == {"literal": False}  # no llega al mínimo del reranker
+
+
+def test_resultado_por_modo_rerank():
+    candidatos = _cr(*[(f"o{i}.pdf", 2.0) for i in range(12)], ("x.pdf", -8.0))
+    assert lb.resultado_por_modo_rerank(candidatos, 8, 0.5) == {
+        "pasan": 8, "mejor_puntaje": pytest.approx(0.8808, abs=1e-3), "resultado": "responde",
+    }
+    assert lb.resultado_por_modo_rerank(candidatos, 16, 0.5)["pasan"] == 12
+    sin = lb.resultado_por_modo_rerank(_cr(("a.pdf", -3.0), ("b.pdf", -6.0)), 8, 0.5)
+    assert sin["resultado"] == "sin_informacion" and sin["pasan"] == 0
+    assert lb.resultado_por_modo_rerank([], 8, 0.5) == {"pasan": 0, "mejor_puntaje": None, "resultado": "sin_informacion"}
+
+
+def _med_r(caso_id, espera, candidatos, documentos=(), variante="completa", grupo=None):
+    return {
+        "caso_id": caso_id, "variante": variante, "espera": espera, "grupo": grupo,
+        "rerank": {"candidatos": candidatos, "esperados": lb.puesto_rerank(candidatos, list(documentos))},
+    }
+
+
+def test_ventana_rerank_con_y_sin_ventana():
+    separables = [
+        _med_r("R1", "respuesta", _cr(("acta.pdf", 6.0), ("x.pdf", -7.0)), ["acta"]),
+        _med_r("R2", "respuesta", _cr(("y.pdf", -8.0), ("acta2.pdf", 1.0)), ["acta2"]),
+        _med_r("N1", "sin_informacion", _cr(("a.pdf", -5.0), ("b.pdf", -6.0))),
+        _med_r("N2", "sin_informacion", _cr(("a.pdf", -6.5))),
+    ]
+    v = lb.ventana_rerank(separables)
+    assert v["max_sin_info_caso"] == "N1" and v["min_respuesta_caso"] == "R2"
+    assert v["max_sin_info_logit"] == -5.0 and v["min_respuesta_logit"] == 1.0
+    assert v["separables"] is True and v["rango_logit"] == [-5.0, 1.0]
+    mezclados = [*separables[:2], _med_r("N3", "sin_informacion", _cr(("a.pdf", 3.0)))]
+    v2 = lb.ventana_rerank(mezclados)
+    assert v2["separables"] is False and v2["rango_logit"] is None
+    assert v2["max_sin_info_caso"] == "N3"
+
+
+def test_ventana_rerank_lista_los_ausentes_y_no_cuenta_las_otras_variantes():
+    mediciones = [
+        _med_r("R1", "respuesta", _cr(("x.pdf", -7.0)), ["acta"]),  # el esperado no está entre los candidatos
+        _med_r("R2", "respuesta", _cr(("acta.pdf", 5.0)), ["acta"]),
+        _med_r("R2", "respuesta", _cr(("acta.pdf", -9.0)), ["acta"], variante="corta"),
+    ]
+    v = lb.ventana_rerank(mediciones)
+    assert v["ausentes"] == ["R1"] and v["min_respuesta_logit"] == 5.0
+
+
+def test_barrido_minimos_cuenta_respuestas_y_sin_informacion_por_minimo():
+    mediciones = [
+        _med_r("R1", "respuesta", _cr(("acta.pdf", 6.0)), ["acta"]),
+        _med_r("R2", "respuesta", _cr(("acta.pdf", 0.0)), ["acta"]),
+        _med_r("N1", "sin_informacion", _cr(("a.pdf", -5.0))),
+        _med_r("N2", "sin_informacion", _cr(("a.pdf", 1.0))),
+    ]
+    filas = {round(f["logit"]): f for f in lb.barrido_minimos(mediciones)}
+    assert filas[-6]["sin_info_que_pasan"] == ["N1", "N2"] and filas[-6]["responden"] == ["R1", "R2"]
+    assert filas[0]["sin_info_que_pasan"] == ["N2"] and filas[0]["responden"] == ["R1", "R2"]
+    assert filas[2]["sin_info_que_pasan"] == [] and filas[2]["responden"] == ["R1"]
+    assert filas[2]["no_responden"] == ["R2"] and filas[2]["sin_info_bloqueados"] == 2
+    assert 0 < filas[0]["minimo"] < 1 and filas[0]["minimo"] == pytest.approx(0.5)
+
+
+def test_barrido_minimos_acepta_una_lista_de_minimos():
+    mediciones = [_med_r("R1", "respuesta", _cr(("acta.pdf", 6.0)), ["acta"])]
+    filas = lb.barrido_minimos(mediciones, minimos=[0.5, 0.99999])
+    assert [f["minimo"] for f in filas] == [0.5, 0.99999]
+    assert filas[0]["responden"] == ["R1"] and filas[1]["no_responden"] == ["R1"]
+
+
+@pytest.mark.parametrize(
+    ("texto", "esperado"),
+    [
+        ("Reranker: mejor 0.987, 3 de 30 sobre el mínimo 0.50",
+         {"mejor": 0.987, "candidatos": 30, "sobre_minimo": 3, "cayo": False, "ninguno": False}),
+        ("Reranker: ninguno sobre el mínimo 0.50, mejor 0.003 de 30",
+         {"mejor": 0.003, "candidatos": 30, "sobre_minimo": 0, "cayo": False, "ninguno": True}),
+        ("Reranker no disponible: se usó la similitud",
+         {"mejor": None, "candidatos": None, "sobre_minimo": None, "cayo": True, "ninguno": False}),
+        ("Reranker: mejor 1.000, 1 de 2 sobre el mínimo 0.50; Pregunta limpia: «X» (con resultados)",
+         {"mejor": 1.0, "candidatos": 2, "sobre_minimo": 1, "cayo": False, "ninguno": False}),
+        ("Fuentes: sin citas utilizables", None),
+        (None, None),
+    ],
+)
+def test_leer_nota_rerank(texto, esperado):
+    assert lb.leer_nota_rerank(texto) == esperado
+
+
+def test_correr_respuestas_registra_las_notas_del_reranker():
+    notas = {
+        "q-pasa": "Reranker: mejor 0.987, 3 de 30 sobre el mínimo 0.50",
+        "q-ninguno": "Reranker: ninguno sobre el mínimo 0.50, mejor 0.003 de 30",
+        "q-cae": "Reranker no disponible: se usó la similitud",
+        "q-sin": None,
+    }
+
+    def consultar(caso, variante, modo):
+        cuerpo = _body(docs=("acta.pdf",))
+        cuerpo["id"] = {"A": "q-pasa", "B": "q-ninguno", "C": "q-cae"}.get(caso["id"], "q-sin")
+        return 200, cuerpo, 100
+
+    corrida = lb.correr_respuestas(
+        [_caso(id="A"), _caso(id="B"), _caso(id="C"), _caso(id="D")], ["literal"], consultar,
+        lambda consulta_id: {"cost_usd": 0.01, "reject_reason": notas[consulta_id]}, 1.0,
+    )
+    por_caso = {
+        r["caso_id"]: (r["rerank_mejor"], r["rerank_cayo"], r["rerank_ninguno_sobre_minimo"]) for r in corrida["resultados"]
+    }
+    assert por_caso == {"A": (0.987, False, False), "B": (0.003, False, True), "C": (None, True, False), "D": (None, False, False)}
+    sin_detalle = lb.correr_respuestas(
+        [_caso()], ["literal"], lambda c, v, m: (200, _body(docs=("acta.pdf",)), 1), lambda _id: None, 1.0
+    )["resultados"][0]
+    assert sin_detalle["rerank_cayo"] is None and sin_detalle["rerank_ninguno_sobre_minimo"] is None
+
+
+def test_resumen_respuestas_cuenta_las_consultas_con_reranker_y_las_caidas():
+    base = {"modo": "literal", "variante": "completa", "latencia_cliente_ms": 1000, "fuentes_sobrantes": 0,
+            "correcto": True, "costo_usd": 0.01, "resultado": "respondio"}
+    resultados = [
+        {**base, "caso_id": "A", "rerank_mejor": 0.9, "rerank_cayo": False, "rerank_ninguno_sobre_minimo": False},
+        {**base, "caso_id": "B", "rerank_mejor": 0.1, "rerank_cayo": False, "rerank_ninguno_sobre_minimo": True,
+         "resultado": "sin_informacion"},
+        {**base, "caso_id": "C", "rerank_mejor": None, "rerank_cayo": True, "rerank_ninguno_sobre_minimo": False},
+        {**base, "caso_id": "D", "rerank_mejor": None, "rerank_cayo": False, "rerank_ninguno_sobre_minimo": False},
+    ]
+    r = lb.resumen_respuestas(resultados)["literal"]
+    assert (r["consultas_con_reranker"], r["caidas_a_coseno"], r["ninguno_sobre_minimo"]) == (3, 1, 1)
+    sin = lb.resumen_respuestas([{**base, "caso_id": "A"}])["literal"]  # corridas anteriores a la 009
+    assert (sin["consultas_con_reranker"], sin["caidas_a_coseno"], sin["ninguno_sobre_minimo"]) == (0, 0, 0)
+
+
+def test_comparar_ignora_las_notas_del_reranker_desconocidas_y_informa_las_conocidas():
+    a = {"puntajes": None, "respuestas": {"resultados": [_resp("A", "literal", 0.01, 1000)]}}
+    b = {"puntajes": None, "respuestas": {"resultados": [
+        {**_resp("A", "literal", 0.01, 1000), "rerank_cayo": False, "rerank_ninguno_sobre_minimo": False}]}}
+    assert lb.comparar(a, b)["cambios"] == []
+    c = {"puntajes": None, "respuestas": {"resultados": [
+        {**_resp("A", "literal", 0.01, 1000), "rerank_cayo": True, "rerank_ninguno_sobre_minimo": False}]}}
+    assert any("rerank_cayo" in x for x in lb.comparar(b, c)["cambios"])
+
+
+def test_el_informe_menciona_las_consultas_con_reranker():
+    resultados = [{"modo": "literal", "variante": "completa", "latencia_cliente_ms": 1000, "fuentes_sobrantes": 0,
+                   "correcto": True, "costo_usd": 0.01, "resultado": "respondio", "caso_id": "A",
+                   "rerank_mejor": 0.9, "rerank_cayo": True, "rerank_ninguno_sobre_minimo": False}]
+    resumen = lb.resumen_respuestas(resultados)
+    corrida = {
+        "puntajes": {
+            "contexto": {
+                "etiqueta": "e", "fecha": "f", "commit": "0123456789abc", "cambios_sin_confirmar": False, "destino": "d",
+                "umbral": 0.82, "limite_literal": 8, "limite_razonamiento": 16, "candidatos_pedidos": 50,
+                "proveedor_embeddings": "local", "dimension": 384, "fragmentos_por_dominio": {},
+            },
+            "mediciones": [],
+            "resumen": {
+                "ventana_separacion": {
+                    "max_sin_info": None, "max_sin_info_caso": None, "max_sin_info_sin_aislamiento": None,
+                    "max_sin_info_sin_aislamiento_caso": None, "min_respuesta": None, "min_respuesta_caso": None,
+                    "separables": False, "rango": None, "ausentes": [],
+                },
+                "parejas": [], "barrido_umbrales": {"literal": [], "razonamiento": []},
+            },
+        },
+        "respuestas": {
+            "contexto": {"fecha": "f", "destino": "d", "modos": ["literal"], "tope_usd": 1, "artefacto": "a"},
+            "resultados": resultados, "resumen": resumen, "gasto_total_usd": 0.01, "parcial": False,
+        },
+    }
+    assert "Consultas con reranker: 1; caídas a coseno: 1; sin candidatos sobre el mínimo: 0" in lb.generar_informe(corrida)
+
+
+def test_resumen_rendimiento_calcula_percentiles_y_si_cumple():
+    medidas = [200.0, 250.0, 300.0, 350.0, 400.0, 450.0, 480.0, 490.0, 495.0, 1200.0]
+    r = lb.resumen_rendimiento(medidas, p50_max_ms=500, p95_max_ms=1500)
+    assert r["n"] == 10 and r["p50_ms"] == 400.0 and r["p95_ms"] == 1200.0 and r["cumple"] is True
+    lento = lb.resumen_rendimiento([900.0, 1000.0, 1100.0, 1200.0], p50_max_ms=500, p95_max_ms=1500)
+    assert lento["cumple"] is False
+    assert lb.resumen_rendimiento([], 500, 1500) == {"n": 0, "p50_ms": None, "p95_ms": None, "cumple": False}
+
+
+class _Resultado:
+    def __init__(self, chunk_id, doc, score, texto):
+        self.chunk_id, self.document_id, self.domain, self.score, self.text = chunk_id, doc, "dom", score, texto
+
+
+class _AlmacenFalso:
+    def __init__(self, resultados):
+        self.resultados, self.llamadas = resultados, []
+
+    def search(self, vector, domains, limit):
+        self.llamadas.append(limit)
+        return self.resultados[:limit]
+
+
+class _EmbedderFalso:
+    def embed(self, textos, is_query=False):
+        return [[0.0, 1.0]]
+
+
+class _RerankerFalso:
+    def __init__(self):
+        self.llamadas = []
+
+    def score(self, query, passages, deadline=None):
+        self.llamadas.append((query, list(passages)))
+        return [float(len(p)) - 5 for p in passages]  # más largo, más puntaje
+
+
+def test_medir_caso_rerank_puntua_contra_la_pregunta_pedida_y_numera_los_puestos():
+    resultados = [
+        _Resultado("c1", "d1", 0.90, "corto"), _Resultado("c2", "d2", 0.85, "un texto mucho más largo"),
+        _Resultado("c3", "d3", 0.70, "mediano!!"),
+    ]
+    reranker = _RerankerFalso()
+    tiempos = iter([10.0, 10.25])
+    filas, ms = lb.medir_caso_rerank(
+        "Natalia", "¿Quién es Natalia?", ["dom"], _EmbedderFalso(), _AlmacenFalso(resultados),
+        {"d1": "a.pdf", "d2": "b.pdf", "d3": "c.pdf"}, {"dom": "P / D"}, reranker, 30, 0.0, reloj=lambda: next(tiempos),
+    )
+    assert reranker.llamadas[0][0] == "¿Quién es Natalia?"  # la API puntúa con la pregunta completa
+    assert ms == pytest.approx(250.0)
+    assert [(f["documento"], f["posicion"], f["posicion_rerank"]) for f in filas] == [
+        ("a.pdf", 1, 3), ("b.pdf", 2, 1), ("c.pdf", 3, 2),
+    ]
+    assert filas[1]["puntaje_coseno"] == 0.85 and filas[1]["dominio"] == "P / D" and 0 < filas[1]["puntaje"] <= 1
+
+
+def test_medir_caso_rerank_aplica_el_piso_de_similitud_y_conserva_el_puesto_por_coseno():
+    resultados = [_Resultado("c1", "d1", 0.90, "uno"), _Resultado("c2", "d2", 0.70, "dos"), _Resultado("c3", "d3", 0.85, "tres")]
+    reranker = _RerankerFalso()
+    filas, _ = lb.medir_caso_rerank(
+        "x", "x", ["dom"], _EmbedderFalso(), _AlmacenFalso(resultados), {}, {}, reranker, 30, 0.80,
+    )
+    assert reranker.llamadas[0][1] == ["uno", "tres"]
+    assert [f["posicion"] for f in filas] == [1, 3]
+    vacio, ms = lb.medir_caso_rerank("x", "x", ["dom"], _EmbedderFalso(), _AlmacenFalso([]), {}, {}, reranker, 30, 0.0)
+    assert vacio == [] and ms == 0.0
+
+
+def test_medir_combinacion_descarta_el_calentamiento_y_repite():
+    reranker = _RerankerFalso()
+    reloj = iter(x * 0.1 for x in range(100))
+    medidas = lb.medir_combinacion(reranker, [("p1", ["a"]), ("p2", ["b"])], 3, reloj=lambda: next(reloj))
+    assert len(reranker.llamadas) == 2 + 3 * 2  # una pasada de calentamiento y tres repeticiones
+    assert len(medidas) == 6 and all(m == pytest.approx(100.0) for m in medidas)
+
+
+def test_el_informe_incluye_la_seccion_del_reranker_si_se_midio():
+    candidatos = _cr(("x.pdf", -6.0), ("acta.pdf", 7.0))
+    medicion = {
+        "caso_id": "R1", "variante": "completa", "categoria": "mvp", "espera": "respuesta", "grupo": None,
+        "candidatos": [{"posicion": 1, "puntaje": 0.8, "documento": "x.pdf", "dominio": "P / D"}],
+        "por_modo": {m: {"pasan": 0, "mejor_puntaje": 0.8, "resultado": "sin_informacion"} for m in lb.MODOS},
+        "esperados": [{"fragmento": "acta", "posicion": None, "puntaje": None}],
+        "rerank": {
+            "candidatos": candidatos, "ms": 812.0,
+            "por_modo": {m: lb.resultado_por_modo_rerank(candidatos, 8, 0.5) for m in lb.MODOS},
+            "esperados": lb.puesto_rerank(candidatos, ["acta"], 0.5, {"literal": 8, "razonamiento": 16}),
+        },
+    }
+    resumen_p = {
+        "ventana_separacion": {
+            "max_sin_info": None, "max_sin_info_caso": None, "max_sin_info_sin_aislamiento": None,
+            "max_sin_info_sin_aislamiento_caso": None, "min_respuesta": None, "min_respuesta_caso": None,
+            "separables": False, "rango": None, "ausentes": [],
+        },
+        "parejas": [], "barrido_umbrales": {"literal": [], "razonamiento": []},
+        "barrido_minimos": lb.barrido_minimos([medicion]), "ventana_rerank": lb.ventana_rerank([medicion]),
+    }
+    corrida = {
+        "puntajes": {
+            "contexto": {
+                "etiqueta": "e", "fecha": "f", "commit": "0123456789abc", "cambios_sin_confirmar": False, "destino": "d",
+                "umbral": 0.82, "limite_literal": 8, "limite_razonamiento": 16, "candidatos_pedidos": 50,
+                "proveedor_embeddings": "local", "dimension": 384, "fragmentos_por_dominio": {},
+                "reranker": {"modelo": "m", "candidatos": 30, "minimo": 0.5, "piso_de_similitud": 0.0,
+                             "tokens_por_pasaje": 192, "hilos": 2},
+            },
+            "mediciones": [medicion], "resumen": resumen_p,
+        },
+        "respuestas": None,
+    }
+    informe = lb.generar_informe(corrida)
+    assert "## Reranker local (feature 009)" in informe
+    assert "#2 -> #1" in informe and "Barrido del mínimo" in informe
+    assert "¿Algún mínimo separa ambos grupos?: sí" in informe or "¿Algún mínimo separa ambos grupos?: no" in informe
+
+
+def test_puntajes_sin_rerank_no_agrega_la_seccion():
+    from_vacio = {"mediciones": [], "contexto": {}, "resumen": {}}
+    assert lb._seccion_rerank(from_vacio) == []
