@@ -35,7 +35,7 @@ Con `local`:
 5. `rerank_candidates`: puntaje = sigmoide del logit; orden descendente (empates por orden de coseno); se descartan los menores que `RERANK_MIN_SCORE`; se queda con los primeros `config.search_limit` del modo. A cada uno se le reemplaza `score` por su puntaje del reranker.
 6. Si no queda ninguno y `QUERY_CLEAN_QUESTION` está encendida, el segundo intento de la 008 repite los pasos 2 a 5 con el embedding de la pregunta limpia (el reranker puntúa contra la pregunta original).
 7. Sin fragmentos: `no_info` sin llamar al modelo de lenguaje, con la nota. Con fragmentos: el flujo sigue (`build_passages`, citas, respuesta, fuentes) con los fragmentos en el orden del reranker.
-8. Falla del reranker o `RerankTimeout` en cualquier punto del 4: esa consulta continúa con los primeros `config.search_limit` por coseno y el umbral `QUERY_SIMILARITY_THRESHOLD` (comportamiento de hoy), con la nota `Reranker no disponible: se usó la similitud`; no se reintenta el reranker en el segundo intento de la misma consulta.
+8. Falla del reranker o `RerankTimeout` en cualquier punto del 4, o `RERANK_PROVIDER=local` sin proveedor disponible porque el modelo no cargó (en ese caso no se intenta puntuar y se deja el aviso limitado a uno por minuto): esa consulta continúa con los primeros `config.search_limit` por coseno y el umbral `QUERY_SIMILARITY_THRESHOLD` (comportamiento de hoy), con la nota `Reranker no disponible: se usó la similitud`; no se reintenta el reranker en el segundo intento de la misma consulta.
 
 Garantías: ninguna llamada nueva a un modelo de lenguaje; a lo sumo `config.search_limit` fragmentos entran al armado del contexto; la estructura de la respuesta HTTP no cambia; ningún error del reranker llega al cliente.
 

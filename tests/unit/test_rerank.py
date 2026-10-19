@@ -198,3 +198,41 @@ def test_el_arranque_no_lanza_si_la_carga_falla(monkeypatch):
 @pytest.mark.parametrize(("nombre", "esperado"), [("local", True), (" LOCAL ", True), ("none", False), ("", False), ("xyz", False)])
 def test_rerank_requested(nombre, esperado):
     assert rerank_requested(nombre) is esperado
+
+
+# --- arranque de la API -------------------------------------------------------------------------
+
+
+def _arrancar_api(warm_up):
+    """Entra y sale del `lifespan` de la API con la base, los embeddings y Qdrant simulados."""
+    from fastapi.testclient import TestClient
+
+    from mia.api import main as api_main
+
+    almacen = MagicMock()
+    embeddings = MagicMock(dimension=384)
+    with (
+        patch.object(api_main, "init_db"),
+        patch.object(api_main, "get_vector_store", return_value=almacen),
+        patch.object(api_main, "get_embedding_provider", return_value=embeddings),
+        patch.object(api_main, "warm_up_rerank_provider", warm_up),
+        TestClient(api_main.app) as cliente,
+    ):
+        estado = cliente.get("/health").status_code
+    return estado, almacen
+
+
+def test_el_arranque_de_la_api_carga_el_reranker_una_vez():
+    warm_up = MagicMock()
+    estado, almacen = _arrancar_api(warm_up)
+    assert estado == 200
+    warm_up.assert_called_once_with()
+    almacen.ensure_collection.assert_called_once_with(384)
+
+
+def test_la_api_arranca_aunque_el_modelo_del_reranker_no_pueda_cargar(monkeypatch):
+    monkeypatch.setattr(settings, "rerank_provider", "local")
+    with patch("mia.rag.providers.local_rerank.LocalRerankProvider", side_effect=RuntimeError("sin archivo")):
+        estado, _ = _arrancar_api(warm_up_rerank_provider)  # la función real, con la carga fallida
+    assert estado == 200
+    assert get_rerank_provider("local") is None  # el fallo quedó recordado
