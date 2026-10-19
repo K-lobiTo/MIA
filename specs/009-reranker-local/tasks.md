@@ -229,3 +229,12 @@ Polish:    T047 y T048 en paralelo.
 **Purpose**: segunda pasada de `/speckit-converge` (2026-10-18), después de aplicar la fase 8.
 
 - [X] T059 Cuando `RERANK_PROVIDER=local` está encendido pero el modelo no cargó (archivo ausente o error al crear la sesión: `get_rerank_provider` devuelve `None` y recuerda el fallo), la ruta `POST /query` hoy responde por coseno sin dejar nota en Uso (`reject_reason` queda en `None`) ni aviso por consulta; la spec pide ambos para "archivo ausente". En `src/mia/rag/rerank.py` agregar `rerank_requested(name: str) -> bool` (verdadero si el nombre normalizado es `local`), y en `retrieve` de `src/mia/api/routes/query.py` tratar "pedido pero sin proveedor" como la caída a la similitud: `warn_rerank_failure` (limitado a un aviso por minuto), `rerank_outcome` con `fell_back=True` y la nota `Reranker no disponible: se usó la similitud`, sin tocar la ruta con `none` ni con un nombre inválido. Agregar pruebas en `tests/unit/test_query_rerank.py` (carga fallida: responde 200 por coseno con el límite del modo, nota en Uso, aviso en el registro; `none` y valor inválido: sin nota) y en `tests/unit/test_rerank.py` (`rerank_requested`). La sección "Si falla" de `docs/OPERACION.md` ya describe este comportamiento per FR-007, FR-010 y US3/AC2 (partial)
+
+---
+
+## Phase 10: Convergence
+
+**Purpose**: tercera pasada de `/speckit-converge` (2026-10-18), después de aplicar T059. Quedan dos detalles menores; T056 sigue abierta a propósito.
+
+- [ ] T060 Agregar en `tests/unit/test_rerank.py` una prueba de que el arranque de la API carga el reranker: la fixture `client` es `TestClient(app)` sin `with`, así que el `lifespan` de `src/mia/api/main.py` nunca se ejecuta en las pruebas y nada falla si se quita la llamada a `warm_up_rerank_provider()`. La prueba usa `with TestClient(app)` con `init_db`, `get_vector_store` y `get_embedding_provider` simulados en `mia.api.main`, y comprueba que `warm_up_rerank_provider` se llama una vez al entrar, y que un `warm_up_rerank_provider` que no puede cargar el modelo (`RERANK_PROVIDER=local` con la construcción fallida) no impide que la API arranque per FR-008 y T028 (partial)
+- [ ] T061 En `specs/009-reranker-local/contracts/reranker.md`, sección 3, paso 8, aclarar que la caída a la similitud también cubre el caso de que el modelo no haya cargado (`RERANK_PROVIDER=local` sin proveedor disponible: la consulta no intenta puntuar, deja el aviso limitado a uno por minuto y la nota `Reranker no disponible: se usó la similitud`), tal como quedó implementado en T059 per FR-007 (partial)
