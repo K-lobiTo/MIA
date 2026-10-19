@@ -68,6 +68,21 @@ class Settings(BaseSettings):
     # sobre el umbral, se repite una vez con la pregunta reducida a lo que se busca ("¿Quién es X?" pasa a
     # "X"), por reglas de texto y sin modelo de lenguaje. "on"/"off" (otro valor = off, con aviso).
     query_clean_question: str = "off"
+    # Reranker local (feature 009, ver mia.rag.rerank): "none" (comportamiento anterior) o "local". Es texto libre
+    # para que un nombre inválido no impida el arranque (se trata como "none" con un aviso). Con "local" la búsqueda
+    # recupera `rerank_candidates` fragmentos (nunca menos que el límite del modo), un cross-encoder los puntúa
+    # contra la pregunta y el corte de "sin información" es `rerank_min_score` (probabilidad de 0 a 1, provisional:
+    # se calibra con scripts/linea_base.py puntajes --rerank). `rerank_min_similarity` es un piso de coseno previo
+    # (0 lo apaga); `rerank_passage_tokens` los tokens de cada fragmento que lee el reranker; `rerank_threads` los
+    # hilos de cálculo; `rerank_budget_ms` el tiempo máximo de puntuación por consulta (0 lo desactiva): superado,
+    # la consulta sigue por similitud de vectores.
+    rerank_provider: str = "none"
+    rerank_candidates: int = Field(default=30, ge=5, le=60)
+    rerank_min_score: float = Field(default=0.5, ge=0, le=1)
+    rerank_min_similarity: float = Field(default=0.0, ge=0, le=1)
+    rerank_passage_tokens: int = Field(default=192, ge=32, le=480)
+    rerank_threads: int = Field(default=2, ge=1, le=8)
+    rerank_budget_ms: int = Field(default=2500, ge=0, le=30000)
 
     # En Render free (512 MB) ingerir actas grandes agota la memoria: allí se desactiva y la ingesta
     # se hace desde una instancia local apuntando a las mismas bases (ver docs/OPERACION.md).

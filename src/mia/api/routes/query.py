@@ -38,6 +38,16 @@ from mia.rag.embeddings import get_embedding_provider
 from mia.rag.llm import RagContext, get_llm_provider, is_no_info_answer
 from mia.rag.modes import estimate_cost, mode_available, mode_config
 from mia.rag.query_rewrite import clean_note, clean_question, clean_question_enabled
+from mia.rag.rerank import (
+    RerankOutcome,
+    deadline_for,
+    format_memory,
+    get_rerank_provider,
+    read_memory_mb,
+    rerank_candidates,
+    rerank_note,
+    warn_rerank_failure,
+)
 from mia.storage.db import get_session
 from mia.storage.models import Artifact, Document, Domain, QueryLog
 from mia.storage.vector_store import get_vector_store
@@ -166,10 +176,62 @@ def query(
     question_embedding = embedding_provider.embed([payload.question], is_query=True)[0]
 
     vector_store = get_vector_store()
-    results = vector_store.search(
-        question_embedding, domains=payload.domains, limit=config.search_limit
-    )
-    relevant = [r for r in results if r.score >= settings.query_similarity_threshold]
+
+    # Con RERANK_PROVIDER=local (feature 009) se recuperan más candidatos, un cross-encoder los puntúa contra la
+    # pregunta original y el corte es el puntaje del reranker. Sin reranker (o si falla) es la similitud de siempre.
+    rerank_provider = get_rerank_provider(settings.rerank_provider)
+    rerank_logits: dict[str, float] = {}  # chunk_id -> logit, para no puntuar dos veces el mismo fragmento
+    rerank_failed = False
+    rerank_outcome: RerankOutcome | None = None
+
+    def by_similarity(results):
+        return [r for r in results[: config.search_limit] if r.score >= settings.query_similarity_threshold]
+
+    def retrieve(vector):
+        nonlocal rerank_failed, rerank_outcome
+        if rerank_provider is None or rerank_failed:
+            return by_similarity(
+                vector_store.search(vector, domains=payload.domains, limit=config.search_limit)
+            )
+        # Nunca menos candidatos que el límite del modo: así la caída a la similitud no entrega menos que hoy.
+        results = vector_store.search(
+            vector, domains=payload.domains, limit=max(settings.rerank_candidates, config.search_limit)
+        )
+        candidates = results
+        if settings.rerank_min_similarity > 0:
+            candidates = [r for r in results if r.score >= settings.rerank_min_similarity]
+        if not candidates:
+            return []
+        try:
+            started = time.perf_counter()
+            pending = [r for r in candidates if r.chunk_id not in rerank_logits]
+            if pending:
+                logits = rerank_provider.score(
+                    payload.question, [r.text for r in pending], deadline=deadline_for(started)
+                )
+                rerank_logits.update(zip((r.chunk_id for r in pending), logits, strict=True))
+                _, peak = read_memory_mb()
+                logger.info(
+                    "Reranker: %d candidatos en %d ms, pico de memoria %s MB (modo %s)",
+                    len(pending), _elapsed_ms(started), format_memory(peak), payload.mode,
+                )
+            rerank_outcome = rerank_candidates(
+                candidates,
+                [rerank_logits[r.chunk_id] for r in candidates],
+                settings.rerank_min_score,
+                config.search_limit,
+            )
+            return rerank_outcome.results
+        except Exception as exc:  # noqa: BLE001
+            # Un fallo del reranker nunca rompe la consulta: sigue con el orden y el umbral por similitud.
+            warn_rerank_failure(exc)
+            rerank_failed = True
+            rerank_outcome = RerankOutcome(
+                results=[], best=None, scored=0, passed=0, fell_back=True, min_score=settings.rerank_min_score
+            )
+            return by_similarity(results)
+
+    relevant = retrieve(question_embedding)
 
     # Con QUERY_CLEAN_QUESTION encendida, si nada pasó el umbral se repite la búsqueda una vez con la pregunta
     # reducida a lo que se busca (feature 008). Solo reglas de texto: el segundo intento no llama a ningún modelo
@@ -179,14 +241,20 @@ def query(
         cleaned = clean_question(payload.question)
         if cleaned:
             cleaned_embedding = embedding_provider.embed([cleaned], is_query=True)[0]
-            results = vector_store.search(cleaned_embedding, domains=payload.domains, limit=config.search_limit)
-            relevant = [r for r in results if r.score >= settings.query_similarity_threshold]
+            relevant = retrieve(cleaned_embedding)
             clean_question_note = clean_note(cleaned, found=bool(relevant))
+
+    # Nota del reranker: la de la última búsqueda de la consulta (o la caída a la similitud).
+    rerank_note_text = (
+        rerank_note(rerank_outcome)
+        if rerank_outcome is not None and (rerank_outcome.fell_back or rerank_outcome.scored > 0)
+        else None
+    )
 
     def no_info(model: str | None = None) -> QueryResponse:
         log.outcome = "no_info"
         log.model = model
-        log.reject_reason = clean_question_note
+        log.reject_reason = combine_notes(rerank_note_text, clean_question_note)
         log.latency_ms = _elapsed_ms(started)
         session.add(log)
         session.commit()
@@ -340,7 +408,7 @@ def query(
 
     if notice:
         answer_text = with_notice(answer_text)
-    log.reject_reason = combine_notes(clean_question_note, cut_note, safety_note)
+    log.reject_reason = combine_notes(rerank_note_text, clean_question_note, cut_note, safety_note)
     log.outcome = "answered"
     log.sources = json.dumps(
         [{"domain": d, "document": n} for d, n in dict.fromkeys((s.domain, s.document) for s in sources)],

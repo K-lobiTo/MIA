@@ -10,6 +10,7 @@ from mia.access.errors import AuthError
 from mia.api.routes import artifacts, config, domains, health, inventory, me, query, usage
 from mia.config import settings
 from mia.rag.embeddings import get_embedding_provider
+from mia.rag.rerank import warm_up_rerank_provider
 from mia.storage.db import init_db
 from mia.storage.vector_store import get_vector_store
 
@@ -19,6 +20,8 @@ async def lifespan(app: FastAPI):
     init_db()
     embedding_provider = get_embedding_provider(settings.embedding_provider)
     get_vector_store().ensure_collection(embedding_provider.dimension)
+    # Con RERANK_PROVIDER=local el modelo se carga al arrancar para que la primera consulta no pague la carga.
+    warm_up_rerank_provider()
     yield
 
 
