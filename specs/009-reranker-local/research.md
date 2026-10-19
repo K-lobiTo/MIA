@@ -162,3 +162,50 @@ Cuatro pasos, de menor a mayor costo:
 - **Pasajes largos**: el reranker lee los primeros `RERANK_PASSAGE_TOKENS` tokens del fragmento; un dato que esté al final del fragmento no cuenta para el puntaje.
 - **Idioma**: el modelo está entrenado con mMARCO; sobre español rinde bien, pero los nombres propios y las actas tienen un estilo (listas, tablas) distinto al de los pasajes de MS MARCO; por eso se calibra con los casos propios y no con el valor por defecto del modelo.
 - **Nombres inventados**: el modelo separa bien una persona inventada en la muestra mínima, pero un término inventado que se parece a uno real (o una sigla) puede puntuar alto; la calibración con EN7, EN8 y A1 lo mostrará.
+
+## R13. Medición local gratuita (2026-10-18)
+
+Corridas `rerank-previa` (30 candidatos, 192 tokens por pasaje, 2 hilos), `rerank-20-128` (20 candidatos, 128 tokens, 4 hilos) y `rendimiento-local`, todas en solo lectura sobre Qdrant de producción y sin llamar a ningún modelo de lenguaje (costo cero). 57 casos (53 de la línea base y 4 de calibración nuevos, SR4 a SR7) y 28 variantes cortas o limpias. Las cifras de latencia y memoria son de la laptop de desarrollo, no de Railway.
+
+### Calidad: el reranker separa las "sin información" y rescata personas, pero rechaza otros documentos si el mínimo es alto
+
+Mínimo del reranker (probabilidad) contra los 43 casos con respuesta y los 14 sin respuesta de la variante completa (`rerank-previa`, 30 candidatos). "Regresiones" son casos que hoy responden con su documento esperado y dejarían de hacerlo; "mejoras" los que hoy no.
+
+| Mínimo (logit) | Casos con respuesta que responden | Casos sin respuesta que pasan | Regresiones | Mejoras |
+|---|---|---|---|---|
+| 0,0003 (-8) | 35 de 43 | 14 de 14 | ninguna | S22-1, S22-4, EN2, EN5, EN6 |
+| 0,018 (-4) | 34 de 43 | I1, I3, SR2, SR5, SR6, SR7 | IN3 | las mismas 5 |
+| 0,047 (-3) | 34 de 43 | ninguno | IN3 | las mismas 5 |
+| 0,119 (-2) | 31 de 43 | ninguno | IN1, IN3, EN11, EN12 | las mismas 5 |
+| 0,269 (-1) | 30 de 43 | ninguno | IN1, IN2, IN3, EN11, EN12 | las mismas 5 |
+| 0,5 (0) | 28 de 43 | ninguno | IN1, IN2, IN3, SG2, EN11, EN12 | S22-1, S22-4, EN5, EN6 |
+
+Lecturas:
+
+1. **Cabe un mínimo que bloquea todos los casos sin respuesta**: el mayor puntaje entre los 14 es 0,047 (logit -3,0, SR7) y la variante limpia de SR4 llega a 0,057. Con 0,06 ninguno pasa, incluidos los inventados con vocabulario real (EN7, EN8, SR4 a SR7) y los de otro dominio (I1 a I3). Es la separación que el coseno no daba (0,80 a 0,87 para los mismos casos).
+2. **El puntaje del reranker no sigue la intuición de "alto = bueno"**: documentos esperados correctos puntúan bajo (IN1 0,07, IN2 0,19, IN3 0,01, EN11 0,11, EN12 0,10: preguntas de tema o de qué es un curso, donde el documento habla del tema pero no responde en forma de pasaje), mientras que una persona con su documento puntúa 0,97 a 1,0. Un mínimo "razonable" (0,5) rechazaría 6 casos que hoy responden; por eso el mínimo calibrado es bajo (0,06) y su margen frente a los casos sin respuesta es estrecho (0,047 contra 0,069 de IN1).
+3. **Mejora lo que motivó la feature**: Natalia Soto Solís (S22-1, documento del puesto 14 por coseno) y Cubillo (S22-4, puesto 19) responden con su documento en el puesto 1 del reranker con la pregunta completa, sin necesidad de la pregunta limpia. EN2, EN5 y EN6 (preguntas "qué se sabe de" y "háblame de") también, con 30 candidatos; con 20 candidatos EN2 y EN6 quedan fuera (sus documentos están en los puestos 25).
+4. **No mejora**: Joseph Obando (S22-3, EN3, EN4: su documento puntúa 0,000 en el reranker; el contenido no parece hablar de él), las líneas de TFG (S22-2) y las siglas (SG3, LL2: el documento no entra entre los candidatos), y EN1/EN10 (ausentes en los candidatos). Son límites de recuperación (D), no de reranking.
+5. **Regresión conocida**: IN3 (pregunta indirecta sobre un acta, 04-2026) pierde su documento con cualquier mínimo sobre 0,013; no se puede conservar sin dejar pasar casos sin respuesta (SR6 y SR7 puntúan 0,037 y 0,047).
+
+### Memoria y latencia (laptop de desarrollo, 8 hilos)
+
+| Hilos | Tokens por pasaje | 10 candidatos (p50 / p95) | 20 candidatos | 30 candidatos |
+|---|---|---|---|---|
+| 1 | 128 | 1025 / 1075 ms | 2175 / 2241 ms | 3263 / 3305 ms |
+| 2 | 128 | 614 / 645 ms | 1254 / 1282 ms | 1876 / 1931 ms |
+| 4 | 128 | **399 / 567 ms** | 817 / 950 ms | 1226 / 1297 ms |
+| 4 | 192 | 641 / 698 ms | 1321 / 1401 ms | 1978 / 2089 ms |
+| 4 | 256 | 957 / 1155 ms | 2106 / 2491 ms | 2990 / 3666 ms |
+
+Solo 1 de las 27 combinaciones medidas cumple 0,5 s en p50 y 1,5 s en p95: 10 candidatos, 128 tokens, 4 hilos. Con 10 candidatos no se captura el documento de las personas (puestos 12 a 25). La configuración que captura los casos de personas con un mínimo razonable (20 candidatos, 128 tokens, 4 hilos) tarda 0,82 s en p50 y 0,95 s en p95: cumple el p95 y no el p50. Con 2 hilos son 1,25 s.
+
+Memoria: 343 MB con los embeddings en el proceso de la herramienta, 500 MB con el reranker cargado (+157 MB), 501 MB bajo carga y pico de 601 MB. En Railway (340 MB en reposo hoy) el reranker llevaría la API a unos 497 MB en reposo, justo bajo el límite de 512 MB, y el pico probablemente lo supere.
+
+### Piso de coseno: no ayuda
+
+Los 30 candidatos puntúan entre 0,78 y 0,91 en todos los casos: un piso de 0,78 deja los 30 y uno de 0,80 ya pierde los documentos de Natalia, Cubillo y EN2, EN6. `RERANK_MIN_SIMILARITY` queda en 0 (apagado) y se conserva por si el vocabulario del índice cambia; no es una palanca útil con estos datos.
+
+### Valores por defecto elegidos
+
+`RERANK_CANDIDATES=20`, `RERANK_MIN_SCORE=0.06`, `RERANK_PASSAGE_TOKENS=128`, `RERANK_THREADS=4`, `RERANK_BUDGET_MS=2500`, `RERANK_MIN_SIMILARITY=0`. Calibrados con los mismos casos con los que se miden (riesgo de sobreajuste: 57 casos, margen estrecho del mínimo). La medición en Railway (T043 y T044) confirma memoria, hilos disponibles y latencia en el servidor real.
