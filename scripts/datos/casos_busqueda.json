@@ -763,5 +763,172 @@
     "pregunta": "Háblame de la Facultad de Oceanografía Computacional",
     "espera": "sin_informacion",
     "nota": "Unidad inventada, sin signos de interrogación (feature 009): calibra el mínimo del reranker."
+  },
+  {
+    "id": "HB1",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Quién es Daniel Retana Ruiz?",
+    "variante_corta": "Daniel Retana Ruiz",
+    "espera": "respuesta",
+    "documentos": [
+      "Retana"
+    ],
+    "nota": "Feature 010: persona cuyo apellido solo aparece en dos fragmentos del paper (nombre en el título del archivo); la parte léxica lo encuentra por Retana."
+  },
+  {
+    "id": "HB2",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Quién es José Medrano?",
+    "variante_corta": "José Medrano",
+    "espera": "respuesta",
+    "documentos": [
+      "Medrano"
+    ],
+    "nota": "Feature 010: nombre con un solo apellido (dos palabras específicas) y con tilde en la pregunta y sin ella en el documento."
+  },
+  {
+    "id": "HB3",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Quién es Valeria Calderón?",
+    "variante_corta": "Valeria Calderón",
+    "espera": "respuesta",
+    "documentos": [
+      "Valeria"
+    ],
+    "nota": "Feature 010: el nombre aparece en una tesis y un paper de la misma persona; Calderón es un apellido común en otros dominios."
+  },
+  {
+    "id": "HB4",
+    "categoria": "sigla",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum"
+    ],
+    "pregunta": "¿Qué es el trabajo final de graduación?",
+    "variante_corta": "¿Qué es el TFG?",
+    "espera": "respuesta",
+    "documentos": [
+      "TFG"
+    ],
+    "nota": "Feature 010: forma desarrollada frente a la sigla (BUS-2); los documentos del programa escriben TFG."
+  },
+  {
+    "id": "HB5",
+    "categoria": "sigla",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Qué es el MGTI?",
+    "espera": "respuesta",
+    "documentos": [
+      "Plan 473",
+      "MGTI"
+    ],
+    "nota": "Feature 010: sigla de la maestría que en los documentos aparece sobre todo como código de curso; cualquiera de los dos documentos sirve."
+  },
+  {
+    "id": "HB6",
+    "categoria": "sigla",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Qué es el CEDA?",
+    "espera": "respuesta",
+    "documentos": [
+      "CEDA"
+    ],
+    "nota": "Feature 010: sigla de un curso o dirección que aparece en actas y en un oficio de cambio de nombre; basta cualquier documento que la use."
+  },
+  {
+    "id": "HB7",
+    "categoria": "sigla",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿De qué trata el curso MC8840?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC8840"
+    ],
+    "nota": "Feature 010: código de curso (término específico); el programa de Deep Learning no entra por significado (caso LL2)."
+  },
+  {
+    "id": "HS1",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Quién es Hernán Quesada Villalobos?",
+    "variante_corta": "Hernán Quesada Villalobos",
+    "espera": "sin_informacion",
+    "nota": "Feature 010: persona inventada con un nombre y un apellido que aparecen por separado en otros documentos."
+  },
+  {
+    "id": "HS2",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Qué es el SGDX?",
+    "espera": "sin_informacion",
+    "nota": "Feature 010: sigla inventada, sin ningún fragmento."
+  },
+  {
+    "id": "HS3",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Quién es Valeria Calderón Quesada?",
+    "espera": "sin_informacion",
+    "nota": "Feature 010: persona que no existe pero comparte dos de tres palabras con una real; pone a prueba la regla de la mayoría (la medición dice si pasa)."
+  },
+  {
+    "id": "HS4",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuál es el procedimiento de matrícula de honor del instituto?",
+    "espera": "sin_informacion",
+    "nota": "Feature 010: solo palabras comunes del dominio; no debe traer fragmentos por coincidir en ellas."
+  },
+  {
+    "id": "HS5",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuántos créditos tiene el curso de Astronomía Observacional?",
+    "espera": "sin_informacion",
+    "nota": "Feature 010: curso inventado con palabras comunes (curso, créditos) y una específica ausente."
+  },
+  {
+    "id": "HS6",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Quién dirige el Laboratorio de Física Cuántica?",
+    "espera": "sin_informacion",
+    "nota": "Feature 010: laboratorio inventado con palabras sueltas que sí existen en los documentos."
   }
 ]
