@@ -18,6 +18,7 @@ ESQUEMA_ANTERIOR = [
 
 TABLAS_NUEVAS = {
     "units", "folders", "artifacts", "artifact_units", "artifact_domains", "queries", "admins", "admin_units",
+    "sigla_equivalences",
 }
 
 
@@ -38,7 +39,7 @@ def test_base_anterior_se_migra_sin_perder_datos(tmp_path):
     assert TABLAS_NUEVAS <= set(inspector.get_table_names())
     assert "unit_id" in {c["name"] for c in inspector.get_columns("domains")}
     assert "folder_id" in {c["name"] for c in inspector.get_columns("documents")}
-    assert _revision(engine) == "0004"
+    assert _revision(engine) == "0005"
     with engine.connect() as connection:
         assert connection.execute(text("SELECT name, unit_id FROM domains")).one() == (
             "Memoria del Consejo",
@@ -72,7 +73,7 @@ def test_base_vacia_queda_en_la_ultima_revision(tmp_path):
     init_db(engine)
 
     assert TABLAS_NUEVAS <= set(inspect(engine).get_table_names())
-    assert _revision(engine) == "0004"
+    assert _revision(engine) == "0005"
 
 
 def test_init_db_se_puede_correr_dos_veces(tmp_path):
@@ -81,7 +82,7 @@ def test_init_db_se_puede_correr_dos_veces(tmp_path):
     init_db(engine)
     init_db(engine)
 
-    assert _revision(engine) == "0004"
+    assert _revision(engine) == "0005"
 
 
 def test_migracion_0003_crea_administradores_sin_tocar_datos(tmp_path):

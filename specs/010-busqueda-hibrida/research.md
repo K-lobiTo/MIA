@@ -165,4 +165,6 @@ Un K bajo deja pasar casos raros porque palabras de uso corriente pasan a ser es
 
 ## R15. Versión mínima de `qdrant-client`
 
-**Decision**: la primera tarea comprueba qué versión del cliente introdujo `ascii_folding`, `MatchTextAny` y `on_disk` en `TextIndexParams` y sube el piso de `pyproject.toml` (hoy `>=1.10`) a esa versión; `docker-compose.yml` usa `qdrant/qdrant:latest` en desarrollo y Qdrant Cloud responde 1.19.1. Si algún entorno tuviera un Qdrant anterior sin `ascii_folding`, la creación del índice falla de forma limpia y la ruta cae a significado (R11).
+**Decision**: el piso de `pyproject.toml` sube de `qdrant-client>=1.10` a `qdrant-client>=1.16`.
+
+**Verificado (2026-10-19)**: se instaló cada versión aislada y se probó la firma de `TextIndexParams` y las condiciones: 1.14.3 y 1.15.1 tienen `tokenizer`, `min_token_len` y `on_disk` pero **no** `ascii_folding` ni `MatchTextAny`; 1.16.0 y 1.16.2 tienen ambos. 1.16.0 es la primera versión que sirve. `docker-compose.yml` usa `qdrant/qdrant:latest` en desarrollo y Qdrant Cloud responde 1.19.1. Si algún entorno tuviera un Qdrant anterior sin `ascii_folding`, la creación del índice falla de forma limpia y la ruta cae a significado (R11).

@@ -2,6 +2,7 @@ import json
 import logging
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
 from typing import Literal
 
@@ -35,6 +36,19 @@ from mia.rag.completeness import (
 )
 from mia.rag.context import ContextPolicy, build_passages
 from mia.rag.embeddings import get_embedding_provider
+from mia.rag.equivalences import get_equivalences
+from mia.rag.lexical import (
+    LexicalOutcome,
+    failure_note,
+    hybrid_enabled,
+    hybrid_note,
+    lexical_lookup,
+    merge_hybrid,
+    order_lexical,
+    pick_candidates,
+    query_groups,
+    warn_lexical_failure,
+)
 from mia.rag.llm import RagContext, get_llm_provider, is_no_info_answer
 from mia.rag.modes import estimate_cost, mode_available, mode_config
 from mia.rag.query_rewrite import clean_note, clean_question, clean_question_enabled
@@ -90,6 +104,82 @@ class Feedback(BaseModel):
 
 def _elapsed_ms(started: float) -> int:
     return int((time.perf_counter() - started) * 1000)
+
+
+class _HybridRun:
+    """La parte léxica de una consulta (feature 010). Se lanza en un hilo antes de la búsqueda por significado y se
+    espera después, así que su latencia se solapa con la del vector. El resultado se calcula una sola vez y se
+    reutiliza en cada fusión (la primera búsqueda y la de la pregunta limpia). Nunca lanza: ante cualquier fallo
+    la consulta sigue con la búsqueda por significado, con un aviso y una nota."""
+
+    def __init__(self, store, session: Session, question: str, domains: list[str], embedding: list[float]):
+        self.store, self.domains, self.embedding = store, domains, embedding
+        self.outcome = LexicalOutcome()
+        self.results: list = []
+        self.failed = False
+        self.merged_new = 0
+        self._resolved = False
+        self._future = None
+        self._executor: ThreadPoolExecutor | None = None
+        try:
+            equivalences = get_equivalences(session)
+        except Exception as exc:  # noqa: BLE001
+            # Sin la lista la consulta sigue, solo sin relacionar siglas.
+            warn_lexical_failure(exc)
+            equivalences = []
+        groups = query_groups(question, equivalences, settings.hybrid_max_groups, settings.hybrid_min_token_len)
+        if groups:
+            self._executor = ThreadPoolExecutor(max_workers=1)
+            self._future = self._executor.submit(self._lookup, groups)
+
+    def _lookup(self, groups):
+        started = time.perf_counter()
+        found = lexical_lookup(self.store, self.domains, groups, settings.hybrid_max_doc_freq)
+        return found, _elapsed_ms(started)
+
+    def _resolve(self) -> None:
+        if self._resolved:
+            return
+        self._resolved = True
+        if self._future is None:
+            return
+        try:
+            budget = settings.hybrid_budget_ms / 1000 if settings.hybrid_budget_ms > 0 else None
+            found, thread_ms = self._future.result(timeout=budget)
+            outcome = pick_candidates(found, settings.hybrid_max_doc_freq, settings.hybrid_lexical_limit, thread_ms)
+            if outcome.candidates:
+                scored = self.store.score_chunks(
+                    self.embedding, self.domains, [c.chunk_id for c in outcome.candidates]
+                )
+                self.results = order_lexical(outcome.candidates, scored)
+                present = {r.chunk_id for r in self.results}
+                outcome.candidates = [c for c in outcome.candidates if c.chunk_id in present]
+            self.outcome = outcome
+        except Exception as exc:  # noqa: BLE001
+            warn_lexical_failure(exc)
+            self.failed = True
+        finally:
+            if self._executor is not None:
+                self._executor.shutdown(wait=False)
+
+    def merge(self, results: list, limit: int) -> list:
+        started = time.perf_counter()
+        self._resolve()
+        merged = results
+        if not self.failed and self.results:
+            merged = merge_hybrid(
+                results, self.results, limit, settings.hybrid_lexical_slots, settings.hybrid_rrf_k
+            )
+            previous = {r.chunk_id for r in results}
+            self.merged_new = len([r for r in merged if r.chunk_id not in previous])
+        self.outcome.wait_ms += _elapsed_ms(started)
+        return merged
+
+    @property
+    def note(self) -> str | None:
+        if self.failed:
+            return failure_note()
+        return hybrid_note(self.outcome, self.merged_new)
 
 
 def _reject(
@@ -178,6 +268,14 @@ def query(
 
     vector_store = get_vector_store()
 
+    # Con QUERY_HYBRID_SEARCH=on (feature 010) la parte léxica busca por palabras en un hilo mientras corre la
+    # búsqueda por significado; su resultado se fusiona con el de cada `retrieve`.
+    hybrid = (
+        _HybridRun(vector_store, session, payload.question, payload.domains, question_embedding)
+        if hybrid_enabled(settings.query_hybrid_search)
+        else None
+    )
+
     # Con RERANK_PROVIDER=local (feature 009) se recuperan más candidatos, un cross-encoder los puntúa contra la
     # pregunta original y el corte es el puntaje del reranker. Sin reranker (o si falla) es la similitud de siempre.
     rerank_provider = get_rerank_provider(settings.rerank_provider)
@@ -236,7 +334,11 @@ def query(
             )
             return by_similarity(results)
 
-    relevant = retrieve(question_embedding)
+    def retrieve_hybrid(vector):
+        results = retrieve(vector)
+        return hybrid.merge(results, config.search_limit) if hybrid is not None else results
+
+    relevant = retrieve_hybrid(question_embedding)
 
     # Con QUERY_CLEAN_QUESTION encendida, si nada pasó el umbral se repite la búsqueda una vez con la pregunta
     # reducida a lo que se busca (feature 008). Solo reglas de texto: el segundo intento no llama a ningún modelo
@@ -246,7 +348,7 @@ def query(
         cleaned = clean_question(payload.question)
         if cleaned:
             cleaned_embedding = embedding_provider.embed([cleaned], is_query=True)[0]
-            relevant = retrieve(cleaned_embedding)
+            relevant = retrieve_hybrid(cleaned_embedding)
             clean_question_note = clean_note(cleaned, found=bool(relevant))
 
     # Nota del reranker: la de la última búsqueda de la consulta (o la caída a la similitud).
@@ -256,10 +358,20 @@ def query(
         else None
     )
 
+    # Nota de la búsqueda híbrida y su línea en el registro del servidor (una por consulta en que la parte léxica corrió).
+    hybrid_note_text = hybrid.note if hybrid is not None else None
+    if hybrid is not None and (hybrid.failed or hybrid.outcome.groups):
+        logger.info(
+            "Búsqueda híbrida: %d grupos (%d específicos), %d candidatos, %d nuevos; hilo %d ms, espera y fusión %d ms "
+            "(modo %s)",
+            len(hybrid.outcome.groups), hybrid.outcome.specific, len(hybrid.outcome.candidates), hybrid.merged_new,
+            hybrid.outcome.elapsed_ms, hybrid.outcome.wait_ms, payload.mode,
+        )
+
     def no_info(model: str | None = None) -> QueryResponse:
         log.outcome = "no_info"
         log.model = model
-        log.reject_reason = combine_notes(rerank_note_text, clean_question_note)
+        log.reject_reason = combine_notes(rerank_note_text, hybrid_note_text, clean_question_note)
         log.latency_ms = _elapsed_ms(started)
         session.add(log)
         session.commit()
@@ -413,7 +525,7 @@ def query(
 
     if notice:
         answer_text = with_notice(answer_text)
-    log.reject_reason = combine_notes(rerank_note_text, clean_question_note, cut_note, safety_note)
+    log.reject_reason = combine_notes(rerank_note_text, hybrid_note_text, clean_question_note, cut_note, safety_note)
     log.outcome = "answered"
     log.sources = json.dumps(
         [{"domain": d, "document": n} for d, n in dict.fromkeys((s.domain, s.document) for s in sources)],

@@ -7,7 +7,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from mia.access.errors import AuthError
-from mia.api.routes import artifacts, config, domains, health, inventory, me, query, usage
+from mia.api.routes import (
+    artifacts,
+    config,
+    domains,
+    equivalences,
+    health,
+    inventory,
+    me,
+    query,
+    usage,
+)
 from mia.config import settings
 from mia.rag.embeddings import get_embedding_provider
 from mia.rag.rerank import warm_up_rerank_provider
@@ -64,6 +74,7 @@ app.include_router(me.router)
 app.include_router(inventory.router)
 app.include_router(artifacts.router)
 app.include_router(config.router)
+app.include_router(equivalences.router)
 app.include_router(usage.router)
 app.include_router(domains.router)
 app.include_router(query.router)

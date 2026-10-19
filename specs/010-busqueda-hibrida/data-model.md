@@ -20,7 +20,7 @@ Un par entre una sigla y una forma desarrollada. Es global: vale para todos los 
 
 **Restricciones**: único (`sigla`, `form`) (el mismo par no se repite aunque cambien mayúsculas, tildes o espacios). Una sigla puede tener varias formas y una forma varias siglas. No hay llaves foráneas. Un par cuya `sigla` coincide con su `form` normalizada se rechaza.
 
-**Semillas** (migración, idempotentes, `created_by = automatizacion`): `tfg` ↔ `trabajo final de graduacion` y `mgti` ↔ `gestion de tecnologias de informacion`.
+**Semillas** (migración, idempotentes, `created_by = automatizacion`): `tfg` ↔ `trabajo final de graduacion`, `mgti` ↔ `gestion de tecnologias de informacion` y `mgti` ↔ `gestion de tecnologias de la informacion` (la forma se busca como palabras consecutivas, así que se siembran las dos redacciones habituales).
 
 **Validación** (la API, ver [contracts/equivalencias-api.md](contracts/equivalencias-api.md)): textos no vacíos tras normalizar, longitudes acotadas, sin duplicar el par normalizado, y la forma desarrollada no puede ser una sola palabra igual a la sigla.
 
