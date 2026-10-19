@@ -16,6 +16,9 @@ RUN pip install --no-cache-dir .
 
 # Descarga el modelo de embeddings en el build; en ejecución se usa solo la copia local.
 RUN python -c "from mia.rag.providers.local_embeddings import download_model_files; download_model_files()"
+# También el modelo del reranker (feature 009), aunque RERANK_PROVIDER=none: ocupa disco pero no memoria hasta que se
+# carga, y evita una descarga en el arranque en frío.
+RUN python -c "from mia.rag.providers.local_rerank import download_rerank_files; download_rerank_files()"
 ENV HF_HUB_OFFLINE=1
 
 # SQLite (mia.db) y uploads/ se escriben en /app.

@@ -1,7 +1,14 @@
 from openai import OpenAI
 
 from mia.config import settings
-from mia.rag.llm import RAG_SYSTEM_PROMPT, LLMAnswer, LLMProvider, RagContext
+from mia.rag.llm import (
+    RAG_SYSTEM_PROMPT,
+    LLMAnswer,
+    LLMProvider,
+    RagContext,
+    format_context,
+    normalize_finish_reason,
+)
 
 # OpenRouter da acceso a muchos modelos (Gemini, GLM, Claude, Qwen...) con una sola cuenta de
 # saldo prepagado, y su API es compatible con la de OpenAI.
@@ -28,9 +35,7 @@ class OpenRouterLLMProvider(LLMProvider):
     def answer(
         self, question: str, context: list[RagContext], instructions: str = RAG_SYSTEM_PROMPT
     ) -> LLMAnswer:
-        context_block = "\n\n".join(
-            f"[Fuente: dominio={c.domain}, documento={c.document}]\n{c.excerpt}" for c in context
-        )
+        context_block = format_context(context)
         # Solo proveedores que no guardan los datos para entrenar; con OPENROUTER_ZDR, además, solo
         # los de retención cero. Si ningún proveedor del modelo cumple, OpenRouter responde error en
         # vez de saltarse la restricción.
@@ -51,6 +56,7 @@ class OpenRouterLLMProvider(LLMProvider):
         return LLMAnswer(
             text=completion.choices[0].message.content or "",
             model=self._model,
+            finish_reason=normalize_finish_reason(getattr(completion.choices[0], "finish_reason", None), "openai"),
             **_usage(getattr(completion, "usage", None)),
         )
 

@@ -47,6 +47,42 @@ class Settings(BaseSettings):
     # Documentos de hasta esta cantidad de fragmentos (~800 caracteres nuevos cada uno) se pasan
     # completos al LLM si alguno de sus fragmentos es relevante. 0 lo desactiva.
     query_full_document_max_chunks: int = 12
+    # Mostrar solo las fuentes que el modelo dice haber usado (línea FUENTES: al final de su respuesta) en
+    # lugar de todas las que se le entregaron. Es texto y no bool para que un valor inválido no impida el
+    # arranque: se interpreta en mia.rag.citations.cited_sources_enabled ("on"/"off"; otro valor = off).
+    query_cited_sources: str = "off"
+    # Respuestas completas (feature 007, ver mia.rag.completeness). Contexto completo del documento principal:
+    # "on"/"off" (otro valor = off, con aviso). Si el documento principal tiene hasta `document_max_chunks`
+    # fragmentos se entrega entero; si es más largo, a cada resultado se le suman `forward_neighbors`
+    # fragmentos posteriores. `query_complete_documents` es cuántos documentos (por mejor resultado) reciben
+    # ese trato y `query_context_max_chars` el tope del contexto por consulta (solo con la opción encendida).
+    query_complete_context: str = "off"
+    query_complete_documents: int = Field(default=1, ge=1, le=8)
+    query_complete_document_max_chunks: int = Field(default=25, ge=1, le=100)
+    query_complete_forward_neighbors: int = Field(default=4, ge=0, le=20)
+    query_context_max_chars: int = Field(default=80000, ge=5000, le=400000)
+    # Si el modelo termina la generación de forma anormal (límite de longitud u otro motivo) se reintenta una
+    # vez, respetando los topes de gasto, y si vuelve a cortarse se entrega con un aviso. "on"/"off".
+    query_retry_cut_answers: str = "off"
+    # Pregunta limpia (feature 008, ver mia.rag.query_rewrite): si la primera búsqueda no deja ningún fragmento
+    # sobre el umbral, se repite una vez con la pregunta reducida a lo que se busca ("¿Quién es X?" pasa a
+    # "X"), por reglas de texto y sin modelo de lenguaje. "on"/"off" (otro valor = off, con aviso).
+    query_clean_question: str = "off"
+    # Reranker local (feature 009, ver mia.rag.rerank): "none" (comportamiento anterior) o "local". Es texto libre
+    # para que un nombre inválido no impida el arranque (se trata como "none" con un aviso). Con "local" la búsqueda
+    # recupera `rerank_candidates` fragmentos (nunca menos que el límite del modo), un cross-encoder los puntúa
+    # contra la pregunta y el corte de "sin información" es `rerank_min_score` (probabilidad de 0 a 1). Los valores
+    # por defecto salen de la calibración local del 2026-10-18 (57 casos, specs/009-reranker-local/research.md R13):
+    # con 0,06 ningún caso sin respuesta pasa; con valores más altos (0,5) el reranker rechaza documentos que hoy se
+    # responden bien. `rerank_passage_tokens` los tokens de cada fragmento que lee el reranker;
+    # `rerank_threads` los hilos de cálculo (4 cumplió la latencia en la laptop de desarrollo); `rerank_budget_ms`
+    # el tiempo máximo de puntuación por consulta (0 lo desactiva): superado, la consulta sigue por similitud.
+    rerank_provider: str = "none"
+    rerank_candidates: int = Field(default=30, ge=5, le=60)
+    rerank_min_score: float = Field(default=0.06, ge=0, le=1)
+    rerank_passage_tokens: int = Field(default=128, ge=32, le=480)
+    rerank_threads: int = Field(default=4, ge=1, le=8)
+    rerank_budget_ms: int = Field(default=2500, ge=0, le=30000)
 
     # En Render free (512 MB) ingerir actas grandes agota la memoria: allí se desactiva y la ingesta
     # se hace desde una instancia local apuntando a las mismas bases (ver docs/OPERACION.md).

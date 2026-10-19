@@ -27,6 +27,8 @@ class Passage:
     last_index: int
     # Mejor puntaje de similitud entre los fragmentos que lo componen (los vecinos no suman).
     score: float
+    # Hay fragmentos posteriores del documento que no se entregaron (solo se calcula con ContextPolicy).
+    continues: bool = False
 
 
 def join_consecutive(previous: str, following: str) -> str:
@@ -72,24 +74,75 @@ def merge_into_passages(chunks: list[SearchResult]) -> list[Passage]:
     return sorted(passages, key=lambda passage: passage.score, reverse=True)
 
 
+@dataclass(frozen=True)
+class ContextPolicy:
+    """Contexto completo de los documentos principales (feature 007, QUERY_COMPLETE_CONTEXT).
+
+    Los `documents` documentos de mejor resultado se entregan completos si tienen hasta `document_max_chunks`
+    fragmentos y, si son más largos, con `forward_neighbors` fragmentos posteriores a cada resultado. Si la
+    suma de caracteres supera `max_chars` se descartan pasajes de los demás documentos, de menor puntaje a
+    mayor; los del documento principal nunca se descartan.
+    """
+
+    documents: int = 1
+    document_max_chunks: int = 25
+    forward_neighbors: int = 4
+    max_chars: int = 80000
+
+
+def _apply_policy(
+    relevant: list[SearchResult],
+    wanted: dict[str, set[int]],
+    totals: dict[str, int],
+    vector_store: VectorStore,
+    neighbors: int,
+    policy: ContextPolicy,
+) -> set[str]:
+    """Amplía `wanted` para los documentos principales y devuelve sus ids."""
+    best: dict[str, float] = {}
+    for result in relevant:
+        best[result.document_id] = max(best.get(result.document_id, 0.0), result.score)
+    main = sorted(best, key=best.get, reverse=True)[: policy.documents]
+    for document_id in main:
+        total = totals.setdefault(document_id, vector_store.count_chunks(document_id))
+        if total <= policy.document_max_chunks:
+            wanted[document_id] = set(range(total))
+            continue
+        # En un documento principal largo la ventana de cada resultado es asimétrica y reemplaza a la de siempre.
+        wanted[document_id] = set()
+        for result in (r for r in relevant if r.document_id == document_id):
+            around = range(result.chunk_index - neighbors, result.chunk_index + policy.forward_neighbors + 1)
+            wanted[document_id].update(i for i in around if 0 <= i < total)
+    return set(main)
+
+
 def build_passages(
     relevant: list[SearchResult],
     vector_store: VectorStore,
     neighbors: int,
     full_document_max_chunks: int = 0,
+    policy: ContextPolicy | None = None,
 ) -> list[Passage]:
     """Suma a cada resultado relevante sus `neighbors` fragmentos anteriores y posteriores del
     mismo documento, y une todo en pasajes continuos. Los documentos de hasta
-    `full_document_max_chunks` fragmentos se incluyen completos (0 lo desactiva)."""
+    `full_document_max_chunks` fragmentos se incluyen completos (0 lo desactiva).
+
+    Con `policy` (feature 007) los documentos principales se completan o se prolongan hacia adelante, cada
+    pasaje sabe si su documento continúa (`continues`) y el total se acota a `policy.max_chars`. Sin
+    `policy` el resultado es el de siempre."""
     wanted: dict[str, set[int]] = {}
     for result in relevant:
         around = range(result.chunk_index - neighbors, result.chunk_index + neighbors + 1)
         wanted.setdefault(result.document_id, set()).update(i for i in around if i >= 0)
+    totals: dict[str, int] = {}
     if full_document_max_chunks > 0:
         for document_id in wanted:
-            total = vector_store.count_chunks(document_id)
+            total = totals.setdefault(document_id, vector_store.count_chunks(document_id))
             if total <= full_document_max_chunks:
                 wanted[document_id] = set(range(total))
+    main: set[str] = set()
+    if policy is not None:
+        main = _apply_policy(relevant, wanted, totals, vector_store, neighbors, policy)
     for result in relevant:
         wanted[result.document_id].discard(result.chunk_index)
 
@@ -97,4 +150,18 @@ def build_passages(
     for document_id, indexes in wanted.items():
         if indexes:
             chunks.extend(vector_store.get_chunks(document_id, sorted(indexes)))
-    return merge_into_passages(chunks)
+    passages = merge_into_passages(chunks)
+    if policy is None:
+        return passages
+
+    for passage in passages:
+        total = totals.setdefault(passage.document_id, vector_store.count_chunks(passage.document_id))
+        passage.continues = passage.last_index + 1 < total
+    # Tope de contexto: salen primero los pasajes de menor puntaje que no son del documento principal.
+    size = sum(len(p.text) for p in passages)
+    for passage in sorted((p for p in passages if p.document_id not in main), key=lambda p: p.score):
+        if size <= policy.max_chars:
+            break
+        passages.remove(passage)
+        size -= len(passage.text)
+    return passages

@@ -1,0 +1,767 @@
+[
+  {
+    "id": "A1",
+    "categoria": "mvp",
+    "grupo": "A",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Memoria del Consejo"
+    ],
+    "pregunta": "¿Qué se discutió sobre becas en caso de superar los 25 estudiantes admitidos?",
+    "espera": "respuesta",
+    "documentos": [
+      "04-2026"
+    ]
+  },
+  {
+    "id": "A2",
+    "categoria": "mvp",
+    "grupo": "A",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Memoria del Consejo"
+    ],
+    "pregunta": "¿Quién fue designado coordinador específico del proyecto ante FUNDATEC?",
+    "espera": "respuesta",
+    "documentos": [
+      "01-2026"
+    ],
+    "contiene": "Martín Solís"
+  },
+  {
+    "id": "A3",
+    "categoria": "mvp",
+    "grupo": "A",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Memoria del Consejo"
+    ],
+    "pregunta": "¿Qué se discutió sobre becas y descuentos para funcionarios del TEC?",
+    "espera": "respuesta",
+    "documentos": [
+      "03-2026"
+    ]
+  },
+  {
+    "id": "U1",
+    "categoria": "mvp",
+    "grupo": "U",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum"
+    ],
+    "pregunta": "¿Cuántas horas extraclase por semana tiene el curso Big Data para Negocios?",
+    "espera": "respuesta",
+    "documentos": [
+      "Big Data para Negocios"
+    ],
+    "contiene": "14"
+  },
+  {
+    "id": "U2",
+    "categoria": "mvp",
+    "grupo": "U",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum"
+    ],
+    "pregunta": "¿De qué curso es requisito Big Data para Negocios?",
+    "espera": "respuesta",
+    "documentos": [
+      "Big Data para Negocios"
+    ],
+    "contiene": "Big Data"
+  },
+  {
+    "id": "U3",
+    "categoria": "mvp",
+    "grupo": "U",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum"
+    ],
+    "pregunta": "¿Cada cuánto se abre el proceso de admisión al programa?",
+    "espera": "respuesta",
+    "documentos": [
+      "Reglamento del Programa"
+    ],
+    "contiene": "año"
+  },
+  {
+    "id": "U4",
+    "categoria": "mvp",
+    "grupo": "U",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum"
+    ],
+    "pregunta": "¿Cuáles son las líneas de TFG de la maestría?",
+    "espera": "respuesta",
+    "documentos": [
+      "Líneas de TFG"
+    ],
+    "contiene": "Analítica de Texto"
+  },
+  {
+    "id": "P1",
+    "categoria": "mvp",
+    "grupo": "P",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuántas horas extraclase por semana tiene el curso Cibercrimen?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC3010"
+    ],
+    "contiene": "14"
+  },
+  {
+    "id": "P2",
+    "categoria": "mvp",
+    "grupo": "P",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuántos créditos tiene el curso Cibercrimen y en qué área del plan de estudios se ubica?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC3010"
+    ],
+    "contiene": "4"
+  },
+  {
+    "id": "K1",
+    "categoria": "mvp",
+    "grupo": "K",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Memoria del Consejo"
+    ],
+    "pregunta": "¿Qué se aprobó sobre impartir el curso Deep Learning por tutoría?",
+    "espera": "respuesta",
+    "documentos": [
+      "CUP_002"
+    ]
+  },
+  {
+    "id": "K2",
+    "categoria": "mvp",
+    "grupo": "K",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Memoria del Consejo"
+    ],
+    "pregunta": "¿Qué se acordó sobre el cambio de nombre de la Maestría en Computación?",
+    "espera": "respuesta",
+    "documentos": [
+      "06-2025"
+    ]
+  },
+  {
+    "id": "CU1",
+    "categoria": "mvp",
+    "grupo": "CU",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Memoria del Consejo"
+    ],
+    "pregunta": "¿Qué se acordó en el Consejo de Unidad sobre la maestría de Ciberseguridad?",
+    "espera": "respuesta",
+    "documentos": [
+      "Acta"
+    ]
+  },
+  {
+    "id": "G1",
+    "categoria": "mvp",
+    "grupo": "G",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Qué trabajo de graduación trata sobre drones en aeropuertos?",
+    "espera": "respuesta",
+    "documentos": [
+      "Drones"
+    ]
+  },
+  {
+    "id": "G2",
+    "categoria": "mvp",
+    "grupo": "G",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis"
+    ],
+    "pregunta": "¿Qué compara el análisis de modelos centralizados y descentralizados en sistemas de pagos?",
+    "espera": "respuesta",
+    "documentos": [
+      "Luis Alvarado"
+    ]
+  },
+  {
+    "id": "N1",
+    "categoria": "mvp",
+    "grupo": "N",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Memoria del Consejo",
+      "Área académica de Analítica de Negocios / Currículum",
+      "Unidad de Postgrados de Computación / Currículum",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos",
+      "Unidad de Postgrados de Computación / Memoria del Consejo"
+    ],
+    "pregunta": "¿Cuál es la receta del gallo pinto?",
+    "espera": "sin_informacion"
+  },
+  {
+    "id": "X1",
+    "categoria": "mvp",
+    "grupo": "X",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum",
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuántas horas extraclase por semana tiene el curso Cibercrimen?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC3010"
+    ],
+    "contiene": "14"
+  },
+  {
+    "id": "I1",
+    "categoria": "mvp",
+    "grupo": "I",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum"
+    ],
+    "pregunta": "¿Cuántas horas extraclase por semana tiene el curso Cibercrimen?",
+    "espera": "sin_informacion"
+  },
+  {
+    "id": "I3",
+    "categoria": "mvp",
+    "grupo": "I",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Memoria del Consejo"
+    ],
+    "pregunta": "¿Qué se acordó sobre el cambio de nombre de la Maestría en Computación?",
+    "espera": "sin_informacion"
+  },
+  {
+    "id": "I2",
+    "categoria": "mvp",
+    "grupo": "I",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis"
+    ],
+    "pregunta": "¿Qué se discutió sobre becas en caso de superar los 25 estudiantes admitidos?",
+    "espera": "sin_informacion"
+  },
+  {
+    "id": "S22-1",
+    "categoria": "seccion_2_2",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Quién es Natalia Soto Solís?",
+    "variante_corta": "Natalia Soto Solís",
+    "espera": "respuesta",
+    "documentos": [
+      "NataliaSoto"
+    ],
+    "nota": "Pregunta de identificación con nombre y apellidos (caso observado el 2026-10-13 con otra persona); la variante corta es solo el nombre."
+  },
+  {
+    "id": "S22-2",
+    "categoria": "seccion_2_2",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum"
+    ],
+    "pregunta": "¿Qué líneas de trabajo final de graduación ofrece la maestría?",
+    "variante_corta": "¿Qué líneas de TFG ofrece la maestría?",
+    "espera": "respuesta",
+    "documentos": [
+      "Líneas de TFG"
+    ],
+    "nota": "Forma desarrollada frente a la sigla (PRUEBAS_MVP 2026-10-06)."
+  },
+  {
+    "id": "S22-3",
+    "categoria": "seccion_2_2",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Quién es Joseph Obando Sandí?",
+    "variante_corta": "Joseph Obando Sandí",
+    "espera": "respuesta",
+    "documentos": [
+      "Joseph Obando"
+    ],
+    "nota": "Misma forma que S22-1 con otra persona."
+  },
+  {
+    "id": "S22-4",
+    "categoria": "seccion_2_2",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Quién es Luis Diego Cubillo Guevara?",
+    "variante_corta": "Luis Diego Cubillo Guevara",
+    "espera": "respuesta",
+    "documentos": [
+      "CUBILLO"
+    ],
+    "nota": "Misma forma que S22-1 con otra persona."
+  },
+  {
+    "id": "IN1",
+    "categoria": "indirecta",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum"
+    ],
+    "pregunta": "¿Qué materias hay que haber aprobado antes de poder llevar Aprendizaje Automático?",
+    "espera": "respuesta",
+    "documentos": [
+      "Aprendizaje Automático"
+    ],
+    "nota": "No usa la palabra requisito."
+  },
+  {
+    "id": "IN2",
+    "categoria": "indirecta",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuántas horas a la semana debo estudiar por mi cuenta en el curso de criptografía?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC1003"
+    ],
+    "nota": "No usa horas extraclase ni el nombre completo del curso."
+  },
+  {
+    "id": "IN3",
+    "categoria": "indirecta",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Memoria del Consejo"
+    ],
+    "pregunta": "¿Cómo se decidió apoyar económicamente a estudiantes si ingresa más gente de la prevista?",
+    "espera": "respuesta",
+    "documentos": [
+      "04-2026"
+    ],
+    "nota": "Paráfrasis de A1 sin becas, 25 ni admitidos."
+  },
+  {
+    "id": "SG1",
+    "categoria": "sigla",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿De qué trata el curso de IPA I?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC1004"
+    ],
+    "nota": "Sigla IPA."
+  },
+  {
+    "id": "SG2",
+    "categoria": "sigla",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum"
+    ],
+    "pregunta": "¿Cuántos créditos tiene el curso de IPA en Big Data?",
+    "espera": "respuesta",
+    "documentos": [
+      "IPA en Big Data"
+    ],
+    "nota": "Sigla IPA."
+  },
+  {
+    "id": "SG3",
+    "categoria": "sigla",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuál es el plan de estudios de la MGTI?",
+    "espera": "respuesta",
+    "documentos": [
+      "Plan 473",
+      "MGTI"
+    ],
+    "nota": "Sigla de la maestría; cualquiera de los dos documentos sirve."
+  },
+  {
+    "id": "SR1",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum",
+      "Área académica de Analítica de Negocios / Memoria del Consejo",
+      "Unidad de Postgrados de Computación / Currículum",
+      "Unidad de Postgrados de Computación / Memoria del Consejo"
+    ],
+    "pregunta": "¿Cuál es el horario de atención de la biblioteca?",
+    "espera": "sin_informacion",
+    "nota": "Tema lejano."
+  },
+  {
+    "id": "SR2",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum",
+      "Área académica de Analítica de Negocios / Memoria del Consejo",
+      "Unidad de Postgrados de Computación / Currículum",
+      "Unidad de Postgrados de Computación / Memoria del Consejo"
+    ],
+    "pregunta": "¿Quién ganó el premio al mejor trabajo de graduación del año pasado?",
+    "espera": "sin_informacion",
+    "nota": "Tema cercano a los documentos pero sin respuesta en ellos."
+  },
+  {
+    "id": "SR3",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum",
+      "Área académica de Analítica de Negocios / Memoria del Consejo",
+      "Unidad de Postgrados de Computación / Currículum",
+      "Unidad de Postgrados de Computación / Memoria del Consejo"
+    ],
+    "pregunta": "¿Qué dice la política de teletrabajo del instituto?",
+    "espera": "sin_informacion",
+    "nota": "Tema institucional ausente."
+  },
+  {
+    "id": "LL1",
+    "categoria": "lista_larga",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuáles son los contenidos del curso Diseño de Experimentos?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC6104"
+    ],
+    "contiene": "Factores confundidos",
+    "nota": "Programa de 15 fragmentos; hoy el temario sale cortado en la sección B (caso que originó la feature 007)."
+  },
+  {
+    "id": "LL2",
+    "categoria": "lista_larga",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuáles son los contenidos del curso Deep Learning?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC8840"
+    ],
+    "contiene": "Structural Learning",
+    "nota": "Programa de 21 fragmentos, en inglés. Falla por recuperación, ajena a la feature 007: el programa MC8840 aparece en el puesto 50 de la búsqueda con esta pregunta (y en el 14 aun con el código del curso, detrás del catálogo de cursos), así que nunca llega al modelo. Se conserva como caso conocido; la completitud de un programa de 21 fragmentos se comprueba con LL3 (20 fragmentos)."
+  },
+  {
+    "id": "LL3",
+    "categoria": "lista_larga",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuáles son los contenidos del curso Procesamiento de Lenguaje Natural?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC8850"
+    ],
+    "contiene": "dependency parsing",
+    "nota": "Programa de 20 fragmentos."
+  },
+  {
+    "id": "LL4",
+    "categoria": "lista_larga",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuáles son los contenidos del curso Redes Neuronales?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC8803"
+    ],
+    "contiene": "Otras arquitecturas de redes neuronales",
+    "nota": "Programa de 17 fragmentos."
+  },
+  {
+    "id": "LL5",
+    "categoria": "lista_larga",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuáles son los contenidos del curso Introducción a la Investigación?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC7201"
+    ],
+    "contiene": "Administración del Tiempo",
+    "nota": "Programa de 17 fragmentos."
+  },
+  {
+    "id": "LL6",
+    "categoria": "lista_larga",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuáles son los contenidos del curso Sistemas Operativos Avanzados?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC6004"
+    ],
+    "contiene": "Cloud Computing",
+    "nota": "Programa de 14 fragmentos."
+  },
+  {
+    "id": "LL7",
+    "categoria": "lista_larga",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Memoria del Consejo"
+    ],
+    "pregunta": "¿Qué puntos se trataron en la sesión ordinaria 04-2026 del Consejo del Área Académica de Analítica de Negocios?",
+    "espera": "respuesta",
+    "documentos": [
+      "04-2026"
+    ],
+    "contiene": "Varios",
+    "nota": "Lista de 10 artículos en un acta de 20 fragmentos."
+  },
+  {
+    "id": "LL8",
+    "categoria": "lista_larga",
+    "dominios": [
+      "Área académica de Analítica de Negocios / Currículum"
+    ],
+    "pregunta": "¿Cuáles son los criterios de selección y su peso en el puntaje de admisión?",
+    "espera": "respuesta",
+    "documentos": [
+      "Reglamento del Programa"
+    ],
+    "contiene": "Carta motivacional",
+    "nota": "Lista en un documento de 37 fragmentos (más largo que el límite para entregarlo completo)."
+  },
+  {
+    "id": "LL9",
+    "categoria": "lista_larga",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Cuáles son los cursos del plan de estudios de la Maestría en Ciberseguridad?",
+    "espera": "respuesta",
+    "documentos": [
+      "Plan de Estudios Maestría en Ciberseguridad"
+    ],
+    "contiene": "Criptografía",
+    "nota": "Documento de 309 fragmentos: la lista no cabe completa; `contiene` es un ítem temprano y se juzga a mano si la respuesta sale completa o dice que continúa (FR-004)."
+  },
+  {
+    "id": "EN1",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "Háblame de Natalia Soto Solís",
+    "espera": "respuesta",
+    "documentos": [
+      "NataliaSoto"
+    ],
+    "nota": "Otra redacción de la pregunta de identificación de S22-1 (feature 008); el segundo intento busca solo el nombre."
+  },
+  {
+    "id": "EN2",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Qué se sabe de Natalia Soto Solís?",
+    "espera": "respuesta",
+    "documentos": [
+      "NataliaSoto"
+    ],
+    "nota": "Otra redacción de la pregunta de identificación de S22-1 (feature 008); el segundo intento busca solo el nombre."
+  },
+  {
+    "id": "EN3",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "Háblame de Joseph Obando Sandí",
+    "espera": "respuesta",
+    "documentos": [
+      "Joseph Obando"
+    ],
+    "nota": "Otra redacción de la pregunta de identificación de S22-3 (feature 008); el segundo intento busca solo el nombre."
+  },
+  {
+    "id": "EN4",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Qué se sabe de Joseph Obando Sandí?",
+    "espera": "respuesta",
+    "documentos": [
+      "Joseph Obando"
+    ],
+    "nota": "Otra redacción de la pregunta de identificación de S22-3 (feature 008); el segundo intento busca solo el nombre."
+  },
+  {
+    "id": "EN5",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "Háblame de Luis Diego Cubillo Guevara",
+    "espera": "respuesta",
+    "documentos": [
+      "CUBILLO"
+    ],
+    "nota": "Otra redacción de la pregunta de identificación de S22-4 (feature 008); el segundo intento busca solo el nombre."
+  },
+  {
+    "id": "EN6",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Qué se sabe de Luis Diego Cubillo Guevara?",
+    "espera": "respuesta",
+    "documentos": [
+      "CUBILLO"
+    ],
+    "nota": "Otra redacción de la pregunta de identificación de S22-4 (feature 008); el segundo intento busca solo el nombre."
+  },
+  {
+    "id": "EN7",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Quién es Zacarías Fernández Pizarro?",
+    "espera": "sin_informacion",
+    "nota": "Persona inventada: el segundo intento no debe hacer que se invente una respuesta (BUS-3)."
+  },
+  {
+    "id": "EN8",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Qué es el Departamento de Hidrología Lunar?",
+    "espera": "sin_informacion",
+    "nota": "Término inventado: el segundo intento no debe hacer que se invente una respuesta (BUS-3)."
+  },
+  {
+    "id": "EN9",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Qué es obligatorio en el trabajo de Joseph Obando Sandí?",
+    "espera": "sin_informacion",
+    "sin_pregunta_limpia": true,
+    "nota": "Negativo: empieza con una envoltura pero pide un dato, así que la API no debe reformularla. En estos dominios la primera búsqueda no suele pasar el umbral, que es cuando el segundo intento podría activarse."
+  },
+  {
+    "id": "EN10",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Cuál es la fecha de defensa de Natalia Soto Solís?",
+    "espera": "respuesta",
+    "sin_pregunta_limpia": true,
+    "nota": "Negativo: pregunta de dato con 'cuál es'; no debe haber segundo intento.",
+    "documentos": [
+      "NataliaSoto"
+    ]
+  },
+  {
+    "id": "EN11",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Qué es el Cibercrimen?",
+    "espera": "respuesta",
+    "documentos": [
+      "MC3010"
+    ],
+    "nota": "Término que es el nombre de un curso; el segundo intento busca solo 'Cibercrimen'."
+  },
+  {
+    "id": "EN12",
+    "categoria": "envoltura",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "Háblame de Derecho Informático",
+    "espera": "respuesta",
+    "documentos": [
+      "MC4003"
+    ],
+    "nota": "Término que es el nombre de un curso; el segundo intento busca solo 'Derecho Informático'."
+  },
+  {
+    "id": "SR4",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Tesis",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Informes de IPA",
+      "Unidad de Postgrados de Computación / Proyectos de graduación: Artículos"
+    ],
+    "pregunta": "¿Quién es Ernestina Valverde Quirós?",
+    "espera": "sin_informacion",
+    "nota": "Persona inventada con un nombre plausible (feature 009): calibra el mínimo del reranker."
+  },
+  {
+    "id": "SR5",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Qué es el curso de Computación Cuántica Aplicada a la Ganadería?",
+    "espera": "sin_informacion",
+    "nota": "Curso inventado con vocabulario del dominio (feature 009): calibra el mínimo del reranker."
+  },
+  {
+    "id": "SR6",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "¿Qué es el PRGX?",
+    "espera": "sin_informacion",
+    "nota": "Sigla inventada (feature 009): calibra el mínimo del reranker."
+  },
+  {
+    "id": "SR7",
+    "categoria": "sin_respuesta",
+    "dominios": [
+      "Unidad de Postgrados de Computación / Currículum"
+    ],
+    "pregunta": "Háblame de la Facultad de Oceanografía Computacional",
+    "espera": "sin_informacion",
+    "nota": "Unidad inventada, sin signos de interrogación (feature 009): calibra el mínimo del reranker."
+  }
+]

@@ -72,24 +72,33 @@ class CapStatus:
     resets_at: datetime
 
 
-def check_caps(session: Session, artifact: Artifact, mode: str, now: datetime | None = None) -> CapStatus | None:
+def check_caps(
+    session: Session,
+    artifact: Artifact,
+    mode: str,
+    now: datetime | None = None,
+    extra: Decimal = Decimal(0),
+) -> CapStatus | None:
     """El primer tope alcanzado que impide consultar en ese modo, o None si puede consultar.
-    Orden: toda la API, total del artefacto, y el del modo con razonamiento si aplica."""
+    Orden: toda la API, total del artefacto, y el del modo con razonamiento si aplica.
+
+    `extra` es el gasto de esta misma consulta que todavía no está registrado (el costo de un primer intento,
+    antes de decidir un reintento): se suma al gasto de hoy de cada ámbito."""
     resets_at = next_reset_utc(now)
 
     api_cap = Decimal(str(settings.daily_cap_usd))
-    api_spent = spent_today(session, now=now)
+    api_spent = spent_today(session, now=now) + extra
     if api_spent >= api_cap:
         return CapStatus("api", api_cap, api_spent, resets_at)
 
     cap = Decimal(artifact.daily_cap_usd)
-    spent = spent_today(session, artifact_id=artifact.id, now=now)
+    spent = spent_today(session, artifact_id=artifact.id, now=now) + extra
     if spent >= cap:
         return CapStatus("artifact", cap, spent, resets_at)
 
     if mode == RAZONAMIENTO and artifact.reasoning_daily_cap_usd is not None:
         reasoning_cap = Decimal(artifact.reasoning_daily_cap_usd)
-        reasoning_spent = spent_today(session, artifact_id=artifact.id, mode=RAZONAMIENTO, now=now)
+        reasoning_spent = spent_today(session, artifact_id=artifact.id, mode=RAZONAMIENTO, now=now) + extra
         if reasoning_spent >= reasoning_cap:
             return CapStatus("reasoning", reasoning_cap, reasoning_spent, resets_at)
     return None

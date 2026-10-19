@@ -1,3 +1,5 @@
+import logging
+import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -8,6 +10,7 @@ from mia.access.errors import AuthError
 from mia.api.routes import artifacts, config, domains, health, inventory, me, query, usage
 from mia.config import settings
 from mia.rag.embeddings import get_embedding_provider
+from mia.rag.rerank import warm_up_rerank_provider
 from mia.storage.db import init_db
 from mia.storage.vector_store import get_vector_store
 
@@ -17,8 +20,19 @@ async def lifespan(app: FastAPI):
     init_db()
     embedding_provider = get_embedding_provider(settings.embedding_provider)
     get_vector_store().ensure_collection(embedding_provider.dimension)
+    # Con RERANK_PROVIDER=local el modelo se carga al arrancar para que la primera consulta no pague la carga.
+    warm_up_rerank_provider()
     yield
 
+
+# Los mensajes informativos de MIA (por ejemplo el motivo de fin de la generación de cada consulta) salen por la
+# salida estándar, donde los recoge Railway. Sin esto Python solo muestra los de nivel WARNING.
+_mia_logger = logging.getLogger("mia")
+if not _mia_logger.handlers:
+    _mia_handler = logging.StreamHandler(sys.stdout)
+    _mia_handler.setFormatter(logging.Formatter("%(levelname)s:     %(name)s: %(message)s"))
+    _mia_logger.addHandler(_mia_handler)
+    _mia_logger.setLevel(logging.INFO)
 
 app = FastAPI(title="MIA", description="Memoria Institucional Académica", lifespan=lifespan)
 

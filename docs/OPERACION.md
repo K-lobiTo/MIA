@@ -36,6 +36,16 @@ Guía práctica para desplegar, cargar documentos y mantener funcionando el prot
 | `LLM_PRICE_IN_*` / `LLM_PRICE_OUT_*` | `0` | USD por millón de tokens; solo estiman el costo si el proveedor no lo informa | no se usa |
 | `CORS_ORIGINS` | vacía (el panel usa el proxy de Vite) | direcciones de los sitios estáticos, separadas por comas | no se usa |
 | `QUERY_SEARCH_LIMIT` / `QUERY_SEARCH_LIMIT_RAZONAMIENTO` | `8` / `16` | resultados de la búsqueda en modo literal y con razonamiento (de 1 a 50) | no se usa al ingerir |
+| `QUERY_COMPLETE_CONTEXT` / `QUERY_RETRY_CUT_ANSWERS` | `off` / `off` | contexto completo del documento principal y reintento de respuestas cortadas (ver "Respuestas completas y sin cortes") | no se usa |
+| `QUERY_COMPLETE_DOCUMENTS` / `QUERY_COMPLETE_DOCUMENT_MAX_CHUNKS` / `QUERY_COMPLETE_FORWARD_NEIGHBORS` / `QUERY_CONTEXT_MAX_CHARS` | `1` / `25` / `4` / `80000` | alcance del contexto completo: cuántos documentos (por mejor resultado), tamaño máximo en fragmentos para entregarlos enteros, fragmentos posteriores en documentos más largos y tope de caracteres por consulta | no se usa |
+| `QUERY_CLEAN_QUESTION` | `off` | `on` hace un segundo intento de búsqueda con la pregunta reducida a lo que se busca ("¿Quién es X?" busca "X") cuando la primera no deja nada sobre el umbral (ver "Pregunta limpia") | no se usa |
+| `RERANK_PROVIDER` | `none` | `local` activa el reranker local (feature 009): un modelo dentro de la API reordena los candidatos y decide el corte de "sin información". No usa servicios externos (ver "Reranker local") | no se usa |
+| `RERANK_CANDIDATES` | `30` | Candidatos que se recuperan y puntúan (5 a 60; nunca menos que el límite del modo) | no se usa |
+| `RERANK_MIN_SCORE` | `0.06` | Puntaje mínimo del reranker, de 0 a 1 (calibrado; con 0,5 rechaza documentos que hoy se responden bien) | no se usa |
+| `RERANK_PASSAGE_TOKENS` | `128` | Tokens de cada fragmento que lee el reranker (32 a 480; más tokens, más latencia) | no se usa |
+| `RERANK_THREADS` | `4` | Hilos de cálculo del reranker (1 a 8) | no se usa |
+| `RERANK_BUDGET_MS` | `2500` | Tiempo máximo de puntuación por consulta (0 lo desactiva); superado, la consulta usa la similitud | no se usa |
+| `QUERY_CITED_SOURCES` | `off` | `off` por defecto; `on` hace que la respuesta liste solo las fuentes que el modelo dice haber usado (ver más abajo) | no se usa |
 | `MAX_UPLOAD_MB` | `25` | `25` | `25` |
 | `OPENROUTER_MANAGEMENT_KEY` | vacía | vacía (no recomendada, ver "Topes de gasto y saldo") | no se usa |
 
@@ -350,10 +360,67 @@ Subir dos veces el mismo archivo al mismo dominio (en cualquier carpeta) no dupl
 
 Si un documento queda en `error`, ver el log de la API local (el mensaje empieza con "Fallo indexando documento"). Un documento que quedó en `processing` porque se cortó la API no se reintenta solo; hoy la forma de reintentar es borrar esa fila en Neon y sus puntos en Qdrant (filtro `document_id`) y volver a subir el archivo.
 
+## Mostrar solo las fuentes que aportaron (`QUERY_CITED_SOURCES`)
+
+Por defecto la respuesta lista como fuentes todos los pasajes que se le entregaron al modelo. Con `QUERY_CITED_SOURCES=on` se numeran los pasajes, se le pide al modelo cerrar la respuesta con una línea `FUENTES: 1, 3` y la API **quita esa línea del texto, la valida y lista solo esos pasajes**. Si no hay ninguna cita válida (el modelo no escribió la línea, escribió números inexistentes o se cortó), se listan todos, como siempre, y la consulta queda anotada en el módulo Uso con la nota `Fuentes: sin citas utilizables, se mostraron todas`.
+
+- Se cambia en las variables del servicio `MIA` en Railway y se reinicia (no hay migraciones ni despliegue de código). Volver a `off` devuelve el comportamiento anterior.
+- Cualquier valor que no sea `on`, `true`, `1`, `yes`, `off`, `false`, `0`, `no` o vacío se trata como apagado y deja un aviso en el registro del servidor.
+- **Cuidado con cómo se cambia la variable:** `railway variable set` sin `--skip-deploys` hace que Railway redespliegue desde la rama `main` de GitHub, no desde el código que se subió con `railway up`; si lo que está en producción viene de `dev` o de otra referencia, el servicio vuelve a correr `main` sin avisar. Para medir una versión que no es `main`: `railway variable set QUERY_CITED_SOURCES=on -s MIA --skip-deploys` y luego `python scripts/servicios.py encender MIA --ref origin/dev` (el despliegue lee la variable al arrancar). Se puede comprobar con `railway deployment list -s MIA --json` (un despliegue de `railway up` no trae `commitHash`).
+- Es una opción de prueba: se mide con `scripts/linea_base.py respuestas` y `comparar` (ver "Medir la búsqueda") antes de dejarla encendida. Diseño y criterios en `specs/006-fuentes-que-aportaron/`.
+
+## Respuestas completas y sin cortes (`QUERY_COMPLETE_CONTEXT` y `QUERY_RETRY_CUT_ANSWERS`)
+
+Dos mecanismos independientes, cada uno con su variable y apagado por defecto (feature `specs/007-respuestas-completas/`):
+
+- **Contexto completo (`QUERY_COMPLETE_CONTEXT=on`).** Una lista o sección que ocupa varios fragmentos (los contenidos de un curso, las líneas de TFG, los requisitos de un reglamento) llegaba cortada. Con la opción, el documento de mejor resultado se entrega **completo** si tiene hasta `QUERY_COMPLETE_DOCUMENT_MAX_CHUNKS` fragmentos (25; el mayor programa de curso conocido tiene 21) y, si es más largo, a cada resultado se le suman `QUERY_COMPLETE_FORWARD_NEIGHBORS` fragmentos posteriores (4). Un tope de `QUERY_CONTEXT_MAX_CHARS` caracteres por consulta (80.000) descarta, si hace falta, pasajes de los demás documentos de menor puntaje, nunca los del principal. Un pasaje al que le siguen fragmentos del documento que no se entregaron lleva la marca `[...el documento continúa]` y se le pide al modelo decir que la lista puede continuar.
+- **Reintento de respuestas cortadas (`QUERY_RETRY_CUT_ANSWERS=on`).** Si el proveedor informa que la generación terminó por límite de longitud u otro motivo anormal, se reintenta **una vez** (solo si los topes de gasto lo permiten) y, si se vuelve a cortar, se entrega el texto con el aviso `Aviso: la respuesta pudo quedar incompleta.` En el módulo Uso queda la nota `Respuesta cortada: se reintentó` o `Respuesta cortada: se entregó con aviso`, y el costo suma los dos intentos. Un proveedor que no informa el motivo (hoy Gemini) no se reintenta.
+- **Siempre**, aun con ambas apagadas, el servidor deja en el registro una línea `Fin de la generación: <motivo> (modo <modo>)` por consulta, que sirve para contar cortes con `railway logs -s MIA` (por ejemplo `railway logs -s MIA | grep "Fin de la generación" | grep -vc stop`). Desde la feature 007 `mia.api.main` envía a la salida estándar los mensajes de nivel INFO de MIA; antes solo salían los de nivel WARNING.
+- **Límites conocidos.** Por defecto solo el documento de mejor resultado se completa (`QUERY_COMPLETE_DOCUMENTS=1`): una lista repartida en dos documentos exige subirlo. En un documento de cientos de fragmentos (el plan de estudios de Ciberseguridad tiene 309) no se puede garantizar la lista completa: la respuesta debe decir que continúa. El avance hacia adelante es una ventana fija, no detecta dónde termina la lista.
+- **Costo.** La estimación es de +21 % en literal y +11 % en razonamiento sobre el contexto (más en las consultas cuyo documento se entrega entero); el tope aceptado es 25 % sobre el promedio. Se cambia en Railway con `railway variable set ... --skip-deploys` y se vuelve a desplegar (ver la advertencia de más arriba sobre `main`). Volver a `off` devuelve el comportamiento anterior sin migraciones.
+
+## Pregunta limpia (`QUERY_CLEAN_QUESTION`)
+
+Con `QUERY_CLEAN_QUESTION=on`, si la primera búsqueda de una consulta no deja ningún fragmento sobre `QUERY_SIMILARITY_THRESHOLD` y la pregunta es de identificación o descripción ("¿Quién es X?", "¿Qué es el X?", "háblame de X", "dame información sobre X", "¿qué se sabe de X?", con cortesías como "¿me puedes decir...?"), la API repite la búsqueda **una vez** con solo X (feature `specs/008-pregunta-limpia/`). Es por reglas de texto: no llama a ningún modelo de lenguaje y solo suma un embedding local y una búsqueda en Qdrant. El modelo recibe siempre la pregunta original.
+
+- No se reformulan las preguntas que piden un dato ("¿Cuántos créditos tiene X?", "¿Cuál es el costo...?", "¿Qué es necesario para...?", "¿Quién fue designado...?") ni las que quedan con menos de 3 caracteres o más de 8 palabras. Las reglas están en `src/mia/rag/query_rewrite.py` y sus pruebas en `tests/unit/test_query_rewrite.py`.
+- **Uso:** la consulta con segundo intento deja en `reject_reason` la nota `Pregunta limpia: «texto» (con resultados)` o `(sin resultados)`, también si termina en "sin información". Sirve para contar cuántas veces se usó y cuántas ayudó. Sin migraciones.
+- Un valor distinto de `on`, `true`, `1`, `yes`, `off`, `false`, `0`, `no` o vacío se trata como apagado y deja un aviso en el registro. Se cambia en las variables de `MIA` en Railway y se reinicia; volver a `off` devuelve el comportamiento anterior (cuidado con `--skip-deploys`, ver "Mostrar solo las fuentes que aportaron").
+- Efecto medido (2026-10-18): ayuda poco. Con las tres personas de la línea base, una (solo con razonamiento) pasa de "sin información" a respuesta con su documento; no inventa respuestas con personas o términos inexistentes; una consulta que antes era "sin información" gratis cuesta cerca de 0,001 USD cuando el segundo intento encuentra fragmentos. Ver [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md). Queda apagada.
+
+## Reranker local (`RERANK_PROVIDER`)
+
+Con `RERANK_PROVIDER=local`, `POST /query` recupera `RERANK_CANDIDATES` fragmentos (30), un cross-encoder que corre dentro de la API los puntúa contra la pregunta y el corte de "sin información" pasa a ser el puntaje del reranker (`RERANK_MIN_SCORE`) en lugar del umbral de coseno. Al modelo de lenguaje siguen llegando como mucho 8 fragmentos (16 con razonamiento): el costo de los modelos no sube. No se usa ningún servicio externo de reranking (feature `specs/009-reranker-local/`).
+
+- **Costo medido (2026-10-18):** el modelo ocupa unos 158 MB más de RAM (366 MB sin él, 522 a 524 MB con él en reposo en Railway, picos de 600 MB) y puntuar tarda unos 0,3 s por consulta con 4 hilos. Con el límite de 512 MB de la prueba, queda unos 10 MB sobre; el costo mensual adicional estimado es de 1 a 1,6 USD. **Está apagado hasta que se acepte ese costo.** Detalle en [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md).
+- **Encender:** `railway variable set RERANK_PROVIDER=local -s MIA --skip-deploys` y `python scripts/servicios.py encender MIA --forzar` (sin `--skip-deploys`, Railway redespliega desde `main`). El modelo se descarga en el build de la imagen (119 MB más) y se carga al arrancar: el registro dice `Reranker cargado: RSS 366 -> 524 MB, pico 593 MB`. Volver a `none` devuelve el comportamiento anterior.
+- **Uso:** la consulta con reranker deja en `reject_reason` la nota `Reranker: mejor 0.987, 3 de 30 sobre el mínimo 0.06` (o `Reranker: ninguno sobre el mínimo 0.06, mejor 0.003 de 30` si termina en "sin información"). El registro del servidor lleva `Reranker: 30 candidatos en 298 ms, pico de memoria 597 MB (modo literal)` por consulta, de donde salen la latencia y la memoria bajo carga.
+- **Si falla:** si el modelo no carga, o puntuar falla o supera `RERANK_BUDGET_MS`, la consulta sigue con el orden y el umbral de coseno de siempre, con la nota `Reranker no disponible: se usó la similitud` y un aviso (como mucho uno por minuto). Nunca devuelve un error por esta causa.
+- **Mínimo:** se calibró con 57 casos (`python scripts/linea_base.py puntajes --etiqueta x --env-file .env.produccion --rerank`, gratis): con 0,06 ninguna pregunta sin respuesta pasa, pero el margen es estrecho (0,057 contra 0,06) y el reranker rechaza 1 documento que hoy se encuentra (`IN3`). Antes de encenderlo conviene repetir la calibración con más casos sin respuesta. `python scripts/linea_base.py rendimiento ...` mide memoria y latencia en local (gratis), y `python scripts/linea_base.py registro --archivo registro.txt` resume el registro de Railway (`railway logs -s MIA > registro.txt`): latencia p50 y p95 de la puntuación, pico de memoria y avisos de fallo.
+- Un nombre distinto de `none` y `local` se trata como `none` con un aviso.
+
+## Medir la búsqueda (línea base)
+
+`scripts/linea_base.py` mide la recuperación y la respuesta de MIA para comparar mejoras (ver `specs/005-linea-base-busqueda/quickstart.md` y [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md)). Se corre desde la raíz con el entorno virtual activado:
+
+```bash
+python scripts/linea_base.py inventario --env-file .env.produccion                 # dominios, documentos y fragmentos (solo lectura)
+python scripts/linea_base.py puntajes --etiqueta base --env-file .env.produccion   # puntajes y umbrales (solo lectura, sin tokens, unos 15 s)
+python scripts/linea_base.py respuestas --etiqueta base --url https://mia-main.up.railway.app --tope-usd 0.40   # GASTA: exige tope
+python scripts/linea_base.py informe base --salida docs/LINEA_BASE_BUSQUEDA.md     # conserva la sección "Lectura"
+python scripts/linea_base.py comparar base mejora-1                                # diferencias caso por caso
+```
+
+- `puntajes` solo lee: la base y Qdrant de producción (con las credenciales de `.env.produccion`). `respuestas` envía preguntas reales a la API: gasta (la corrida completa de 72 consultas costó unos 0,25 USD) y las preguntas quedan en el registro de Uso. La API debe estar encendida.
+- Las claves salen de `.env`: `MIA_ARTIFACT_KEY` (artefacto con acceso a los dos programas; para esta medición se usó `PRUEBA Aceptación ambas unidades`, que se activa solo mientras se mide) y `MIA_ADMIN_KEY` (para leer el costo y el tope diario).
+- El umbral y los límites se toman del archivo de entorno, no de Railway: antes de dar por buena una medición, comprobar que coinciden (`railway variables -s MIA`).
+- La salida cruda queda en `tmp/linea_base/` (ignorado por git).
+
 ## Problemas frecuentes
 
 | Síntoma | Causa probable | Qué hacer |
 |---|---|---|
+| El módulo Uso muestra la nota "Fuentes: sin citas utilizables, se mostraron todas" en muchas consultas | Con `QUERY_CITED_SOURCES=on`, el modelo no escribió la línea `FUENTES:` (o la escribió con números inexistentes) y se listaron todas las fuentes, como con la opción apagada | Medirlo con `scripts/linea_base.py respuestas` (la herramienta cuenta la proporción); si pasa en más del 10 % de las respuestas, la opción no está aportando: apagarla con `QUERY_CITED_SOURCES=off` o ajustar la redacción de `CITATION_INSTRUCTIONS` en `src/mia/rag/citations.py` |
 | Render se reinicia con "Out of memory" | Se ingirió en Render, o se cambió a un modelo más pesado | Mantener `INGESTION_ENABLED=false` en Render e ingerir localmente |
 | Un sitio (Consulta o panel) responde 502 | El puerto del dominio no coincide con el que escucha el sitio (Railway inyecta `PORT=8080`) | Variable `PORT=3000` en el servicio y deploy; el puerto del dominio debe ser 3000 |
 | La Consulta o el panel dicen "No se pudo conectar" | La dirección del sitio no está en `CORS_ORIGINS`, o `VITE_API_URL` no lleva `https://` | Corregir la variable (la de CORS en la API, la otra en el sitio) y desplegar |
@@ -363,7 +430,8 @@ Si un documento queda en `error`, ver el log de la API local (el mensaje empieza
 | Error de conexión a Qdrant | El clúster free se suspendió tras 1 semana sin uso | Reactivarlo desde el panel de Qdrant Cloud |
 | `/query` responde 502 tras ~2 min | Gemini saturado (503 "high demand", frecuente en el tier gratuito) o cuota agotada | Esperar unos minutos y reintentar; revisar la cuota en Google AI Studio. El proveedor corta tras 3 intentos para no dejar la consulta colgada |
 | `/query` responde 500 y el log de Qdrant dice "Index required but not found for \"domain\"" | La colección se creó sin índices de payload (Qdrant Cloud los exige para filtrar) | Reiniciar la API: `ensure_collection()` crea los índices al arrancar |
-| La respuesta es correcta pero incompleta ("el fragmento se interrumpe...") | La sección o lista ocupa más fragmentos de los que se recuperan | Verificar `QUERY_SEARCH_LIMIT` (8) y `QUERY_CONTEXT_NEIGHBORS` (1) en Render; subir los vecinos a 2 si el documento tiene secciones muy largas |
+| El módulo Uso muestra la nota "Respuesta cortada: se entregó con aviso" | El modelo terminó la generación de forma anormal dos veces seguidas (límite de longitud u otro motivo) con `QUERY_RETRY_CUT_ANSWERS=on` | Ver `railway logs -s MIA` (línea `Fin de la generación`), probar el modo con razonamiento o repetir la pregunta; si pasa con frecuencia, revisar `OPENROUTER_MAX_TOKENS` y el tamaño del contexto |
+| La respuesta es correcta pero incompleta ("el fragmento se interrumpe...") | La sección o lista ocupa más fragmentos de los que se recuperan | Encender `QUERY_COMPLETE_CONTEXT=on` (ver "Respuestas completas y sin cortes"). Sin esa opción, verificar `QUERY_SEARCH_LIMIT` (8) y `QUERY_CONTEXT_NEIGHBORS` (1) en Render; subir los vecinos a 2 si el documento tiene secciones muy largas |
 | Toda consulta responde 401 desde la versión 2 | Falta la clave del artefacto (`X-Artifact-Key`), o se regeneró y la que se usa es la anterior | Usar la clave vigente; si se perdió, regenerarla en el panel |
 | Una consulta responde 403 | El artefacto está desactivado, o pide un dominio o un modo que no tiene permitido | Revisar el artefacto en el panel (*Artefactos y accesos*); el mensaje dice cuál es el motivo |
 | Una consulta responde 429 | Se alcanzó un tope diario de gasto (de toda la API, del artefacto o de su modo con razonamiento) | El mensaje dice cuál. Se reinicia a la medianoche de Costa Rica; mientras tanto, subir el tope del artefacto desde el panel, o `DAILY_CAP_USD` en Railway |

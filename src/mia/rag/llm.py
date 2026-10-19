@@ -54,6 +54,21 @@ class RagContext:
     domain: str
     document: str
     excerpt: str
+    # Número del pasaje dentro de la consulta (de 1 a N). Nulo cuando no se piden citas al modelo:
+    # entonces el contexto se formatea como siempre (ver format_context).
+    reference: int | None = None
+
+
+def format_context(context: list["RagContext"]) -> str:
+    """Bloque de contexto que se le entrega al modelo, igual para todos los proveedores.
+
+    Sin `reference` la etiqueta es `[Fuente: dominio=..., documento=...]` (el formato de siempre); con
+    `reference` lleva el número: `[Fuente 3: dominio=..., documento=...]`.
+    """
+    return "\n\n".join(
+        f"[Fuente{'' if c.reference is None else f' {c.reference}'}: dominio={c.domain}, documento={c.document}]\n{c.excerpt}"
+        for c in context
+    )
 
 
 @dataclass
@@ -67,6 +82,23 @@ class LLMAnswer:
     completion_tokens: int | None = None
     reasoning_tokens: int | None = None
     cost_usd: float | None = None
+    # Por qué terminó la generación, normalizado: "stop" (fin normal), "length" (límite de longitud), "other"
+    # (cualquier otro motivo) o None si el proveedor no lo informa (ver normalize_finish_reason).
+    finish_reason: str | None = None
+
+
+def normalize_finish_reason(raw: str | None, kind: str) -> str | None:
+    """Motivo de fin de la generación en los tres valores comunes. `kind` es el formato del proveedor:
+    "openai" (OpenRouter y GLM: stop, length, content_filter...) o "anthropic" (end_turn, max_tokens...)."""
+    if not raw:
+        return None
+    if kind == "anthropic":
+        if raw in ("end_turn", "stop_sequence"):
+            return "stop"
+        return "length" if raw == "max_tokens" else "other"
+    if raw == "stop":
+        return "stop"
+    return "length" if raw == "length" else "other"
 
 
 class LLMProvider(ABC):

@@ -173,3 +173,40 @@ def test_estado_del_artefacto_para_config_y_listado(db, monkeypatch):
 def test_segundos_hasta_el_reinicio():
     assert caps.seconds_until(_naive(2026, 10, 9, 6, 0), now=_utc(2026, 10, 9, 5, 0)) == 3600
     assert caps.seconds_until(_naive(2026, 10, 9, 6, 0), now=_utc(2026, 10, 9, 7, 0)) == 0
+
+
+def test_check_caps_extra_sin_pasar_no_cambia_nada(db):
+    _artefactos(db)
+    with db() as session:
+        _registro(session, "q1", "a", cuando=_utc(2026, 10, 8, 12, 0), costo=0.10)
+        artefacto = _artefacto(session, tope=0.50)
+        session.commit()
+
+        assert caps.check_caps(session, artefacto, "literal", now=_utc(2026, 10, 8, 18, 0), extra=Decimal("0.05")) is None
+
+
+def test_check_caps_extra_hace_alcanzar_el_tope_de_cada_ambito(db, monkeypatch):
+    """El costo del primer intento, aún no registrado, cuenta para decidir un reintento (feature 007)."""
+    _artefactos(db)
+    ahora = _utc(2026, 10, 8, 18, 0)
+    with db() as session:
+        _registro(session, "q1", "a", cuando=_utc(2026, 10, 8, 12, 0), costo=0.30, modo="razonamiento")
+        session.commit()
+        artefacto = _artefacto(session, tope=0.50, razonamiento=0.50)
+        monkeypatch.setattr(settings, "daily_cap_usd", 3.0)
+        extra = Decimal("0.25")
+
+        # Artefacto: 0,30 + 0,25 = 0,55 supera su tope de 0,50 (sin el extra no).
+        assert caps.check_caps(session, artefacto, "literal", now=ahora) is None
+        assert caps.check_caps(session, artefacto, "literal", now=ahora, extra=extra).scope == "artifact"
+
+        # Toda la API: con un tope global de 0,50 se alcanza antes que el del artefacto.
+        monkeypatch.setattr(settings, "daily_cap_usd", 0.50)
+        assert caps.check_caps(session, artefacto, "literal", now=ahora, extra=extra).scope == "api"
+        monkeypatch.setattr(settings, "daily_cap_usd", 3.0)
+
+        # Solo el tope del modo con razonamiento: el del artefacto sigue holgado.
+        amplio = _artefacto(session, tope=2.00, razonamiento=0.50)
+        assert caps.check_caps(session, amplio, "razonamiento", now=ahora) is None
+        assert caps.check_caps(session, amplio, "razonamiento", now=ahora, extra=extra).scope == "reasoning"
+        assert caps.check_caps(session, amplio, "literal", now=ahora, extra=extra) is None
