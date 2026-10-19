@@ -124,6 +124,8 @@ Los puntajes llevan punto decimal y tres decimales para que la herramienta los l
 
 ## R9. Palancas para cumplir memoria y latencia
 
+> **Valores finales (2026-10-18):** los valores por defecto de la tabla son los previos a la medición. Los vigentes, calibrados en R13 y confirmados en R14, son `RERANK_CANDIDATES=30`, `RERANK_MIN_SCORE=0.06`, `RERANK_PASSAGE_TOKENS=128`, `RERANK_THREADS=4`, `RERANK_BUDGET_MS=2500` y `RERANK_MIN_SIMILARITY=0`.
+
 Todas son variables, todas se miden con el subcomando `rendimiento` y `puntajes` (gratis) antes de gastar:
 
 | Variable | Por defecto | Efecto |

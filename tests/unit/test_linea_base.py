@@ -1244,3 +1244,107 @@ def test_el_informe_incluye_la_seccion_del_reranker_si_se_midio():
 def test_puntajes_sin_rerank_no_agrega_la_seccion():
     from_vacio = {"mediciones": [], "contexto": {}, "resumen": {}}
     assert lb._seccion_rerank(from_vacio) == []
+
+
+# --- Feature 009: convergencia (comparar con reranker, regresiones por mínimo, registro del servidor) ----------
+
+
+def _med_comp(caso_id, candidatos, documentos=("acta",), variante="completa", espera="respuesta", coseno=(0.80,)):
+    """Medición con coseno y reranker, para comparar corridas."""
+    return {
+        "caso_id": caso_id, "variante": variante, "categoria": "mvp", "espera": espera, "grupo": None,
+        "candidatos": [
+            {"posicion": i, "puntaje": p, "documento": "acta-01.pdf" if i == 1 else f"o{i}.pdf", "dominio": "P / D"}
+            for i, p in enumerate(coseno, start=1)
+        ],
+        "por_modo": {m: {"pasan": 0, "mejor_puntaje": coseno[0], "resultado": "sin_informacion"} for m in lb.MODOS},
+        "esperados": lb.posicion_esperados(
+            [{"posicion": i, "puntaje": p, "documento": "acta-01.pdf" if i == 1 else f"o{i}.pdf"}
+             for i, p in enumerate(coseno, start=1)], list(documentos)),
+        "rerank": {
+            "candidatos": candidatos, "ms": 100.0,
+            "por_modo": {m: lb.resultado_por_modo_rerank(candidatos, 8, 0.06) for m in lb.MODOS},
+            "esperados": lb.puesto_rerank(candidatos, list(documentos), 0.06, {"literal": 8, "razonamiento": 16}),
+        },
+    }
+
+
+def _corrida_p(*mediciones, fragmentos=None):
+    return {"puntajes": {"contexto": {"fragmentos_por_dominio": fragmentos or {}}, "mediciones": list(mediciones)},
+            "respuestas": None}
+
+
+def test_comparar_informa_los_cambios_del_reranker_entre_dos_corridas():
+    a = _corrida_p(_med_comp("EN2", _cr(("x.pdf", -7.0), ("acta-01.pdf", -9.0))))
+    b = _corrida_p(_med_comp("EN2", _cr(("x.pdf", -7.0), ("acta-01.pdf", 3.0))))
+    cambios = lb.comparar(a, b)["cambios"]
+    assert any("EN2" in c and "reranker" in c and "literal" in c and "sin_informacion -> responde" in c for c in cambios)
+    assert any("EN2" in c and "puesto" in c and "#2 -> #1" in c for c in cambios)
+    assert any("EN2" in c and "mejor puntaje" in c and "reranker" in c for c in cambios)
+
+
+def test_comparar_no_informa_cambios_del_reranker_si_son_iguales_ni_si_falta_en_una_corrida():
+    candidatos = _cr(("x.pdf", -7.0), ("acta-01.pdf", 3.0))
+    a = _corrida_p(_med_comp("EN2", candidatos))
+    b = _corrida_p(_med_comp("EN2", candidatos))
+    assert lb.comparar(a, b)["cambios"] == []
+    sin_rerank = _med_comp("EN2", candidatos)
+    del sin_rerank["rerank"]
+    assert lb.comparar(_corrida_p(sin_rerank), b)["cambios"] == []  # corridas anteriores a la 009
+    assert lb.comparar(b, _corrida_p(sin_rerank))["cambios"] == []
+
+
+def test_barrido_minimos_informa_regresiones_y_mejoras_frente_al_coseno():
+    # R1: hoy encuentra su documento (coseno 0,90, puesto 1) y el reranker lo puntúa muy bajo: regresión con mínimo alto.
+    # R2: hoy no lo encuentra (coseno 0,80) y el reranker lo puntúa alto: mejora.
+    r1 = _med_comp("R1", _cr(("acta-01.pdf", -5.0)), coseno=(0.90,))
+    r2 = _med_comp("R2", _cr(("acta-01.pdf", 4.0)), coseno=(0.80,))
+    filas = {round(f["logit"]): f for f in lb.barrido_minimos(
+        [r1, r2], umbral=0.82, limites={"literal": 8, "razonamiento": 16})}
+    assert filas[-6]["regresiones"] == [] and filas[-6]["mejoras"] == ["R2"]
+    assert filas[0]["regresiones"] == ["R1"] and filas[0]["mejoras"] == ["R2"]
+
+
+def test_barrido_minimos_sin_umbral_no_calcula_regresiones_y_exige_el_limite_del_modo():
+    filas = lb.barrido_minimos([_med_comp("R1", _cr(("acta-01.pdf", 4.0)), coseno=(0.90,))])
+    assert all(f["regresiones"] == [] and f["mejoras"] == [] for f in filas)
+    # Con límites, un documento fuera de los primeros `limite` por reranker no cuenta como que responde.
+    candidatos = _cr(*[(f"o{i}.pdf", 5.0) for i in range(8)], ("acta-01.pdf", 4.0))
+    medicion = _med_comp("R3", candidatos, coseno=(0.80,))
+    fila = {round(f["logit"]): f for f in lb.barrido_minimos(
+        [medicion], umbral=0.82, limites={"literal": 8, "razonamiento": 16})}[0]
+    assert fila["responden"] == [] and fila["no_responden"] == ["R3"]
+
+
+_REGISTRO = """\
+INFO:     mia.rag.rerank: Reranker cargado: RSS 366 -> 524 MB, pico 593 MB
+INFO:     mia.api.routes.query: Reranker: 20 candidatos en 300 ms, pico de memoria 600 MB (modo literal)
+INFO:     mia.api.routes.query: Fin de la generación: stop (modo literal)
+INFO:     mia.api.routes.query: Reranker: 20 candidatos en 320 ms, pico de memoria 610 MB (modo razonamiento)
+INFO:     mia.api.routes.query: Reranker: 30 candidatos en 2000 ms, pico de memoria ? MB (modo literal)
+WARNING:  mia.rag.rerank: El reranker falló (RerankTimeout: tarde): la consulta usa la similitud de vectores
+"""
+
+
+def test_resumir_registro_cuenta_puntuaciones_latencia_memoria_y_avisos():
+    r = lb.resumir_registro(_REGISTRO, p50_max_ms=500, p95_max_ms=1500)
+    assert r["puntuaciones"] == 3 and r["candidatos"] == [20, 30]
+    assert r["latencia"]["p50_ms"] == 320 and r["latencia"]["p95_ms"] == 2000 and r["latencia"]["cumple"] is False
+    assert r["pico_mb_maximo"] == 610
+    assert r["cargas"] == [{"rss_antes_mb": 366, "rss_despues_mb": 524, "pico_mb": 593}]
+    assert r["avisos_de_fallo"] == 1
+
+
+def test_resumir_registro_sin_lineas_del_reranker():
+    r = lb.resumir_registro("INFO: otra cosa\n", 500, 1500)
+    assert r["puntuaciones"] == 0 and r["latencia"]["p50_ms"] is None and r["pico_mb_maximo"] is None
+    assert r["cargas"] == [] and r["avisos_de_fallo"] == 0
+
+
+def test_comando_registro_lee_un_archivo_e_imprime_el_resumen(tmp_path, capsys):
+    archivo = tmp_path / "logs.txt"
+    archivo.write_text(_REGISTRO, encoding="utf-8")
+    assert lb.main(["registro", "--archivo", str(archivo)]) == 0
+    salida = capsys.readouterr().out
+    assert "3 puntuaciones" in salida and "p50 320 ms" in salida and "consultas: 610 MB" in salida
+    assert lb.main(["registro", "--archivo", str(tmp_path / "no-existe.txt")]) == 2

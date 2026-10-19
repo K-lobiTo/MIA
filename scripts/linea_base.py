@@ -9,6 +9,7 @@ Subcomandos:
                 Con --rerank agrega el puntaje del reranker local (feature 009): puesto del documento esperado,
                 barrido del mínimo y ventana de separación (sin tokens de modelos de lenguaje).
     rendimiento Memoria y latencia del reranker local por candidatos, tokens por pasaje e hilos (feature 009).
+    registro    Resume la salida de `railway logs`: latencia p50 y p95 del reranker, memoria y avisos (sin gasto).
     respuestas  Corre los casos contra POST /query: fuentes, tiempo y costo (gasta; exige --tope-usd).
     informe     Genera el informe en Markdown de una corrida.
     comparar    Compara dos corridas caso por caso.
@@ -358,19 +359,24 @@ def _con_rerank(mediciones: list[dict]) -> list[dict]:
     return [m for m in _completas(mediciones) if m.get("rerank") is not None]
 
 
-def barrido_minimos(mediciones: list[dict], minimos: list[float] | None = None) -> list[dict]:
+def barrido_minimos(mediciones: list[dict], minimos: list[float] | None = None, umbral: float | None = None,
+                    limites: dict[str, int] | None = None) -> list[dict]:
     """Por mínimo del reranker, qué casos con respuesta responderían y qué casos de "sin información" pasarían.
 
     Sin `minimos` recorre el logit de -8 a 8 (el puntaje se satura y una malla uniforme en 0 a 1 no separa nada).
-    Un caso responde si su mejor candidato supera el mínimo; para los casos con respuesta además se pide que el
-    documento esperado esté entre los candidatos y lo supere."""
+    Un caso con respuesta responde si el documento esperado está entre los candidatos y supera el mínimo; con
+    `limites` además debe quedar entre los primeros del modo literal por reranker. Con `umbral` y `limites` informa
+    también las regresiones (hoy encuentran su documento esperado con el coseno y dejarían de encontrarlo) y las
+    mejoras (hoy no lo encuentran y pasarían a encontrarlo), en el modo literal."""
     if minimos is None:
         mallas = [(x, _sigmoide(x)) for x in BARRIDO_RERANK_LOGITS]
     else:
         mallas = [(None, m) for m in minimos]
+    limite = limites["literal"] if limites else None
     filas = []
     for logit, minimo in mallas:
         responden, no_responden, sin_info_que_pasan, bloqueados = [], [], [], 0
+        regresiones, mejoras = [], []
         for m in _con_rerank(mediciones):
             candidatos = m["rerank"]["candidatos"]
             if m["espera"] == "sin_informacion":
@@ -378,12 +384,26 @@ def barrido_minimos(mediciones: list[dict], minimos: list[float] | None = None) 
                     sin_info_que_pasan.append(m["caso_id"])
                 else:
                     bloqueados += 1
-            else:
-                esperados = m["rerank"].get("esperados") or []
-                pasa = any(e["puntaje_rerank"] is not None and e["puntaje_rerank"] >= minimo for e in esperados)
-                (responden if pasa else no_responden).append(m["caso_id"])
+                continue
+            esperados = m["rerank"].get("esperados") or []
+            pasa = any(
+                e["puntaje_rerank"] is not None and e["puntaje_rerank"] >= minimo
+                and (limite is None or e["posicion_rerank"] <= limite)
+                for e in esperados
+            )
+            (responden if pasa else no_responden).append(m["caso_id"])
+            if umbral is not None and limite is not None:
+                hoy = any(
+                    e["posicion"] is not None and e["posicion"] <= limite and e["puntaje"] >= umbral
+                    for e in m["esperados"]
+                )
+                if hoy and not pasa:
+                    regresiones.append(m["caso_id"])
+                elif pasa and not hoy:
+                    mejoras.append(m["caso_id"])
         filas.append({"minimo": minimo, "logit": logit, "responden": responden, "no_responden": no_responden,
-                      "sin_info_que_pasan": sin_info_que_pasan, "sin_info_bloqueados": bloqueados})
+                      "sin_info_que_pasan": sin_info_que_pasan, "sin_info_bloqueados": bloqueados,
+                      "regresiones": regresiones, "mejoras": mejoras})
     return filas
 
 
@@ -437,6 +457,34 @@ def resumen_rendimiento(medidas_ms: list[float], p50_max_ms: float, p95_max_ms: 
     p50, p95 = percentil(medidas_ms, 50), percentil(medidas_ms, 95)
     cumple = p50 is not None and p95 is not None and p50 <= p50_max_ms and p95 <= p95_max_ms
     return {"n": len(medidas_ms), "p50_ms": p50, "p95_ms": p95, "cumple": cumple}
+
+
+# Líneas que el servidor deja en su registro (feature 009): ver `warm_up_rerank_provider` y la ruta POST /query.
+PATRON_REGISTRO_PUNTUACION = re.compile(r"Reranker: (\d+) candidatos en (\d+) ms, pico de memoria (\d+|\?) MB")
+PATRON_REGISTRO_CARGA = re.compile(r"Reranker cargado: RSS (\d+|\?) -> (\d+|\?) MB, pico (\d+|\?) MB")
+AVISO_REGISTRO_FALLO = "El reranker falló"
+
+
+def resumir_registro(texto: str, p50_max_ms: float, p95_max_ms: float) -> dict:
+    """Resume el registro del servidor (salida de `railway logs`): puntuaciones del reranker, latencia p50 y p95,
+    pico de memoria, cargas al arrancar y avisos de fallo. Los valores `?` (memoria ilegible) se omiten."""
+    def numero(valor: str) -> int | None:
+        return None if valor == "?" else int(valor)
+
+    puntuaciones = PATRON_REGISTRO_PUNTUACION.findall(texto)
+    latencias = [float(ms) for _, ms, _ in puntuaciones]
+    picos = [numero(pico) for _, _, pico in puntuaciones if numero(pico) is not None]
+    return {
+        "puntuaciones": len(puntuaciones),
+        "candidatos": sorted({int(c) for c, _, _ in puntuaciones}),
+        "latencia": resumen_rendimiento(latencias, p50_max_ms, p95_max_ms),
+        "pico_mb_maximo": max(picos, default=None),
+        "cargas": [
+            {"rss_antes_mb": numero(a), "rss_despues_mb": numero(d), "pico_mb": numero(p)}
+            for a, d, p in PATRON_REGISTRO_CARGA.findall(texto)
+        ],
+        "avisos_de_fallo": texto.count(AVISO_REGISTRO_FALLO),
+    }
 
 
 def variante_limpia(caso: dict) -> str | None:
@@ -735,6 +783,7 @@ def comparar(a: dict, b: dict) -> dict:
                 rx, ry = x["por_modo"][modo]["resultado"], y["por_modo"][modo]["resultado"]
                 if rx != ry:
                     cambios.append(f"{nombre}, modo {modo}: resultado {rx} -> {ry}.")
+            cambios += _cambios_de_rerank(nombre, x.get("rerank"), y.get("rerank"))
     ra, rb = a.get("respuestas"), b.get("respuestas")
     medianas: dict = {}
     if ra and rb:
@@ -755,6 +804,31 @@ def comparar(a: dict, b: dict) -> dict:
                     cambios.append(f"{nombre}: {campo} {x.get(campo)} -> {y.get(campo)}.")
         medianas = _medianas_de_razon(xa, xb)
     return {"cambios": cambios, "datos_distintos": datos_distintos, "medianas": medianas}
+
+
+def _cambios_de_rerank(nombre: str, x: dict | None, y: dict | None) -> list[str]:
+    """Diferencias del reranker (feature 009) entre dos mediciones del mismo caso. Si una de las dos corridas no lo
+    midió (corridas anteriores a la 009 o sin `--rerank`) no hay nada que comparar."""
+    if not x or not y:
+        return []
+    cambios = []
+    mejor_x = max((c["puntaje"] for c in x["candidatos"]), default=0.0)
+    mejor_y = max((c["puntaje"] for c in y["candidatos"]), default=0.0)
+    if abs(mejor_x - mejor_y) > TOLERANCIA:
+        cambios.append(f"{nombre}: mejor puntaje del reranker {mejor_x:.4f} -> {mejor_y:.4f}.")
+    for modo in MODOS:
+        rx, ry = x["por_modo"][modo]["resultado"], y["por_modo"][modo]["resultado"]
+        if rx != ry:
+            cambios.append(f"{nombre}, modo {modo}: resultado con reranker {rx} -> {ry}.")
+    puestos_y = {e["fragmento"]: e["posicion_rerank"] for e in y.get("esperados", [])}
+    for e in x.get("esperados", []):
+        antes, despues = e["posicion_rerank"], puestos_y.get(e["fragmento"])
+        if antes != despues:
+            cambios.append(
+                f"{nombre}: puesto del esperado ({e['fragmento']}) por reranker "
+                f"{'ausente' if antes is None else '#' + str(antes)} -> {'ausente' if despues is None else '#' + str(despues)}."
+            )
+    return cambios
 
 
 def _medianas_de_razon(xa: dict, xb: dict) -> dict:
@@ -844,11 +918,13 @@ def _seccion_rerank(puntajes: dict) -> list[str]:
     barrido = resumen.get("barrido_minimos")
     if barrido:
         lineas += ["", "Barrido del mínimo (casos de la variante completa):", "",
-                   "| Logit | Mínimo | Casos con respuesta que responden | Casos de \"sin información\" que pasarían |", "|---|---|---|---|"]
+                   "| Logit | Mínimo | Casos con respuesta que responden | Casos de \"sin información\" que pasarían | Regresiones frente al coseno | Mejoras frente al coseno |",
+                   "|---|---|---|---|---|---|"]
         for f in barrido:
             lineas.append(
                 f"| {_fmt(f['logit'], 0)} | {_fmt(f['minimo'], 4)} | {len(f['responden'])} de {len(f['responden']) + len(f['no_responden'])} "
-                f"| {', '.join(f['sin_info_que_pasan']) or 'ninguno'} |"
+                f"| {', '.join(f['sin_info_que_pasan']) or 'ninguno'} "
+                f"| {', '.join(f.get('regresiones') or []) or 'ninguna'} | {', '.join(f.get('mejoras') or []) or 'ninguna'} |"
             )
     return [*lineas, ""]
 
@@ -1342,7 +1418,7 @@ def comando_puntajes(args) -> int:
     )
     resumen = resumen_puntajes(mediciones, umbral, limites)
     if reranker is not None:
-        resumen["barrido_minimos"] = barrido_minimos(mediciones)
+        resumen["barrido_minimos"] = barrido_minimos(mediciones, umbral=umbral, limites=limites)
         resumen["ventana_rerank"] = ventana_rerank(mediciones)
     ruta = guardar_json(carpeta_de(contexto), "puntajes.json", {"contexto": contexto, "mediciones": mediciones, "resumen": resumen})
     v = resumen["ventana_separacion"]
@@ -1357,6 +1433,34 @@ def comando_puntajes(args) -> int:
             + (f"; ausentes entre los candidatos: {', '.join(w['ausentes'])}" if w["ausentes"] else "")
         )
     print(f"Duración: {time.perf_counter() - inicio:.0f} s. Guardado en {ruta.relative_to(RAIZ)}")
+    return 0
+
+
+def comando_registro(args) -> int:
+    """Resume el registro del servidor con las líneas del reranker (feature 009); no llama a ningún servicio."""
+    ruta = Path(args.archivo)
+    try:
+        texto = ruta.read_text(encoding="utf-8", errors="replace")
+    except OSError as error:
+        raise ErrorMedicion(f"No se pudo leer {ruta}: {error}.") from error
+    r = resumir_registro(texto, args.p50_max_ms, args.p95_max_ms)
+    lat = r["latencia"]
+    print(f"{r['puntuaciones']} puntuaciones del reranker (candidatos: {', '.join(map(str, r['candidatos'])) or '-'}).")
+    if lat["n"]:
+        print(
+            f"Latencia de la puntuación: p50 {lat['p50_ms']:.0f} ms, p95 {lat['p95_ms']:.0f} ms -> "
+            f"{'cumple' if lat['cumple'] else 'NO cumple'} {args.p50_max_ms:.0f}/{args.p95_max_ms:.0f} ms."
+        )
+    print(f"Pico de memoria máximo en consultas: {r['pico_mb_maximo'] if r['pico_mb_maximo'] is not None else '-'} MB.")
+    for carga in r["cargas"]:
+        print(
+            f"Arranque: RSS {_fmt(carga['rss_antes_mb'])} -> {_fmt(carga['rss_despues_mb'])} MB, "
+            f"pico {_fmt(carga['pico_mb'])} MB."
+        )
+    print(f"Avisos de fallo del reranker: {r['avisos_de_fallo']}.")
+    if args.etiqueta:
+        contexto = contexto_corrida(args.etiqueta, "registro del servidor", archivo=ruta.name)
+        guardar_json(carpeta_de(contexto), "registro.json", {"contexto": contexto, "resumen": r})
     return 0
 
 
@@ -1626,6 +1730,13 @@ def main(argv: list[str] | None = None) -> int:
     ren.add_argument("--p50-max-ms", type=float, default=500, help="Límite de p50 (SC-006)")
     ren.add_argument("--p95-max-ms", type=float, default=1500, help="Límite de p95 (SC-006)")
     ren.set_defaults(funcion=comando_rendimiento)
+
+    reg = sub.add_parser("registro", help="Resume el registro del servidor: latencia y memoria del reranker (sin gasto)")
+    reg.add_argument("--archivo", required=True, help="Archivo con la salida de `railway logs -s MIA`")
+    reg.add_argument("--etiqueta", default="", help="Si se da, guarda el resumen en tmp/linea_base/")
+    reg.add_argument("--p50-max-ms", type=float, default=500, help="Límite de p50 (SC-006)")
+    reg.add_argument("--p95-max-ms", type=float, default=1500, help="Límite de p95 (SC-006)")
+    reg.set_defaults(funcion=comando_registro)
 
     res = sub.add_parser("respuestas", help="Respuesta completa contra POST /query (gasta; exige --tope-usd)")
     res.add_argument("--etiqueta", required=True)

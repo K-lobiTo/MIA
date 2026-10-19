@@ -33,7 +33,7 @@ Procedimiento ya establecido en las features 007 y 008 (resumido en la memoria d
 
 1. `railway variable set RERANK_PROVIDER=local RERANK_CANDIDATES=... -s MIA --skip-deploys` (sin `--skip-deploys` redespliega desde `main` y pierde `dev`).
 2. `python scripts/servicios.py encender MIA --forzar --ref origin/dev`.
-3. Leer en el registro de arranque `Reranker cargado: RSS ...` y comparar con la consola de Railway (memoria en reposo y bajo carga).
+3. Guardar el registro del servidor (`railway logs -s MIA > tmp/registro.txt`) y resumirlo con `python scripts/linea_base.py registro --archivo tmp/registro.txt`: latencia p50 y p95 de la puntuación, pico de memoria, línea de arranque `Reranker cargado: RSS ...` y avisos de fallo (sin gasto). Comparar con la consola de Railway (memoria en reposo y bajo carga).
 4. Corrida de control (`RERANK_PROVIDER=none`) y corrida con reranker con `respuestas --tope-usd ... --solo ...`; `comparar` contra el control.
 5. Cierre: `RERANK_PROVIDER=none`, desactivar el artefacto de prueba, regenerar su clave, `python scripts/servicios.py apagar MIA --forzar`.
 
