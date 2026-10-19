@@ -11,6 +11,7 @@ describe("capabilities", () => {
       canCreateUnit: true,
       canSeeBalance: true,
       canUseAllDomains: true,
+      canEditEquivalences: true,
       showGlobalCaps: true,
     });
   });
@@ -20,6 +21,7 @@ describe("capabilities", () => {
       canCreateUnit: false,
       canSeeBalance: false,
       canUseAllDomains: false,
+      canEditEquivalences: false,
       showGlobalCaps: false,
     });
   });
@@ -27,6 +29,7 @@ describe("capabilities", () => {
   it("sin perfil no puede nada", () => {
     expect(capabilities(null).canCreateUnit).toBe(false);
     expect(capabilities(undefined).canSeeBalance).toBe(false);
+    expect(capabilities(null).canEditEquivalences).toBe(false);
   });
 });
 

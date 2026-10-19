@@ -1,6 +1,6 @@
 import { AppShell, Burger, Button, Group, NavLink, Stack, Text } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconChartBar, IconDatabase, IconKey, IconLogout, type Icon } from "@tabler/icons-react";
+import { IconAbc, IconChartBar, IconDatabase, IconKey, IconLogout, type Icon } from "@tabler/icons-react";
 import { NavLink as RouterLink, Outlet } from "react-router-dom";
 import { ColorSchemeToggle } from "./ColorSchemeToggle";
 import { scopeLabel } from "../auth/capabilities";
@@ -11,6 +11,7 @@ const ICONS: Record<string, Icon> = {
   "/inventario": IconDatabase,
   "/artefactos": IconKey,
   "/uso": IconChartBar,
+  "/siglas": IconAbc,
 };
 
 export function Layout() {
