@@ -38,7 +38,7 @@ Algoritmo:
 | | | "¿Qué es el TFG?" | "TFG" |
 | Pedir información | `(dame\|quiero\|necesito\|busco)( toda)?( la)? (informacion\|datos\|detalles)( que (haya\|tengas\|tenga))? (sobre\|acerca de\|de)` | "Dame información sobre la maestría" | "la maestría" |
 | Pedir que hable de algo | `(hablame\|cuentame\|explicame) (de\|sobre\|acerca de)` | "Háblame de Natalia Soto Solís" | "Natalia Soto Solís" |
-| | `que (sabes\|sabe\|se sabe\|hay\|tienes\|tiene) (de\|sobre\|acerca de)` | "¿Qué se sabe de Cibercrimen?" | "Cibercrimen" |
+| | `que (sabes\|sabe\|se sabe) (de\|sobre\|acerca de)` | "¿Qué se sabe de Cibercrimen?" | "Cibercrimen" |
 
 Todas con límite de palabra (`\b`) y separadas por un espacio. La lista es ampliable; cada forma nueva exige filas en la tabla de pruebas, positivas y negativas.
 
@@ -46,7 +46,7 @@ Todas con límite de palabra (`\b`) y separadas por un espacio. La lista es ampl
 
 1. Al menos 3 caracteres, sin contar signos ni espacios de los extremos, y distinto de la pregunta normalizada.
 2. A lo sumo 8 palabras.
-3. No empieza con "lo" ni "que" y no contiene "que", "cuando", "donde", "cuanto", "cuanta", "cuantos", "cuantas" ni "porque" como palabra completa. Tampoco empieza con un adjetivo o atributo que indica que la pregunta pide un dato y no un nombre: "necesario", "necesaria", "obligatorio", "obligatoria", "posible", "suficiente", "importante", "mejor", "igual", "diferente", "nuevo", "nueva" (cubre "¿Qué hay de nuevo en la maestría?").
+3. No empieza con "lo" ni "que" y no contiene "que", "cuando", "donde", "cuanto", "cuanta", "cuantos", "cuantas" ni "porque" como palabra completa. Tampoco empieza con un adjetivo o atributo que indica que la pregunta pide un dato y no un nombre: "necesario", "necesaria", "obligatorio", "obligatoria", "posible", "suficiente", "importante", "mejor", "igual", "diferente", "nuevo", "nueva" (cubre "¿Qué es nuevo en la maestría?"; las formas "qué hay/tiene de..." no se reducen porque son modismos que piden un dato).
 4. Si la envoltura usa un verbo en pasado ("era", "eran", "fue", "fueron"), la primera palabra del candidato no es un participio (termina en -ado, -ada, -ados, -adas, -ido, -ida, -idos, -idas): "¿Quién fue designado coordinador del proyecto?" pide un dato y no un nombre. Con "es" y "son" no se aplica, porque hay apellidos como "Alvarado".
 5. No contiene `¿ ? ¡ !`.
 

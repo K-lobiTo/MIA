@@ -57,7 +57,7 @@ _WRAPPERS = (
     # Pedir que hable de algo: "háblame de X"
     re.compile(r"^(?:hablame|cuentame|explicame)\s+(?:de|sobre|acerca\s+de)\s+"),
     # "qué se sabe de X"
-    re.compile(r"^que\s+(?:sabes|sabe|se\s+sabe|hay|tienes|tiene)\s+(?:de|sobre|acerca\s+de)\s+"),
+    re.compile(r"^que\s+(?:sabes|sabe|se\s+sabe)\s+(?:de|sobre|acerca\s+de)\s+"),
 )
 
 # Guardas del candidato: palabras que indican una cláusula o que la pregunta pide un dato y no un nombre.
