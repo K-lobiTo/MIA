@@ -187,3 +187,13 @@ description: "Tareas de implementación de la feature 008: pregunta limpia (segu
 6. Polish (T027 a T030).
 
 Es posible parar tras la fase 5: la opción está implementada, probada y apagada por defecto, y la medición puede esperar.
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: cerrar las brechas entre la especificación y lo implementado que halló `/speckit-converge` el 2026-10-18.
+
+- [ ] T031 HIGH: corregir en `src/mia/rag/query_rewrite.py` la expresión `_TRAILING_COURTESY`, que no exige límite de palabra y recorta el final de un nombre: hoy `clean_question("¿Quién es Santa Desgracias?")` devuelve "Santa Des" y `clean_question("¿Quién es Juan Gracias?")` devuelve "Juan". "por favor" debe empezar en un límite de palabra (`(?<!\w)`) y "gracias" solo se quita si lo precede un signo de puntuación (`, . ; : ? !`), de modo que "¿Qué es el IPA, gracias?" siga dando "IPA" y un apellido final no se pierda. Agregar a `tests/unit/test_query_rewrite.py` las filas ("¿Quién es Santa Desgracias?" da "Santa Desgracias", "¿Quién es Juan Gracias?" da "Juan Gracias", "¿Qué es el IPA, gracias?" da "IPA", "¿Qué es el TFG? Gracias" da "TFG", "¿Qué es el TFG por favor" da "TFG") per FR-004, FR-005 y US1/AC2 (partial)
+- [ ] T032 MEDIUM: hacer que `correr_respuestas` de `scripts/linea_base.py` registre por consulta también el texto de la pregunta limpia (`pregunta_limpia_texto`, tomado del grupo entre « » de la nota de Uso, o nulo si no hubo segundo intento), agregarlo a `CAMPOS_OPCIONALES` y a los campos que compara `comparar`, y cubrirlo en `tests/unit/test_linea_base.py` (nota con y sin segundo intento, nota con texto que contiene "; " o paréntesis); la spec pide registrar "si hubo segundo intento y con qué texto" y hoy solo se guardan los dos indicadores per FR-013 (partial)
+- [ ] T033 LOW: anotar el resultado de la feature 008 en `docs/Definicion_Requerimientos_V3.md` en la fila BUS-1 de la tabla 2.3 (qué se resolvió: una de tres personas con razonamiento; qué queda: documento más allá del límite de resultados, umbral, siglas) y en la primera viñeta de 2.9 (los casos S22-1 a S22-4 con la opción encendida), como pedía T028 per FR-014 y plan: documentación viva (partial)
