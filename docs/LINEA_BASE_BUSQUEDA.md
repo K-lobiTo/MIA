@@ -222,7 +222,7 @@ Medido el 2026-10-18 en producción con el código de `dev`, 45 consultas por mo
 | SC-006 latencia p50 | literal 2.378 ms (control7) frente a 2.175 y 1.900; razonamiento 2.856 frente a 3.007 y 2.819 | Cumple |
 | SC-007 apagadas, mismo resultado que la línea base | `base` contra `control7`: 6 diferencias, todas de variación del modelo en `S22-2` y en el conteo de casos nuevos | Cumple |
 | SC-008 regla de seguridad con la 006 | `todo`: 1 respuesta en literal y 1 en razonamiento de 70 con contenido (menos de 3 %) | Cumple |
-| SC-009 verificación por una persona | pendiente (comprobación manual del usuario) | Pendiente |
+| SC-009 verificación por una persona | el 2026-10-18 el usuario consultó en modo literal, con las tres opciones encendidas, los contenidos de Diseño de Experimentos, Procesamiento de Lenguaje Natural e Introducción a la Investigación: las tres respuestas salieron completas, y observó que incluso señalaban inconsistencias en los propios documentos originales | Cumple |
 
 **Hallazgos aparte de la feature**
 - La mayoría de las listas de programas de curso (5 de 6) ya salían completas sin la feature: el temario cabía en el fragmento y su vecino. El caso que falló, Diseño de Experimentos, tiene 15 fragmentos justo por encima del límite de 12 para entregar un documento completo. La feature resuelve ese caso y deja un margen para los programas de hasta 25 fragmentos.
