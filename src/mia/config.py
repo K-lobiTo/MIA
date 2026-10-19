@@ -98,6 +98,9 @@ class Settings(BaseSettings):
     query_hybrid_search: str = "off"
     hybrid_max_docs: int = Field(default=10, ge=1, le=200)
     hybrid_term_chunks: int = Field(default=200, ge=20, le=1000)
+    # Fracción de las palabras específicas que debe superar un fragmento para pasar si solo llegó por palabras ("más de"):
+    # con 0,5, 1 de 1, 2 de 2, 2 de 3 y 3 de 4; con 1,0 exige todas.
+    hybrid_min_match_ratio: float = Field(default=0.5, ge=0.1, le=1.0)
     hybrid_lexical_limit: int = Field(default=20, ge=1, le=100)
     hybrid_lexical_slots: int = Field(default=3, ge=0, le=16)
     hybrid_max_groups: int = Field(default=8, ge=1, le=16)

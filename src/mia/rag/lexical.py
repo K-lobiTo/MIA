@@ -193,17 +193,19 @@ def lexical_lookup(store, domains: list[str], groups: list[LexicalGroup], term_c
     ]
 
 
-def pick_candidates(groups: list[LexicalGroup], max_docs: int, limit: int, elapsed_ms: int = 0) -> LexicalOutcome:
+def pick_candidates(groups: list[LexicalGroup], max_docs: int, limit: int, elapsed_ms: int = 0,
+                    ratio: float = 0.5) -> LexicalOutcome:
     """Regla de la mayoría: un grupo es específico si aparece en como máximo `max_docs` documentos (uno que no
     aparece en ninguno cuenta como específico, sin coincidencias); con `n` grupos específicos, un fragmento pasa si
-    contiene `n // 2 + 1` o más. Se ordena por grupos coincidentes y por peso (más peso cuanto menos documentos
-    contienen el grupo) y se queda con los primeros `limit`."""
+    contiene más de `ratio * n` (con 0,5, `n // 2 + 1`: 1 de 1, 2 de 2, 2 de 3, 3 de 4; con 1,0, todos). Se ordena por
+    grupos coincidentes y por peso (más peso cuanto menos documentos contienen el grupo) y se queda con los primeros
+    `limit`."""
     marked = [replace(g, specific=g.documents <= max_docs) for g in groups]
     specific = [g for g in marked if g.specific]
     n = len(specific)
     if n == 0:
         return LexicalOutcome(groups=marked, specific=0, elapsed_ms=elapsed_ms)
-    need = n // 2 + 1
+    need = min(n, math.floor(n * ratio + 1e-9) + 1)
     matched: dict[str, int] = {}
     weight: dict[str, float] = {}
     for group in specific:
@@ -262,15 +264,22 @@ def merge_hybrid(vector_results: list[SearchResult], lexical_results: list[Searc
 # --- Notas y avisos -------------------------------------------------------------------------------
 
 
-def hybrid_note(outcome: LexicalOutcome, merged_new: int) -> str | None:
-    """Nota de Uso con lo que aportó la parte léxica; None si no hubo candidatos."""
+def hybrid_note(outcome: LexicalOutcome, merged_new: int, main_by_words: bool = False) -> str | None:
+    """Nota de Uso con lo que aportó la parte léxica; None si no hubo candidatos. `main_by_words` dice que el
+    fragmento principal de la lista final (el que ordena el contexto) llegó solo por palabras."""
     if not outcome.candidates:
         return None
-    return f"Búsqueda híbrida: {len(outcome.candidates)} por palabras, {merged_new} nuevos"
+    note = f"Búsqueda híbrida: {len(outcome.candidates)} por palabras, {merged_new} nuevos"
+    return f"{note}, principal por palabras" if main_by_words else note
 
 
 def failure_note() -> str:
     return "Búsqueda por palabras no disponible: se usó el significado"
+
+
+def equivalences_failure_note() -> str:
+    """La lista de siglas no se pudo leer: la parte léxica siguió, pero sin relacionar siglas con sus formas."""
+    return "Lista de siglas no disponible: se buscó sin equivalencias"
 
 
 _last_failure_warning: float | None = None

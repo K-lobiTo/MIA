@@ -39,6 +39,7 @@ from mia.rag.embeddings import get_embedding_provider
 from mia.rag.equivalences import get_equivalences
 from mia.rag.lexical import (
     LexicalOutcome,
+    equivalences_failure_note,
     failure_note,
     hybrid_enabled,
     hybrid_note,
@@ -117,15 +118,18 @@ class _HybridRun:
         self.outcome = LexicalOutcome()
         self.results: list = []
         self.failed = False
+        self.equivalences_failed = False
         self.merged_new = 0
+        self.main_by_words = False
         self._resolved = False
         self._future = None
         self._executor: ThreadPoolExecutor | None = None
         try:
             equivalences = get_equivalences(session)
         except Exception as exc:  # noqa: BLE001
-            # Sin la lista la consulta sigue, solo sin relacionar siglas.
+            # Sin la lista la consulta sigue, solo sin relacionar siglas; queda el aviso y la nota en Uso.
             warn_lexical_failure(exc)
+            self.equivalences_failed = True
             equivalences = []
         groups = query_groups(question, equivalences, settings.hybrid_max_groups, settings.hybrid_min_token_len)
         if groups:
@@ -146,7 +150,9 @@ class _HybridRun:
         try:
             budget = settings.hybrid_budget_ms / 1000 if settings.hybrid_budget_ms > 0 else None
             found, thread_ms = self._future.result(timeout=budget)
-            outcome = pick_candidates(found, settings.hybrid_max_docs, settings.hybrid_term_chunks, thread_ms)
+            outcome = pick_candidates(
+                found, settings.hybrid_max_docs, settings.hybrid_term_chunks, thread_ms, settings.hybrid_min_match_ratio
+            )
             if outcome.candidates:
                 scored = self.store.score_chunks(
                     self.embedding, self.domains, [c.chunk_id for c in outcome.candidates]
@@ -174,6 +180,7 @@ class _HybridRun:
             )
             previous = {r.chunk_id for r in results}
             self.merged_new = len([r for r in merged if r.chunk_id not in previous])
+            self.main_by_words = bool(merged) and merged[0].chunk_id not in previous
         self.outcome.wait_ms += _elapsed_ms(started)
         return merged
 
@@ -181,7 +188,9 @@ class _HybridRun:
     def note(self) -> str | None:
         if self.failed:
             return failure_note()
-        return hybrid_note(self.outcome, self.merged_new)
+        notes = [n for n in (hybrid_note(self.outcome, self.merged_new, self.main_by_words),
+                             equivalences_failure_note() if self.equivalences_failed else None) if n]
+        return "; ".join(notes) if notes else None
 
 
 def _reject(

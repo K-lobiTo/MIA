@@ -343,3 +343,35 @@ def test_el_aviso_de_fallo_sale_a_lo_sumo_una_vez_por_minuto(caplog, monkeypatch
         warn_lexical_failure(RuntimeError("tres"))
     mensajes = [r.getMessage() for r in caplog.records if "búsqueda por palabras falló" in r.getMessage()]
     assert len(mensajes) == 2 and "uno" in mensajes[0] and "tres" in mensajes[1]
+
+
+# --- Proporción configurable y fragmento principal (convergencia de la feature 010) ---------------------------
+
+
+@pytest.mark.parametrize(
+    ("n", "ratio", "necesita"),
+    [(1, 0.5, 1), (2, 0.5, 2), (3, 0.5, 2), (4, 0.5, 3), (5, 0.5, 3), (3, 1.0, 3), (5, 1.0, 5), (4, 0.25, 2), (3, 0.1, 1)],
+)
+def test_la_proporcion_de_la_regla_es_configurable(n, ratio, necesita):
+    # El fragmento "ok" contiene exactamente `necesita` grupos; "corto" uno menos.
+    grupos = [
+        grupo(f"g{i}", ids=[f"x{i}"] + (["ok"] if i < necesita else []) + (["corto"] if i < necesita - 1 else []))
+        for i in range(n)
+    ]
+    candidatos = [c.chunk_id for c in pick_candidates(grupos, 60, 20, ratio=ratio).candidates]
+    assert "ok" in candidatos
+    assert "corto" not in candidatos
+
+
+def test_con_proporcion_uno_solo_pasa_quien_tiene_todas_las_palabras():
+    # joseph (3 fragmentos) y obando (2): con 1,0 exige las dos; con el valor por defecto alcanzaba con dos de tres.
+    grupos = [grupo("joseph", ids={"a", "b"}), grupo("obando", ids={"a"}), grupo("sandi")]
+    assert [c.chunk_id for c in pick_candidates(grupos, 60, 20).candidates] == ["a"]
+    assert pick_candidates(grupos, 60, 20, ratio=1.0).candidates == []
+
+
+def test_la_nota_dice_si_el_fragmento_principal_llego_solo_por_palabras():
+    outcome = lexical.LexicalOutcome(candidates=[LexicalCandidate("a", 2, 1.0)])
+    assert hybrid_note(outcome, 1, main_by_words=True) == "Búsqueda híbrida: 1 por palabras, 1 nuevos, principal por palabras"
+    assert hybrid_note(outcome, 1) == "Búsqueda híbrida: 1 por palabras, 1 nuevos"
+    assert lexical.equivalences_failure_note() == "Lista de siglas no disponible: se buscó sin equivalencias"

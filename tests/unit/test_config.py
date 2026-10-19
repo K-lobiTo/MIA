@@ -152,3 +152,48 @@ def test_con_el_tope_global_alcanzado_se_informa(client, db, base, modes_config,
     body = client.get("/config", headers=artefacto.headers).json()
 
     assert body["caps"]["global_cap_reached"] is True and not any(m["available"] for m in body["modes"])
+
+
+# --- Búsqueda híbrida (feature 010): rangos de las variables ----------------------------------------------------
+
+
+def test_los_valores_por_defecto_de_la_busqueda_hibrida_son_los_calibrados():
+    from mia.config import Settings
+
+    base = Settings(_env_file=None)
+    assert base.query_hybrid_search == "off"
+    assert (base.hybrid_max_docs, base.hybrid_term_chunks, base.hybrid_lexical_limit, base.hybrid_lexical_slots) == (
+        10, 200, 20, 3
+    )
+    assert (base.hybrid_max_groups, base.hybrid_min_token_len, base.hybrid_rrf_k, base.hybrid_budget_ms) == (8, 3, 60, 800)
+    assert base.hybrid_min_match_ratio == 0.5 and base.hybrid_equivalences_ttl_seconds == 60
+
+
+@pytest.mark.parametrize(
+    ("campo", "valor"),
+    [
+        ("hybrid_min_token_len", 2),
+        ("hybrid_max_docs", 0),
+        ("hybrid_term_chunks", 5),
+        ("hybrid_lexical_slots", 17),
+        ("hybrid_min_match_ratio", 0.0),
+        ("hybrid_min_match_ratio", 1.5),
+        ("hybrid_budget_ms", -1),
+    ],
+)
+def test_un_valor_numerico_de_la_busqueda_hibrida_fuera_de_rango_no_deja_arrancar(campo, valor):
+    from pydantic import ValidationError
+
+    from mia.config import Settings
+
+    with pytest.raises(ValidationError, match=campo):
+        Settings(_env_file=None, **{campo: valor})
+
+
+def test_un_valor_invalido_del_interruptor_de_la_busqueda_hibrida_se_trata_como_apagado_sin_fallar():
+    from mia.config import Settings
+    from mia.rag.lexical import hybrid_enabled
+
+    # El campo es texto libre justamente para que un valor inválido no impida el arranque.
+    assert Settings(_env_file=None, query_hybrid_search="quizas").query_hybrid_search == "quizas"
+    assert hybrid_enabled("quizas") is False

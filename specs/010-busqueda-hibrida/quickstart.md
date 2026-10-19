@@ -46,7 +46,7 @@ python scripts/linea_base.py puntajes --etiqueta hibrida --env-file .env.producc
 python scripts/linea_base.py comparar control hibrida
 ```
 
-Criterios (SC-001 a SC-004): los casos objetivo (`S22-1` a `S22-4`, `SG3`, `EN1` a `EN6`, `EN10`) con su documento como candidato léxico y entre los resultados finales; ningún caso "sin información" con candidatos léxicos que lleguen al modelo (excepto los que ya llegaban, como `I1`); los 19 casos de la batería del MVP sin cambios de documento; los 12 o más casos nuevos de FR-017 calibran `HYBRID_MAX_DOC_FREQ` y `HYBRID_LEXICAL_SLOTS`.
+Criterios (SC-001 a SC-004): los casos objetivo (`S22-1` a `S22-4`, `SG3`, `EN1` a `EN6`, `EN10`) con su documento como candidato léxico y entre los resultados finales; ningún caso "sin información" con candidatos léxicos que lleguen al modelo (excepto los que ya llegaban, como `I1`); los 19 casos de la batería del MVP sin cambios de documento; los 12 o más casos nuevos de FR-017 calibran `HYBRID_MAX_DOCS` y `HYBRID_LEXICAL_SLOTS`.
 
 ## 4. Latencia y memoria
 

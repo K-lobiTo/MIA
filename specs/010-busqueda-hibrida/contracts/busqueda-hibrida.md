@@ -17,7 +17,7 @@ Contrato interno de la feature (no cambia la forma de la respuesta de `POST /que
 | `HYBRID_BUDGET_MS` | `hybrid_budget_ms` | 800 (0 a 30000) | tiempo máximo de espera de la parte léxica; 0 la espera sin tope. Es una red de seguridad, no el criterio de aceptación: SC-007 (0,2 s en p50, 0,5 s en p95) se evalúa con la espera y fusión de consultas normales |
 | `HYBRID_EQUIVALENCES_TTL_SECONDS` | `hybrid_equivalences_ttl_seconds` | 60 (0 a 3600) | vigencia de la caché de la lista de equivalencias |
 
-La regla de la mayoría ("más de la mitad") es fija: no se configura.
+| `HYBRID_MIN_MATCH_RATIO` | `hybrid_min_match_ratio` | 0,5 (0,1 a 1,0) | un fragmento que solo llegó por palabras pasa si contiene más de esta fracción de las palabras específicas de la pregunta: con 0,5 la regla de la mayoría acordada (1 de 1, 2 de 2, 2 de 3, 3 de 4); con 1,0 exige todas |
 
 ## 2. Métodos nuevos de `VectorStore` (`mia.storage.vector_store`)
 
@@ -42,15 +42,15 @@ def score_chunks(self, embedding: list[float], domains: list[str], chunk_ids: li
 def hybrid_enabled(value: str) -> bool
 def normalize(text: str) -> str                                  # minúsculas, sin tildes, "T.F.G." -> "tfg"
 def query_groups(question: str, equivalences: list[Equivalence], max_groups: int, min_len: int) -> list[LexicalGroup]
-def pick_candidates(groups: list[LexicalGroup], max_docs: int, limit: int) -> LexicalOutcome
+def pick_candidates(groups: list[LexicalGroup], max_docs: int, limit: int, elapsed_ms: int = 0, ratio: float = 0.5) -> LexicalOutcome
 def merge_hybrid(vector_results, lexical_results, limit: int, slots: int, k: int) -> list[SearchResult]
-def hybrid_note(outcome: LexicalOutcome, merged_new: int) -> str | None
+def hybrid_note(outcome: LexicalOutcome, merged_new: int, main_by_words: bool = False) -> str | None
 def failure_note() -> str
 def warn_lexical_failure(exc: Exception) -> None                  # a lo sumo un aviso por minuto
 ```
 
 - `query_groups`: normaliza la pregunta; si una palabra es la sigla de una equivalencia, el grupo lleva la sigla y cada forma desarrollada como alternativas; si la pregunta contiene la forma desarrollada como palabras consecutivas, esas palabras se reemplazan por un grupo con la forma y la sigla. Descarta palabras vacías y de menos de `min_len` letras (las alternativas que vienen de una equivalencia no se filtran), quita duplicados, no encadena equivalencias y devuelve como mucho `max_groups` grupos en el orden de la pregunta.
-- `pick_candidates`: recibe los grupos con `chunk_ids` y `documents` ya consultados y aplica la regla: específico si `documents <= max_docs`; con `n` grupos específicos (los ausentes cuentan) un fragmento pasa si coincide con `n // 2 + 1` o más; ordena por grupos coincidentes, peso por rareza y a igualdad queda a la espera del desempate por coseno; devuelve los mejores `limit`. Con `n = 0` no hay candidatos.
+- `pick_candidates`: recibe los grupos con `chunk_ids` y `documents` ya consultados y aplica la regla: específico si `documents <= max_docs`; con `n` grupos específicos (los ausentes cuentan) un fragmento pasa si coincide con más de `ratio * n` (`min(n, floor(n * ratio) + 1)`; con 0,5, `n // 2 + 1`); ordena por grupos coincidentes, peso por rareza y a igualdad queda a la espera del desempate por coseno; devuelve los mejores `limit`. Con `n = 0` no hay candidatos.
 - `merge_hybrid`: RRF con `k` sobre la lista de significado (en su orden) y la léxica (ya con coseno, ordenada por grupos, peso y coseno). Los fragmentos solo léxicos son como mucho `slots`; el total no supera `limit`; si `lexical_results` está vacía devuelve `vector_results` sin cambios (mismo objeto, mismo orden, mismos `score`). Si actúa, cada resultado se devuelve en una copia con `score` igual a su valor de fusión.
 
 ## 4. Comportamiento de `POST /query`
@@ -63,7 +63,7 @@ Con `on`:
 2. Mientras tanto corre la búsqueda por significado exactamente como hoy (con o sin reranker, 009).
 3. Se espera la parte léxica hasta `HYBRID_BUDGET_MS`. Se calculan los candidatos (`pick_candidates`), se obtienen sus textos y cosenos con un `score_chunks` y se fusionan con el resultado de `retrieve` (`merge_hybrid`).
 4. La lista fusionada sustituye a la de `retrieve`. Si queda vacía y la pregunta limpia (008) está encendida, se repite la búsqueda por significado con la pregunta limpia y se aplica de nuevo la fusión con los mismos candidatos léxicos; después todo sigue igual (contexto de 007, citas de 006, modelo de lenguaje).
-5. Si la parte léxica falla (excepción, índice ausente, tabla de equivalencias no disponible, tiempo agotado), la consulta sigue con el resultado de `retrieve` sin cambios, con un aviso (a lo sumo uno por minuto) y la nota de caída. Nunca devuelve un error por esa causa.
+5. Si la parte léxica falla (excepción, índice ausente, tiempo agotado), la consulta sigue con el resultado de `retrieve` sin cambios, con un aviso (a lo sumo uno por minuto) y la nota de caída. Si lo que no se puede leer es la lista de equivalencias, la parte léxica sigue sin relacionar siglas, con el mismo aviso y la nota `Lista de siglas no disponible: se buscó sin equivalencias` (junto a la nota de lo que aportó, si aportó algo). Nunca devuelve un error por esa causa.
 6. Si la fusión deja la lista vacía, la respuesta es "sin información suficiente" sin llamar al modelo.
 
 Invariantes: el número de fragmentos que llega al modelo no supera el límite del modo (FR-006); el filtro de dominios es el de la consulta en las dos búsquedas (FR-004); no se agregan llamadas a modelos de lenguaje ni a servicios externos (FR-008); la estructura de `QueryResponse` no cambia (FR-014).
@@ -71,7 +71,8 @@ Invariantes: el número de fragmentos que llega al modelo no supera el límite d
 ## 5. Salidas observables
 
 - **Uso** (`QueryLog.reject_reason`), notas unidas con "; " en el orden reranker, híbrida, pregunta limpia, corte, regla de seguridad:
-  - `Búsqueda híbrida: N por palabras, M nuevos`: `N` candidatos léxicos, `M` de ellos que entraron a la lista final y no estaban por significado. Solo si la parte léxica aportó al menos un candidato; sin candidatos, ninguna nota.
+  - `Búsqueda híbrida: N por palabras, M nuevos`: `N` candidatos léxicos, `M` de ellos que entraron a la lista final y no estaban por significado; con el sufijo `, principal por palabras` si el fragmento principal de la lista final (el primero, que ordena el contexto) llegó solo por palabras. Solo si la parte léxica aportó al menos un candidato; sin candidatos, ninguna nota.
+  - `Lista de siglas no disponible: se buscó sin equivalencias`: cuando la lista de equivalencias no se pudo leer.
   - `Búsqueda por palabras no disponible: se usó el significado`: cuando la parte léxica falló.
 - **Registro del servidor** (INFO): `Búsqueda híbrida: %d grupos (%d específicos), %d candidatos, %d nuevos; hilo %d ms, espera y fusión %d ms (modo %s)`, donde el primer tiempo es lo que tardó el hilo léxico y el segundo lo que la consulta esperó de más tras la búsqueda por significado, más la fusión (el que evalúa SC-007); WARNING (a lo sumo uno por minuto): `La búsqueda por palabras falló (%s: %s): la consulta usa el significado`.
 - **`scripts/linea_base.py registro`** cuenta las notas anteriores y resume la latencia de la parte léxica del registro INFO.
