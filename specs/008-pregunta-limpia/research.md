@@ -30,7 +30,7 @@ Decisiones de diseño con su razón y las alternativas. Las cifras de la línea 
 
 1. Al menos 3 caracteres útiles (sin signos ni espacios en los extremos) y distinto, ya normalizado, de la pregunta original.
 2. A lo sumo 8 palabras.
-3. No empieza con "lo" ni "que" y no contiene "que", "cuando", "donde", "cuanto/a/os/as" ni "porque" como palabra completa. Esas palabras indican una cláusula ("¿Qué es lo que establece el reglamento sobre las becas?") y, por tanto, una pregunta sobre un dato y no sobre un nombre. Tampoco empieza con un adjetivo o atributo como "necesario", "obligatorio", "posible", "suficiente", "importante", "mejor", "igual" o "diferente" ("¿Qué es necesario para graduarse?"): por la misma razón, pide un dato.
+3. No empieza con "lo" ni "que" y no contiene "que", "cuando", "donde", "cuanto/a/os/as" ni "porque" como palabra completa. Esas palabras indican una cláusula ("¿Qué es lo que establece el reglamento sobre las becas?") y, por tanto, una pregunta sobre un dato y no sobre un nombre. Tampoco empieza con un adjetivo o atributo como "necesario", "obligatorio", "posible", "suficiente", "importante", "mejor", "igual", "diferente" o "nuevo/a" ("¿Qué es necesario para graduarse?", "¿Qué hay de nuevo...?"): por la misma razón, pide un dato.
 4. La pregunta es una sola: después de quitar los signos de los extremos no quedan signos `¿ ? ¡ !` en el interior.
 
 

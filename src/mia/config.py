@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     # Si el modelo termina la generación de forma anormal (límite de longitud u otro motivo) se reintenta una
     # vez, respetando los topes de gasto, y si vuelve a cortarse se entrega con un aviso. "on"/"off".
     query_retry_cut_answers: str = "off"
+    # Pregunta limpia (feature 008, ver mia.rag.query_rewrite): si la primera búsqueda no deja ningún fragmento
+    # sobre el umbral, se repite una vez con la pregunta reducida a lo que se busca ("¿Quién es X?" pasa a
+    # "X"), por reglas de texto y sin modelo de lenguaje. "on"/"off" (otro valor = off, con aviso).
+    query_clean_question: str = "off"
 
     # En Render free (512 MB) ingerir actas grandes agota la memoria: allí se desactiva y la ingesta
     # se hace desde una instancia local apuntando a las mismas bases (ver docs/OPERACION.md).

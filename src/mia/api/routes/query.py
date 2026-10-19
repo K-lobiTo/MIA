@@ -37,6 +37,7 @@ from mia.rag.context import ContextPolicy, build_passages
 from mia.rag.embeddings import get_embedding_provider
 from mia.rag.llm import RagContext, get_llm_provider, is_no_info_answer
 from mia.rag.modes import estimate_cost, mode_available, mode_config
+from mia.rag.query_rewrite import clean_note, clean_question, clean_question_enabled
 from mia.storage.db import get_session
 from mia.storage.models import Artifact, Document, Domain, QueryLog
 from mia.storage.vector_store import get_vector_store
@@ -170,9 +171,22 @@ def query(
     )
     relevant = [r for r in results if r.score >= settings.query_similarity_threshold]
 
+    # Con QUERY_CLEAN_QUESTION encendida, si nada pasó el umbral se repite la búsqueda una vez con la pregunta
+    # reducida a lo que se busca (feature 008). Solo reglas de texto: el segundo intento no llama a ningún modelo
+    # de lenguaje, y el modelo recibe siempre la pregunta original.
+    clean_question_note: str | None = None
+    if not relevant and clean_question_enabled(settings.query_clean_question):
+        cleaned = clean_question(payload.question)
+        if cleaned:
+            cleaned_embedding = embedding_provider.embed([cleaned], is_query=True)[0]
+            results = vector_store.search(cleaned_embedding, domains=payload.domains, limit=config.search_limit)
+            relevant = [r for r in results if r.score >= settings.query_similarity_threshold]
+            clean_question_note = clean_note(cleaned, found=bool(relevant))
+
     def no_info(model: str | None = None) -> QueryResponse:
         log.outcome = "no_info"
         log.model = model
+        log.reject_reason = clean_question_note
         log.latency_ms = _elapsed_ms(started)
         session.add(log)
         session.commit()
@@ -326,7 +340,7 @@ def query(
 
     if notice:
         answer_text = with_notice(answer_text)
-    log.reject_reason = combine_notes(cut_note, safety_note)
+    log.reject_reason = combine_notes(clean_question_note, cut_note, safety_note)
     log.outcome = "answered"
     log.sources = json.dumps(
         [{"domain": d, "document": n} for d, n in dict.fromkeys((s.domain, s.document) for s in sources)],

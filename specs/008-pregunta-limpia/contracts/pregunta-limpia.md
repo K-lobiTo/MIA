@@ -46,7 +46,7 @@ Todas con límite de palabra (`\b`) y separadas por un espacio. La lista es ampl
 
 1. Al menos 3 caracteres, sin contar signos ni espacios de los extremos, y distinto de la pregunta normalizada.
 2. A lo sumo 8 palabras.
-3. No empieza con "lo" ni "que" y no contiene "que", "cuando", "donde", "cuanto", "cuanta", "cuantos", "cuantas" ni "porque" como palabra completa. Tampoco empieza con un adjetivo o atributo que indica que la pregunta pide un dato y no un nombre: "necesario", "necesaria", "obligatorio", "obligatoria", "posible", "suficiente", "importante", "mejor", "igual", "diferente".
+3. No empieza con "lo" ni "que" y no contiene "que", "cuando", "donde", "cuanto", "cuanta", "cuantos", "cuantas" ni "porque" como palabra completa. Tampoco empieza con un adjetivo o atributo que indica que la pregunta pide un dato y no un nombre: "necesario", "necesaria", "obligatorio", "obligatoria", "posible", "suficiente", "importante", "mejor", "igual", "diferente", "nuevo", "nueva" (cubre "¿Qué hay de nuevo en la maestría?").
 4. No contiene `¿ ? ¡ !`.
 
 ## Casos de la tabla de pruebas (resumen)
