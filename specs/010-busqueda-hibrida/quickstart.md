@@ -50,11 +50,9 @@ Criterios (SC-001 a SC-004): los casos objetivo (`S22-1` a `S22-4`, `SG3`, `EN1`
 
 ## 4. Latencia y memoria
 
-```bash
-python scripts/linea_base.py rendimiento --etiqueta hibrida --env-file .env
-```
-
-Latencia de la parte léxica (p50, p95) con el límite de 0,2 s y 0,5 s (SC-007), RAM de la API con y sin la opción (sin cambio esperado) y tamaño del índice y memoria de Qdrant (`scripts/palabras.py estado`). En Railway, solo con autorización: desplegar `dev` según el flujo de [OPERACION.md](../../docs/OPERACION.md), tope de gasto antes de cada corrida de `respuestas`, y cerrar producción al terminar como en las features 005 a 009.
+- **Latencia de la parte léxica**: `puntajes --palabras` guarda los milisegundos de la parte léxica por caso (`ms` en `puntajes.json`; p50 y p95 en el informe). Para la espera y fusión que evalúa SC-007 (lo que la consulta espera de más, con la búsqueda por significado en paralelo) se repitió el recorrido de los casos con `_HybridRun` de la ruta contra un Qdrant local y contra el Qdrant de producción (2026-10-19, resultados en [LINEA_BASE_BUSQUEDA.md](../../docs/LINEA_BASE_BUSQUEDA.md)); en Railway se lee del registro del servidor: `python scripts/linea_base.py registro --archivo <salida de railway logs -s MIA>`.
+- **Memoria y almacenamiento**: la API no suma RAM. En Qdrant, `python scripts/palabras.py estado` (índice y fragmentos indexados) y `docker stats` del contenedor local con y sin el índice (`scripts/palabras.py quitar` y `preparar`).
+- **Railway, solo con autorización**: desplegar `dev` según el flujo de [OPERACION.md](../../docs/OPERACION.md) aplica la migración `0005` a la base de Neon; tope de gasto antes de cada corrida de `respuestas` (control con `QUERY_HYBRID_SEARCH=off` y corrida con `on`), y cerrar producción al terminar como en las features 005 a 009. No se hizo en esta feature (ver tareas T058 a T061).
 
 ## 5. Panel de siglas (manual)
 

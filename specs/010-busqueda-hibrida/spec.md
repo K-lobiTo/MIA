@@ -218,6 +218,25 @@ El operador abre en el panel de administración la pantalla de equivalencias, ve
 - **SC-011**: El informe concluye explícitamente, con los datos medidos, una de tres recomendaciones (conservar, dejar apagado, combinar con el reranker local) y lista para cada criterio si se cumple o no.
 - **SC-012**: El operador agrega una equivalencia desde el panel y la consulta siguiente la usa en menos de un minuto, sin reiniciar la API; una persona sin alcance global no puede cambiarla; y la API arranca con la versión anterior de la base (procedimiento de FR-021) sin pérdida de datos.
 
+### Resultados medidos (2026-10-19)
+
+Detalle en [LINEA_BASE_BUSQUEDA.md](../../docs/LINEA_BASE_BUSQUEDA.md) y [research.md](research.md) (R16). Medición gratuita (sin tokens) en un Qdrant local con una copia de producción y, con la autorización del usuario, contra el Qdrant de producción en solo lectura (resultados idénticos). 70 casos, 98 preguntas. La medición con respuestas en Railway no se hizo (sin autorización de gasto ni de despliegue).
+
+| Criterio | Resultado | Veredicto |
+|---|---|---|
+| SC-001 | `S22-2`, `S22-3`, `S22-4`, `EN1` a `EN4` (con la pregunta completa y la corta) tienen su documento en la lista final en los dos modos. `SG3` (MGTI) no: la sigla con su forma desarrollada aparece en 14 documentos del dominio y deja de ser específica; se reporta aparte con la razón. | Cumple, con `SG3` reportado aparte |
+| SC-002 | 8 de 8 preguntas de BUS-1 y BUS-2 con su documento en la lista final en literal (antes 1) y en razonamiento (antes 2). Medido en recuperación, no con respuestas. | Cumple en recuperación |
+| SC-003 | Ninguno de los casos "sin información" (`N1`, `I1` a `I3`, `SR1` a `SR7`, `EN7` a `EN9`, `HS1` a `HS6`) recibe candidatos léxicos: ninguno llega al modelo por esta vía. `EN9` ("¿Qué es obligatorio en el trabajo de Joseph Obando Sandí?") tampoco, porque `obligatorio` cuenta como palabra específica ausente. | Cumple en recuperación |
+| SC-004 | Ningún caso con respuesta empeora (65 de 69 con su documento, antes 40 y 44). Con respuestas, no medido. | Cumple en recuperación; respuestas no medidas |
+| SC-005 | Pruebas automáticas: con la opción apagada, con `""` o con un valor inválido no se llama a la parte léxica, no se lee la tabla de siglas y se entrega lo mismo que antes. | Cumple |
+| SC-006 | Ninguna llamada nueva a un modelo de lenguaje (por diseño y por pruebas). El costo adicional por consulta no se midió con respuestas. | No medido (sin autorización) |
+| SC-007 | Contra Qdrant Cloud desde la laptop del usuario (unos 80 ms de ida y vuelta): espera y fusión p50 82 ms y p95 203 ms (máximo 874 ms); local, p50 5 ms y p95 10 ms. | Cumple |
+| SC-008 | La API no suma RAM (el índice vive en Qdrant). En Qdrant, el índice ocupa unos 140 MB más en un contenedor local (cifra de `docker stats`, que incluye la caché de archivos mapeados) y el almacenamiento de la colección copiada queda en 52 MB. RAM de la API en Railway y memoria de Qdrant Cloud sin medir. | Cumple por diseño; sin medir en Railway |
+| SC-009 | Pruebas automáticas (almacén sin métodos léxicos, error, tiempo agotado, falla de `score_chunks`, tabla de siglas ilegible): todas responden por significado con aviso y nota, ninguna da error. | Cumple |
+| SC-010 | `scripts/palabras.py preparar` deja 6.239 de 6.239 fragmentos indexados en 1,5 s (local) y en producción, sin recalcular vectores y repetible. | Cumple |
+| SC-011 | Conservar y encender cuando el usuario decida; ver [LINEA_BASE_BUSQUEDA.md](../../docs/LINEA_BASE_BUSQUEDA.md). | Cumple |
+| SC-012 | Verificado en el navegador (cuenta global edita; cuenta de programa solo ve; el duplicado se rechaza), por pruebas automáticas (403 `global_only`, caché) y la vuelta atrás probada en SQLite (`alembic downgrade 0004` y `prototipo-v2-estable` arranca). No se probó en Neon. | Cumple; Neon sin probar |
+
 ## Assumptions
 
 - Quien opera MIA es una sola persona (el usuario); quien consulta es el personal de Coordinación mediante la Consulta administrativa.
