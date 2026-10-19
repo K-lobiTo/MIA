@@ -77,7 +77,7 @@ Un K bajo deja pasar casos raros porque palabras de uso corriente pasan a ser es
 
 ## R5. Regla de la mayoría
 
-**Decision** (acordada el 2026-10-19): un fragmento que solo llegó por palabras pasa si contiene **más de la mitad** de los grupos específicos de la pregunta (1 de 1, 2 de 2, 2 de 3, 3 de 4, 3 de 5...). Se ordena por grupos coincidentes y, a igualdad, por la suma del peso de cada grupo (`ln(1 + (K + 1) / fragmentos_del_grupo)`, más peso cuanto más raro) y luego por el coseno con la pregunta.
+**Decision** (acordada el 2026-10-19): un fragmento que solo llegó por palabras pasa si contiene **más de la mitad** de los grupos específicos de la pregunta (1 de 1, 2 de 2, 2 de 3, 3 de 4, 3 de 5...). Se ordena por grupos coincidentes y, a igualdad, por la suma del peso de cada grupo (`ln(1 + (max_docs + 1) / documentos_del_grupo)`, con `max_docs` igual a `HYBRID_MAX_DOCS`, más peso cuanto menos documentos contienen el grupo; la primera versión usaba fragmentos y `K`, ver R16) y luego por el coseno con la pregunta.
 
 **Resultados del análisis** (57 casos; K = 60; con los dominios reales de cada caso):
 
@@ -153,7 +153,7 @@ Un K bajo deja pasar casos raros porque palabras de uso corriente pasan a ser es
 
 ## R14. Riesgos conocidos
 
-- **Frecuencia relativa a los dominios**: la misma palabra puede ser común o específica según los dominios del artefacto (R4); se mide con casos de dominios distintos y es el motivo de que `HYBRID_MAX_DOC_FREQ` sea configurable.
+- **Frecuencia relativa a los dominios**: la misma palabra puede ser común o específica según los dominios del artefacto (R4); se mide con casos de dominios distintos y es el motivo de que `HYBRID_MAX_DOCS` sea configurable (la frecuencia se mide en documentos, no en fragmentos; ver R16).
 - **Prefijos que sobran**: `curso` trae `cursos` y `cursor`; `linea` trae `lineamientos`. Es parte del recorte de "común" (se mide con la misma semántica) y se vigila en las pruebas con casos negativos.
 - **Palabras con menos de 3 letras** (por ejemplo la sigla "TI") no se indexan ni se buscan.
 - **Variantes de una sigla escritas con puntos o con guiones** ("T.F.G.", "TFG-I"): la pregunta se normaliza, el texto del documento lo normaliza el tokenizador (la primera queda como `t`, `f`, `g` y no coincide); se anota como límite y se resuelve con una equivalencia si hace falta.
@@ -161,6 +161,7 @@ Un K bajo deja pasar casos raros porque palabras de uso corriente pasan a ser es
 - **Una sola instancia de la API**: la caché de equivalencias es por proceso; con varias instancias el cambio tardaría hasta un minuto en cada una (sigue dentro de lo acordado).
 - **Qdrant Cloud gratuito**: el índice por prefijo con `on_disk` debe caber en el plan; se comprueba con el estado de la colección antes de encender.
 - **Borrar y reingerir**: hoy la API no borra fragmentos del almacén y reingerir un documento crea ids nuevos sin borrar los anteriores (comportamiento previo, fuera de esta feature); por eso FR-010 se verifica con la ingesta nueva y con mover de dominio (`set_domain`), que solo cambia el payload `domain` y el filtro léxico lo ve al instante.
+- **Reingerir un documento**: crea fragmentos nuevos con ids nuevos sin borrar los anteriores (la ingesta nunca borra del almacén); el índice de texto toma los nuevos con el `upsert` normal (probado en `tests/unit/test_ingestion_pipeline.py`) y los viejos siguen en el índice y en la búsqueda por significado, así que el documento puede aparecer duplicado en los candidatos hasta que se limpie la colección. Es un comportamiento previo de la ingesta, anotado en OPERACION.md.
 - **Coherencia con la ingesta**: un documento ingerido durante la construcción del índice puede tardar en aparecer; no afecta a la búsqueda por significado.
 
 ## R15. Versión mínima de `qdrant-client`
@@ -203,4 +204,17 @@ Se fija 10: es el valor más alto que no deja ningún caso "sin información" co
 - `LL2` (contenidos de Deep Learning): `deep` y `learning` son específicos y la parte léxica trae 25 candidatos (13 del programa MC8840), pero con 3 ranuras el coseno pone primero fragmentos de otros programas; sigue siendo el caso de recuperación conocido de la 007 (ayuda el contexto completo).
 - `HB3` (Valeria Calderón) se responde solo por significado (coseno 0,83): la parte léxica no trae candidatos porque ningún fragmento junta `valeria` y `calderon`; en el texto extraído de los PDF el acento queda como un símbolo aparte ("Calder´on"), así que `calderon` no coincide. Es un límite del texto extraído, no de la regla.
 
+**Memoria y migración (2026-10-19, con Railway encendido y una copia de la base de Neon)**: la RAM de la API en Railway no cambia con la búsqueda híbrida (mediana de 341 a 342 MB, máximo de 343 MB encendida), Qdrant Cloud ocupa 131 MB residentes con el índice en disco, y `alembic downgrade 0004` y `prototipo-v2-estable` funcionan sobre la copia de Neon. Detalle en [LINEA_BASE_BUSQUEDA.md](../../docs/LINEA_BASE_BUSQUEDA.md).
+
 **Casos sin respuesta**: ninguno de los 14 de `sin_respuesta` y `envoltura` (incluidos `HS1` a `HS6`) recibe candidatos léxicos con 10 documentos. En particular, `HS3` ("¿Quién es Valeria Calderón Quesada?") no pasa: `quesada` no aparece en esos dominios y la regla pide 2 de 3, y ningún fragmento junta `valeria` y `calderon` (ver `HB3`). Con un texto extraído sin ese defecto, `HS3` sería el caso que ponga a prueba la regla; queda como caso de calibración para el futuro.
+
+## R17. Cambios de la herramienta de medición posteriores a T052 (justificación)
+
+Tres cambios de `scripts/linea_base.py` no figuraban en las tareas y surgieron al medir con respuestas el 2026-10-19; se registran aquí para que no queden sin explicar:
+
+- **Estado 0 ante tiempos agotados** (`_pedir`): la primera corrida de control se cayó entera por un `TimeoutError` de lectura (200 s) en una consulta y no guardó nada. Ahora `_pedir` devuelve `(0, {})` ante tiempo agotado o conexión cortada, `consultar` lo reintenta como un 502 y, si persiste, la pregunta queda `no_concluyente` sin tumbar la corrida (prueba `test_pedir_devuelve_estado_cero_si_no_hay_respuesta`).
+- **Notas de la búsqueda híbrida en `respuestas`** (`hibrida_candidatos`, `hibrida_nuevos`, `hibrida_cayo`, `hibrida_principal_por_palabras`, y el resumen `consultas_con_hibrida`): hacen falta para contar cuántas consultas usaron la parte léxica y cuántas cayeron al significado, que es parte de FR-016.
+- **Cliente de solo lectura con `scroll`** (`ClienteSoloLectura.PERMITIDOS`): lo exige la medición léxica contra el Qdrant de producción (T050); sigue rechazando cualquier escritura.
+
+Ninguno cambia el diseño de la feature: son mejoras de la herramienta de diagnóstico, que no forma parte del producto.
+

@@ -1470,15 +1470,25 @@ def test_comparar_detecta_los_cambios_por_la_busqueda_por_palabras():
 
 
 def test_leer_la_nota_de_la_busqueda_hibrida_y_resumir_las_respuestas():
-    assert lb.leer_nota_hibrida("Búsqueda híbrida: 3 por palabras, 1 nuevos") == {"candidatos": 3, "nuevos": 1, "cayo": False}
+    assert lb.leer_nota_hibrida("Búsqueda híbrida: 3 por palabras, 1 nuevos") == {
+        "candidatos": 3, "nuevos": 1, "cayo": False, "principal_por_palabras": False, "siglas_cayo": False,
+    }
+    principal = lb.leer_nota_hibrida("Búsqueda híbrida: 1 por palabras, 1 nuevos, principal por palabras")
+    assert principal["candidatos"] == 1 and principal["principal_por_palabras"] is True
     assert lb.leer_nota_hibrida("Búsqueda por palabras no disponible: se usó el significado")["cayo"] is True
+    siglas = lb.leer_nota_hibrida("Lista de siglas no disponible: se buscó sin equivalencias")
+    assert siglas["siglas_cayo"] is True and siglas["cayo"] is False
+    mixta = lb.leer_nota_hibrida("Búsqueda híbrida: 2 por palabras, 0 nuevos; Lista de siglas no disponible: se buscó sin equivalencias")
+    assert mixta["candidatos"] == 2 and mixta["siglas_cayo"] is True
     assert lb.leer_nota_hibrida("Reranker: mejor 0.5") is None and lb.leer_nota_hibrida(None) is None
     filas = [
-        {"hibrida_candidatos": 2, "hibrida_nuevos": 1, "hibrida_cayo": False},
+        {"hibrida_candidatos": 2, "hibrida_nuevos": 1, "hibrida_cayo": False, "hibrida_principal_por_palabras": True},
         {"hibrida_candidatos": None, "hibrida_nuevos": None, "hibrida_cayo": True},
         {"hibrida_candidatos": None, "hibrida_nuevos": None, "hibrida_cayo": False},
     ]
-    assert lb._resumen_hibrida(filas) == {"consultas_con_hibrida": 1, "hibrida_nuevos_total": 1, "caidas_a_significado": 1}
+    assert lb._resumen_hibrida(filas) == {
+        "consultas_con_hibrida": 1, "hibrida_nuevos_total": 1, "caidas_a_significado": 1, "hibrida_principal_por_palabras": 1,
+    }
 
 
 def test_registro_resume_la_latencia_de_espera_y_fusion_frente_a_sus_limites():

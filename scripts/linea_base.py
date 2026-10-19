@@ -66,8 +66,9 @@ PATRON_RERANK_CON = re.compile(r"Reranker: mejor (\d\.\d{3}), (\d+) de (\d+) sob
 PATRON_RERANK_NINGUNO = re.compile(r"Reranker: ninguno sobre el mínimo \d\.\d{2}, mejor (\d\.\d{3}) de (\d+)")
 NOTA_RERANK_CAIDA = "Reranker no disponible: se usó la similitud"
 # Notas de la feature 010 en `reject_reason`: lo que aportó la búsqueda por palabras o su caída al significado.
-PATRON_HIBRIDA_CON = re.compile(r"Búsqueda híbrida: (\d+) por palabras, (\d+) nuevos")
+PATRON_HIBRIDA_CON = re.compile(r"Búsqueda híbrida: (\d+) por palabras, (\d+) nuevos(, principal por palabras)?")
 NOTA_HIBRIDA_CAIDA = "Búsqueda por palabras no disponible"
+NOTA_HIBRIDA_SIGLAS = "Lista de siglas no disponible"
 # Barridos de la feature 010: máximo de documentos de una palabra específica y lugares para los solo léxicos.
 BARRIDO_DOCUMENTOS = (3, 5, 10, 20, 50)
 BARRIDO_RANURAS = (0, 1, 2, 3, 4, 5)
@@ -473,10 +474,14 @@ def leer_nota_hibrida(texto: str | None) -> dict | None:
     if not texto:
         return None
     if NOTA_HIBRIDA_CAIDA in texto:
-        return {"candidatos": None, "nuevos": None, "cayo": True}
+        return {"candidatos": None, "nuevos": None, "cayo": True, "principal_por_palabras": False, "siglas_cayo": False}
     con = PATRON_HIBRIDA_CON.search(texto)
+    siglas = NOTA_HIBRIDA_SIGLAS in texto
     if con:
-        return {"candidatos": int(con.group(1)), "nuevos": int(con.group(2)), "cayo": False}
+        return {"candidatos": int(con.group(1)), "nuevos": int(con.group(2)), "cayo": False,
+                "principal_por_palabras": bool(con.group(3)), "siglas_cayo": siglas}
+    if siglas:
+        return {"candidatos": None, "nuevos": None, "cayo": False, "principal_por_palabras": False, "siglas_cayo": True}
     return None
 
 
@@ -631,7 +636,7 @@ def medir_palabras(pregunta, dominio_ids, vector, almacen, archivos, equivalenci
     inicio = reloj()
     encontrados = lexical_lookup(almacen, dominio_ids, grupos, ajustes["fragmentos"]) if grupos else []
     por_k = {
-        k: pick_candidates(encontrados, k, ajustes["fragmentos"])
+        k: pick_candidates(encontrados, k, ajustes["fragmentos"], ratio=ajustes.get("proporcion", 0.5))
         for k in sorted({*BARRIDO_DOCUMENTOS, ajustes["documentos"]})
     }
     ids = sorted({c.chunk_id for resultado in por_k.values() for c in resultado.candidates})
@@ -885,6 +890,7 @@ def _resumen_hibrida(filas: list[dict]) -> dict:
         "consultas_con_hibrida": len(con_candidatos),
         "hibrida_nuevos_total": sum(r.get("hibrida_nuevos") or 0 for r in con_candidatos),
         "caidas_a_significado": sum(1 for r in filas if r.get("hibrida_cayo")),
+        "hibrida_principal_por_palabras": sum(1 for r in filas if r.get("hibrida_principal_por_palabras")),
     }
 
 
@@ -991,6 +997,9 @@ def correr_respuestas(casos, modos, consultar, leer_costo, tope_usd: float) -> d
                         "hibrida_candidatos": nota_hibrida["candidatos"] if nota_hibrida else None,
                         "hibrida_nuevos": nota_hibrida["nuevos"] if nota_hibrida else None,
                         "hibrida_cayo": None if not costo else bool(nota_hibrida and nota_hibrida["cayo"]),
+                        "hibrida_principal_por_palabras": (
+                            None if not costo else bool(nota_hibrida and nota_hibrida.get("principal_por_palabras"))
+                        ),
                         "consulta_id": consulta_id,
                     }
                 )
@@ -1010,7 +1019,7 @@ def correr_respuestas(casos, modos, consultar, leer_costo, tope_usd: float) -> d
 CAMPOS_OPCIONALES = {
     "regla_de_seguridad", "reintento", "aviso_de_corte", "termina_sin_puntuacion", "pregunta_limpia",
     "pregunta_limpia_ayudo", "pregunta_limpia_texto", "rerank_cayo", "rerank_ninguno_sobre_minimo",
-    "hibrida_candidatos", "hibrida_nuevos", "hibrida_cayo",
+    "hibrida_candidatos", "hibrida_nuevos", "hibrida_cayo", "hibrida_principal_por_palabras",
 }
 
 
@@ -1678,6 +1687,7 @@ def comando_puntajes(args) -> int:
             "documentos": settings.hybrid_max_docs, "fragmentos": settings.hybrid_term_chunks, "limite": settings.hybrid_lexical_limit,
             "ranuras": settings.hybrid_lexical_slots, "grupos_max": settings.hybrid_max_groups,
             "largo_min": settings.hybrid_min_token_len, "rrf_k": settings.hybrid_rrf_k,
+            "proporcion": settings.hybrid_min_match_ratio,
         }
         equivalencias = cargar_equivalencias(sesion, args.equivalencias)
 

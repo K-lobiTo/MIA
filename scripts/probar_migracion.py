@@ -34,6 +34,10 @@ from mia.storage.db import BASELINE_REVISION, MIGRATIONS_DIR, _normalize_url, in
 from mia.storage.models import Domain, Unit
 
 DESTINO = "0005"
+# Revisión a la que baja la ida y vuelta por defecto: la anterior a la `DESTINO`. Bajar hasta `0001` ya no es posible con
+# los datos de producción de la versión 2 (hay dominios con el mismo nombre en programas distintos y la `0002` exigiría
+# que el nombre sea único por sí solo); sigue disponible con --bajar-a 0001 para bases sin esos datos.
+BAJAR_A = "0004"
 
 
 @dataclass
@@ -129,7 +133,7 @@ def _nombre_unico_por_unidad(engine: Engine, resultado: Resultado) -> None:
             session.rollback()
 
 
-def probar(url: str, produccion: str | None = None, ida_y_vuelta: bool = True) -> Resultado:
+def probar(url: str, produccion: str | None = None, ida_y_vuelta: bool = True, bajar_a: str = BAJAR_A) -> Resultado:
     """Ejecuta todas las verificaciones sobre `url` y devuelve el resultado (también las imprime)."""
     resultado = Resultado()
     if produccion and misma_base(url, produccion):
@@ -193,14 +197,20 @@ def probar(url: str, produccion: str | None = None, ida_y_vuelta: bool = True) -
     resultado.registrar("una segunda ejecución deja todo igual", _revision(engine) == DESTINO and _conteos(engine) == despues)
 
     if ida_y_vuelta:
-        print(f"\nIda y vuelta: bajar a {BASELINE_REVISION} y volver a {DESTINO}")
+        print(f"\nIda y vuelta: bajar a {bajar_a} y volver a {DESTINO}")
         try:
-            _alembic(engine, "downgrade", BASELINE_REVISION)
-            resultado.registrar(f"se puede volver a la revisión {BASELINE_REVISION}", _revision(engine) == BASELINE_REVISION)
-            resultado.registrar(
-                "al volver, el nombre de dominio vuelve a ser único",
-                any(cols == ["name"] for _, cols in _unicas_de_dominios(engine)),
-            )
+            _alembic(engine, "downgrade", bajar_a)
+            resultado.registrar(f"se puede volver a la revisión {bajar_a}", _revision(engine) == bajar_a)
+            if bajar_a == BASELINE_REVISION:
+                resultado.registrar(
+                    "al volver, el nombre de dominio vuelve a ser único",
+                    any(cols == ["name"] for _, cols in _unicas_de_dominios(engine)),
+                )
+            if bajar_a < DESTINO:
+                resultado.registrar(
+                    "al volver, la tabla de equivalencias de siglas ya no existe",
+                    "sigla_equivalences" not in inspect(engine).get_table_names(),
+                )
             _alembic(engine, "upgrade", "head")
             resultado.registrar(f"se puede subir de nuevo a {DESTINO}", _revision(engine) == DESTINO)
             resultado.registrar("los datos siguen intactos tras la ida y vuelta", _conteos(engine) == antes_conteos or _conteos(engine) == despues)
@@ -215,6 +225,10 @@ def main() -> int:
     parser.add_argument("--produccion", help="archivo de variables de producción (p. ej. .env.produccion), para negarse a correr contra ella")
     parser.add_argument("--es-una-copia", action="store_true", help="confirma que --url es una copia desechable")
     parser.add_argument("--sin-ida-y-vuelta", action="store_true", help="no probar bajar a la revisión anterior y volver")
+    parser.add_argument(
+        "--bajar-a", default=BAJAR_A,
+        help=f"revisión a la que baja la ida y vuelta (por defecto {BAJAR_A}; {BASELINE_REVISION} solo sirve en bases sin dominios con el mismo nombre en programas distintos)",
+    )
     args = parser.parse_args()
 
     if not args.es_una_copia:
@@ -231,7 +245,7 @@ def main() -> int:
     else:
         print("Aviso: sin --produccion no se puede comprobar que la base indicada no sea la de producción.\n")
 
-    resultado = probar(args.url, produccion, ida_y_vuelta=not args.sin_ida_y_vuelta)
+    resultado = probar(args.url, produccion, ida_y_vuelta=not args.sin_ida_y_vuelta, bajar_a=args.bajar_a)
     print("\n" + ("TODO BIEN: la migración es segura para aplicarla en producción." if resultado.ok else "HAY FALLAS: no hagas el merge hasta resolverlas."))
     return 0 if resultado.ok else 1
 

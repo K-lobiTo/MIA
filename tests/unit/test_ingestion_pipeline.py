@@ -81,3 +81,32 @@ def test_ingest_document_sin_texto_extraible(tmp_path, monkeypatch):
     with session_factory() as session:
         document = session.get(Document, document_id)
         assert document.status == "error"
+
+
+def test_reingerir_un_documento_crea_fragmentos_nuevos_y_solo_usa_el_upsert(tmp_path, monkeypatch):
+    """Feature 010 (FR-010): el índice de texto de Qdrant se actualiza con el `upsert` normal, así que la ingesta no
+    llama a ningún método de la búsqueda por palabras. Reingerir crea fragmentos nuevos (otros ids) sin borrar los
+    anteriores: es el comportamiento previo de la ingesta y el documento puede aparecer duplicado hasta limpiar la colección."""
+    session_factory = _make_session_factory(tmp_path)
+    monkeypatch.setattr(pipeline, "SessionLocal", session_factory)
+    monkeypatch.setattr(pipeline, "UPLOAD_DIR", tmp_path)
+    document_id = _make_pending_document(session_factory, tmp_path, "Joseph Obando2023800202 escribe un resumen.")
+    embeddings = MagicMock()
+    embeddings.embed.return_value = [[0.1, 0.2, 0.3]]
+    store = MagicMock()
+
+    with (
+        patch.object(pipeline, "get_embedding_provider", return_value=embeddings),
+        patch.object(pipeline, "get_vector_store", return_value=store),
+    ):
+        pipeline.ingest_document(document_id)
+        with session_factory() as session:
+            session.get(Document, document_id).status = "pending"
+            session.commit()
+        pipeline.ingest_document(document_id)
+
+    primero, segundo = (call.args[0][0] for call in store.upsert.call_args_list)
+    assert primero.text == segundo.text and primero.id != segundo.id
+    llamados = {call[0] for call in store.method_calls}
+    assert llamados == {"upsert"}
+    store.delete.assert_not_called()

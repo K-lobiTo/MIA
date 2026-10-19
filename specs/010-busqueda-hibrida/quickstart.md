@@ -13,11 +13,17 @@ docker compose up -d qdrant           # Qdrant local (versión reciente: soporta
 
 ```bash
 pytest tests/unit/test_lexical.py tests/unit/test_query_hybrid.py tests/unit/test_equivalences.py tests/unit/test_vector_store_text.py tests/unit/test_linea_base.py
+pytest tests/unit/test_palabras_script.py tests/unit/test_copiar_coleccion.py tests/unit/test_config.py tests/unit/test_ingestion_pipeline.py tests/unit/test_probar_migracion.py
+pytest tests/integration                  # contra un Qdrant local (docker compose up -d qdrant); se omite sola si no hay uno
 pytest && ruff check src tests scripts
 cd web/admin && npm run typecheck && npm test && npm run build
 ```
 
+Totales al 2026-10-19: 988 pruebas de Python con 4 omitidas (las de `tests/integration` sin Qdrant local) y 78 del panel.
+
 Lo que deben demostrar: la opción apagada no cambia nada (ni se consulta la tabla de equivalencias); grupos, palabras vacías, siglas con puntos y regla de la mayoría (casos de [research.md](research.md) R5: Natalia, Obando, Cubillo, Zacarías, TFG); la fusión (sin duplicados, tope de ranuras, límite del modo, lista intacta sin candidatos); la caída a significado (almacén sin métodos léxicos, error, tiempo agotado) con aviso y nota; filtro de dominio; combinación con 006 a 009; rutas `/equivalences` con permisos, validación y caché; la migración `0005` con `upgrade` y `downgrade` en SQLite.
+
+Por archivo: `test_lexical.py` (normalización, grupos, regla de la mayoría y su proporción, fusión, notas), `test_query_hybrid.py` (la ruta: opción apagada, caídas, siglas, sin información, combinación con 006 a 009 y el arranque que asegura el índice), `test_equivalences.py` (migración, caché, rutas, permisos y validación), `test_vector_store_text.py` (filtros del almacén con un cliente simulado), `test_palabras_script.py` (estado, preparar y quitar el índice), `test_copiar_coleccion.py` (copia en solo lectura del origen), `test_config.py` (valores por defecto y rangos de `HYBRID_*`), `test_ingestion_pipeline.py` (la reingesta solo usa el `upsert`), `test_probar_migracion.py` (la ida y vuelta de la migración, por defecto hasta `0004`), `test_linea_base.py` (la medición léxica, la comparación y el registro), `tests/integration/test_text_index_qdrant.py` (el índice contra un Qdrant real, incluido mover de dominio) y, en el panel, `equivalenciasUtils.test.ts` y `EquivalenciasPage.test.tsx` (la pantalla con alcance global y de programa).
 
 ## 2. Preparar un Qdrant local con el índice (gratis)
 
@@ -46,7 +52,7 @@ python scripts/linea_base.py puntajes --etiqueta hibrida --env-file .env.producc
 python scripts/linea_base.py comparar control hibrida
 ```
 
-Criterios (SC-001 a SC-004): los casos objetivo (`S22-1` a `S22-4`, `SG3`, `EN1` a `EN6`, `EN10`) con su documento como candidato léxico y entre los resultados finales; ningún caso "sin información" con candidatos léxicos que lleguen al modelo (excepto los que ya llegaban, como `I1`); los 19 casos de la batería del MVP sin cambios de documento; los 12 o más casos nuevos de FR-017 calibran `HYBRID_MAX_DOC_FREQ` y `HYBRID_LEXICAL_SLOTS`.
+Criterios (SC-001 a SC-004): los casos objetivo (`S22-1` a `S22-4`, `SG3`, `EN1` a `EN6`, `EN10`) con su documento como candidato léxico y entre los resultados finales; ningún caso "sin información" con candidatos léxicos que lleguen al modelo (excepto los que ya llegaban, como `I1`); los 19 casos de la batería del MVP sin cambios de documento; los 12 o más casos nuevos de FR-017 calibran `HYBRID_MAX_DOCS` y `HYBRID_LEXICAL_SLOTS`.
 
 ## 4. Latencia y memoria
 

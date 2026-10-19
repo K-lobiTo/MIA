@@ -168,7 +168,7 @@ def test_un_documento_bajo_el_umbral_llega_al_modelo_por_palabras(client, base, 
     assert almacen.puntuaciones[0]["domains"] == ["dom-1"]
     assert {p["text"] for p in almacen.palabras} == {"joseph", "obando", "sandi"}
     assert all(p["limit"] == 50 for p in almacen.palabras)  # hybrid_term_chunks
-    assert registro(db, http).reject_reason == "Búsqueda híbrida: 1 por palabras, 1 nuevos"
+    assert registro(db, http).reject_reason == "Búsqueda híbrida: 1 por palabras, 1 nuevos, principal por palabras"
 
 
 def test_un_documento_que_ya_llegaba_por_significado_sigue_llegando(client, base, make_artifact):
@@ -317,7 +317,7 @@ def test_un_nombre_real_con_un_dato_que_no_existe_llega_al_modelo_y_sigue_sin_in
     modelo.answer.assert_called_once()
     log = registro(db, http)
     assert log.outcome == "no_info" and float(log.cost_usd) > 0
-    assert log.reject_reason == "Búsqueda híbrida: 1 por palabras, 1 nuevos"
+    assert log.reject_reason == "Búsqueda híbrida: 1 por palabras, 1 nuevos, principal por palabras"
 
 
 def test_la_nota_se_une_a_las_demas_en_el_orden_estable(client, base, make_artifact, db):
@@ -326,7 +326,7 @@ def test_la_nota_se_une_a_las_demas_en_el_orden_estable(client, base, make_artif
     http, _, _ = consultar(
         client, artefacto, almacen, [respuesta("Es una persona.\nFUENTES: 1")], query_cited_sources="on"
     )
-    assert registro(db, http).reject_reason == "Búsqueda híbrida: 1 por palabras, 1 nuevos"
+    assert registro(db, http).reject_reason == "Búsqueda híbrida: 1 por palabras, 1 nuevos, principal por palabras"
     # El reranker simulado aprueba todo: su nota precede a la híbrida.
     class Aprueba(RerankProvider):
         def score(self, query, passages, deadline=None):
@@ -396,12 +396,48 @@ def test_si_la_parte_lexical_tarda_mas_que_el_presupuesto_la_consulta_sigue_por_
     assert registro(db, http).reject_reason == "Búsqueda por palabras no disponible: se usó el significado"
 
 
-def test_si_la_lista_de_equivalencias_no_se_puede_leer_la_consulta_sigue_sin_siglas(client, base, make_artifact):
+def test_si_la_lista_de_equivalencias_no_se_puede_leer_la_consulta_sigue_sin_siglas_y_lo_anota(
+    client, base, make_artifact, db, caplog
+):
     artefacto = make_artifact(units=["u1"])
     almacen = _Almacen([JOSEPH], INDICE_JOSEPH, FRAGMENTOS)
-    with patch.object(query_routes, "get_equivalences", side_effect=RuntimeError("tabla ausente")):
+    with caplog.at_level(logging.WARNING), patch.object(
+        query_routes, "get_equivalences", side_effect=RuntimeError("tabla ausente")
+    ):
         http, _, modelo = consultar(client, artefacto, almacen, [respuesta()])
     assert http.status_code == 200 and documentos(modelo) == ["Doc7.pdf"]
+    # La parte léxica siguió (la nota de lo que aportó) y queda dicho que fue sin la lista de siglas.
+    assert registro(db, http).reject_reason == (
+        "Búsqueda híbrida: 1 por palabras, 1 nuevos, principal por palabras; "
+        "Lista de siglas no disponible: se buscó sin equivalencias"
+    )
+    assert [r for r in caplog.records if "búsqueda por palabras falló" in r.getMessage()]
+
+
+def test_si_la_lista_de_siglas_falla_y_no_hay_candidatos_igual_queda_la_nota(client, base, make_artifact, db):
+    artefacto = make_artifact(units=["u1"])
+    almacen = _Almacen([fragmento(1, 0.95)], {}, [])
+    with patch.object(query_routes, "get_equivalences", side_effect=RuntimeError("tabla ausente")):
+        http, _, modelo = consultar(client, artefacto, almacen, [respuesta()])
+    assert documentos(modelo) == ["Doc1.pdf"]
+    assert registro(db, http).reject_reason == "Lista de siglas no disponible: se buscó sin equivalencias"
+
+
+def test_el_fragmento_principal_por_significado_no_lleva_el_sufijo(client, base, make_artifact, db):
+    artefacto = make_artifact(units=["u1"])
+    vectores = [fragmento(1, 0.99), fragmento(2, 0.9)]
+    almacen = _Almacen(vectores, INDICE_JOSEPH, FRAGMENTOS + vectores)
+    http, _, _ = consultar(client, artefacto, almacen, [respuesta()])
+    assert registro(db, http).reject_reason == "Búsqueda híbrida: 1 por palabras, 1 nuevos"
+
+
+def test_la_proporcion_configurable_cambia_que_fragmentos_pasan(client, base, make_artifact):
+    # Con 1,0 hacen falta las tres palabras (sandi no existe): joseph y obando ya no alcanzan.
+    artefacto = make_artifact(units=["u1"])
+    almacen = _Almacen([], INDICE_JOSEPH, FRAGMENTOS)
+    http, _, modelo = consultar(client, artefacto, almacen, [], hybrid_min_match_ratio=1.0)
+    assert http.json()["no_info"] is True
+    modelo.answer.assert_not_called()
 
 
 def test_el_aviso_de_fallo_sale_a_lo_sumo_una_vez_por_minuto(client, base, make_artifact, caplog, monkeypatch):
