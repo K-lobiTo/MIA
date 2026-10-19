@@ -149,7 +149,7 @@ description: "Tareas de implementación de la feature 008: pregunta limpia (segu
 
 - [ ] T027 [P] Actualizar `docs/ARQUITECTURA.md` (el flujo de la consulta con el segundo intento, el módulo `query_rewrite` y la nota de Uso) y `docs/OPERACION.md` (la variable `QUERY_CLEAN_QUESTION`, cómo encenderla y apagarla, cómo leer la nota en Uso y cómo medir su efecto con `scripts/linea_base.py`, incluida la advertencia de Railway sobre `--skip-deploys`)
 - [ ] T028 [P] Actualizar `docs/Definicion_Requerimientos_V3.md`: marcar la opción B como implementada y medida (BUS-1 y BUS-7, con el resultado de T026 y la decisión de dejar fuera "cuál es", R3) y anotar qué queda sin resolver (siglas, documento más allá del número de resultados)
-- [ ] T029 Revisar que no queden guiones largos en lo generado (`grep -rn "—" specs/008-pregunta-limpia src/mia/rag/query_rewrite.py tests/unit/test_query_rewrite.py tests/unit/test_query_clean_question.py scripts docs/LINEA_BASE_BUSQUEDA.md` sin coincidencias nuevas), correr `pytest` completo y `ruff check src tests scripts`, y marcar el [checklist](checklists/requirements.md) final
+- [ ] T029 Revisar que no queden guiones largos (U+2014) en lo generado: buscar con `grep -rnP "\x{2014}"` en `specs/008-pregunta-limpia`, `src/mia/rag/query_rewrite.py`, `tests/unit/test_query_rewrite.py`, `tests/unit/test_query_clean_question.py`, `scripts` y `docs/LINEA_BASE_BUSQUEDA.md`, sin coincidencias nuevas; correr `pytest` completo y `ruff check src tests scripts`, y marcar el [checklist](checklists/requirements.md) final
 - [ ] T030 Actualizar la memoria del proyecto (`mia_v3_busqueda_no_directa.md` y el índice `MEMORY.md`) con el estado de la 008 y lo que sigue (reranker, híbrida), y hacer commit y push a `dev`
 
 ---
