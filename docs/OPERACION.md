@@ -38,6 +38,7 @@ Guía práctica para desplegar, cargar documentos y mantener funcionando el prot
 | `QUERY_SEARCH_LIMIT` / `QUERY_SEARCH_LIMIT_RAZONAMIENTO` | `8` / `16` | resultados de la búsqueda en modo literal y con razonamiento (de 1 a 50) | no se usa al ingerir |
 | `QUERY_COMPLETE_CONTEXT` / `QUERY_RETRY_CUT_ANSWERS` | `off` / `off` | contexto completo del documento principal y reintento de respuestas cortadas (ver "Respuestas completas y sin cortes") | no se usa |
 | `QUERY_COMPLETE_DOCUMENTS` / `QUERY_COMPLETE_DOCUMENT_MAX_CHUNKS` / `QUERY_COMPLETE_FORWARD_NEIGHBORS` / `QUERY_CONTEXT_MAX_CHARS` | `1` / `25` / `4` / `80000` | alcance del contexto completo: cuántos documentos (por mejor resultado), tamaño máximo en fragmentos para entregarlos enteros, fragmentos posteriores en documentos más largos y tope de caracteres por consulta | no se usa |
+| `QUERY_CLEAN_QUESTION` | `off` | `on` hace un segundo intento de búsqueda con la pregunta reducida a lo que se busca ("¿Quién es X?" busca "X") cuando la primera no deja nada sobre el umbral (ver "Pregunta limpia") | no se usa |
 | `QUERY_CITED_SOURCES` | `off` | `off` por defecto; `on` hace que la respuesta liste solo las fuentes que el modelo dice haber usado (ver más abajo) | no se usa |
 | `MAX_UPLOAD_MB` | `25` | `25` | `25` |
 | `OPENROUTER_MANAGEMENT_KEY` | vacía | vacía (no recomendada, ver "Topes de gasto y saldo") | no se usa |
@@ -371,6 +372,15 @@ Dos mecanismos independientes, cada uno con su variable y apagado por defecto (f
 - **Siempre**, aun con ambas apagadas, el servidor deja en el registro una línea `Fin de la generación: <motivo> (modo <modo>)` por consulta, que sirve para contar cortes con `railway logs -s MIA` (por ejemplo `railway logs -s MIA | grep "Fin de la generación" | grep -vc stop`). Desde la feature 007 `mia.api.main` envía a la salida estándar los mensajes de nivel INFO de MIA; antes solo salían los de nivel WARNING.
 - **Límites conocidos.** Por defecto solo el documento de mejor resultado se completa (`QUERY_COMPLETE_DOCUMENTS=1`): una lista repartida en dos documentos exige subirlo. En un documento de cientos de fragmentos (el plan de estudios de Ciberseguridad tiene 309) no se puede garantizar la lista completa: la respuesta debe decir que continúa. El avance hacia adelante es una ventana fija, no detecta dónde termina la lista.
 - **Costo.** La estimación es de +21 % en literal y +11 % en razonamiento sobre el contexto (más en las consultas cuyo documento se entrega entero); el tope aceptado es 25 % sobre el promedio. Se cambia en Railway con `railway variable set ... --skip-deploys` y se vuelve a desplegar (ver la advertencia de más arriba sobre `main`). Volver a `off` devuelve el comportamiento anterior sin migraciones.
+
+## Pregunta limpia (`QUERY_CLEAN_QUESTION`)
+
+Con `QUERY_CLEAN_QUESTION=on`, si la primera búsqueda de una consulta no deja ningún fragmento sobre `QUERY_SIMILARITY_THRESHOLD` y la pregunta es de identificación o descripción ("¿Quién es X?", "¿Qué es el X?", "háblame de X", "dame información sobre X", "¿qué se sabe de X?", con cortesías como "¿me puedes decir...?"), la API repite la búsqueda **una vez** con solo X (feature `specs/008-pregunta-limpia/`). Es por reglas de texto: no llama a ningún modelo de lenguaje y solo suma un embedding local y una búsqueda en Qdrant. El modelo recibe siempre la pregunta original.
+
+- No se reformulan las preguntas que piden un dato ("¿Cuántos créditos tiene X?", "¿Cuál es el costo...?", "¿Qué es necesario para...?", "¿Quién fue designado...?") ni las que quedan con menos de 3 caracteres o más de 8 palabras. Las reglas están en `src/mia/rag/query_rewrite.py` y sus pruebas en `tests/unit/test_query_rewrite.py`.
+- **Uso:** la consulta con segundo intento deja en `reject_reason` la nota `Pregunta limpia: «texto» (con resultados)` o `(sin resultados)`, también si termina en "sin información". Sirve para contar cuántas veces se usó y cuántas ayudó. Sin migraciones.
+- Un valor distinto de `on`, `true`, `1`, `yes`, `off`, `false`, `0`, `no` o vacío se trata como apagado y deja un aviso en el registro. Se cambia en las variables de `MIA` en Railway y se reinicia; volver a `off` devuelve el comportamiento anterior (cuidado con `--skip-deploys`, ver "Mostrar solo las fuentes que aportaron").
+- Efecto medido (2026-10-18): ayuda poco. Con las tres personas de la línea base, una (solo con razonamiento) pasa de "sin información" a respuesta con su documento; no inventa respuestas con personas o términos inexistentes; una consulta que antes era "sin información" gratis cuesta cerca de 0,001 USD cuando el segundo intento encuentra fragmentos. Ver [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md). Queda apagada.
 
 ## Medir la búsqueda (línea base)
 

@@ -106,3 +106,13 @@ Lectura:
 2. **Las preguntas "háblame de..." ya pasan el umbral en la primera búsqueda** (puntajes de 0,84) pero con documentos ajenos (el de la persona está en el puesto 17 a 43): no es un problema de envoltura sino de que el umbral no separa (hallazgo de la feature 005). Esta opción no los toca.
 3. **Riesgo para BUS-3 confirmado en los puntajes.** Una persona o un término inventado, reducido a su nombre, puntúa 0,828 y 0,854: más alto que varios casos legítimos. El segundo intento les entrega fragmentos al modelo, que debe responder "sin información". Es la razón de ser de EN7 y EN8 en la medición con respuestas: se verá si el modelo se contiene y cuánto cuesta cada llamada que antes no se hacía.
 4. **Un falso positivo de las reglas encontrado y corregido al listar el conjunto de casos**: el caso A2 del MVP ("¿Quién fue designado coordinador...?") se reduciría a un fragmento de oración. Se agregó la guarda 5 de R4.
+
+## R12. Medición con respuestas (2026-10-18)
+
+Corridas `control8` (opción apagada) y `limpia` (encendida) sobre los 10 casos donde el segundo intento puede activarse o debe no activarse, ambos modos; ver la tabla y la lectura en [LINEA_BASE_BUSQUEDA.md](../../docs/LINEA_BASE_BUSQUEDA.md). Resumen:
+
+- 16 consultas con segundo intento, 12 con fragmentos sobre el umbral, 2 respuestas con el documento esperado (`S22-1` y `EN2`, razonamiento).
+- 10 llamadas al modelo nuevas que terminaron en "sin información" (0,008 USD en total); ninguna respuesta inventada (`EN7` y `EN8`, 4 consultas).
+- Se alcanzó con 0,021 USD: la medición reducida bastó porque, con la primera búsqueda aprobada, el camino es el mismo con la opción encendida o apagada.
+- Variante no probada: un número de resultados mayor para el segundo intento (por ejemplo 16 en literal) traería el documento de Natalia Soto Solís (puesto 12), a costa de más ruido y costo. Quedaría como una medición propia si se decide seguir con la opción B en lugar del reranker.
+

@@ -34,7 +34,7 @@ Los dos casos tienen la misma causa: el sistema descarta los fragmentos cuya sim
 | BUS-5 | Las fuentes que muestra una respuesta son solo las que aportaron a ella, no todos los fragmentos que se le pasaron al modelo (hoy una respuesta puede listar documentos que no sirvieron, ver [PRUEBAS_MVP.md](PRUEBAS_MVP.md)). **Implementado y medido el 2026-10-16** (feature [006](../specs/006-fuentes-que-aportaron/spec.md), variable `QUERY_CITED_SOURCES`, apagada por defecto): las fuentes que no aportaron bajan alrededor de 80 % sin cambiar respuestas, costo ni latencia de forma medible. Resultado en [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md). |
 | BUS-6 | Cualquier etapa nueva de búsqueda (reranker, búsqueda híbrida, reformulación) se puede apagar por configuración, igual que las demás piezas del pipeline (interfaz y fábrica por nombre), de modo que se pueda volver al comportamiento anterior sin desplegar código. |
 | BUS-8 | Ninguna respuesta debe quedar incompleta ni cortada: una lista o sección completa de un documento (contenidos de un curso, líneas de TFG, requisitos) debe devolverse completa y, si no cabe en lo que se entrega al modelo o la generación se corta por cualquier motivo, la respuesta lo dice en vez de presentarse como completa. **Implementado y medido el 2026-10-18** (feature [007](../specs/007-respuestas-completas/spec.md), variables `QUERY_COMPLETE_CONTEXT` y `QUERY_RETRY_CUT_ANSWERS`, apagadas por defecto). Resultado en [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md). |
-| BUS-7 | El segundo intento con la pregunta "limpia" (opción B) se hace por reglas de texto, sin llamar a un modelo de lenguaje: no consume tokens de OpenRouter. Solo suma un embedding local y una búsqueda en Qdrant. |
+| BUS-7 | El segundo intento con la pregunta "limpia" (opción B) se hace por reglas de texto, sin llamar a un modelo de lenguaje: no consume tokens de OpenRouter. Solo suma un embedding local y una búsqueda en Qdrant. **Implementado y medido el 2026-10-18** (feature [008](../specs/008-pregunta-limpia/spec.md), variable `QUERY_CLEAN_QUESTION`, apagada por defecto): ayuda menos de lo esperado (de tres personas, una, y solo con razonamiento), no inventa respuestas y cuesta cerca de 0,001 USD por consulta de identificación que antes era "sin información". Resultado en [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md). |
 
 ### 2.4 Investigación (2026-10-14)
 
@@ -152,7 +152,7 @@ Además se recorta lo que sobre al final ("por favor", signos).
 Se acordó seguir esta recomendación como punto de partida y **probar un cross-encoder que corra en el servidor para medir cuánto cuesta y decidir después si se conserva**:
 
 1. **F. Citas por fragmento.** Resuelve el problema B sin reindexar ni costo extra. **Hecha (2026-10-16, feature 006), apagada por defecto**: el modelo cierra la respuesta con una línea `FUENTES: 1, 3`, la API la valida y lista solo esos pasajes; sin citas válidas se listan todos (regla de seguridad, 2 % de las respuestas en la medición).
-2. **B. Segundo intento con la pregunta limpia** (solo si nada pasa el umbral). Cubre "¿Quién es X?" a bajo costo.
+2. **B. Segundo intento con la pregunta limpia** (solo si nada pasa el umbral). Cubre "¿Quién es X?" a bajo costo. **Hecha (2026-10-18, feature 008), apagada por defecto**: no inventa y cuesta poco, pero resuelve una de las tres personas de la línea base (solo con razonamiento): el documento de una persona queda en el puesto 12 a 43 aun con el nombre solo, o puntúa 0,819 contra el umbral de 0,82. Se excluyó "cuál es" de las formas (pide datos). Lo que queda pasa por E (reranker) y D (híbrida).
 3. **E. Reranker local, como prueba de costo** (plan en 2.7). Si se conserva, el corte de "sin información" pasa a su puntaje y se puede retirar el umbral de coseno.
 4. **D. Búsqueda híbrida** para nombres y siglas, cuando haya evidencia de que B y E no bastan.
 5. **G. Contexto por fragmento**, opcional y al final.
@@ -210,7 +210,7 @@ Datos de la línea base medida el 2026-10-15 en [LINEA_BASE_BUSQUEDA.md](LINEA_B
 - El costo medio por consulta de los modos literal y con razonamiento, medido en el módulo Uso, no sube más de lo que se decida en la decisión pendiente 1 (BUS-4).
 - Con `RERANK_PROVIDER=none` el comportamiento es el anterior (BUS-6).
 - El segundo intento no hace ninguna llamada a un modelo de lenguaje: una consulta sin respuesta en ninguna de las dos búsquedas sigue sin gastar tokens (BUS-7).
-- Las reglas de reformulación pasan sus pruebas en tabla, incluidos los casos negativos como "¿Cuántos créditos tiene X?", que no se reformula.
+- Las reglas de reformulación pasan sus pruebas en tabla, incluidos los casos negativos como "¿Cuántos créditos tiene X?", que no se reformula. Cumplido en la feature 008 (83 filas en `tests/unit/test_query_rewrite.py`).
 
 ## Anexo A. Fuentes de la investigación (2026-10-14)
 

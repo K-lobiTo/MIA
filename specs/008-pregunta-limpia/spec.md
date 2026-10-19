@@ -136,6 +136,21 @@ Quien opera MIA agrega al conjunto de casos de la feature 005 las formas de envo
 - **SC-007**: Ninguna consulta hace más de un segundo intento (verificable en el registro de Uso).
 - **SC-008**: El informe de la medición muestra, con la opción encendida, cuántas consultas tuvieron segundo intento y cuántas de ellas pasaron el umbral; el tamaño de la mejora queda documentado en la línea base con sus límites (siglas y documentos más allá del número de resultados).
 
+### Resultados medidos (2026-10-18)
+
+Detalle en [LINEA_BASE_BUSQUEDA.md](../../docs/LINEA_BASE_BUSQUEDA.md) y [research.md](research.md) (R11 y R12). La medición con respuestas fue reducida (10 casos, 26 consultas por corrida) con autorización del usuario.
+
+| Criterio | Resultado | Veredicto |
+|---|---|---|
+| SC-001 | De los dos casos cuya forma corta pasa el umbral, uno (Natalia Soto Solís) responde con el documento esperado, y solo en el modo con razonamiento; el otro (Cubillo) recibe fragmentos de otro documento porque el esperado puntúa 0,819; el tercero (Obando) sigue sin pasar | No se cumple como se redactó: el límite es de recuperación y de umbral, no de envoltura |
+| SC-002 | Las 26 formas de la tabla de pruebas se reducen al texto esperado | Cumple |
+| SC-003 | Los negativos de la tabla de pruebas quedan sin reformular, y en producción `EN9` y `EN10` no tuvieron segundo intento | Cumple |
+| SC-004 | Los 19 casos de la batería del MVP no se midieron con respuestas: su primera búsqueda ya pasa el umbral, el camino es idéntico, y ninguna de sus preguntas se reduce con las reglas actuales (una, A2, se reducía mal y se corrigió) | Cumple por construcción, no medido |
+| SC-005 | `control8` (opción apagada) contra `control7`: 2 diferencias, ambas por las fuentes de la feature 006 | Cumple |
+| SC-006 | Segundo intento sin llamada al modelo: menos de 0,3 s adicionales; cero llamadas nuevas al modelo desde el segundo intento | Cumple |
+| SC-007 | Ninguna consulta tuvo más de una nota de pregunta limpia ni más de una segunda búsqueda (prueba automática de ruta y 16 consultas medidas) | Cumple |
+| SC-008 | El informe cuenta 16 segundos intentos, 12 con resultados y 0 negativos reformulados | Cumple |
+
 ## Assumptions
 
 - Quien opera MIA es una sola persona (el usuario); quien consulta es el personal de Coordinación mediante la Consulta administrativa.
