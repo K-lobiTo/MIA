@@ -226,3 +226,9 @@ Autorizada por el usuario: medición reducida, 12 casos (14 consultas por modo c
 | Costo | Sin llamadas nuevas a modelos de lenguaje. Los gastos de las corridas son centavos. |
 
 Se deja `RERANK_CANDIDATES=30` como valor por defecto (mismo tiempo que 20 y captura dos casos más). La variable `RERANK_CANDIDATES=30` quedó puesta en las variables de `MIA` en Railway con `RERANK_PROVIDER=none`: no tiene efecto.
+
+## R15. Se retira el piso de coseno (`RERANK_MIN_SIMILARITY`)
+
+**Decision** (2026-10-18, con el usuario): se retira la variable y su rama en la ruta. Las menciones anteriores (R3, R9, R13) quedan como historia de la medición.
+
+**Rationale**: los 30 candidatos puntúan entre 0,78 y 0,91 en todos los casos, así que un piso de 0,78 no descarta nada y uno de 0,80 ya pierde los documentos de Natalia, Cubillo, `EN2` y `EN6` (R13). No reducía la latencia sin perder calidad, y con el reranker apagado era código sin uso. Si el índice cambia y el coseno vuelve a repartirse mejor, se puede reintroducir con esta medición como punto de partida.

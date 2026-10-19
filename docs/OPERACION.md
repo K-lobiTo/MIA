@@ -42,7 +42,6 @@ Guía práctica para desplegar, cargar documentos y mantener funcionando el prot
 | `RERANK_PROVIDER` | `none` | `local` activa el reranker local (feature 009): un modelo dentro de la API reordena los candidatos y decide el corte de "sin información". No usa servicios externos (ver "Reranker local") | no se usa |
 | `RERANK_CANDIDATES` | `30` | Candidatos que se recuperan y puntúan (5 a 60; nunca menos que el límite del modo) | no se usa |
 | `RERANK_MIN_SCORE` | `0.06` | Puntaje mínimo del reranker, de 0 a 1 (calibrado; con 0,5 rechaza documentos que hoy se responden bien) | no se usa |
-| `RERANK_MIN_SIMILARITY` | `0` | Coseno mínimo para puntuar un candidato (0 lo apaga; no ayudó con los datos actuales) | no se usa |
 | `RERANK_PASSAGE_TOKENS` | `128` | Tokens de cada fragmento que lee el reranker (32 a 480; más tokens, más latencia) | no se usa |
 | `RERANK_THREADS` | `4` | Hilos de cálculo del reranker (1 a 8) | no se usa |
 | `RERANK_BUDGET_MS` | `2500` | Tiempo máximo de puntuación por consulta (0 lo desactiva); superado, la consulta usa la similitud | no se usa |

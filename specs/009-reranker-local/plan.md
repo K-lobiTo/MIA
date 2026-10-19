@@ -12,7 +12,7 @@ Con `RERANK_PROVIDER=local`, `POST /query` cambia solo la etapa de recuperación
 
 La herramienta de la 005 gana: variante con reranker en `puntajes` (gratis, calcula el puntaje del reranker en local sobre Qdrant de producción en solo lectura), barrido del mínimo y ventana de separación, un subcomando `rendimiento` (memoria y latencia por número de candidatos, tokens por pasaje e hilos), y el conteo de notas del reranker en `respuestas`.
 
-Hallazgo previo que condiciona el diseño (medición en esta máquina, R2): el modelo separa muy bien (pertinente 10,9 en logit, irrelevante entre -10 y -6, persona inventada -6,0), pero **la latencia con 30 candidatos y fragmentos completos es de 7 a 10 s**, muy por encima del límite de 0,5 s en p50 y 1,5 s en p95 de SC-006, y la memoria sube unos 154 MB (cerca del límite de 512 MB de SC-007 con los 340 MB actuales). Por eso el plan incluye palancas medibles (candidatos, tokens por pasaje, hilos, piso de coseno, presupuesto de tiempo) y asume que la prueba puede terminar en "no cumple los límites".
+Hallazgo previo que condiciona el diseño (medición en esta máquina, R2): el modelo separa muy bien (pertinente 10,9 en logit, irrelevante entre -10 y -6, persona inventada -6,0), pero **la latencia con 30 candidatos y fragmentos completos es de 7 a 10 s**, muy por encima del límite de 0,5 s en p50 y 1,5 s en p95 de SC-006, y la memoria sube unos 154 MB (cerca del límite de 512 MB de SC-007 con los 340 MB actuales). Por eso el plan incluye palancas medibles (candidatos, tokens por pasaje, hilos, presupuesto de tiempo) y asume que la prueba puede terminar en "no cumple los límites".
 
 ## Technical Context
 

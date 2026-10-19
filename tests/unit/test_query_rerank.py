@@ -114,7 +114,7 @@ def _consultar(client, artefacto, busquedas, reranker, respuestas=(), pregunta=P
         "query_similarity_threshold": UMBRAL, "query_search_limit": 8, "query_search_limit_razonamiento": 16,
         "query_clean_question": "off", "query_complete_context": "off", "query_retry_cut_answers": "off",
         "query_cited_sources": "off", "rerank_provider": "local", "rerank_candidates": 30, "rerank_min_score": 0.5,
-        "rerank_min_similarity": 0.0, "rerank_budget_ms": 2500,
+        "rerank_budget_ms": 2500,
     }
     valores.update(opciones)
     with (
@@ -183,17 +183,6 @@ def test_un_documento_bajo_el_umbral_de_coseno_llega_si_el_reranker_lo_aprueba(c
     )
     assert respuesta.json()["no_info"] is False
     assert _documentos(modelo) == ["Doc3.pdf"]
-
-
-def test_el_piso_de_coseno_evita_puntuar_a_los_candidatos_ajenos(client, base, make_artifact):
-    artefacto = make_artifact(units=["u1"])
-    reranker = _Reranker(_logit_solo(2))
-    _, _, modelo, _, _ = _consultar(
-        client, artefacto, [CANDIDATOS], reranker, [_respuesta()], rerank_min_similarity=0.90
-    )
-    recibidos = reranker.llamadas[0]["passages"]
-    assert recibidos == [c.text for c in CANDIDATOS if c.score >= 0.90]
-    assert len(recibidos) == 6 and _documentos(modelo) == ["Doc2.pdf"]
 
 
 def test_nunca_se_piden_menos_candidatos_que_el_limite_del_modo(client, base, make_artifact):

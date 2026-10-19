@@ -197,14 +197,11 @@ def query(
         results = vector_store.search(
             vector, domains=payload.domains, limit=max(settings.rerank_candidates, config.search_limit)
         )
-        candidates = results
-        if settings.rerank_min_similarity > 0:
-            candidates = [r for r in results if r.score >= settings.rerank_min_similarity]
-        if not candidates:
+        if not results:
             return []
         try:
             started = time.perf_counter()
-            pending = [r for r in candidates if r.chunk_id not in rerank_logits]
+            pending = [r for r in results if r.chunk_id not in rerank_logits]
             if pending:
                 logits = rerank_provider.score(
                     payload.question, [r.text for r in pending], deadline=deadline_for(started)
@@ -216,8 +213,8 @@ def query(
                     len(pending), _elapsed_ms(started), format_memory(peak), payload.mode,
                 )
             rerank_outcome = rerank_candidates(
-                candidates,
-                [rerank_logits[r.chunk_id] for r in candidates],
+                results,
+                [rerank_logits[r.chunk_id] for r in results],
                 settings.rerank_min_score,
                 config.search_limit,
             )

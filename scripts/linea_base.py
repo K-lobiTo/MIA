@@ -877,7 +877,7 @@ def _seccion_rerank(puntajes: dict) -> list[str]:
         "",
         (
             f"Modelo {ctx.get('modelo', '?')}, {ctx.get('candidatos', '?')} candidatos, mínimo {ctx.get('minimo', '?')}, "
-            f"piso de similitud {ctx.get('piso_de_similitud', '?')}, {ctx.get('tokens_por_pasaje', '?')} tokens por pasaje, "
+            f"{ctx.get('tokens_por_pasaje', '?')} tokens por pasaje, "
             f"{ctx.get('hilos', '?')} hilos."
         ),
         "",
@@ -1212,18 +1212,17 @@ def medir_caso(pregunta, dominio_ids, embedder, almacen, archivos, nombre_de) ->
 
 
 def medir_caso_rerank(pregunta_busqueda, pregunta_rerank, dominio_ids, embedder, almacen, archivos, nombre_de,
-                      reranker, candidatos_pedidos: int, piso: float, reloj=time.perf_counter):
+                      reranker, candidatos_pedidos: int, reloj=time.perf_counter):
     """Candidatos de una pregunta puntuados por el reranker, como los puntúa la API: se busca con la pregunta (o la
     variante) y se puntúa contra `pregunta_rerank` (la pregunta completa). Devuelve (candidatos, milisegundos)."""
     from mia.rag.rerank import sigmoid
 
     vector = embedder.embed([pregunta_busqueda], is_query=True)[0]
     resultados = almacen.search(vector, domains=dominio_ids, limit=candidatos_pedidos)
-    elegidos = [(i, r) for i, r in enumerate(resultados, start=1) if piso <= 0 or r.score >= piso]
-    if not elegidos:
+    if not resultados:
         return [], 0.0
     inicio = reloj()
-    logits = reranker.score(pregunta_rerank, [r.text for _, r in elegidos])
+    logits = reranker.score(pregunta_rerank, [r.text for r in resultados])
     ms = (reloj() - inicio) * 1000
     filas = [
         {
@@ -1234,7 +1233,7 @@ def medir_caso_rerank(pregunta_busqueda, pregunta_rerank, dominio_ids, embedder,
             "documento": archivos.get(r.document_id, r.document_id),
             "dominio": nombre_de.get(r.domain, r.domain),
         }
-        for (i, r), logit in zip(elegidos, logits, strict=True)
+        for i, (r, logit) in enumerate(zip(resultados, logits, strict=True), start=1)
     ]
     orden = sorted(range(len(filas)), key=lambda k: -filas[k]["logit"])
     for rango, k in enumerate(orden, start=1):
@@ -1354,7 +1353,7 @@ def comando_puntajes(args) -> int:
                 pregunta_rerank = caso["pregunta"] if variante == "limpia" else pregunta
                 candidatos_r, ms = medir_caso_rerank(
                     pregunta, pregunta_rerank, ids, embedder, almacen, archivos, nombre_de, reranker,
-                    candidatos_rerank, settings.rerank_min_similarity,
+                    candidatos_rerank,
                 )
                 medicion["rerank"] = {
                     "candidatos": candidatos_r,
@@ -1407,7 +1406,6 @@ def comando_puntajes(args) -> int:
                     "modelo": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1 (ONNX int8)",
                     "candidatos": candidatos_rerank,
                     "minimo": minimo,
-                    "piso_de_similitud": settings.rerank_min_similarity,
                     "tokens_por_pasaje": settings.rerank_passage_tokens,
                     "hilos": settings.rerank_threads,
                 }

@@ -74,14 +74,12 @@ class Settings(BaseSettings):
     # contra la pregunta y el corte de "sin información" es `rerank_min_score` (probabilidad de 0 a 1). Los valores
     # por defecto salen de la calibración local del 2026-10-18 (57 casos, specs/009-reranker-local/research.md R13):
     # con 0,06 ningún caso sin respuesta pasa; con valores más altos (0,5) el reranker rechaza documentos que hoy se
-    # responden bien. `rerank_min_similarity` es un piso de coseno previo (0 lo apaga; no ayudó: los 30 candidatos
-    # puntúan entre 0,78 y 0,91); `rerank_passage_tokens` los tokens de cada fragmento que lee el reranker;
+    # responden bien. `rerank_passage_tokens` los tokens de cada fragmento que lee el reranker;
     # `rerank_threads` los hilos de cálculo (4 cumplió la latencia en la laptop de desarrollo); `rerank_budget_ms`
     # el tiempo máximo de puntuación por consulta (0 lo desactiva): superado, la consulta sigue por similitud.
     rerank_provider: str = "none"
     rerank_candidates: int = Field(default=30, ge=5, le=60)
     rerank_min_score: float = Field(default=0.06, ge=0, le=1)
-    rerank_min_similarity: float = Field(default=0.0, ge=0, le=1)
     rerank_passage_tokens: int = Field(default=128, ge=32, le=480)
     rerank_threads: int = Field(default=4, ge=1, le=8)
     rerank_budget_ms: int = Field(default=2500, ge=0, le=30000)

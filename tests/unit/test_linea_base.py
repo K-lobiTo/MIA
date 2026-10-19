@@ -1170,7 +1170,7 @@ def test_medir_caso_rerank_puntua_contra_la_pregunta_pedida_y_numera_los_puestos
     tiempos = iter([10.0, 10.25])
     filas, ms = lb.medir_caso_rerank(
         "Natalia", "¿Quién es Natalia?", ["dom"], _EmbedderFalso(), _AlmacenFalso(resultados),
-        {"d1": "a.pdf", "d2": "b.pdf", "d3": "c.pdf"}, {"dom": "P / D"}, reranker, 30, 0.0, reloj=lambda: next(tiempos),
+        {"d1": "a.pdf", "d2": "b.pdf", "d3": "c.pdf"}, {"dom": "P / D"}, reranker, 30, reloj=lambda: next(tiempos),
     )
     assert reranker.llamadas[0][0] == "¿Quién es Natalia?"  # la API puntúa con la pregunta completa
     assert ms == pytest.approx(250.0)
@@ -1180,16 +1180,10 @@ def test_medir_caso_rerank_puntua_contra_la_pregunta_pedida_y_numera_los_puestos
     assert filas[1]["puntaje_coseno"] == 0.85 and filas[1]["dominio"] == "P / D" and 0 < filas[1]["puntaje"] <= 1
 
 
-def test_medir_caso_rerank_aplica_el_piso_de_similitud_y_conserva_el_puesto_por_coseno():
-    resultados = [_Resultado("c1", "d1", 0.90, "uno"), _Resultado("c2", "d2", 0.70, "dos"), _Resultado("c3", "d3", 0.85, "tres")]
+def test_medir_caso_rerank_sin_resultados_no_invoca_al_reranker():
     reranker = _RerankerFalso()
-    filas, _ = lb.medir_caso_rerank(
-        "x", "x", ["dom"], _EmbedderFalso(), _AlmacenFalso(resultados), {}, {}, reranker, 30, 0.80,
-    )
-    assert reranker.llamadas[0][1] == ["uno", "tres"]
-    assert [f["posicion"] for f in filas] == [1, 3]
-    vacio, ms = lb.medir_caso_rerank("x", "x", ["dom"], _EmbedderFalso(), _AlmacenFalso([]), {}, {}, reranker, 30, 0.0)
-    assert vacio == [] and ms == 0.0
+    vacio, ms = lb.medir_caso_rerank("x", "x", ["dom"], _EmbedderFalso(), _AlmacenFalso([]), {}, {}, reranker, 30)
+    assert vacio == [] and ms == 0.0 and reranker.llamadas == []
 
 
 def test_medir_combinacion_descarta_el_calentamiento_y_repite():
@@ -1228,7 +1222,7 @@ def test_el_informe_incluye_la_seccion_del_reranker_si_se_midio():
                 "etiqueta": "e", "fecha": "f", "commit": "0123456789abc", "cambios_sin_confirmar": False, "destino": "d",
                 "umbral": 0.82, "limite_literal": 8, "limite_razonamiento": 16, "candidatos_pedidos": 50,
                 "proveedor_embeddings": "local", "dimension": 384, "fragmentos_por_dominio": {},
-                "reranker": {"modelo": "m", "candidatos": 30, "minimo": 0.5, "piso_de_similitud": 0.0,
+                "reranker": {"modelo": "m", "candidatos": 30, "minimo": 0.5,
                              "tokens_por_pasaje": 192, "hilos": 2},
             },
             "mediciones": [medicion], "resumen": resumen_p,
