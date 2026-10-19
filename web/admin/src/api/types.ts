@@ -197,6 +197,25 @@ export interface BalanceResponse {
   warning?: boolean;
 }
 
+export interface Equivalence {
+  id: string;
+  sigla: string;
+  form: string;
+  created_by: string;
+  created_at: string;
+  updated_by: string | null;
+  updated_at: string | null;
+}
+
+export interface EquivalencesResponse {
+  equivalences: Equivalence[];
+}
+
+export interface EquivalenceInput {
+  sigla: string;
+  form: string;
+}
+
 export interface Me {
   email: string | null;
   is_global: boolean;

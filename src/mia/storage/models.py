@@ -165,6 +165,26 @@ class AdminUnit(Base):
     unit_id: Mapped[str] = mapped_column(ForeignKey("units.id"), primary_key=True)
 
 
+class SiglaEquivalence(Base):
+    """Equivalencia entre una sigla y una forma desarrollada (feature 010): la pregunta con una forma también busca
+    la otra. Es global (vale para todos los dominios) y la edita el operador desde el panel. `sigla` y `form` están
+    normalizadas (minúsculas, sin tildes, espacios simples) y sirven para comparar y buscar; `*_display` es lo que
+    escribió la persona."""
+
+    __tablename__ = "sigla_equivalences"
+    __table_args__ = (UniqueConstraint("sigla", "form"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    sigla: Mapped[str] = mapped_column(String)
+    form: Mapped[str] = mapped_column(String)
+    sigla_display: Mapped[str] = mapped_column(String)
+    form_display: Mapped[str] = mapped_column(String)
+    created_by: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    updated_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
 class QueryLog(Base):
     """Registro de cada consulta: base de los topes, del módulo Uso y de la evaluación."""
 

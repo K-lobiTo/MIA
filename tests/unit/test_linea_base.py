@@ -1342,3 +1342,177 @@ def test_comando_registro_lee_un_archivo_e_imprime_el_resumen(tmp_path, capsys):
     salida = capsys.readouterr().out
     assert "3 puntuaciones" in salida and "p50 320 ms" in salida and "consultas: 610 MB" in salida
     assert lb.main(["registro", "--archivo", str(tmp_path / "no-existe.txt")]) == 2
+
+
+# --- Búsqueda por palabras (feature 010) ---------------------------------------------------------------------------
+
+
+def test_los_casos_versionados_incluyen_al_menos_12_nuevos_la_mitad_sin_respuesta():
+    casos = lb.cargar_casos()
+    nuevos = [c for c in casos if c["id"].startswith(("HB", "HS"))]
+    assert len(nuevos) >= 12
+    assert sum(1 for c in nuevos if c["espera"] == "sin_informacion") >= len(nuevos) // 2 - 1
+    assert sum(1 for c in nuevos if c["espera"] == "sin_informacion") >= 6
+    assert all(c.get("nota") for c in nuevos)
+
+
+def _FragmentoP(chunk_id, doc, score):
+    from mia.storage.vector_store import SearchResult
+
+    return SearchResult(chunk_id=chunk_id, document_id=doc, domain="d1", text="", score=score, chunk_index=0)
+
+
+class _AlmacenPalabras:
+    """Índice de palabras (palabra a ids), fragmentos con su coseno y una búsqueda por significado fija."""
+
+    def __init__(self, indice, fragmentos, vectores):
+        self.indice, self.fragmentos, self.vectores = indice, fragmentos, vectores
+        self.llamadas = []
+
+    def match_chunks(self, domains, text, limit):
+        self.llamadas.append(text)
+        return [(i, self.fragmentos[i].document_id if i in self.fragmentos else f"doc-{i}") for i in self.indice.get(text, [])][:limit]
+
+    def score_chunks(self, embedding, domains, chunk_ids):
+        return [self.fragmentos[i] for i in chunk_ids if i in self.fragmentos]
+
+    def search(self, vector, domains, limit):
+        return self.vectores[:limit]
+
+
+AJUSTES = {"documentos": 10, "fragmentos": 200, "limite": 20, "ranuras": 3, "grupos_max": 8, "largo_min": 3, "rrf_k": 60}
+LIMITES = {"literal": 8, "razonamiento": 16}
+ARCHIVOS_P = {"doc-j": "IPA Joseph Obando Sandi.pdf", "doc-k": "Acta 04.pdf", "doc-v": "Otro.pdf"}
+
+
+def _medir_joseph(indice=None, vectores=None):
+    fragmentos = {"j1": _FragmentoP("j1", "doc-j", 0.78), "k1": _FragmentoP("k1", "doc-k", 0.7)}
+    almacen = _AlmacenPalabras(
+        indice or {"joseph": ["j1", "k1"], "obando": ["j1"], "sandi": []}, fragmentos,
+        vectores if vectores is not None else [_FragmentoP("v1", "doc-v", 0.9)],
+    )
+    medicion = lb.medir_palabras(
+        "¿Quién es Joseph Obando Sandí?", ["d1"], [0.1], almacen, ARCHIVOS_P, [], AJUSTES, LIMITES, 0.82,
+        ["Joseph Obando"], reloj=iter([0.0, 0.5]).__next__,
+    )
+    return medicion, almacen
+
+
+def test_medir_palabras_trae_el_documento_que_el_significado_no_traia():
+    medicion, _ = _medir_joseph()
+    assert [g["terminos"] for g in medicion["grupos"]] == [["joseph"], ["obando"], ["sandi"]]
+    assert [g["fragmentos"] for g in medicion["grupos"]] == [2, 1, 0]
+    assert medicion["especificos"] == 3 and len(medicion["candidatos"]) == 1
+    assert medicion["candidatos"][0]["documento"] == "IPA Joseph Obando Sandi.pdf"
+    assert medicion["candidatos"][0]["coincidentes"] == 2 and medicion["ms"] == 500.0
+    for modo in lb.MODOS:
+        d = medicion["por_modo"][modo]
+        assert d["antes"]["pasan"] == 1  # el fragmento de coseno 0,90 pasa el umbral
+        assert d["despues"]["pasan"] == 2
+        esperado = d["esperados"][0]
+        assert esperado["puesto_antes"] is None and esperado["puesto_despues"] == 2
+        assert esperado["traido_por"] == "palabras"
+    # Con ranuras en 0 el documento no entra: lo dice el barrido.
+    assert medicion["barrido_ranuras"]["0"]["literal"]["esperado"] is False
+    assert medicion["barrido_ranuras"]["3"]["literal"]["esperado"] is True
+    assert medicion["barrido_documentos"]["10"] == {"especificos": 3, "candidatos": 1, "esperado": True}
+    assert set(medicion["barrido_documentos"]) == {"3", "5", "10", "20", "50"}
+    assert [g["documentos"] for g in medicion["grupos"]] == [2, 1, 0]
+    # No se guarda texto de fragmentos.
+    assert "texto" not in json.dumps(medicion)
+
+
+def test_medir_palabras_de_una_persona_inventada_no_deja_candidatos():
+    medicion, _ = _medir_joseph({"zacarias": [], "fernandez": ["k1"], "pizarro": []})
+    assert medicion["candidatos"] == [] and medicion["especificos"] == 3
+    assert medicion["por_modo"]["literal"]["despues"] == medicion["por_modo"]["literal"]["antes"]
+    assert medicion["barrido_documentos"]["3"]["candidatos"] == 0
+
+
+def test_resumen_palabras_cuenta_objetivos_sin_informacion_y_barridos():
+    mejora, _ = _medir_joseph()
+    sin_candidatos, _ = _medir_joseph({"joseph": [], "obando": [], "sandi": []}, vectores=[])
+    medicion_a = {"caso_id": "S22-3", "variante": "completa", "categoria": "seccion_2_2", "espera": "respuesta",
+                  "palabras": mejora}
+    medicion_b = {"caso_id": "EN7", "variante": "completa", "categoria": "envoltura", "espera": "sin_informacion",
+                  "palabras": sin_candidatos}
+    # Un caso sin respuesta que sí recibe candidatos léxicos y pasa de "sin información" a responder.
+    peligro, _ = _medir_joseph(vectores=[])
+    medicion_c = {"caso_id": "HS3", "variante": "completa", "categoria": "sin_respuesta", "espera": "sin_informacion",
+                  "palabras": peligro}
+    resumen = lb.resumen_palabras([medicion_a, medicion_b, medicion_c])
+    literal = resumen["por_modo"]["literal"]
+    assert literal["objetivos"] == 1 and literal["con_esperado_antes"] == 0 and literal["con_esperado_despues"] == 1
+    assert literal["mejoran"] == ["S22-3"] and literal["empeoran"] == []
+    assert literal["bus1_bus2"] == {"preguntas": 1, "pasan_antes": 0, "pasan_despues": 1}
+    assert literal["sin_info_que_llegan_al_modelo"] == ["HS3"]
+    assert resumen["barrido_documentos"]["10"] == {"objetivos_acertados": 1, "sin_info_con_candidatos": ["HS3"]}
+    assert resumen["barrido_ranuras"]["0"]["literal"]["objetivos_con_esperado"] == 0
+    assert resumen["barrido_ranuras"]["3"]["literal"]["objetivos_con_esperado"] == 1
+    assert resumen["latencia_ms"]["n"] == 3
+
+
+def test_comparar_detecta_los_cambios_por_la_busqueda_por_palabras():
+    mejora, _ = _medir_joseph()
+    base = {
+        "caso_id": "S22-3", "variante": "completa", "candidatos": _cand(0.78),
+        "por_modo": {m: {"pasan": 0, "mejor_puntaje": 0.78, "resultado": "sin_informacion"} for m in lb.MODOS},
+        "esperados": [{"fragmento": "Joseph Obando", "posicion": 5, "puntaje": 0.78}],
+    }
+    hibrida = {**base, "palabras": mejora}
+    contexto = {"fragmentos_por_dominio": {}}
+    a = {"puntajes": {"contexto": contexto, "mediciones": [base]}}
+    b = {"puntajes": {"contexto": contexto, "mediciones": [hibrida]}}
+    cambios = lb.comparar(a, b)["cambios"]
+    assert any("modo literal: resultado con búsqueda por palabras sin_informacion -> responde" in c for c in cambios)
+    # Dos corridas iguales no cambian nada.
+    assert lb.comparar(b, b)["cambios"] == []
+
+
+def test_leer_la_nota_de_la_busqueda_hibrida_y_resumir_las_respuestas():
+    assert lb.leer_nota_hibrida("Búsqueda híbrida: 3 por palabras, 1 nuevos") == {"candidatos": 3, "nuevos": 1, "cayo": False}
+    assert lb.leer_nota_hibrida("Búsqueda por palabras no disponible: se usó el significado")["cayo"] is True
+    assert lb.leer_nota_hibrida("Reranker: mejor 0.5") is None and lb.leer_nota_hibrida(None) is None
+    filas = [
+        {"hibrida_candidatos": 2, "hibrida_nuevos": 1, "hibrida_cayo": False},
+        {"hibrida_candidatos": None, "hibrida_nuevos": None, "hibrida_cayo": True},
+        {"hibrida_candidatos": None, "hibrida_nuevos": None, "hibrida_cayo": False},
+    ]
+    assert lb._resumen_hibrida(filas) == {"consultas_con_hibrida": 1, "hibrida_nuevos_total": 1, "caidas_a_significado": 1}
+
+
+def test_registro_resume_la_latencia_de_espera_y_fusion_frente_a_sus_limites():
+    registro = (
+        "INFO: mia.api.routes.query: Búsqueda híbrida: 4 grupos (3 específicos), 2 candidatos, 1 nuevos; hilo 30 ms, "
+        "espera y fusión 12 ms (modo literal)\n"
+        "INFO: mia.api.routes.query: Búsqueda híbrida: 2 grupos (1 específicos), 0 candidatos, 0 nuevos; hilo 80 ms, "
+        "espera y fusión 150 ms (modo razonamiento)\n"
+        "WARNING: mia.rag.lexical: La búsqueda por palabras falló (RuntimeError: x): la consulta usa el significado\n"
+    )
+    r = lb.resumir_registro(registro, 500, 1500)["hibrida"]
+    assert r["consultas"] == 2 and r["con_candidatos"] == 1 and r["avisos_de_fallo"] == 1
+    assert r["espera_y_fusion"]["p50_ms"] == 12 and r["espera_y_fusion"]["cumple"] is True
+    assert r["hilo"]["p95_ms"] is not None
+    lento = lb.resumir_registro_hibrida(
+        "Búsqueda híbrida: 1 grupos (1 específicos), 1 candidatos, 1 nuevos; hilo 900 ms, espera y fusión 700 ms (modo literal)"
+    )
+    assert lento["espera_y_fusion"]["cumple"] is False
+
+
+def test_cargar_equivalencias_de_un_archivo_o_las_semillas(tmp_path):
+    ruta = tmp_path / "eq.json"
+    ruta.write_text(json.dumps([["TFG", "Trabajo Final de Graduación"]]), encoding="utf-8")
+    [equivalencia] = lb.cargar_equivalencias(None, str(ruta))
+    assert (equivalencia.sigla, equivalencia.form) == ("tfg", "trabajo final de graduacion")
+    assert {e.sigla for e in lb.cargar_equivalencias(None, None)} == {"tfg", "mgti"}
+
+
+def test_el_cliente_de_solo_lectura_deja_pasar_scroll_y_rechaza_escrituras():
+    from unittest.mock import MagicMock
+
+    cliente = lb.ClienteSoloLectura(MagicMock())
+    cliente.scroll(collection_name="c")
+    with pytest.raises(PermissionError):
+        cliente.upsert(collection_name="c", points=[])
+    with pytest.raises(PermissionError):
+        cliente.create_payload_index(collection_name="c")

@@ -83,6 +83,28 @@ class Settings(BaseSettings):
     rerank_passage_tokens: int = Field(default=128, ge=32, le=480)
     rerank_threads: int = Field(default=4, ge=1, le=8)
     rerank_budget_ms: int = Field(default=2500, ge=0, le=30000)
+    # Búsqueda híbrida (feature 010, ver mia.rag.lexical): "on"/"off" (otro valor = off, con aviso). Con "on", además de
+    # la búsqueda por significado se buscan por palabras (índice de texto de Qdrant) las palabras específicas de la
+    # pregunta. Una palabra es específica si aparece en como máximo `hybrid_max_docs` documentos de los dominios
+    # consultados (una ausente cuenta como específica; se cuentan documentos y no fragmentos porque un apellido
+    # repetido en cada página de una tesis es un solo documento); un fragmento que solo llegó por palabras pasa si
+    # contiene más de la mitad de las palabras específicas. `hybrid_term_chunks` es cuántos fragmentos se piden por
+    # palabra (y cuántos candidatos léxicos se puntúan por coseno), `hybrid_lexical_limit` cuántos de ellos pasan a la
+    # fusión y `hybrid_lexical_slots` cuántos lugares de la lista final pueden ocupar los que solo llegaron por
+    # palabras. `hybrid_max_groups` y `hybrid_min_token_len` acotan las palabras de la pregunta que se consultan
+    # (el índice no guarda palabras de menos de 3 letras). `hybrid_rrf_k` es la constante de la fusión.
+    # `hybrid_budget_ms` es el tiempo máximo de espera de la parte léxica (0 la espera sin tope): superado, la
+    # consulta sigue por significado. `hybrid_equivalences_ttl_seconds` es la vigencia de la caché de siglas.
+    query_hybrid_search: str = "off"
+    hybrid_max_docs: int = Field(default=10, ge=1, le=200)
+    hybrid_term_chunks: int = Field(default=200, ge=20, le=1000)
+    hybrid_lexical_limit: int = Field(default=20, ge=1, le=100)
+    hybrid_lexical_slots: int = Field(default=3, ge=0, le=16)
+    hybrid_max_groups: int = Field(default=8, ge=1, le=16)
+    hybrid_min_token_len: int = Field(default=3, ge=3, le=6)
+    hybrid_rrf_k: int = Field(default=60, ge=1, le=200)
+    hybrid_budget_ms: int = Field(default=800, ge=0, le=30000)
+    hybrid_equivalences_ttl_seconds: int = Field(default=60, ge=0, le=3600)
 
     # En Render free (512 MB) ingerir actas grandes agota la memoria: allí se desactiva y la ingesta
     # se hace desde una instancia local apuntando a las mismas bases (ver docs/OPERACION.md).

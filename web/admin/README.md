@@ -1,6 +1,6 @@
 # Panel de administración de MIA
 
-Artefacto de gestión de MIA, con tres módulos: **Inventario** (programas, dominios, carpetas y documentos), **Artefactos y accesos** (claves, dominios y modos permitidos, topes de gasto) y **Uso** (métricas, gráficas y registro de consultas). Especificación en [specs/002-panel-administracion/](../../specs/002-panel-administracion/spec.md).
+Artefacto de gestión de MIA, con cuatro módulos: **Inventario** (programas, dominios, carpetas y documentos), **Artefactos y accesos** (claves, dominios y modos permitidos, topes de gasto), **Uso** (métricas, gráficas y registro de consultas) y **Siglas y equivalencias** (la lista de siglas y formas desarrolladas de la búsqueda híbrida, feature [010](../../specs/010-busqueda-hibrida/spec.md); la ven todas las personas que administran y solo el alcance global la edita). Especificación en [specs/002-panel-administracion/](../../specs/002-panel-administracion/spec.md).
 
 ## Uso
 

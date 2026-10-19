@@ -8,8 +8,12 @@ Subcomandos:
                 (solo lectura, sin tokens de modelos).
                 Con --rerank agrega el puntaje del reranker local (feature 009): puesto del documento esperado,
                 barrido del mínimo y ventana de separación (sin tokens de modelos de lenguaje).
+                Con --palabras agrega la búsqueda por palabras de la feature 010: grupos y candidatos léxicos, puesto del
+                documento esperado antes y después de la fusión y barrido del máximo de documentos y de las ranuras
+                (solo lectura, sin tokens de modelos de lenguaje; exige el índice de texto de Qdrant).
     rendimiento Memoria y latencia del reranker local por candidatos, tokens por pasaje e hilos (feature 009).
-    registro    Resume la salida de `railway logs`: latencia p50 y p95 del reranker, memoria y avisos (sin gasto).
+    registro    Resume la salida de `railway logs`: latencia p50 y p95 del reranker y de la búsqueda híbrida, memoria y
+                avisos (sin gasto).
     respuestas  Corre los casos contra POST /query: fuentes, tiempo y costo (gasta; exige --tope-usd).
     informe     Genera el informe en Markdown de una corrida.
     comparar    Compara dos corridas caso por caso.
@@ -61,6 +65,18 @@ PATRON_PREGUNTA_LIMPIA = re.compile(r"Pregunta limpia: «(.*?)» \((con|sin) res
 PATRON_RERANK_CON = re.compile(r"Reranker: mejor (\d\.\d{3}), (\d+) de (\d+) sobre el mínimo \d\.\d{2}")
 PATRON_RERANK_NINGUNO = re.compile(r"Reranker: ninguno sobre el mínimo \d\.\d{2}, mejor (\d\.\d{3}) de (\d+)")
 NOTA_RERANK_CAIDA = "Reranker no disponible: se usó la similitud"
+# Notas de la feature 010 en `reject_reason`: lo que aportó la búsqueda por palabras o su caída al significado.
+PATRON_HIBRIDA_CON = re.compile(r"Búsqueda híbrida: (\d+) por palabras, (\d+) nuevos")
+NOTA_HIBRIDA_CAIDA = "Búsqueda por palabras no disponible"
+# Barridos de la feature 010: máximo de documentos de una palabra específica y lugares para los solo léxicos.
+BARRIDO_DOCUMENTOS = (3, 5, 10, 20, 50)
+BARRIDO_RANURAS = (0, 1, 2, 3, 4, 5)
+# Equivalencias de siglas por defecto si la base no tiene la tabla (anterior a la migración 0005).
+SEMILLAS_EQUIVALENCIAS = (
+    ("tfg", "trabajo final de graduacion"),
+    ("mgti", "gestion de tecnologias de informacion"),
+    ("mgti", "gestion de tecnologias de la informacion"),
+)
 # Una respuesta que no termina con uno de estos caracteres es una candidata a corte que el modelo no declaró.
 CIERRES_DE_FRASE = ".!?):;\"'”»*"
 
@@ -452,6 +468,18 @@ def leer_nota_rerank(texto: str | None) -> dict | None:
     return None
 
 
+def leer_nota_hibrida(texto: str | None) -> dict | None:
+    """Datos de la nota de la búsqueda híbrida en `reject_reason`, o None si no hay nota."""
+    if not texto:
+        return None
+    if NOTA_HIBRIDA_CAIDA in texto:
+        return {"candidatos": None, "nuevos": None, "cayo": True}
+    con = PATRON_HIBRIDA_CON.search(texto)
+    if con:
+        return {"candidatos": int(con.group(1)), "nuevos": int(con.group(2)), "cayo": False}
+    return None
+
+
 def resumen_rendimiento(medidas_ms: list[float], p50_max_ms: float, p95_max_ms: float) -> dict:
     """p50 y p95 de una lista de latencias y si cumplen los límites de la feature 009 (SC-006)."""
     p50, p95 = percentil(medidas_ms, 50), percentil(medidas_ms, 95)
@@ -463,6 +491,27 @@ def resumen_rendimiento(medidas_ms: list[float], p50_max_ms: float, p95_max_ms: 
 PATRON_REGISTRO_PUNTUACION = re.compile(r"Reranker: (\d+) candidatos en (\d+) ms, pico de memoria (\d+|\?) MB")
 PATRON_REGISTRO_CARGA = re.compile(r"Reranker cargado: RSS (\d+|\?) -> (\d+|\?) MB, pico (\d+|\?) MB")
 AVISO_REGISTRO_FALLO = "El reranker falló"
+# Línea que deja la ruta con la búsqueda híbrida (feature 010).
+PATRON_REGISTRO_HIBRIDA = re.compile(
+    r"Búsqueda híbrida: (\d+) grupos \((\d+) específicos\), (\d+) candidatos, (\d+) nuevos; "
+    r"hilo (\d+) ms, espera y fusión (\d+) ms"
+)
+AVISO_REGISTRO_HIBRIDA = "La búsqueda por palabras falló"
+
+
+def resumir_registro_hibrida(texto: str, p50_max_ms: float = 200, p95_max_ms: float = 500) -> dict:
+    """Resume las líneas de la búsqueda híbrida del registro del servidor (feature 010). La latencia que evalúa SC-007
+    es la espera y fusión (lo que la consulta esperó de más), no la duración del hilo léxico."""
+    lineas = PATRON_REGISTRO_HIBRIDA.findall(texto)
+    esperas = [float(espera) for *_, espera in lineas]
+    hilos = [float(hilo) for *_, hilo, _ in lineas]
+    return {
+        "consultas": len(lineas),
+        "con_candidatos": sum(1 for _, _, candidatos, _, _, _ in lineas if int(candidatos) > 0),
+        "espera_y_fusion": resumen_rendimiento(esperas, p50_max_ms, p95_max_ms),
+        "hilo": {"p50_ms": percentil(hilos, 50), "p95_ms": percentil(hilos, 95)},
+        "avisos_de_fallo": texto.count(AVISO_REGISTRO_HIBRIDA),
+    }
 
 
 def resumir_registro(texto: str, p50_max_ms: float, p95_max_ms: float) -> dict:
@@ -484,6 +533,7 @@ def resumir_registro(texto: str, p50_max_ms: float, p95_max_ms: float) -> dict:
             for a, d, p in PATRON_REGISTRO_CARGA.findall(texto)
         ],
         "avisos_de_fallo": texto.count(AVISO_REGISTRO_FALLO),
+        "hibrida": resumir_registro_hibrida(texto),
     }
 
 
@@ -530,6 +580,195 @@ def resumen_puntajes(mediciones: list[dict], umbral: float, limites: dict[str, i
         "ventana_separacion": ventana_separacion(mediciones),
         "parejas": parejas(mediciones, umbral),
     }
+
+
+# ---------------------------------------------------------------------------
+# Búsqueda por palabras (feature 010)
+# ---------------------------------------------------------------------------
+
+
+def cargar_equivalencias(sesion=None, ruta: str | None = None) -> list:
+    """Las equivalencias de siglas: de un archivo JSON (lista de [sigla, forma]) si se da, si no de la tabla de la
+    base y, si la tabla no existe todavía (anterior a la migración 0005), las semillas."""
+    from mia.rag.lexical import Equivalence, normalize
+
+    if ruta:
+        pares = json.loads(Path(ruta).read_text(encoding="utf-8"))
+        return [Equivalence(normalize(sigla), " ".join(normalize(forma).split())) for sigla, forma in pares]
+    if sesion is not None:
+        try:
+            from mia.rag.equivalences import get_equivalences
+
+            return get_equivalences(sesion)
+        except Exception:  # noqa: BLE001 (la tabla puede no existir: se usan las semillas)
+            sesion.rollback()
+    return [Equivalence(sigla, forma) for sigla, forma in SEMILLAS_EQUIVALENCIAS]
+
+
+def _puesto_en(lista: list, documentos: list[str], archivos: dict) -> int | None:
+    """Puesto (desde 1) del primer fragmento de la lista cuyo documento es alguno de los esperados."""
+    for i, r in enumerate(lista, start=1):
+        nombre = archivos.get(r.document_id, r.document_id)
+        if any(_contiene(nombre, f) for f in documentos):
+            return i
+    return None
+
+
+def medir_palabras(pregunta, dominio_ids, vector, almacen, archivos, equivalencias, ajustes, limites, umbral,
+                   documentos, reloj=time.perf_counter) -> dict:
+    """La búsqueda por palabras de un caso con el mismo código que la API: grupos, candidatos, y por modo la lista
+    de significado antes y la fusionada después. Con los datos del barrido del máximo de documentos y de las ranuras.
+    El texto de los fragmentos no se guarda. `ajustes`: documentos, fragmentos, limite, ranuras, grupos_max, largo_min, rrf_k."""
+    from mia.rag.lexical import (
+        lexical_lookup,
+        merge_hybrid,
+        order_lexical,
+        pick_candidates,
+        query_groups,
+    )
+
+    grupos = query_groups(pregunta, equivalencias, ajustes["grupos_max"], ajustes["largo_min"])
+    inicio = reloj()
+    encontrados = lexical_lookup(almacen, dominio_ids, grupos, ajustes["fragmentos"]) if grupos else []
+    por_k = {
+        k: pick_candidates(encontrados, k, ajustes["fragmentos"])
+        for k in sorted({*BARRIDO_DOCUMENTOS, ajustes["documentos"]})
+    }
+    ids = sorted({c.chunk_id for resultado in por_k.values() for c in resultado.candidates})
+    puntuados = almacen.score_chunks(vector, dominio_ids, ids) if ids else []
+    ms = (reloj() - inicio) * 1000
+    por_id = {r.chunk_id: r for r in puntuados}
+    principal = por_k[ajustes["documentos"]]
+    lexicos = order_lexical(principal.candidates, puntuados)[: ajustes["limite"]]
+    vectores = almacen.search(vector, dominio_ids, CANDIDATOS)
+
+    def lado_significado(modo):
+        return [r for r in vectores[: limites[modo]] if r.score >= umbral]
+
+    def fusionar(modo, lexicos_, ranuras):
+        return merge_hybrid(lado_significado(modo), lexicos_, limites[modo], ranuras, ajustes["rrf_k"])
+
+    por_modo = {}
+    for modo in MODOS:
+        antes, despues = lado_significado(modo), fusionar(modo, lexicos, ajustes["ranuras"])
+        en_significado, en_palabras = {r.chunk_id for r in antes}, {r.chunk_id for r in lexicos}
+        esperados = []
+        for fragmento in documentos:
+            puesto_antes = _puesto_en(antes, [fragmento], archivos)
+            puesto_despues = _puesto_en(despues, [fragmento], archivos)
+            elegido = next((r for r in despues if _contiene(archivos.get(r.document_id, r.document_id), fragmento)), None)
+            traido = None
+            if elegido is not None:
+                dentro_sig, dentro_pal = elegido.chunk_id in en_significado, elegido.chunk_id in en_palabras
+                traido = "ambas" if dentro_sig and dentro_pal else "significado" if dentro_sig else "palabras"
+            esperados.append(
+                {"fragmento": fragmento, "puesto_antes": puesto_antes, "puesto_despues": puesto_despues, "traido_por": traido}
+            )
+        por_modo[modo] = {
+            "antes": {"pasan": len(antes), "resultado": "responde" if antes else "sin_informacion"},
+            "despues": {"pasan": len(despues), "resultado": "responde" if despues else "sin_informacion"},
+            "esperados": esperados,
+        }
+    barrido_documentos = {}
+    for k, resultado in por_k.items():
+        ordenados = order_lexical(resultado.candidates, puntuados)[: ajustes["limite"]]
+        barrido_documentos[str(k)] = {
+            "especificos": resultado.specific,
+            "candidatos": len(resultado.candidates),
+            "esperado": bool(documentos) and _puesto_en(ordenados, documentos, archivos) is not None,
+        }
+    barrido_ranuras = {}
+    for ranuras in BARRIDO_RANURAS:
+        barrido_ranuras[str(ranuras)] = {}
+        for modo in MODOS:
+            fusion = fusionar(modo, lexicos, ranuras)
+            barrido_ranuras[str(ranuras)][modo] = {
+                "resultado": "responde" if fusion else "sin_informacion",
+                "esperado": bool(documentos) and _puesto_en(fusion, documentos, archivos) is not None,
+            }
+    return {
+        "grupos": [
+            {"terminos": list(g.terms), "fragmentos": len(g.chunk_ids), "documentos": g.documents,
+             "especifico": g.documents <= ajustes["documentos"]}
+            for g in encontrados
+        ],
+        "especificos": principal.specific,
+        "ms": round(ms, 1),
+        "candidatos": [
+            {
+                "documento": archivos.get(por_id[c.chunk_id].document_id, por_id[c.chunk_id].document_id)
+                if c.chunk_id in por_id else None,
+                "coincidentes": c.matched,
+                "peso": round(c.weight, 3),
+                "coseno": round(por_id[c.chunk_id].score, 4) if c.chunk_id in por_id else None,
+            }
+            for c in principal.candidates
+        ],
+        "por_modo": por_modo,
+        "barrido_documentos": barrido_documentos,
+        "barrido_ranuras": barrido_ranuras,
+    }
+
+
+def resumen_palabras(mediciones: list[dict]) -> dict:
+    """Resumen de la búsqueda por palabras entre los casos medidos (solo los que tienen `palabras`)."""
+    con = [m for m in mediciones if m.get("palabras")]
+    objetivos = [m for m in con if m["espera"] == "respuesta" and m["palabras"]["por_modo"]["literal"]["esperados"]]
+    sin_info = [m for m in con if m["espera"] == "sin_informacion"]
+
+    def nombre(m):
+        return m["caso_id"] + ("" if m["variante"] == "completa" else f" ({m['variante']})")
+
+    def esperado_en(m, modo, momento):
+        return any(e[f"puesto_{momento}"] is not None for e in m["palabras"]["por_modo"][modo]["esperados"])
+
+    resumen: dict = {"casos": len(con), "por_modo": {}}
+    for modo in MODOS:
+        antes = [nombre(m) for m in objetivos if esperado_en(m, modo, "antes")]
+        despues = [nombre(m) for m in objetivos if esperado_en(m, modo, "despues")]
+        bus = [m for m in objetivos if m["categoria"] == "seccion_2_2"]
+        resumen["por_modo"][modo] = {
+            "objetivos": len(objetivos),
+            "con_esperado_antes": len(antes),
+            "con_esperado_despues": len(despues),
+            "mejoran": [n for n in despues if n not in antes],
+            "empeoran": [n for n in antes if n not in despues],
+            "bus1_bus2": {
+                "preguntas": len(bus),
+                "pasan_antes": sum(1 for m in bus if esperado_en(m, modo, "antes")),
+                "pasan_despues": sum(1 for m in bus if esperado_en(m, modo, "despues")),
+            },
+            "sin_info_que_llegan_al_modelo": [
+                nombre(m) for m in sin_info
+                if m["palabras"]["por_modo"][modo]["antes"]["resultado"] == "sin_informacion"
+                and m["palabras"]["por_modo"][modo]["despues"]["resultado"] == "responde"
+            ],
+        }
+    resumen["barrido_documentos"] = {
+        k: {
+            "objetivos_acertados": sum(1 for m in objetivos if m["palabras"]["barrido_documentos"][k]["esperado"]),
+            "sin_info_con_candidatos": [nombre(m) for m in sin_info if m["palabras"]["barrido_documentos"][k]["candidatos"] > 0],
+        }
+        for k in (con[0]["palabras"]["barrido_documentos"] if con else {})
+    }
+    resumen["barrido_ranuras"] = {
+        r: {
+            modo: {
+                "objetivos_con_esperado": sum(1 for m in objetivos if m["palabras"]["barrido_ranuras"][r][modo]["esperado"]),
+                # Los que antes no respondían y con la fusión sí: lo que la parte léxica agrega al costo.
+                "sin_info_que_responden": [
+                    nombre(m) for m in sin_info
+                    if m["palabras"]["barrido_ranuras"][r][modo]["resultado"] == "responde"
+                    and m["palabras"]["por_modo"][modo]["antes"]["resultado"] == "sin_informacion"
+                ],
+            }
+            for modo in MODOS
+        }
+        for r in (con[0]["palabras"]["barrido_ranuras"] if con else {})
+    }
+    latencias = [m["palabras"]["ms"] for m in con]
+    resumen["latencia_ms"] = {"p50": percentil(latencias, 50), "p95": percentil(latencias, 95), "n": len(latencias)}
+    return resumen
 
 
 # ---------------------------------------------------------------------------
@@ -639,6 +878,16 @@ def _resumen_rerank(filas: list[dict]) -> dict:
     }
 
 
+def _resumen_hibrida(filas: list[dict]) -> dict:
+    """Consultas en las que intervino la búsqueda por palabras y cuántas cayeron al significado (feature 010)."""
+    con_candidatos = [r for r in filas if r.get("hibrida_candidatos")]
+    return {
+        "consultas_con_hibrida": len(con_candidatos),
+        "hibrida_nuevos_total": sum(r.get("hibrida_nuevos") or 0 for r in con_candidatos),
+        "caidas_a_significado": sum(1 for r in filas if r.get("hibrida_cayo")),
+    }
+
+
 def _resumen_regla_de_seguridad(filas: list[dict]) -> dict:
     """Cuántas respuestas con contenido cayeron en la regla de seguridad de las citas (feature 006)."""
     con_contenido = [r for r in filas if r["resultado"] == "respondio" and r.get("regla_de_seguridad") is not None]
@@ -677,6 +926,7 @@ def resumen_respuestas(resultados: list[dict]) -> dict:
             **_resumen_cortes(filas),
             **_resumen_pregunta_limpia(filas),
             **_resumen_rerank(filas),
+            **_resumen_hibrida(filas),
         }
     return resumen
 
@@ -711,6 +961,7 @@ def correr_respuestas(casos, modos, consultar, leer_costo, tope_usd: float) -> d
                 costo = leer_costo(consulta_id) if consulta_id else None
                 nota_limpia = PATRON_PREGUNTA_LIMPIA.search((costo or {}).get("reject_reason") or "")
                 nota_rerank = leer_nota_rerank((costo or {}).get("reject_reason"))
+                nota_hibrida = leer_nota_hibrida((costo or {}).get("reject_reason"))
                 if costo and costo.get("cost_usd") is not None:
                     gasto += costo["cost_usd"]
                 resultados.append(
@@ -737,6 +988,9 @@ def correr_respuestas(casos, modos, consultar, leer_costo, tope_usd: float) -> d
                         "rerank_mejor": nota_rerank["mejor"] if nota_rerank else None,
                         "rerank_cayo": None if not costo else bool(nota_rerank and nota_rerank["cayo"]),
                         "rerank_ninguno_sobre_minimo": None if not costo else bool(nota_rerank and nota_rerank["ninguno"]),
+                        "hibrida_candidatos": nota_hibrida["candidatos"] if nota_hibrida else None,
+                        "hibrida_nuevos": nota_hibrida["nuevos"] if nota_hibrida else None,
+                        "hibrida_cayo": None if not costo else bool(nota_hibrida and nota_hibrida["cayo"]),
                         "consulta_id": consulta_id,
                     }
                 )
@@ -756,6 +1010,7 @@ def correr_respuestas(casos, modos, consultar, leer_costo, tope_usd: float) -> d
 CAMPOS_OPCIONALES = {
     "regla_de_seguridad", "reintento", "aviso_de_corte", "termina_sin_puntuacion", "pregunta_limpia",
     "pregunta_limpia_ayudo", "pregunta_limpia_texto", "rerank_cayo", "rerank_ninguno_sobre_minimo",
+    "hibrida_candidatos", "hibrida_nuevos", "hibrida_cayo",
 }
 
 
@@ -784,6 +1039,7 @@ def comparar(a: dict, b: dict) -> dict:
                 if rx != ry:
                     cambios.append(f"{nombre}, modo {modo}: resultado {rx} -> {ry}.")
             cambios += _cambios_de_rerank(nombre, x.get("rerank"), y.get("rerank"))
+            cambios += _cambios_de_palabras(nombre, x, y)
     ra, rb = a.get("respuestas"), b.get("respuestas")
     medianas: dict = {}
     if ra and rb:
@@ -795,7 +1051,8 @@ def comparar(a: dict, b: dict) -> dict:
             campos = (
                 "resultado", "correcto", "fuentes_mostradas", "fuentes_sobrantes", "regla_de_seguridad",
                 "reintento", "aviso_de_corte", "termina_sin_puntuacion", "pregunta_limpia", "pregunta_limpia_ayudo",
-                "pregunta_limpia_texto", "rerank_cayo", "rerank_ninguno_sobre_minimo",
+                "pregunta_limpia_texto", "rerank_cayo", "rerank_ninguno_sobre_minimo", "hibrida_candidatos",
+                "hibrida_nuevos", "hibrida_cayo",
             )
             for campo in campos:
                 if campo in CAMPOS_OPCIONALES and (x.get(campo) is None or y.get(campo) is None):
@@ -828,6 +1085,34 @@ def _cambios_de_rerank(nombre: str, x: dict | None, y: dict | None) -> list[str]
                 f"{nombre}: puesto del esperado ({e['fragmento']}) por reranker "
                 f"{'ausente' if antes is None else '#' + str(antes)} -> {'ausente' if despues is None else '#' + str(despues)}."
             )
+    return cambios
+
+
+def _cambios_de_palabras(nombre: str, x: dict, y: dict) -> list[str]:
+    """Diferencias de la búsqueda por palabras (feature 010) entre dos mediciones del mismo caso. Si una corrida no la
+    midió, se compara su resultado por significado con el resultado fusionado de la otra."""
+    px, py = x.get("palabras"), y.get("palabras")
+    if not px and not py:
+        return []
+    cambios = []
+    for modo in MODOS:
+        rx = px["por_modo"][modo]["despues"]["resultado"] if px else x["por_modo"][modo]["resultado"]
+        ry = py["por_modo"][modo]["despues"]["resultado"] if py else y["por_modo"][modo]["resultado"]
+        if rx != ry:
+            cambios.append(f"{nombre}, modo {modo}: resultado con búsqueda por palabras {rx} -> {ry}.")
+        ex = {e["fragmento"]: e["puesto_despues"] for e in px["por_modo"][modo]["esperados"]} if px else {
+            e["fragmento"]: e["posicion"] for e in x.get("esperados", [])
+        }
+        ey = {e["fragmento"]: e["puesto_despues"] for e in py["por_modo"][modo]["esperados"]} if py else {
+            e["fragmento"]: e["posicion"] for e in y.get("esperados", [])
+        }
+        for fragmento in ex.keys() & ey.keys():
+            if (ex[fragmento] is None) != (ey[fragmento] is None):
+                cambios.append(
+                    f"{nombre}, modo {modo}: el esperado ({fragmento}) "
+                    f"{'ausente' if ex[fragmento] is None else 'presente'} -> {'ausente' if ey[fragmento] is None else 'presente'} "
+                    "en la lista final."
+                )
     return cambios
 
 
@@ -929,6 +1214,65 @@ def _seccion_rerank(puntajes: dict) -> list[str]:
     return [*lineas, ""]
 
 
+def _seccion_palabras(puntajes: dict) -> list[str]:
+    """Sección del informe con la búsqueda por palabras (feature 010); vacía si la corrida no la midió."""
+    mediciones = [m for m in puntajes["mediciones"] if m.get("palabras") is not None]
+    if not mediciones:
+        return []
+    ctx = puntajes["contexto"].get("palabras") or {}
+    resumen = puntajes["resumen"].get("palabras") or resumen_palabras(puntajes["mediciones"])
+    lineas = [
+        "## Búsqueda por palabras (feature 010)",
+        "",
+        (
+            f"Palabra específica: hasta {ctx.get('documentos', '?')} documentos; {ctx.get('fragmentos', '?')} fragmentos por palabra, "
+            f"hasta {ctx.get('limite', '?')} candidatos léxicos, "
+            f"{ctx.get('ranuras', '?')} ranuras, {ctx.get('equivalencias', '?')} equivalencias de siglas."
+        ),
+        "",
+        "| Caso | Espera | Grupos (específicos) | Candidatos | Esperado literal: antes -> después (traído por) | Literal | Razonamiento | ms |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+    for m in mediciones:
+        pal = m["palabras"]
+        esperados = pal["por_modo"]["literal"]["esperados"]
+        detalle = ", ".join(
+            "-" if e["puesto_despues"] is None else
+            f"{'#' + str(e['puesto_antes']) if e['puesto_antes'] else 'fuera'} -> #{e['puesto_despues']} ({e['traido_por']})"
+            for e in esperados
+        ) or "-"
+        lineas.append(
+            f"| {m['caso_id']}" + ("" if m["variante"] == "completa" else f" ({m['variante']})")
+            + f" | {m['espera']} | {len(pal['grupos'])} ({pal['especificos']}) | {len(pal['candidatos'])} | {detalle} "
+            f"| {pal['por_modo']['literal']['antes']['resultado']} -> {pal['por_modo']['literal']['despues']['resultado']} "
+            f"| {pal['por_modo']['razonamiento']['antes']['resultado']} -> {pal['por_modo']['razonamiento']['despues']['resultado']} "
+            f"| {_fmt(pal['ms'], 0)} |"
+        )
+    lineas += ["", "Por modo (casos que esperan respuesta con documento declarado):", ""]
+    for modo in MODOS:
+        d = resumen["por_modo"][modo]
+        lineas.append(
+            f"- **{modo}**: el documento esperado está en la lista final en {d['con_esperado_despues']} de {d['objetivos']} casos "
+            f"(antes {d['con_esperado_antes']}). Mejoran: {', '.join(d['mejoran']) or 'ninguno'}. Empeoran: "
+            f"{', '.join(d['empeoran']) or 'ninguno'}. BUS-1 y BUS-2 (casos de la sección 2.2): "
+            f"{d['bus1_bus2']['pasan_antes']} -> {d['bus1_bus2']['pasan_despues']} de {d['bus1_bus2']['preguntas']} preguntas. "
+            f"Casos \"sin información\" que llegan ahora al modelo: {', '.join(d['sin_info_que_llegan_al_modelo']) or 'ninguno'}."
+        )
+    lat = resumen["latencia_ms"]
+    lineas += ["", f"Latencia de la parte léxica medida aquí (hilo, sin red de Railway): p50 {_fmt(lat['p50'], 0)} ms, p95 {_fmt(lat['p95'], 0)} ms.", "",
+               "Barrido del máximo de documentos de una palabra específica:", "", "| Máximo de documentos | Objetivos con su documento entre los candidatos | \"Sin información\" con candidatos léxicos |", "|---|---|---|"]
+    for k, f in resumen["barrido_documentos"].items():
+        lineas.append(f"| {k} | {f['objetivos_acertados']} | {', '.join(f['sin_info_con_candidatos']) or 'ninguno'} |")
+    lineas += ["", "Barrido de las ranuras para fragmentos que solo llegaron por palabras:", "",
+               "| Ranuras | Literal: objetivos con esperado | Literal: sin información que responden | Razonamiento: objetivos con esperado | Razonamiento: sin información que responden |", "|---|---|---|---|---|"]
+    for r, f in resumen["barrido_ranuras"].items():
+        lineas.append(
+            f"| {r} | {f['literal']['objetivos_con_esperado']} | {', '.join(f['literal']['sin_info_que_responden']) or 'ninguno'} "
+            f"| {f['razonamiento']['objetivos_con_esperado']} | {', '.join(f['razonamiento']['sin_info_que_responden']) or 'ninguno'} |"
+        )
+    return [*lineas, ""]
+
+
 def generar_informe(corrida: dict) -> str:
     """Markdown del informe de una corrida (puntajes y, si existe, respuestas)."""
     puntajes, respuestas = corrida.get("puntajes"), corrida.get("respuestas")
@@ -1004,6 +1348,7 @@ def generar_informe(corrida: dict) -> str:
         "- Casos cuyo documento esperado no aparece entre los candidatos: " + (", ".join(v["ausentes"]) or "ninguno") + ".",
         "",
         *_seccion_rerank(puntajes),
+        *_seccion_palabras(puntajes),
         "## Pregunta completa frente a variante corta y pregunta limpia",
         "",
         "| Caso | Completa | Distancia al umbral | Corta | Distancia al umbral | Limpia | Distancia al umbral |",
@@ -1125,7 +1470,7 @@ def generar_informe(corrida: dict) -> str:
 class ClienteSoloLectura:
     """Envuelve el cliente de Qdrant y solo deja pasar las operaciones de lectura."""
 
-    PERMITIDOS = frozenset({"query_points", "count", "get_collection", "collection_exists"})
+    PERMITIDOS = frozenset({"query_points", "count", "get_collection", "collection_exists", "scroll"})
 
     def __init__(self, cliente):
         self._cliente = cliente
@@ -1320,6 +1665,22 @@ def comando_puntajes(args) -> int:
             raise ErrorMedicion("No se pudo cargar el reranker local (ver el registro): revisar el modelo y las dependencias.")
     candidatos_rerank = max(settings.rerank_candidates, *limites.values())
 
+    ajustes_palabras = None
+    equivalencias: list = []
+    if args.palabras:
+        estado = almacen.text_index_status()
+        if not estado["exists"]:
+            raise ErrorMedicion(
+                "El Qdrant no tiene el índice de texto: prepararlo con `python scripts/palabras.py preparar` (en producción "
+                "exige autorización) o medir contra una copia local con scripts/copiar_coleccion.py --indice."
+            )
+        ajustes_palabras = {
+            "documentos": settings.hybrid_max_docs, "fragmentos": settings.hybrid_term_chunks, "limite": settings.hybrid_lexical_limit,
+            "ranuras": settings.hybrid_lexical_slots, "grupos_max": settings.hybrid_max_groups,
+            "largo_min": settings.hybrid_min_token_len, "rrf_k": settings.hybrid_rrf_k,
+        }
+        equivalencias = cargar_equivalencias(sesion, args.equivalencias)
+
     mediciones, omitidos = [], []
     exigir_casos(casos, [])
     for caso in casos:
@@ -1361,6 +1722,14 @@ def comando_puntajes(args) -> int:
                     "por_modo": {m: resultado_por_modo_rerank(candidatos_r, limites[m], minimo) for m in MODOS},
                     "esperados": puesto_rerank(candidatos_r, caso.get("documentos", []), minimo, limites),
                 }
+            if ajustes_palabras is not None:
+                # La parte léxica busca con la pregunta que busca la API: la completa (la limpia solo es la segunda búsqueda
+                # por significado, la parte léxica ya descarta las palabras de relleno).
+                vector = embedder.embed([pregunta], is_query=True)[0]
+                medicion["palabras"] = medir_palabras(
+                    caso["pregunta"] if variante == "limpia" else pregunta, ids, vector, almacen, archivos, equivalencias,
+                    ajustes_palabras, limites, umbral, caso.get("documentos", []),
+                )
             mediciones.append(medicion)
             esperado = ", ".join(
                 f"{e['fragmento'][:18]}: " + ("ausente" if e["posicion"] is None else f"#{e['posicion']} {e['puntaje']:.3f}")
@@ -1373,6 +1742,20 @@ def comando_puntajes(args) -> int:
                 f"({medicion['por_modo']['razonamiento']['pasan']}) | espera {caso['espera']}"
                 + (f" | {esperado}" if esperado else "")
             )
+            if "palabras" in medicion:
+                pal = medicion["palabras"]
+                esperados_pal = ", ".join(
+                    f"{e['fragmento'][:18]}: " + ("ausente" if e["puesto_despues"] is None else
+                                                  f"{'#' + str(e['puesto_antes']) if e['puesto_antes'] else 'fuera'}->#{e['puesto_despues']} ({e['traido_por']})")
+                    for e in pal["por_modo"]["literal"]["esperados"]
+                )
+                print(
+                    f"{'':<15}palabras {pal['especificos']} específicos de {len(pal['grupos'])} grupos, "
+                    f"{len(pal['candidatos'])} candidatos | literal {pal['por_modo']['literal']['antes']['resultado']} -> "
+                    f"{pal['por_modo']['literal']['despues']['resultado']} | razonamiento "
+                    f"{pal['por_modo']['razonamiento']['antes']['resultado']} -> {pal['por_modo']['razonamiento']['despues']['resultado']} "
+                    f"| {pal['ms']:.0f} ms" + (f" | {esperados_pal}" if esperados_pal else "")
+                )
             if "rerank" in medicion:
                 rr = medicion["rerank"]
                 mejor_r = max((c["puntaje"] for c in rr["candidatos"]), default=0.0)
@@ -1413,8 +1796,11 @@ def comando_puntajes(args) -> int:
             if reranker is not None
             else {}
         ),
+        **({"palabras": {**ajustes_palabras, "equivalencias": len(equivalencias)}} if ajustes_palabras else {}),
     )
     resumen = resumen_puntajes(mediciones, umbral, limites)
+    if ajustes_palabras is not None:
+        resumen["palabras"] = resumen_palabras(mediciones)
     if reranker is not None:
         resumen["barrido_minimos"] = barrido_minimos(mediciones, umbral=umbral, limites=limites)
         resumen["ventana_rerank"] = ventana_rerank(mediciones)
@@ -1422,6 +1808,16 @@ def comando_puntajes(args) -> int:
     v = resumen["ventana_separacion"]
     print(f"\nVentana de separación: sin información hasta {v['max_sin_info']}, con respuesta desde {v['min_respuesta']} -> "
           + ("separables" if v["separables"] else "NO separables por umbral"))
+    if ajustes_palabras is not None:
+        for modo in MODOS:
+            d = resumen["palabras"]["por_modo"][modo]
+            print(
+                f"Búsqueda por palabras, modo {modo}: documento esperado en la lista final {d['con_esperado_antes']} -> "
+                f"{d['con_esperado_despues']} de {d['objetivos']} casos (mejoran: {', '.join(d['mejoran']) or 'ninguno'}; "
+                f"empeoran: {', '.join(d['empeoran']) or 'ninguno'}); BUS-1 y BUS-2: {d['bus1_bus2']['pasan_antes']} -> "
+                f"{d['bus1_bus2']['pasan_despues']} de {d['bus1_bus2']['preguntas']}; sin información que llegan al modelo: "
+                f"{', '.join(d['sin_info_que_llegan_al_modelo']) or 'ninguno'}."
+            )
     if reranker is not None:
         w = resumen["ventana_rerank"]
         print(
@@ -1456,6 +1852,15 @@ def comando_registro(args) -> int:
             f"pico {_fmt(carga['pico_mb'])} MB."
         )
     print(f"Avisos de fallo del reranker: {r['avisos_de_fallo']}.")
+    h = r["hibrida"]
+    if h["consultas"] or h["avisos_de_fallo"]:
+        esp = h["espera_y_fusion"]
+        print(
+            f"Búsqueda híbrida: {h['consultas']} consultas ({h['con_candidatos']} con candidatos), espera y fusión "
+            f"p50 {_fmt(esp['p50_ms'], 0)} ms, p95 {_fmt(esp['p95_ms'], 0)} ms -> "
+            f"{'cumple' if esp['cumple'] else 'NO cumple'} 200/500 ms (SC-007); hilo léxico p50 {_fmt(h['hilo']['p50_ms'], 0)} ms, "
+            f"p95 {_fmt(h['hilo']['p95_ms'], 0)} ms; avisos de fallo: {h['avisos_de_fallo']}."
+        )
     if args.etiqueta:
         contexto = contexto_corrida(args.etiqueta, "registro del servidor", archivo=ruta.name)
         guardar_json(carpeta_de(contexto), "registro.json", {"contexto": contexto, "resumen": r})
@@ -1714,6 +2119,8 @@ def main(argv: list[str] | None = None) -> int:
     pun.add_argument("--solo", default="", help="Ids de casos separados por coma")
     pun.add_argument("--casos", default=str(RUTA_CASOS), help="Archivo de casos (por defecto el versionado)")
     pun.add_argument("--rerank", action="store_true", help="Puntúa también con el reranker local (feature 009)")
+    pun.add_argument("--palabras", action="store_true", help="Mide también la búsqueda por palabras (feature 010)")
+    pun.add_argument("--equivalencias", default=None, help="JSON con la lista de [sigla, forma] (por defecto la de la base)")
     pun.set_defaults(funcion=comando_puntajes)
 
     ren = sub.add_parser("rendimiento", help="Memoria y latencia del reranker local (solo lectura, sin tokens)")

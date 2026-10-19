@@ -33,7 +33,7 @@ from sqlalchemy.orm import Session
 from mia.storage.db import BASELINE_REVISION, MIGRATIONS_DIR, _normalize_url, init_db
 from mia.storage.models import Domain, Unit
 
-DESTINO = "0004"
+DESTINO = "0005"
 
 
 @dataclass
@@ -171,7 +171,7 @@ def probar(url: str, produccion: str | None = None, ida_y_vuelta: bool = True) -
         f"antes {antes_conteos}, después {despues}",
     )
     tablas = set(inspect(engine).get_table_names())
-    nuevas = {"units", "folders", "artifacts", "artifact_units", "artifact_domains", "queries"}
+    nuevas = {"units", "folders", "artifacts", "artifact_units", "artifact_domains", "queries", "sigla_equivalences"}
     resultado.registrar("existen las tablas nuevas", nuevas <= tablas, f"faltan {sorted(nuevas - tablas)}" if not nuevas <= tablas else "")
     columnas = {c["name"] for c in inspect(engine).get_columns("domains")}
     resultado.registrar("domains tiene unit_id", "unit_id" in columnas)
