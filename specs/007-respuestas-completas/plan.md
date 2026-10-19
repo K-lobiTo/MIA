@@ -70,7 +70,7 @@ specs/007-respuestas-completas/
 
 ```text
 src/mia/
-├── config.py                     # + 7 variables query_* (ver data-model.md)
+├── config.py                     # + 6 variables query_* (ver data-model.md)
 ├── rag/
 │   ├── context.py                # Passage gana `continues`; build_passages con política de contexto completo y tope
 │   ├── completeness.py           # NUEVO: opciones on/off, instrucción de completitud, marca de continuación,
