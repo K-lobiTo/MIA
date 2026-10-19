@@ -7,7 +7,8 @@ Contrato interno de la feature (no cambia la forma de la respuesta de `POST /que
 | Variable | Campo | Valor por defecto | Significado |
 |---|---|---|---|
 | `QUERY_HYBRID_SEARCH` | `query_hybrid_search` | `off` | `on` enciende la búsqueda por palabras; cualquier otro valor se trata como `off` (con un aviso una vez) |
-| `HYBRID_MAX_DOC_FREQ` | `hybrid_max_doc_freq` | 60 (1 a 500) | un grupo es específico si aparece en como máximo este número de fragmentos de los dominios consultados |
+| `HYBRID_MAX_DOCS` | `hybrid_max_docs` | 10 (1 a 200) | un grupo es específico si aparece en como máximo este número de documentos de los dominios consultados (se cuentan documentos y no fragmentos: un apellido repetido en cada página de una tesis es un solo documento) |
+| `HYBRID_TERM_CHUNKS` | `hybrid_term_chunks` | 200 (20 a 1000) | fragmentos que se piden por palabra y candidatos léxicos que se puntúan por coseno |
 | `HYBRID_LEXICAL_LIMIT` | `hybrid_lexical_limit` | 20 (1 a 100) | candidatos léxicos que pasan a la fusión |
 | `HYBRID_LEXICAL_SLOTS` | `hybrid_lexical_slots` | 3 (0 a 16) | lugares máximos de la lista final para fragmentos que solo llegaron por palabras |
 | `HYBRID_MAX_GROUPS` | `hybrid_max_groups` | 8 (1 a 16) | grupos de la pregunta que se consultan |
@@ -26,12 +27,12 @@ No son abstractos: el valor por defecto lanza `NotImplementedError`, que la ruta
 def ensure_text_index(self) -> None
 def text_index_status(self) -> dict   # {"exists": bool, "params": {...}, "indexed": int, "points": int}
 def drop_text_index(self) -> None
-def match_chunks(self, domains: list[str], text: str, limit: int) -> list[str]
+def match_chunks(self, domains: list[str], text: str, limit: int) -> list[tuple[str, str]]
 def score_chunks(self, embedding: list[float], domains: list[str], chunk_ids: list[str]) -> list[SearchResult]
 ```
 
 - `ensure_text_index`: crea el índice sobre `text` con los parámetros del modelo de datos. Si ya existe con los mismos parámetros no hace nada; si existe con otros lo reporta (no lo reemplaza solo).
-- `match_chunks`: ids de fragmentos de los dominios dados cuyo `text` contiene todas las palabras de `text` (ya normalizado), como mucho `limit`. Usa `scroll` con `with_payload=False`.
+- `match_chunks`: pares (id del fragmento, id del documento) de los fragmentos de los dominios dados cuyo `text` contiene todas las palabras de `text` (ya normalizado), como mucho `limit`. Usa `scroll` con `with_payload=["document_id"]`: no trae el texto.
 - `score_chunks`: los fragmentos con esos ids y esos dominios, con texto, `document_id`, `domain`, `chunk_index` y `score` igual al coseno con `embedding`. Una consulta `query_points` con filtro de ids y de dominios; un id fuera de los dominios no se devuelve.
 - Cualquier error de Qdrant (índice ausente, red, tiempo) sube como excepción; la ruta la convierte en caída a significado.
 
@@ -41,7 +42,7 @@ def score_chunks(self, embedding: list[float], domains: list[str], chunk_ids: li
 def hybrid_enabled(value: str) -> bool
 def normalize(text: str) -> str                                  # minúsculas, sin tildes, "T.F.G." -> "tfg"
 def query_groups(question: str, equivalences: list[Equivalence], max_groups: int, min_len: int) -> list[LexicalGroup]
-def pick_candidates(groups: list[LexicalGroup], max_doc_freq: int, limit: int) -> LexicalOutcome
+def pick_candidates(groups: list[LexicalGroup], max_docs: int, limit: int) -> LexicalOutcome
 def merge_hybrid(vector_results, lexical_results, limit: int, slots: int, k: int) -> list[SearchResult]
 def hybrid_note(outcome: LexicalOutcome, merged_new: int) -> str | None
 def failure_note() -> str
@@ -49,7 +50,7 @@ def warn_lexical_failure(exc: Exception) -> None                  # a lo sumo un
 ```
 
 - `query_groups`: normaliza la pregunta; si una palabra es la sigla de una equivalencia, el grupo lleva la sigla y cada forma desarrollada como alternativas; si la pregunta contiene la forma desarrollada como palabras consecutivas, esas palabras se reemplazan por un grupo con la forma y la sigla. Descarta palabras vacías y de menos de `min_len` letras (las alternativas que vienen de una equivalencia no se filtran), quita duplicados, no encadena equivalencias y devuelve como mucho `max_groups` grupos en el orden de la pregunta.
-- `pick_candidates`: recibe los grupos con `chunk_ids` ya consultados y aplica la regla: específico si `len(chunk_ids) <= max_doc_freq`; con `n` grupos específicos (los ausentes cuentan) un fragmento pasa si coincide con `n // 2 + 1` o más; ordena por grupos coincidentes, peso por rareza y a igualdad queda a la espera del desempate por coseno; devuelve los mejores `limit`. Con `n = 0` no hay candidatos.
+- `pick_candidates`: recibe los grupos con `chunk_ids` y `documents` ya consultados y aplica la regla: específico si `documents <= max_docs`; con `n` grupos específicos (los ausentes cuentan) un fragmento pasa si coincide con `n // 2 + 1` o más; ordena por grupos coincidentes, peso por rareza y a igualdad queda a la espera del desempate por coseno; devuelve los mejores `limit`. Con `n = 0` no hay candidatos.
 - `merge_hybrid`: RRF con `k` sobre la lista de significado (en su orden) y la léxica (ya con coseno, ordenada por grupos, peso y coseno). Los fragmentos solo léxicos son como mucho `slots`; el total no supera `limit`; si `lexical_results` está vacía devuelve `vector_results` sin cambios (mismo objeto, mismo orden, mismos `score`). Si actúa, cada resultado se devuelve en una copia con `score` igual a su valor de fusión.
 
 ## 4. Comportamiento de `POST /query`
@@ -58,7 +59,7 @@ Con `QUERY_HYBRID_SEARCH=off` (o un valor inválido): idéntico a hoy. El módul
 
 Con `on`:
 
-1. Tras la validación de permisos, topes de gasto y modo (sin cambios) y el embedding de la pregunta, se leen las equivalencias (caché de `HYBRID_EQUIVALENCES_TTL_SECONDS`) y se arman los grupos. Si hay al menos un grupo, se lanza la parte léxica en un hilo: una consulta `match_chunks(domains, alternativa, HYBRID_MAX_DOC_FREQ + 1)` por alternativa de cada grupo, en paralelo.
+1. Tras la validación de permisos, topes de gasto y modo (sin cambios) y el embedding de la pregunta, se leen las equivalencias (caché de `HYBRID_EQUIVALENCES_TTL_SECONDS`) y se arman los grupos. Si hay al menos un grupo, se lanza la parte léxica en un hilo: una consulta `match_chunks(domains, alternativa, HYBRID_TERM_CHUNKS)` por alternativa de cada grupo, en paralelo (devuelve el id del fragmento y el de su documento, sin el texto).
 2. Mientras tanto corre la búsqueda por significado exactamente como hoy (con o sin reranker, 009).
 3. Se espera la parte léxica hasta `HYBRID_BUDGET_MS`. Se calculan los candidatos (`pick_candidates`), se obtienen sus textos y cosenos con un `score_chunks` y se fusionan con el resultado de `retrieve` (`merge_hybrid`).
 4. La lista fusionada sustituye a la de `retrieve`. Si queda vacía y la pregunta limpia (008) está encendida, se repite la búsqueda por significado con la pregunta limpia y se aplica de nuevo la fusión con los mismos candidatos léxicos; después todo sigue igual (contexto de 007, citas de 006, modelo de lenguaje).

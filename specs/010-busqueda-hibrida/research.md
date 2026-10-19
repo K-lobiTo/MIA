@@ -47,7 +47,7 @@ El mismo corpus muestra el patrón en otros PDF ("Natalia María Soto Solís - 2
 
 ## R3. Cómo se consulta: una consulta por palabra, en paralelo, solo identificadores
 
-**Decision**: para cada grupo de la pregunta (R4), un `scroll` con el filtro de dominios más `MatchText`, `limit = HYBRID_MAX_DOC_FREQ + 1` y sin payload de texto; los grupos se consultan en paralelo con un `ThreadPoolExecutor` pequeño. Después, una sola consulta `query_points` con el vector de la pregunta y un filtro `HasIdCondition` sobre los candidatos finales trae su texto y su coseno (desempate y fusión).
+**Decision**: para cada grupo de la pregunta (R4), un `scroll` con el filtro de dominios más `MatchText`, `limit = HYBRID_TERM_CHUNKS` (200) y solo el `document_id` del payload (sin el texto); los grupos se consultan en paralelo con un `ThreadPoolExecutor` pequeño. Después, una sola consulta `query_points` con el vector de la pregunta y un filtro `HasIdCondition` sobre los candidatos finales trae su texto y su coseno (desempate y fusión). Con la calibración de R16 se puntúan por coseno todos los candidatos que cumplen la regla (hasta `HYBRID_TERM_CHUNKS`) y a la fusión pasan los mejores `HYBRID_LEXICAL_LIMIT`.
 
 **Rationale**: dos rondas de red como máximo, y la primera se lanza **antes** de la búsqueda por significado y se espera después de ella, de modo que su latencia se solapa con la del vector (y con la del reranker si está encendido). El texto solo se pide de los candidatos finales (tope `HYBRID_LEXICAL_LIMIT`, 20).
 
@@ -57,11 +57,11 @@ El mismo corpus muestra el patrón en otros PDF ("Natalia María Soto Solís - 2
 
 ## R4. Palabra específica y grupos de la pregunta
 
-**Decision**: la pregunta se normaliza (minúsculas, sin tildes, sigla con puntos "T.F.G." pasa a "tfg"), se parte en palabras de letras y dígitos, y se descartan las de menos de `HYBRID_MIN_TOKEN_LEN` (3) letras y las palabras vacías (lista fija en español que incluye interrogativos y verbos genéricos de pregunta). Cada palabra restante, o cada par sigla y forma desarrollada de la lista de equivalencias (R7), es un **grupo**; se conservan hasta `HYBRID_MAX_GROUPS` (8). Un grupo es **específico** si el número de fragmentos que lo contienen en los dominios consultados es como máximo `HYBRID_MAX_DOC_FREQ` (60). Un grupo que no aparece en ningún fragmento **cuenta como específico** (con cero coincidencias).
+**Decision**: la pregunta se normaliza (minúsculas, sin tildes, sigla con puntos "T.F.G." pasa a "tfg"), se parte en palabras de letras y dígitos, y se descartan las de menos de `HYBRID_MIN_TOKEN_LEN` (3) letras y las palabras vacías (lista fija en español que incluye interrogativos y verbos genéricos de pregunta). Cada palabra restante, o cada par sigla y forma desarrollada de la lista de equivalencias (R7), es un **grupo**; se conservan hasta `HYBRID_MAX_GROUPS` (8). Un grupo es **específico** si el número de **documentos** distintos que lo contienen en los dominios consultados es como máximo `HYBRID_MAX_DOCS` (10). Un grupo que no aparece en ningún fragmento **cuenta como específico** (con cero coincidencias). *(La primera versión, de la factibilidad del 2026-10-19, contaba fragmentos con un máximo de 60; la calibración con los casos nuevos mostró que un apellido repetido en cada página de una tesis, como Medrano, queda como común por fragmentos y es específico por documentos. Ver R16.)*
 
 **Por qué cuenta lo ausente**: es lo que sostiene BUS-3. "¿Quién es Zacarías Fernández Pizarro?" tiene tres grupos: `zacarias` (0 fragmentos), `fernandez` (13) y `pizarro` (0); la regla pide 2 de 3 y ningún fragmento las cumple. Si lo ausente no contara, quedaría solo `fernandez` (1 de 1) y 13 fragmentos ajenos llegarían al modelo. Con el nombre real "Joseph Obando Sandí", `sandí` está ausente del corpus (el documento dice "Joseph Obando") y aun así 2 de 3 alcanza.
 
-**Barrido de la frecuencia máxima K** (57 casos, con la regla de R5, 11 casos objetivo):
+**Barrido del máximo K de fragmentos** (primera versión, por fragmentos: 57 casos, con la regla de R5, 11 casos objetivo):
 
 | K | Objetivos con su documento entre los candidatos | Casos "sin información" que reciben candidatos |
 |---:|---:|---|
@@ -168,3 +168,39 @@ Un K bajo deja pasar casos raros porque palabras de uso corriente pasan a ser es
 **Decision**: el piso de `pyproject.toml` sube de `qdrant-client>=1.10` a `qdrant-client>=1.16`.
 
 **Verificado (2026-10-19)**: se instaló cada versión aislada y se probó la firma de `TextIndexParams` y las condiciones: 1.14.3 y 1.15.1 tienen `tokenizer`, `min_token_len` y `on_disk` pero **no** `ascii_folding` ni `MatchTextAny`; 1.16.0 y 1.16.2 tienen ambos. 1.16.0 es la primera versión que sirve. `docker-compose.yml` usa `qdrant/qdrant:latest` en desarrollo y Qdrant Cloud responde 1.19.1. Si algún entorno tuviera un Qdrant anterior sin `ascii_folding`, la creación del índice falla de forma limpia y la ruta cae a significado (R11).
+
+## R16. Calibración local (2026-10-19): palabra específica por documentos
+
+Medición gratuita con `scripts/linea_base.py puntajes --palabras` sobre una copia local de la colección de producción (6.239 fragmentos con sus vectores reales, copiada en solo lectura con `scripts/copiar_coleccion.py --indice`; ver research R13), con los 70 casos del archivo (57 anteriores y 13 nuevos, `HB1` a `HB7` y `HS1` a `HS6`) y sus variantes. Sin tokens de modelos de lenguaje: el cálculo completo tarda unos 7 s.
+
+**Primera versión (palabra específica por fragmentos, máximo 60)**: 40 -> 61 de 69 casos con su documento en la lista final en literal y una regresión (`HB4`, un documento que ya estaba en el puesto 7 salió de los 8); fallaban `HB2` (José Medrano, 123 fragmentos de un solo documento: "común" por fragmentos) y `HB7`.
+
+**Versión actual (por documentos, máximo 10; se piden hasta 200 fragmentos por palabra y se puntúan por coseno los candidatos que cumplen la regla)**:
+
+| Modo | Documento esperado en la lista final (antes -> después) | Mejoran | Empeoran | BUS-1 y BUS-2 (8 preguntas) | "Sin información" que pasan a llegar al modelo |
+|---|---|---|---|---|---|
+| Literal | 40 -> 65 de 69 | `S22-1` a `S22-4` (también con la variante corta), `EN1` a `EN6` (y sus limpias), `EN10`, `HB1`, `HB2`, `HB7` | ninguno | 1 -> 8 | ninguno |
+| Razonamiento | 44 -> 65 de 69 | los mismos salvo `HB7` (ya estaba) | ninguno | 2 -> 8 | ninguno |
+
+**Barrido del máximo de documentos** (objetivos con su documento entre los candidatos léxicos y casos "sin información" que reciben candidatos léxicos):
+
+| Máximo de documentos | Objetivos | "Sin información" con candidatos |
+|---:|---:|---|
+| 3 | 29 | `HS4` |
+| 5 | 37 | ninguno |
+| 10 | 56 | ninguno |
+| 20 | 58 | `I1` |
+| 50 | 57 | `I1`, `SR3` |
+
+Se fija 10: es el valor más alto que no deja ningún caso "sin información" con candidatos (ni siquiera `I1`, que hoy ya llega al modelo, ni `HS3`, la persona inventada que comparte dos de tres palabras con una real).
+
+**Ranuras** (lugares para los que solo llegaron por palabras): con 0 el documento no entra (40 de 69); con 1 a 5 son 65 de 69 y ningún caso "sin información" pasa a responder. Se deja 3 (valor por defecto), que es lo que pide el criterio del plan.
+
+**Latencia de la parte léxica** (copia local, sin la red de Railway): p50 9 ms, p95 17 ms en el hilo; la medición de SC-007 con la espera real es la de la API (T055 y producción).
+
+**Casos que siguen sin resolverse (4 de 69 en cada modo)** y por qué, para reportar aparte como pide SC-001:
+- `SG3` y `HB5` (MGTI): el grupo {MGTI, "gestión de tecnologías de información"} aparece en 14 documentos del dominio de Currículum (el programa se nombra en muchos planes y oficios), así que deja de ser específico (más de 10); con 20 documentos sí lo sería, pero entonces `I1` recibe candidatos. Es un caso de término ambiguo, no de falla de la técnica.
+- `LL2` (contenidos de Deep Learning): `deep` y `learning` son específicos y la parte léxica trae 25 candidatos (13 del programa MC8840), pero con 3 ranuras el coseno pone primero fragmentos de otros programas; sigue siendo el caso de recuperación conocido de la 007 (ayuda el contexto completo).
+- `HB3` (Valeria Calderón) se responde solo por significado (coseno 0,83): la parte léxica no trae candidatos porque ningún fragmento junta `valeria` y `calderon`; en el texto extraído de los PDF el acento queda como un símbolo aparte ("Calder´on"), así que `calderon` no coincide. Es un límite del texto extraído, no de la regla.
+
+**Casos sin respuesta**: ninguno de los 14 de `sin_respuesta` y `envoltura` (incluidos `HS1` a `HS6`) recibe candidatos léxicos con 10 documentos. En particular, `HS3` ("¿Quién es Valeria Calderón Quesada?") no pasa: `quesada` no aparece en esos dominios y la regla pide 2 de 3, y ningún fragmento junta `valeria` y `calderon` (ver `HB3`). Con un texto extraído sin ese defecto, `HS3` sería el caso que ponga a prueba la regla; queda como caso de calibración para el futuro.

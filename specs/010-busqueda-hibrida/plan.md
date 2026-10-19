@@ -6,7 +6,7 @@
 
 ## Summary
 
-Una etapa léxica nueva en la recuperación de `POST /query`, apagada por defecto (`QUERY_HYBRID_SEARCH=off`). Con `on`, además de la búsqueda por significado (vectores) la API pregunta a Qdrant, con su **índice de texto** sobre el campo `text` de los fragmentos, qué fragmentos contienen cada palabra específica de la pregunta; una palabra es específica si aparece en pocos fragmentos (`HYBRID_MAX_DOC_FREQ`, 60 por defecto). Un fragmento que solo llegó por palabras pasa al modelo si contiene más de la mitad de las palabras específicas (regla acordada el 2026-10-19). Las dos listas se fusionan (Reciprocal Rank Fusion) con un tope de ranuras para los fragmentos que solo llegaron por palabras, y el resto del flujo (contexto, citas, respuestas completas, pregunta limpia, reranker) recibe la lista fusionada sin cambios. La parte léxica no llama a ningún modelo, no suma RAM a la API (el índice vive en Qdrant) y se ejecuta en un hilo en paralelo con la búsqueda por significado.
+Una etapa léxica nueva en la recuperación de `POST /query`, apagada por defecto (`QUERY_HYBRID_SEARCH=off`). Con `on`, además de la búsqueda por significado (vectores) la API pregunta a Qdrant, con su **índice de texto** sobre el campo `text` de los fragmentos, qué fragmentos contienen cada palabra específica de la pregunta; una palabra es específica si aparece en pocos documentos (`HYBRID_MAX_DOCS`, 10 por defecto; se cuentan documentos y no fragmentos, research R4 y R16). Un fragmento que solo llegó por palabras pasa al modelo si contiene más de la mitad de las palabras específicas (regla acordada el 2026-10-19). Las dos listas se fusionan (Reciprocal Rank Fusion) con un tope de ranuras para los fragmentos que solo llegaron por palabras, y el resto del flujo (contexto, citas, respuestas completas, pregunta limpia, reranker) recibe la lista fusionada sin cambios. La parte léxica no llama a ningún modelo, no suma RAM a la API (el índice vive en Qdrant) y se ejecuta en un hilo en paralelo con la búsqueda por significado.
 
 Las siglas se unen a su forma desarrollada con una **lista de equivalencias** (tabla `sigla_equivalences`, migración aditiva `0005`, semillas TFG y MGTI) que el operador mantiene desde una pantalla nueva del panel. Cada equivalencia convierte la palabra de la pregunta en un grupo de alternativas (`tfg` o `trabajo final de graduación`).
 
@@ -73,7 +73,7 @@ specs/010-busqueda-hibrida/
 
 ```text
 src/mia/
-├── config.py                          # + query_hybrid_search y hybrid_* (frecuencia máxima, ranuras, tope de grupos, presupuesto)
+├── config.py                          # + query_hybrid_search y hybrid_* (máximo de documentos, fragmentos por palabra, ranuras, tope de grupos, presupuesto)
 ├── rag/
 │   ├── lexical.py                     # NUEVO: normalización, palabras vacías, grupos, regla de la mayoría, fusión (puro) y notas
 │   └── equivalences.py                # NUEVO: lectura de la lista con caché de un minuto y su invalidación

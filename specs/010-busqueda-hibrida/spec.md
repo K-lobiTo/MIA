@@ -150,7 +150,7 @@ El operador abre en el panel de administración la pantalla de equivalencias, ve
 ### Edge Cases
 
 - La pregunta no tiene palabras específicas (solo palabras comunes: "¿cuál es el procedimiento?"): la parte léxica no aporta candidatos y la consulta se comporta como hoy.
-- Una palabra aparece en demasiados fragmentos (una sigla muy usada, o "maestría"): deja de ser específica, no cuenta para la regla de FR-005 y no trae fragmentos por sí sola; la frecuencia máxima para ser específica es configurable y se calibra con los casos.
+- Una palabra aparece en demasiados documentos (una sigla muy usada, o "maestría"): deja de ser específica, no cuenta para la regla de FR-005 y no trae fragmentos por sí sola; el máximo de documentos para ser específica es configurable y se calibra con los casos. Se cuentan documentos y no fragmentos: un apellido repetido en cada página de una tesis es un solo documento y sí es específico.
 - Una palabra de la pregunta no aparece en ningún documento (un apellido inventado, o "Sandí" cuando el documento dice solo "Joseph Obando"): cuenta como específica sin coincidencias, de modo que una pregunta con varias palabras ausentes no pasa la regla.
 - El nombre aparece con otra forma: con o sin tildes, en mayúsculas, con un solo apellido o con un apellido compuesto. La coincidencia se hace sin distinguir mayúsculas ni tildes y acepta un nombre incompleto en el documento mientras coincida la mayoría de las palabras específicas de la pregunta ("Joseph Obando" sirve para "Joseph Obando Sandí", 2 de 3; un apellido suelto no), y los fragmentos con más coincidencias van primero.
 - Dos personas distintas comparten un apellido: se traen fragmentos de las dos; el modelo de lenguaje y las fuentes citadas (feature 006) distinguen cuál responde.
@@ -195,7 +195,7 @@ El operador abre en el panel de administración la pantalla de equivalencias, ve
 
 - **Búsqueda por palabras (léxica)**: la búsqueda que trae fragmentos por las palabras específicas que contienen, a diferencia de la búsqueda por significado; se suma a ella cuando la opción está encendida.
 - **Lista fusionada de candidatos**: la lista única, sin duplicados, que resulta de unir lo que trajeron la búsqueda por significado y la de palabras, con prioridad para lo que llegó por ambas; de ella salen los fragmentos que llegan al modelo de lenguaje.
-- **Palabra específica**: una palabra de la pregunta (nombre propio, sigla, término técnico) que aparece en pocos fragmentos; es la que da derecho a un fragmento a llegar al modelo si solo vino por palabras. Se opone a la palabra común.
+- **Palabra específica**: una palabra de la pregunta (nombre propio, sigla, término técnico) que aparece en pocos documentos; es la que da derecho a un fragmento a llegar al modelo si solo vino por palabras. Se opone a la palabra común.
 - **Lista de equivalencias de siglas**: pares sigla y forma desarrollada que mantiene el operador desde el panel de administración (global, con autor y fecha de cada cambio) para que la pregunta con una forma encuentre los documentos de la otra.
 - **Preparación de lo ya ingerido**: el procedimiento de una sola vez que deja los documentos existentes encontrables por palabras sin recalcular vectores.
 - **Nota de la búsqueda híbrida**: la anotación del registro de Uso con cuántos candidatos aportó la parte léxica y si ayudó, o si cayó a la búsqueda por significado.
