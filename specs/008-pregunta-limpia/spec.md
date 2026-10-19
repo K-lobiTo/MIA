@@ -120,7 +120,7 @@ Quien opera MIA agrega al conjunto de casos de la feature 005 las formas de envo
 
 - **Pregunta limpia**: el texto reducido a lo que se busca, obtenido por reglas de texto a partir de una pregunta de identificación o descripción; solo existe para el segundo intento y no se le muestra a quien consulta.
 - **Segundo intento**: la repetición única de la búsqueda con la pregunta limpia, cuando la primera búsqueda no dejó nada sobre el umbral.
-- **Nota de reformulación**: la anotación del registro de Uso que indica que se usó la pregunta limpia y con qué texto.
+- **Nota de pregunta limpia**: la anotación del registro de Uso que indica que se usó la pregunta limpia y con qué texto.
 - **Caso de envoltura**: un caso de la herramienta de medición que redacta de varias maneras la misma pregunta de identificación, con el documento esperado.
 
 ## Success Criteria *(mandatory)*

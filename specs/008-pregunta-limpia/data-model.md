@@ -24,7 +24,7 @@ El texto se recorta a 120 caracteres para no acercarse al límite de la columna 
 | Entidad | Campos | Notas |
 |---|---|---|
 | Pregunta limpia | texto (`str`) | Resultado de `clean_question`; `None` si no corresponde. No se guarda salvo dentro de la nota de Uso. |
-| Nota de reformulación | texto (`str`) | Construida por `clean_note(text, found)`. |
+| Nota de pregunta limpia | texto (`str`) | Construida por `clean_note(text, found)`. |
 
 ## Casos de la herramienta (`scripts/datos/casos_busqueda.json`)
 

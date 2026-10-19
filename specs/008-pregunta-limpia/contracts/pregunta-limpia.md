@@ -16,7 +16,7 @@ Entrada: la pregunta del usuario, tal cual. Salida: el texto que se busca, con l
 
 Algoritmo:
 
-1. Normalizar: una copia en minúsculas y sin tildes de la misma longitud (cada carácter se reemplaza por su letra base), con espacios colapsados. Quitar `¿ ? ¡ !`, espacios y `. , ; :` de los extremos. Si quedan `¿ ? ¡ !` en el interior, devolver `None` (más de una pregunta).
+1. Normalizar: primero colapsar los espacios de la pregunta original (así original y copia comparten índices); luego una copia en minúsculas y sin tildes de la misma longitud (cada carácter se reemplaza por su letra base). Quitar `¿ ? ¡ !`, espacios y `. , ; :` de los extremos. Si quedan `¿ ? ¡ !` en el interior, devolver `None` (más de una pregunta).
 2. Quitar de cero a dos cortesías iniciales (tabla siguiente) y, al final, "por favor" o "gracias".
 3. Exigir una envoltura (tabla siguiente) al inicio de lo que queda; si ninguna aplica, `None`.
 4. Lo que sigue a la envoltura es el candidato. Cortarlo del original con los mismos índices. Aplicar las guardas; si alguna falla, `None`.
@@ -46,7 +46,7 @@ Todas con límite de palabra (`\b`) y separadas por un espacio. La lista es ampl
 
 1. Al menos 3 caracteres, sin contar signos ni espacios de los extremos, y distinto de la pregunta normalizada.
 2. A lo sumo 8 palabras.
-3. No empieza con "lo" ni "que" y no contiene "que", "cuando", "donde", "cuanto", "cuanta", "cuantos", "cuantas" ni "porque" como palabra completa.
+3. No empieza con "lo" ni "que" y no contiene "que", "cuando", "donde", "cuanto", "cuanta", "cuantos", "cuantas" ni "porque" como palabra completa. Tampoco empieza con un adjetivo o atributo que indica que la pregunta pide un dato y no un nombre: "necesario", "necesaria", "obligatorio", "obligatoria", "posible", "suficiente", "importante", "mejor", "igual", "diferente".
 4. No contiene `¿ ? ¡ !`.
 
 ## Casos de la tabla de pruebas (resumen)
@@ -54,6 +54,7 @@ Todas con límite de palabra (`\b`) y separadas por un espacio. La lista es ampl
 | Pregunta | Resultado |
 |---|---|
 | ¿Quién es Natalia Soto Solís? | Natalia Soto Solís |
+| ¿Quién   es   Natalia  Soto Solís? (espacios dobles) | Natalia Soto Solís |
 | quien es natalia soto solis | natalia soto solis |
 | ¿Qué es el TFG? | TFG |
 | ¿Qué son las líneas de TFG? | líneas de TFG |
@@ -65,6 +66,9 @@ Todas con límite de palabra (`\b`) y separadas por un espacio. La lista es ampl
 | ¿Cuántos créditos tiene el curso de IPA en Big Data? | `None` |
 | ¿Cuál es el costo del curso X? | `None` |
 | ¿Qué es lo que establece el reglamento sobre las becas? | `None` |
+| ¿Qué es necesario para graduarse? | `None` |
+| ¿Qué es obligatorio en el TFG? | `None` |
+| Who is Natalia Soto? | `None` (sin envoltura en español) |
 | ¿Qué es el TFG que ofrece la maestría? | `None` |
 | ¿Quién es X? ¿Y cuántos créditos tiene Y? | `None` |
 | ¿Quién es? | `None` |

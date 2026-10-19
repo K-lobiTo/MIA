@@ -37,7 +37,7 @@ La nota de Uso se deja en `reject_reason` (como las de las features 006 y 007), 
 | Principio / restricción | Evaluación |
 |---|---|
 | I. Almacenamiento y consulta desacoplados | Cumple. Solo cambia qué texto busca la API; el almacenamiento no se toca. |
-| II. Pipeline modular e intercambiable | Cumple. La reformulación es una etapa propia (`query_rewrite`), seleccionable por configuración y retirable sin tocar el resto. No introduce un proveedor nuevo: son reglas, no una pieza con implementaciones alternativas, así que no hace falta una interfaz con fábrica. |
+| II. Pipeline modular e intercambiable | Cumple. La reformulación es una etapa propia (`query_rewrite`), seleccionable por configuración y retirable sin tocar el resto. No introduce un proveedor nuevo: son reglas, no una pieza con implementaciones alternativas, así que no hace falta una interfaz con fábrica. BUS-6 pide que la etapa se pueda apagar por configuración "igual que las demás piezas (interfaz y fábrica por nombre)": el apagado por variable lo cumple; la interfaz con fábrica se difiere hasta que exista una segunda implementación (por ejemplo, una reformulación con modelo), el mismo criterio de las features 006 y 007. |
 | III. Independencia de proveedor de LLM | Cumple. No usa modelo de lenguaje; el embedding es el local ya existente. |
 | IV. Extensibilidad de dominios | No aplica. |
 | V. Trazabilidad de respuestas | Sin cambios: las fuentes siguen siendo las de los fragmentos que llegan al modelo (y las citas de la 006). La nota de Uso deja constancia de que se usó la pregunta limpia. |
