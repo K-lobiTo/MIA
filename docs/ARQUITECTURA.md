@@ -113,6 +113,7 @@ Decisión (2026-10-21): el flujo de consulta y de ingesta se escribe directament
 - **Control fino.** `reasoning_effort` por modo, el `finish_reason` normalizado y el costo real que informa OpenRouter se manejan en `rag/llm.py` (unas 140 líneas); las envolturas de los frameworks suelen ir por detrás en esos detalles.
 - **Peso y traspaso.** El entorno es gratuito y el prototipo tiene vigencia corta con documentación de traspaso: cada dependencia transitiva y cada cambio de API del framework es algo más que mantener y explicar.
 - **El flujo es lineal.** Reescritura, recuperación, mezcla híbrida, rerank, una llamada al modelo, interpretación y citas. LangGraph aporta con ciclos, ramas, estado persistente o humano en el bucle, y hoy no hay nada de eso.
+- **Lo mismo vale para el bot de WhatsApp** ([Definicion_Requerimientos_Bot_WhatsApp.md](Definicion_Requerimientos_Bot_WhatsApp.md)): es un receptor de webhooks que consulta a la API y responde por Kapso, sin razonamiento propio y con un estado mínimo (mensajes vistos y contadores). Tampoco usa LangChain ni LangGraph, ni los agentes de Kapso.
 
 **Cuándo reabrirla.** Si el modo "razonamiento" pasa a ser un agente que decide qué buscar, evalúa si la información está completa, reformula y vuelve a buscar (el camino que ya se anota en [ESCALABILIDAD.md](ESCALABILIDAD.md) para las preguntas de agregación), primero se prueba un bucle simple con un máximo de iteraciones. Si crece más allá de eso, se usaría LangGraph solo para ese modo y detrás de la misma interfaz de modo, sin incorporar LangChain al resto.
 

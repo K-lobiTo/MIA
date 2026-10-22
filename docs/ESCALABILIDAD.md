@@ -43,6 +43,10 @@ Antes de elegir proveedor conviene consultar con TI de la institución si ya exi
 5. LLM con plan pago o local, según la sensibilidad de los dominios que se agreguen.
 6. Recalibrar `QUERY_SIMILARITY_THRESHOLD` cada vez que se agregue un dominio o cambie el modelo de embeddings.
 
+## El bot de WhatsApp
+
+El bot (canal para atraer estudiantes, definido en [Definicion_Requerimientos_Bot_WhatsApp.md](Definicion_Requerimientos_Bot_WhatsApp.md)) se limita primero por la cuota de mensajes, no por el gasto de modelos: el plan gratuito de Kapso incluye 2.000 mensajes al mes y Meta cobra los mensajes de servicio salvo 1.000 gratis por número, lo que da unas 500 a 1.000 preguntas al mes. Qué conviene hacer al crecer (más números, plan de pago, estado compartido entre réplicas, cola externa, imágenes en almacenamiento de objetos, memoria de conversación) está en la sección 10 de ese documento.
+
 ## Railway y OpenRouter (decisión del 2026-10-07)
 
 Reemplaza a la decisión de Cloud Run de la sección siguiente, que quedó descartada porque Google Cloud pidió un prepago de 30 USD.
