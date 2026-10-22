@@ -1,12 +1,14 @@
 # MIA: Definición de Requerimientos de la Versión 3
 
-**Qué es este documento:** punto de partida de los requerimientos de la tercera versión de MIA. **Es un borrador abierto: de momento solo recoge un tema, las consultas no directas, y su implementación se deja para después** (decisión del 2026-10-13). El 2026-10-14 se agregó la investigación de técnicas y proyectos similares (sección 2.4) y se acordó la recomendación provisional con una prueba de un reranker local (sección 2.6 y 2.7). El 2026-10-15 se midió la línea base de la búsqueda en producción (feature [005](../specs/005-linea-base-busqueda/spec.md), informe en [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md)). Parte del estado descrito en [Definicion_Requerimientos_V2.md](Definicion_Requerimientos_V2.md) y [ARQUITECTURA.md](ARQUITECTURA.md). Los otros candidatos para esta versión ya están listados en la sección 10 del documento de la versión 2 y se incorporarán aquí cuando se decida su alcance.
+**Estado: cerrado el 2026-10-21** (ver [2.10](#210-cierre-de-la-versión-3)). V3 queda como el tema de las consultas no directas.
+
+**Qué es este documento:** punto de partida de los requerimientos de la tercera versión de MIA. **Fue un borrador abierto que solo recoge un tema, las consultas no directas, y su implementación se deja para después** (decisión del 2026-10-13). El 2026-10-14 se agregó la investigación de técnicas y proyectos similares (sección 2.4) y se acordó la recomendación provisional con una prueba de un reranker local (sección 2.6 y 2.7). El 2026-10-15 se midió la línea base de la búsqueda en producción (feature [005](../specs/005-linea-base-busqueda/spec.md), informe en [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md)). Parte del estado descrito en [Definicion_Requerimientos_V2.md](Definicion_Requerimientos_V2.md) y [ARQUITECTURA.md](ARQUITECTURA.md). Los otros candidatos para esta versión ya están listados en la sección 10 del documento de la versión 2 y se incorporarán aquí cuando se decida su alcance.
 
 ## 1. Alcance acordado hasta ahora
 
 | Id | Tema | Estado |
 |---|---|---|
-| BUS-1 a BUS-7 | Responder consultas que no coinciden de forma directa con el texto de los documentos y mostrar solo las fuentes que sirvieron (sección 2) | Implementados (features 005 a 010) y apagados por defecto; línea base medida el 2026-10-15 ([informe](LINEA_BASE_BUSQUEDA.md)); la búsqueda híbrida (opción D, feature 010) resuelve los nombres y las siglas que faltaban, medida el 2026-10-19 en recuperación y con respuestas reales en Railway (acierto de 52 a 70 de 79 preguntas en literal y de 55 a 71 con razonamiento, batería del MVP intacta); la migración `0005` ya está aplicada; queda pendiente validar con preguntas reales del personal y decidir qué encender en producción |
+| BUS-1 a BUS-7 | Responder consultas que no coinciden de forma directa con el texto de los documentos y mostrar solo las fuentes que sirvieron (sección 2) | Implementados (features 005 a 010) y apagados por defecto; línea base medida el 2026-10-15 ([informe](LINEA_BASE_BUSQUEDA.md)); la búsqueda híbrida (opción D, feature 010) resuelve los nombres y las siglas que faltaban, medida el 2026-10-19 en recuperación y con respuestas reales en Railway (acierto de 52 a 70 de 79 preguntas en literal y de 55 a 71 con razonamiento, batería del MVP intacta); la migración `0005` ya está aplicada; **cerrados el 2026-10-21**: conjunto de variables para producción decidido y validación con preguntas reales trasladada al uso real (sección 2.10) |
 
 ## 2. Consultas no directas
 
@@ -215,6 +217,35 @@ Datos de la línea base medida el 2026-10-15 en [LINEA_BASE_BUSQUEDA.md](LINEA_B
 - El segundo intento no hace ninguna llamada a un modelo de lenguaje: una consulta sin respuesta en ninguna de las dos búsquedas sigue sin gastar tokens (BUS-7).
 - Las reglas de reformulación pasan sus pruebas en tabla, incluidos los casos negativos como "¿Cuántos créditos tiene X?", que no se reformula. Cumplido en la feature 008 (83 filas en `tests/unit/test_query_rewrite.py`).
 - **Búsqueda híbrida (feature 010, medida el 2026-10-19 en recuperación y con respuestas):** los casos `S22-1` a `S22-4` responden con la pregunta completa igual que con la corta (8 de 8 preguntas con su documento en la lista final, antes 1 y 2); `SG3` (MGTI) queda reportado aparte porque la sigla aparece en 14 documentos. Con `QUERY_HYBRID_SEARCH=off` el comportamiento es el anterior (BUS-6, pruebas automáticas) y una falla de la parte léxica cae al significado con aviso. Ninguna pregunta que espera "sin información" llega al modelo por esta vía (BUS-3). Con respuestas reales en Railway (79 preguntas por modo, control frente a híbrida): acierto de 52 a 70 en literal y de 55 a 71 con razonamiento, personas de 5 a 22 y de 6 a 23 de 23, batería del MVP 15 de 15 en las dos corridas, costo medio por consulta igual dentro del ruido (BUS-4: 0,000405 frente a 0,000432 USD en literal y 0,001939 frente a 0,001793 USD con razonamiento) y espera y fusión de 20 ms en p50 y 69 ms en p95. Falta validarla con preguntas reales del personal.
+
+### 2.10 Cierre de la versión 3
+
+Decisiones del 2026-10-21.
+
+**Alcance.** V3 queda como las consultas no directas (BUS-1 a BUS-8), ya implementadas (features 005 a 010) y medidas. No se suman requisitos nuevos a esta versión.
+
+**Configuración de producción acordada.** Se enciende el conjunto medido; el código sigue con todo apagado por defecto (BUS-6) y la configuración vive en las variables de Railway:
+
+| Variable | Valor | Motivo |
+|---|---|---|
+| `QUERY_CITED_SOURCES` | `on` | Las fuentes sobrantes bajan cerca de 80 % (BUS-5) |
+| `QUERY_COMPLETE_CONTEXT` | `on` | Listas completas, como los temarios de curso (BUS-8) |
+| `QUERY_RETRY_CUT_ANSWERS` | `on` | Una respuesta cortada se reintenta una vez o se entrega con aviso (BUS-8) |
+| `QUERY_CLEAN_QUESTION` | `on` | Cuesta cerca de 0,001 USD solo en consultas que antes eran "sin información" (BUS-7) |
+| `QUERY_HYBRID_SEARCH` | `on` | Acierto de 52 a 70 de 79 en literal y de 55 a 71 con razonamiento (BUS-1 y BUS-2) |
+| `RERANK_PROVIDER` | `none` | +158 MB de RAM y 1 a 1,6 USD al mes para rescatar 2 personas; se retoma solo con datos del módulo Uso (decisión del 2026-10-18) |
+
+Encender es una acción de despliegue y no está hecha: los servicios de Railway siguen apagados. Antes de encender, el índice de texto de Qdrant ya existe y la migración `0005` ya está aplicada en Neon. Cómo cambiar las variables sin perder el código desplegado: [OPERACION.md](OPERACION.md#mostrar-solo-las-fuentes-que-aportaron-query_cited_sources).
+
+**Validación con preguntas reales.** Se cierra con los 79 casos medidos como evidencia (batería del MVP 15 de 15, ninguna pregunta sin respuesta llega al modelo con la híbrida). La validación con preguntas reales del personal se hace con el uso real, leyendo el módulo Uso: cuántas consultas terminan en "sin información" y de qué tipo. Ese mismo dato decide si se retoma el reranker.
+
+**Lo que queda sin resolver en la búsqueda** (conocido, no bloquea el cierre):
+- `SG3` y `HB5`: MGTI aparece en 14 documentos, así que no es una palabra específica para la híbrida.
+- `LL1`, `LL2` (Deep Learning, el documento queda en el puesto 50 o más), `LL9` y `EN10` en literal.
+- Los acentos partidos del texto extraído de algunos PDF.
+- La medición usó los mismos casos que la calibración; falta contrastarla con preguntas reales.
+
+**Opciones que no se hacen en V3.** G (contexto por fragmento al indexar), el reranker y las opciones A y C (descartadas por los datos).
 
 ## Anexo A. Fuentes de la investigación (2026-10-14)
 
