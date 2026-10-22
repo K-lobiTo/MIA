@@ -104,6 +104,18 @@ Detalle de uso y publicación en [web/consulta/README.md](../web/consulta/README
 
 `DocumentLoader`, `EmbeddingProvider`, `LLMProvider` y `VectorStore` siguen el mismo patrón: una clase abstracta define el contrato, cada implementación concreta vive en su propio archivo, y una función `get_x(name)` hace el dispatch leyendo `settings` (que a su vez lee `.env`). Para agregar un proveedor nuevo (otro LLM, otro loader), se agrega una clase que implemente la interfaz y una rama en el factory correspondiente; no se toca el resto del sistema. Este es el mecanismo concreto detrás del requerimiento de "poder cambiar partes del pipeline sin que interfiera con el resto" (sección 3 de Definicion_Requerimientos_MVP.md).
 
+## Orquestación: sin LangChain ni LangGraph
+
+Decisión (2026-10-21): el flujo de consulta y de ingesta se escribe directamente, sin LangChain, LlamaIndex ni LangGraph. Razones:
+
+- **Ya está cubierto.** Los cuatro puntos de extensión (loaders, embeddings, LLM, base vectorial) son interfaces propias con factory por nombre; adoptar un framework sería reescribirlas sobre sus abstracciones sin ganar capacidad.
+- **El valor está en lo propio.** Búsqueda híbrida, equivalencias de siglas, reranker, citas, completitud de respuestas, topes de gasto y registro de Uso son específicos del dominio y habría que escribirlos igual.
+- **Control fino.** `reasoning_effort` por modo, el `finish_reason` normalizado y el costo real que informa OpenRouter se manejan en `rag/llm.py` (unas 140 líneas); las envolturas de los frameworks suelen ir por detrás en esos detalles.
+- **Peso y traspaso.** El entorno es gratuito y el prototipo tiene vigencia corta con documentación de traspaso: cada dependencia transitiva y cada cambio de API del framework es algo más que mantener y explicar.
+- **El flujo es lineal.** Reescritura, recuperación, mezcla híbrida, rerank, una llamada al modelo, interpretación y citas. LangGraph aporta con ciclos, ramas, estado persistente o humano en el bucle, y hoy no hay nada de eso.
+
+**Cuándo reabrirla.** Si el modo "razonamiento" pasa a ser un agente que decide qué buscar, evalúa si la información está completa, reformula y vuelve a buscar (el camino que ya se anota en [ESCALABILIDAD.md](ESCALABILIDAD.md) para las preguntas de agregación), primero se prueba un bucle simple con un máximo de iteraciones. Si crece más allá de eso, se usaría LangGraph solo para ese modo y detrás de la misma interfaz de modo, sin incorporar LangChain al resto.
+
 ## Por qué una sola colección de Qdrant
 
 `QdrantVectorStore` usa una única colección (`mia_chunks`) con `domain` como campo de payload filtrable, en lugar de una colección por dominio. Esto permite filtrar por uno o varios dominios en la misma consulta (necesario para casos de uso que cruzan dominios) y agregar dominios nuevos sin crear infraestructura nueva.

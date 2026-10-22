@@ -68,7 +68,7 @@ El riesgo de Cloud Run es el cobro variable: no tiene tope directo. Se acota con
 
 En la misma decisión se eligió **GLM 5.3** (Z.ai) como LLM: 1.40 / 4.40 USD por millón de tokens de entrada / salida, más barato que Claude Sonnet 5.5 (2 / 10), con razonamiento y llamadas a herramientas. La API de Z.ai es compatible con la de OpenAI (`GLMLLMProvider`). Con el volumen del piloto (cientos de consultas al mes) el gasto esperado es de pocos dólares.
 
-Pendiente aparte del hosting: las preguntas de agregación sobre muchos documentos (p. ej. "¿cuántos créditos suman todos los cursos?") hoy responden "sin información" porque la búsqueda no recupera fragmentos de todos los documentos, no por el LLM. Resolverlas requiere recuperación con herramientas (el LLM decide qué buscar) o extraer al ingerir datos estructurados como créditos y horas.
+Pendiente aparte del hosting: las preguntas de agregación sobre muchos documentos (p. ej. "¿cuántos créditos suman todos los cursos?") hoy responden "sin información" porque la búsqueda no recupera fragmentos de todos los documentos, no por el LLM. Resolverlas requiere recuperación con herramientas (el LLM decide qué buscar) o extraer al ingerir datos estructurados como créditos y horas. Si se opta por la recuperación con herramientas, es el punto donde podría justificarse LangGraph; ver la condición en [ARQUITECTURA.md](ARQUITECTURA.md#orquestación-sin-langchain-ni-langgraph).
 
 ## Qué se probó y se descartó (2026-09-27)
 

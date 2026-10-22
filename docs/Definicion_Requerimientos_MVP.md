@@ -122,7 +122,7 @@ Para cumplir el requerimiento de "cambiar partes del pipeline sin que interfiera
 - **Base vectorial:** Qdrant (ya definida en el documento conceptual).
 - **Metadata store:** SQLAlchemy; SQLite en desarrollo y Postgres (Neon free) en la demo compartida, porque el disco de Render free se borra en cada reinicio.
 - **Procesamiento de documentos:** `pypdf`/`pdfplumber` (PDF), `python-docx` (DOCX).
-- **Orquestación RAG:** por definir en implementación: evaluar LangChain/LlamaIndex vs. implementación directa y ligera (a decidir al iniciar el código, no bloquea este documento).
+- **Orquestación RAG:** implementación directa, sin LangChain, LlamaIndex ni LangGraph. Decisión (2026-10-21): las interfaces propias (`DocumentLoader`, `EmbeddingProvider`, `LLMProvider`, `VectorStore`) ya cubren lo que esos frameworks abstraen, y el valor del sistema está en piezas de dominio que ninguno trae hechas. Razones y condición para reabrirla en [ARQUITECTURA.md](ARQUITECTURA.md#orquestación-sin-langchain-ni-langgraph).
 - **Contenedores:** Docker + docker-compose (API + Qdrant, para desarrollo local).
 - **Configuración:** variables de entorno vía `.env` (`pydantic-settings`).
 - **Despliegue (demo compartida):** API en [Render](https://render.com) (Blueprint `render.yaml`, plan free) + metadata en [Neon](https://neon.tech) (Postgres free) + base vectorial en [Qdrant Cloud](https://cloud.qdrant.io) (clúster free tier) + LLM Gemini (tier gratuito). Detalle operativo en [OPERACION.md](OPERACION.md).
