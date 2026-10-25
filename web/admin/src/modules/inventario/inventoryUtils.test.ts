@@ -9,6 +9,7 @@ const doc = (status: DocumentStatus): DocumentItem => ({
   status,
   uploaded_at: "2026-10-08T00:00:00Z",
   folder_id: null,
+  image_count: 0,
 });
 
 function inventoryWith(status: DocumentStatus, depth: "domain" | "folder"): Inventory {

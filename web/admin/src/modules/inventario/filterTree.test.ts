@@ -9,6 +9,7 @@ const doc = (id: string, filename: string): DocumentItem => ({
   status: "done",
   uploaded_at: "2026-10-07T00:00:00Z",
   folder_id: null,
+  image_count: 0,
 });
 
 const inventory: Inventory = {

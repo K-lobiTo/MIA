@@ -384,3 +384,56 @@ def test_la_pregunta_admite_hasta_2000_caracteres(client, base, fakes, make_arti
 
     assert _consultar(client, artefacto.headers, question="a" * 2000).status_code == 200
     assert _consultar(client, artefacto.headers, question="a" * 2001).status_code == 422
+
+
+# --- Feature 011: los demás artefactos no cambian por las imágenes ni por el bot ---------------------------------
+
+
+def test_la_consulta_de_un_artefacto_responde_lo_de_siempre_mas_images_vacia(client, db, base, fakes, make_artifact):
+    """La estructura de la respuesta es la anterior; `images` es un campo nuevo, siempre presente y vacío sin imágenes."""
+    artefacto = make_artifact(units=["u1"])
+
+    cuerpo = client.post("/query", json={"domains": ["d1"], "question": "¿Qué se aprobó?"}, headers=artefacto.headers).json()
+
+    assert set(cuerpo) == {"id", "answer", "sources", "mode", "latency_ms", "no_info", "images"}
+    assert cuerpo["images"] == [] and cuerpo["answer"] == "Respuesta con fuente." and cuerpo["no_info"] is False
+    assert cuerpo["sources"] == [{"domain": "Memoria del Consejo", "document": "acta.pdf", "excerpt": "fragmento relevante"}]
+
+
+def test_las_imagenes_de_documentos_que_no_se_citan_no_cambian_la_respuesta_de_otros_artefactos(client, db, base, fakes, make_artifact):
+    from mia.storage.models import DocumentImage
+
+    artefacto = make_artifact(units=["u1"])
+    with db() as session:
+        session.add(Document(id="doc-otro", domain_id="d1", filename="otro.pdf", source_type="pdf", file_hash="h2", status="done"))
+        session.flush()
+        session.add(DocumentImage(
+            id="img-otro", document_id="doc-otro", public_id="o" * 32, content_type="image/png", content=b"x",
+            size_bytes=1, caption="de otro documento", position=0, created_by="automatizacion",
+        ))
+        session.commit()
+
+    cuerpo = client.post("/query", json={"domains": ["d1"], "question": "¿Qué se aprobó?"}, headers=artefacto.headers).json()
+
+    # La respuesta se apoya en acta.pdf, que no tiene imágenes: las de otro.pdf no aparecen.
+    assert cuerpo["images"] == []
+
+
+def test_el_feedback_y_la_calificacion_no_cambian(client, db, base, fakes, make_artifact):
+    artefacto = make_artifact(units=["u1"])
+    consulta = client.post("/query", json={"domains": ["d1"], "question": "hola"}, headers=artefacto.headers).json()
+
+    respuesta = client.post(f"/query/{consulta['id']}/feedback", json={"rating": "util"}, headers=artefacto.headers)
+
+    assert respuesta.status_code == 204
+    with db() as session:
+        assert session.scalar(select(QueryLog.rating).where(QueryLog.id == consulta["id"])) == "util"
+
+
+def test_la_ruta_de_configuracion_de_un_artefacto_no_cambia(client, base, fakes, make_artifact):
+    artefacto = make_artifact(units=["u1"])
+
+    cuerpo = client.get("/config", headers=artefacto.headers).json()
+
+    assert set(cuerpo) >= {"ingestion_enabled", "max_upload_mb", "modes"}
+    assert "images" not in cuerpo and "bots" not in cuerpo

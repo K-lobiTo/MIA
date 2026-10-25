@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, StringConstraints
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from mia.access import audit
@@ -12,7 +12,7 @@ from mia.access.scope import Principal, domain_in_scope, unit_in_scope
 from mia.api.security import require_admin
 from mia.config import settings
 from mia.storage.db import get_session
-from mia.storage.models import Document, Domain, Folder, Unit
+from mia.storage.models import Document, DocumentImage, Domain, Folder, Unit
 
 # Los nombres se recortan y no pueden quedar vacíos.
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
@@ -27,6 +27,8 @@ class DocumentNode(BaseModel):
     status: str
     uploaded_at: str | None
     folder_id: str | None
+    # Imágenes asociadas al documento (feature 011); 0 si no tiene.
+    image_count: int = 0
 
 
 class FolderNode(BaseModel):
@@ -70,7 +72,7 @@ class UnitOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-def _document_node(document: Document) -> DocumentNode:
+def _document_node(document: Document, image_counts: dict[str, int]) -> DocumentNode:
     return DocumentNode(
         id=document.id,
         filename=document.filename,
@@ -78,6 +80,7 @@ def _document_node(document: Document) -> DocumentNode:
         status=document.status,
         uploaded_at=(document.uploaded_at.isoformat() + "Z") if document.uploaded_at else None,
         folder_id=document.folder_id,
+        image_count=image_counts.get(document.id, 0),
     )
 
 
@@ -85,10 +88,11 @@ def _folder_nodes(
     parent_id: str | None,
     folders: dict[str | None, list[Folder]],
     documents: dict[str | None, list[Document]],
+    image_counts: dict[str, int],
 ) -> list[FolderNode]:
     nodes = []
     for folder in sorted(folders.get(parent_id, []), key=lambda f: f.name.lower()):
-        children = _folder_nodes(folder.id, folders, documents)
+        children = _folder_nodes(folder.id, folders, documents, image_counts)
         own = sorted(documents.get(folder.id, []), key=lambda d: d.filename.lower())
         nodes.append(
             FolderNode(
@@ -97,7 +101,7 @@ def _folder_nodes(
                 parent_id=folder.parent_id,
                 document_count=len(own) + sum(c.document_count for c in children),
                 folders=children,
-                documents=[_document_node(d) for d in own],
+                documents=[_document_node(d, image_counts) for d in own],
             )
         )
     return nodes
@@ -107,9 +111,10 @@ def _domain_node(
     domain: Domain,
     folders: dict[str | None, list[Folder]],
     documents: dict[str | None, list[Document]],
+    image_counts: dict[str, int],
 ) -> DomainNode:
     # `folders` y `documents` ya vienen filtrados por dominio; la raíz es la clave None.
-    children = _folder_nodes(None, folders, documents)
+    children = _folder_nodes(None, folders, documents, image_counts)
     own = sorted(documents.get(None, []), key=lambda d: d.filename.lower())
     return DomainNode(
         id=domain.id,
@@ -117,7 +122,7 @@ def _domain_node(
         description=domain.description,
         document_count=len(own) + sum(c.document_count for c in children),
         folders=children,
-        documents=[_document_node(d) for d in own],
+        documents=[_document_node(d, image_counts) for d in own],
     )
 
 
@@ -130,6 +135,10 @@ def inventory(
     domains = [d for d in session.scalars(select(Domain)) if domain_in_scope(principal, d)]
     all_folders = list(session.scalars(select(Folder)))
     all_documents = list(session.scalars(select(Document)))
+    # Cuántas imágenes tiene cada documento, en una sola consulta agrupada (sin leer los binarios).
+    image_counts = dict(
+        session.execute(select(DocumentImage.document_id, func.count()).group_by(DocumentImage.document_id)).all()
+    )
 
     folders_by_domain: dict[str, dict[str | None, list[Folder]]] = {}
     for folder in all_folders:
@@ -142,7 +151,7 @@ def inventory(
 
     def node(domain: Domain) -> DomainNode:
         return _domain_node(
-            domain, folders_by_domain.get(domain.id, {}), documents_by_domain.get(domain.id, {})
+            domain, folders_by_domain.get(domain.id, {}), documents_by_domain.get(domain.id, {}), image_counts
         )
 
     unit_nodes = []

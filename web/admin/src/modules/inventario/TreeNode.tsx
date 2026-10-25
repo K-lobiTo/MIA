@@ -1,4 +1,4 @@
-import { ActionIcon, Paper } from "@mantine/core";
+import { ActionIcon, Button, Paper } from "@mantine/core";
 import { IconChevronRight } from "@tabler/icons-react";
 import { useState, type DragEvent, type ReactNode } from "react";
 import { StatusBadge, type BadgeTone } from "../../components/StatusBadge";
@@ -82,7 +82,7 @@ function Branch({ title, titleClass, description, count, defaultOpen, forceOpen,
   );
 }
 
-export function DocumentRow({ document }: { document: DocumentItem }) {
+export function DocumentRow({ document, onImages }: { document: DocumentItem; onImages?: (document: DocumentItem) => void }) {
   const status = STATUS_LABEL[document.status] ?? { text: document.status, tone: "info" as BadgeTone };
   return (
     <div className="doc-row">
@@ -90,6 +90,17 @@ export function DocumentRow({ document }: { document: DocumentItem }) {
       <span className="doc-type">{document.source_type.toUpperCase()}</span>
       <span className="doc-date">{formatDate(document.uploaded_at)}</span>
       <StatusBadge tone={status.tone}>{status.text}</StatusBadge>
+      {onImages && (
+        <Button
+          variant="default"
+          size="compact-xs"
+          aria-label={`Imágenes de ${document.filename}`}
+          title="Imágenes que el bot de WhatsApp envía cuando una respuesta se apoya en este documento"
+          onClick={() => onImages(document)}
+        >
+          {`Imágenes (${document.image_count})`}
+        </Button>
+      )}
     </div>
   );
 }
@@ -107,9 +118,11 @@ interface Slots {
   renderActions?: (node: NodeRef) => ReactNode;
   // Archivos soltados sobre un dominio o una carpeta.
   onDropFiles?: (node: NodeRef, files: File[]) => void;
+  // Abre las imágenes de un documento (feature 011); sin esto la fila no muestra el botón.
+  onImages?: (domainId: string, document: DocumentItem) => void;
 }
 
-export function FolderBranch({ folder, domainId, forceOpen, renderActions, onDropFiles }: Slots & { folder: FolderNode; domainId: string }) {
+export function FolderBranch({ folder, domainId, forceOpen, renderActions, onDropFiles, onImages }: Slots & { folder: FolderNode; domainId: string }) {
   const node: NodeRef = { kind: "folder", id: folder.id, domainId };
   return (
     <Branch
@@ -128,17 +141,18 @@ export function FolderBranch({ folder, domainId, forceOpen, renderActions, onDro
           forceOpen={forceOpen}
           renderActions={renderActions}
           onDropFiles={onDropFiles}
+          onImages={onImages}
         />
       ))}
       {folder.documents.map((document) => (
-        <DocumentRow key={document.id} document={document} />
+        <DocumentRow key={document.id} document={document} onImages={onImages && ((doc) => onImages(domainId, doc))} />
       ))}
       {folder.folders.length === 0 && folder.documents.length === 0 && <div className="empty">Carpeta vacía</div>}
     </Branch>
   );
 }
 
-export function DomainBranch({ domain, forceOpen, renderActions, onDropFiles }: Slots & { domain: DomainNode }) {
+export function DomainBranch({ domain, forceOpen, renderActions, onDropFiles, onImages }: Slots & { domain: DomainNode }) {
   const node: NodeRef = { kind: "domain", id: domain.id, domainId: domain.id };
   return (
     <Branch
@@ -158,17 +172,18 @@ export function DomainBranch({ domain, forceOpen, renderActions, onDropFiles }: 
           forceOpen={forceOpen}
           renderActions={renderActions}
           onDropFiles={onDropFiles}
+          onImages={onImages}
         />
       ))}
       {domain.documents.map((document) => (
-        <DocumentRow key={document.id} document={document} />
+        <DocumentRow key={document.id} document={document} onImages={onImages && ((doc) => onImages(domain.id, doc))} />
       ))}
       {domain.folders.length === 0 && domain.documents.length === 0 && <div className="empty">Sin documentos todavía</div>}
     </Branch>
   );
 }
 
-export function UnitBranch({ unit, forceOpen, renderActions, onDropFiles }: Slots & { unit: UnitNode }) {
+export function UnitBranch({ unit, forceOpen, renderActions, onDropFiles, onImages }: Slots & { unit: UnitNode }) {
   return (
     <Paper withBorder p="xs" radius="md">
       <Branch
@@ -188,6 +203,7 @@ export function UnitBranch({ unit, forceOpen, renderActions, onDropFiles }: Slot
             forceOpen={forceOpen}
             renderActions={renderActions}
             onDropFiles={onDropFiles}
+            onImages={onImages}
           />
         ))}
         {unit.domains.length === 0 && <div className="empty">Sin dominios todavía</div>}

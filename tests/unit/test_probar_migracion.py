@@ -48,12 +48,12 @@ def test_migra_una_base_anterior_con_datos_y_todas_las_verificaciones_pasan(tmp_
     assert resultado.ok, [paso for paso in resultado.pasos if not paso[1]]
     nombres = [nombre for nombre, _, _ in resultado.pasos]
     assert "se conservan todos los datos" in nombres
-    assert "se puede volver a la revisión 0004" in nombres and "se puede subir de nuevo a 0005" in nombres
-    assert "al volver, la tabla de equivalencias de siglas ya no existe" in nombres
+    assert "se puede volver a la revisión 0005" in nombres and "se puede subir de nuevo a 0007" in nombres
+    assert "al volver, las tablas de bots e imágenes ya no existen" in nombres
     # Quedó migrada y con sus datos.
     engine = create_engine(url)
     with engine.connect() as conexion:
-        assert conexion.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0005"
+        assert conexion.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0007"
         assert conexion.execute(text("SELECT name FROM domains")).scalar() == "Memoria del Consejo"
         assert conexion.execute(text("SELECT filename FROM documents")).scalar() == "acta.pdf"
     assert "Revisión: (ninguna" in capsys.readouterr().out

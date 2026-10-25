@@ -13,11 +13,12 @@ src/mia/
 ├── config.py          Settings (pydantic-settings, lee .env)
 ├── api/
 │   ├── main.py         App FastAPI, CORS y routers; en el lifespan: init_db() (migraciones) y ensure_collection()
-│   ├── security.py     require_admin / optional_admin (token de Microsoft o X-Admin-Key, devuelven un Principal) y require_artifact / optional_artifact (X-Artifact-Key)
+│   ├── security.py     require_admin / optional_admin (token de Microsoft o X-Admin-Key, devuelven un Principal), require_artifact / optional_artifact (X-Artifact-Key) y require_bot_service (X-Bot-Service-Key, solo las rutas /bot/...)
 │   └── routes/         health, me (quién soy y mi alcance), inventory (árbol, programas, carpetas), domains (dominios y documentos),
-│                       artifacts, config, query (consulta y calificación), usage, equivalences (lista de siglas, feature 010)
+│                       artifacts, config, query (consulta y calificación; `run_query` la comparten /query y /bot/query), usage, equivalences (lista de siglas, feature 010),
+│                       bots (administración de bots de WhatsApp), bot_service (rutas del servicio del bot), images (imágenes por documento) y media (GET /media público), feature 011
 ├── access/             Lógica de acceso sin HTTP, para probarla sin levantar la API
-│   ├── keys.py          generar, hashear y verificar claves (artefactos y clave de automatización)
+│   ├── keys.py          generar, hashear y verificar claves (artefactos, clave de automatización y credencial de servicio del bot)
 │   ├── errors.py        AuthError: estado, mensaje y `code` de los rechazos de acceso
 │   ├── entra.py         validar el token de identidad de Microsoft (firma, emisor, audiencia, tenant, vigencia, segundo factor) y caché de claves
 │   ├── admins.py        lista de administradores: agregar, listar, desactivar, buscar (la usa scripts/admin.py)
@@ -26,6 +27,12 @@ src/mia/
 │   ├── audit.py         línea JSON por escritura de administración (logger `mia.admin`)
 │   ├── permissions.py   dominios y modos que puede usar un artefacto
 │   └── caps.py          topes diarios de gasto y su día (zona horaria de Costa Rica)
+├── bots/               Bot de WhatsApp (feature 011), sin HTTP
+│   ├── usage.py         mes de los topes, incremento atómico del consumo mensual de mensajes y tope
+│   └── status.py        estado de un bot (ok, disabled, cap_reached), su motivo y los dominios que ve
+├── images/             Imágenes asociadas a documentos (feature 011)
+│   ├── validate.py      PNG o JPG completo por su contenido (firma y final del archivo), sin biblioteca de imágenes
+│   └── lookup.py        las imágenes de los documentos de las fuentes de una respuesta, en una sola consulta
 ├── usage/              Módulo Uso
 │   ├── aggregate.py     períodos, indicadores, series y tablas
 │   ├── log.py           registro de consultas: listado, detalle y CSV
@@ -43,13 +50,14 @@ src/mia/
 │   └── providers/       una implementación por proveedor (local, gemini, anthropic, openai, openrouter, glm)
 └── storage/
     ├── db.py            engine/session de SQLAlchemy; init_db() aplica las migraciones de Alembic
-    ├── models.py        Unit, Domain, Folder, Document, Artifact, ArtifactUnit, ArtifactDomain, QueryLog, Admin, AdminUnit, SiglaEquivalence
-    ├── migrations/      Alembic: 0001 (esquema anterior), 0002 (panel de administración), 0003 (administradores), 0004 (nombres de programas) y 0005 (equivalencias de siglas)
+    ├── models.py        Unit, Domain, Folder, Document, Artifact, ArtifactUnit, ArtifactDomain, QueryLog, Admin, AdminUnit, SiglaEquivalence, Bot, BotMessageCount, DocumentImage
+    ├── migrations/      Alembic: 0001 (esquema anterior), 0002 (panel de administración), 0003 (administradores), 0004 (nombres de programas), 0005 (equivalencias de siglas), 0006 (bots) y 0007 (imágenes de documentos)
     └── vector_store.py  VectorStore (interfaz) + QdrantVectorStore + get_vector_store()
 
 web/                    Aplicaciones web: admin/ (panel de administración) y consulta/ (Consulta administrativa)
 web/admin/              Panel de administración (React + TypeScript + Vite + Mantine), ver más abajo
 web/consulta/           Consulta administrativa (React + TypeScript + Vite + Mantine), ver más abajo
+whatsapp/               Servicio del bot de WhatsApp `mia-whatsapp` (Python + FastAPI, paquete aparte `mia_whatsapp`), ver "Bot de WhatsApp" más abajo
 scripts/                palabras.py (índice de texto de Qdrant), copiar_coleccion.py (copia una colección a un Qdrant local), cargar_carpeta.py, reorganizar_v2.py, pruebas_mvp.py, cliente.py, servicios.py (encender y apagar en Railway), admin.py (administradores del panel), idp_simulado.py (solo desarrollo: Microsoft simulado)
 ```
 
@@ -82,11 +90,11 @@ Como Qdrant identifica cada dominio por su id y no por su nombre, renombrar un d
 
 ## Migraciones
 
-El esquema lo versiona Alembic (`src/mia/storage/migrations/`). `init_db()` corre en cada arranque de la API: si la base ya tiene tablas pero no `alembic_version` (la de Neon, creada antes con `create_all`), la marca en la revisión `0001` sin ejecutarla, y luego aplica `0002` a `0005` (la `0005`, de la feature 010, crea `sigla_equivalences` con las semillas TFG y MGTI y es solo aditiva). Una API más vieja que la base no arranca: para volver a una versión anterior hay que correr antes `alembic downgrade 0004` (ver [OPERACION.md](OPERACION.md), "Cuidado con las migraciones"). Con una sola instancia de la API no hay riesgo de dos migraciones a la vez. `alembic upgrade head` también funciona desde la terminal, con `DATABASE_URL`. `domains.unit_id` es nullable en la base (los dominios anteriores a la reorganización no tienen unidad); la API la exige al crear uno.
+El esquema lo versiona Alembic (`src/mia/storage/migrations/`). `init_db()` corre en cada arranque de la API: si la base ya tiene tablas pero no `alembic_version` (la de Neon, creada antes con `create_all`), la marca en la revisión `0001` sin ejecutarla, y luego aplica `0002` a `0007` (la `0005`, de la feature 010, crea `sigla_equivalences` con las semillas TFG y MGTI; la `0006` y la `0007`, de la feature 011, crean `bots` con `bot_message_counts` y `document_images`; las tres son solo aditivas). Una API más vieja que la base no arranca: para volver a una versión anterior hay que correr antes `alembic downgrade 0004` (o `0005` si solo se quita lo de la feature 011; se pierden los bots y las imágenes) (ver [OPERACION.md](OPERACION.md), "Cuidado con las migraciones"). Con una sola instancia de la API no hay riesgo de dos migraciones a la vez. `alembic upgrade head` también funciona desde la terminal, con `DATABASE_URL`. `domains.unit_id` es nullable en la base (los dominios anteriores a la reorganización no tienen unidad); la API la exige al crear uno.
 
 ## Panel de administración
 
-`web/admin/`: React 19, TypeScript y Vite, con TanStack Query y `HashRouter` (funciona como sitio estático sin reescrituras). Antes de nada pide iniciar sesión (`src/auth/`: `@azure/msal-browser` con flujo de código y PKCE, sesión en `sessionStorage`, renovación del token en silencio cuando faltan menos de 5 minutos, y `describeAccessError` para los mensajes de rechazo; MSAL queda aislado en `auth/session.ts`). Sin sesión no se monta ninguna ruta ni se pide ningún dato; el perfil de `GET /me` decide qué se muestra (`auth/capabilities.ts`). Un menú de módulos (`src/modules/index.tsx`): Inventario de información, Artefactos y accesos, Uso, y Siglas y equivalencias (la lista de la búsqueda híbrida, de lectura para todos y de escritura solo del alcance global); agregar uno es sumar una entrada y un grupo de rutas en la API. La interfaz usa **Mantine** (MIT) como librería de componentes, con un tema propio (`src/theme.ts`) derivado de los colores de `styles/tokens.css` y el modo claro u oscuro del sistema; todo el panel está migrado (marco, menú, Uso, Artefactos, Inventario e inicio de sesión) y su paleta son cuatro colores de marca (#3D5A80, #98C1D9, #E0FBFC, #EE6C4D). Mantine se usa en los artefactos con cliente propio (este panel, con la paleta #03, y la Consulta administrativa, con la #05; ver [docs/PALETAS.md](PALETAS.md)); el chatbot embebible en otros sistemas no lo usa, para no chocar con sus estilos. Las gráficas se mantienen como SVG propio, con una paleta categórica validada para el modo claro y el oscuro, y no pasan a `@mantine/charts`. Reglas de uso y estado de la migración en [web/admin/README.md](../web/admin/README.md#interfaz-mantine). En desarrollo usa el proxy de Vite (`/api`); publicado como sitio estático llama directo a la API, que debe permitir su origen (`CORS_ORIGINS`). Detalle de uso en [web/admin/README.md](../web/admin/README.md).
+`web/admin/`: React 19, TypeScript y Vite, con TanStack Query y `HashRouter` (funciona como sitio estático sin reescrituras). Antes de nada pide iniciar sesión (`src/auth/`: `@azure/msal-browser` con flujo de código y PKCE, sesión en `sessionStorage`, renovación del token en silencio cuando faltan menos de 5 minutos, y `describeAccessError` para los mensajes de rechazo; MSAL queda aislado en `auth/session.ts`). Sin sesión no se monta ninguna ruta ni se pide ningún dato; el perfil de `GET /me` decide qué se muestra (`auth/capabilities.ts`). Un menú de módulos (`src/modules/index.tsx`): Inventario de información (con el diálogo "Imágenes" de cada documento), Artefactos y accesos, Uso, Siglas y equivalencias (la lista de la búsqueda híbrida, de lectura para todos y de escritura solo del alcance global) y Bots (los números de WhatsApp y su artefacto asignado, solo del alcance global y oculto para los demás con `requires` y `visibleModules`); agregar uno es sumar una entrada y un grupo de rutas en la API. La interfaz usa **Mantine** (MIT) como librería de componentes, con un tema propio (`src/theme.ts`) derivado de los colores de `styles/tokens.css` y el modo claro u oscuro del sistema; todo el panel está migrado (marco, menú, Uso, Artefactos, Inventario e inicio de sesión) y su paleta son cuatro colores de marca (#3D5A80, #98C1D9, #E0FBFC, #EE6C4D). Mantine se usa en los artefactos con cliente propio (este panel, con la paleta #03, y la Consulta administrativa, con la #05; ver [docs/PALETAS.md](PALETAS.md)); el chatbot embebible en otros sistemas no lo usa, para no chocar con sus estilos. Las gráficas se mantienen como SVG propio, con una paleta categórica validada para el modo claro y el oscuro, y no pasan a `@mantine/charts`. Reglas de uso y estado de la migración en [web/admin/README.md](../web/admin/README.md#interfaz-mantine). En desarrollo usa el proxy de Vite (`/api`); publicado como sitio estático llama directo a la API, que debe permitir su origen (`CORS_ORIGINS`). Detalle de uso en [web/admin/README.md](../web/admin/README.md).
 
 ## Consulta administrativa
 
@@ -99,6 +107,26 @@ El esquema lo versiona Alembic (`src/mia/storage/migrations/`). `init_db()` corr
 - **Compartir código con el panel:** no hay paquete compartido; cada sitio tiene su propio cliente de la API (unas 40 líneas parecidas) hasta que haya un tercero. Decisión en [specs/003-consulta-administrativa/research.md](../specs/003-consulta-administrativa/research.md).
 
 Detalle de uso y publicación en [web/consulta/README.md](../web/consulta/README.md) y en [OPERACION.md](OPERACION.md).
+
+## Bot de WhatsApp (feature 011)
+
+Un canal nuevo de consulta a MIA por WhatsApp, construido sobre [Kapso](https://docs.kapso.ai), para atraer estudiantes de los posgrados. Spec, plan, contratos y la investigación de cada decisión en [specs/011-bot-whatsapp-kapso/](../specs/011-bot-whatsapp-kapso/spec.md); requerimientos y camino a producción en [Definicion_Requerimientos_Bot_WhatsApp.md](Definicion_Requerimientos_Bot_WhatsApp.md). **La primera entrega funciona solo con el sandbox de Kapso** (decisión del 2026-10-24); no usa LangChain ni LangGraph.
+
+```
+Persona (WhatsApp) -> Kapso -> webhook firmado -> mia-whatsapp -> API de MIA (/bot/messages y /bot/query)
+                                                       |                  |
+                                                       |<-- texto, fuentes e imágenes
+                                                       v
+                          Kapso API: envía el texto y, por enlace público a GET /media/{id} de la API, la imagen
+```
+
+- **El servicio `mia-whatsapp`** (`whatsapp/`, Python 3.12 con FastAPI y `httpx`, paquete aparte `mia_whatsapp` que **no importa `mia`**: habla con la API solo por HTTP, así que su imagen pesa unos 170 MB y no arrastra `onnxruntime` ni el modelo de embeddings). **Un solo servicio atiende todos los números de WhatsApp**: cada aviso de Kapso trae el `phone_number_id` al que escribió la persona y la API resuelve el bot y su artefacto; un bot nuevo es una fila en el panel y apuntar el webhook de su número al mismo servicio. Se arranca con `uvicorn mia_whatsapp.main:create_app --factory`. Piezas: `webhook.py` (firma HMAC-SHA256 del cuerpo crudo en `X-Webhook-Signature`, lectura del aviso, lotes y sin dar por seguro el teléfono), `flow.py` (la única pieza que decide el orden de los pasos por mensaje), `state.py` (en memoria y acotado: mensajes ya vistos, saludo y ventanas por persona, cola de consultas), `api_client.py`, `kapso.py` (envío de texto e imagen con un limitador de 90 por minuto y un reintento), `format.py` (de Markdown al formato de WhatsApp, fuentes breves y partición en mensajes de hasta 4.000 caracteres) y `logs.py` (una línea JSON por mensaje, sin teléfonos ni textos).
+- **El bot es un artefacto más.** Consulta con los dominios, modos, tope diario y estado de un **artefacto asignado** que se cambia en cualquier momento desde el módulo Bots del panel (rige desde el mensaje siguiente, sin reiniciar nada). Como la clave de un artefacto se guarda solo como hash, el servicio no la lleva: se identifica con una **credencial de servicio** (`BOT_SERVICE_KEY`, el mismo valor en la API y en el servicio, encabezado `X-Bot-Service-Key`, que solo abre las dos rutas `/bot/...`) y el número de Kapso del mensaje. `POST /bot/messages` cuenta los mensajes del mes y devuelve el estado del bot (`ok`, `disabled`, `cap_reached` o `unknown_bot`); `POST /bot/query` ejecuta `run_query`, **la misma consulta que `POST /query`**, con el artefacto del bot, en **modo literal fijo** y con los dominios que el artefacto cubre en ese momento. Topes diarios, permisos, citas y registro en Uso valen igual; la API nunca recibe el teléfono de la persona (solo el número de la institución).
+- **El límite real es la cuota de mensajes, no el gasto de modelos** (plan gratuito de Kapso: 2.000 al mes entre recibidos y enviados). El consumo vive en la base (`bot_message_counts`, una fila por bot y mes, incremento atómico), el tope es `BOT_MONTHLY_MESSAGE_CAP` (1.800) y al alcanzarlo el bot no envía nada más; el panel lo muestra. Los demás límites, en la memoria del servicio y configurables por variable: 10 mensajes por hora y 30 por día por persona (un solo aviso por bloqueo; lo bloqueado no suma a la ventana), preguntas de hasta 500 caracteres, 5 consultas simultáneas con cola de 20 (lo que excede se descarta sin responder) y 1 imagen por respuesta. El saludo (que avisa que las preguntas pasan por Meta, Kapso y el proveedor del modelo) va dentro de la primera respuesta de cada 24 horas. **El bot no da el contacto del programa** (decisión expresa): ningún texto fijo lo trae y al arrancar se avisa si alguno cambiado por variable parece traerlo.
+- **Imágenes asociadas a documentos** (`DocumentImage`, `images/`): se agregan, describen, ordenan, reemplazan y quitan desde el Inventario del panel (`/domains/{id}/documents/{doc}/images`, con el alcance que ya se tiene sobre el documento). Se guardan en la base (el disco de Railway no persiste), se validan por su contenido (PNG o JPG completo, hasta `MAX_IMAGE_MB`) y se sirven por **`GET /media/{public_id}`, una ruta pública**: el identificador es aleatorio (192 bits) y **cambia al reemplazar la imagen**, así el enlace anterior deja de servir. La consulta devuelve `images` (ruta relativa, descripción y nombre del documento) con las imágenes de los documentos de las **fuentes que la respuesta cita**, en el orden de las fuentes, por lo que dependen de `QUERY_CITED_SOURCES=on`; el bot envía las primeras después del texto. Una falla de imágenes nunca rompe la respuesta. Una descarga que Meta intente después de aceptar el envío y falle no se detecta.
+- **Varios bots y varios canales** (investigación R16 de la spec): un servicio para todos los números de WhatsApp; los bots incrustados en páginas web, que habrá más adelante, **no pasarán por él** (no tienen webhook ni cuota de mensajes): llamarán a la API por una ruta pública con orígenes permitidos y límite por IP, en otra feature. Las rutas `/bot/...`, `BOT_SERVICE_KEY` y la tabla `bots` conservan su nombre hasta entonces.
+- **Panel:** el módulo Bots (solo alcance global) lista cada bot con su estado, artefacto, dominios que ve y la barra de mensajes del mes frente al tope; al asignar o cambiar el artefacto pide confirmar con la advertencia de que **el bot responde a cualquiera que escriba al número** y con la lista de dominios que verá. El control de acceso que exige la constitución para un artefacto público es ese: el bot solo ve los dominios del artefacto asignado (nunca las actas del Consejo ni dominios con datos de personas).
+- **Pruebas:** la API con `pytest` (rutas, migraciones, credencial, contador, imágenes y un recorrido de punta a punta con el servicio y la API en el mismo proceso, `tests/unit/test_bot_end_to_end.py`); el servicio con `httpx.MockTransport` en `whatsapp/tests/`; simuladores locales `whatsapp/scripts/kapso_falso.py` y `enviar_webhook.py` para recorrer el flujo sin Kapso ni cuota.
 
 ## El patrón que se repite: interfaz + factory por nombre
 
@@ -135,7 +163,7 @@ Trade-off aceptado: cambiar de modelo de embeddings con otra dimensionalidad req
 
 ## Clientes de prueba
 
-El panel de administración y la Consulta administrativa (dos instancias) son los artefactos reales; los chatbots (web, WhatsApp vía Kapso) quedan para después. Para consultar la API sin pasar por ellos, todos con la clave de un artefacto (`--clave` o `MIA_ARTIFACT_KEY`) y fuera del paquete `mia`:
+El panel de administración y la Consulta administrativa (dos instancias) son los artefactos reales; el bot de WhatsApp vía Kapso (sandbox) es el primer chatbot (ver "Bot de WhatsApp"); los chatbots incrustados en páginas web quedan para después. Para consultar la API sin pasar por ellos, todos con la clave de un artefacto (`--clave` o `MIA_ARTIFACT_KEY`) y fuera del paquete `mia`:
 
 - **Swagger UI** (`/docs` de la API): para probar a mano, con los encabezados `X-Admin-Key` o `X-Artifact-Key`.
 - **`scripts/cliente.py`:** cliente de terminal con menú de dominios y de modos. Solo usa la biblioteca estándar.
@@ -163,6 +191,7 @@ El panel de administración y la Consulta administrativa (dos instancias) son lo
 - `OpenRouterLLMProvider`: cualquier modelo de OpenRouter (el de cada modo, o `OPENROUTER_MODEL`), con el SDK de OpenAI apuntando a la API de OpenRouter, y devuelve tokens y costo reales de cada respuesta. Esfuerzo de razonamiento configurable (`OPENROUTER_REASONING_EFFORT`) y, en cada consulta, solo proveedores que no entrenan con los datos (más `OPENROUTER_ZDR` para exigir retención cero). Es el LLM previsto para el despliegue en Railway. Implementado con tests unitarios; falta probarlo contra la API real.
 - `GLMLLMProvider`: modelo fijo `glm-5.3` de Z.ai, con el SDK de OpenAI apuntando a la API de Z.ai (compatible con la de OpenAI). Razonamiento configurable (`GLM_THINKING`, activado por defecto), timeout de 120 s por intento y 2 reintentos. Implementado con test unitario; falta probarlo contra la API real. Es el LLM previsto para el despliegue en Cloud Run.
 - `INGESTION_SYNC=true` ingiere dentro de la petición de subida en vez de en segundo plano, para Cloud Run con cobro por petición (la CPU se frena al responder).
+- Bot de WhatsApp con Kapso (feature 011): servicio `mia-whatsapp`, módulo Bots, rutas `/bot/...`, contador mensual de mensajes, imágenes asociadas a documentos y `GET /media`. Probado con pruebas automáticas (API, servicio y un recorrido de punta a punta en un solo proceso) y con los simuladores locales; **falta probarlo con el sandbox de Kapso real** (el envío de imágenes, que el sandbox quizá no admita, y la forma de la respuesta de Kapso). Ver "Bot de WhatsApp".
 
 **Interfaz definida, implementación pendiente (lanzan `NotImplementedError` a propósito, no es un bug):**
 - `OpenAIEmbeddingProvider`, `OpenAILLMProvider`, `LocalLLMProvider` (LLM local, sigue esperando hardware propio).
@@ -177,6 +206,10 @@ flowchart LR
     M[Microsoft Entra ID<br/>cuentas del TEC] -.->|claves públicas| R
     P -.->|inicio de sesión PKCE| M
     U[Consulta administrativa y otros<br/>artefactos] -->|X-Artifact-Key| R[API en Railway Hobby<br/>INGESTION_ENABLED=true]
+    W[Servicio mia-whatsapp<br/>Railway] -->|X-Bot-Service-Key| R
+    K[Kapso<br/>WhatsApp] -->|webhook firmado| W
+    W -->|texto e imágenes| K
+    K -.->|descarga GET /media| R
     L[API local del operador<br/>cargas masivas] -->|ingesta| Q
     L --> N
     R --> Q[(Qdrant Cloud free<br/>vectores)]
@@ -186,6 +219,7 @@ flowchart LR
 
 - **Desarrollo local:** `docker-compose.yml` levanta Qdrant local + la API. Dentro de compose la API siempre usa el Qdrant de compose, aunque `.env` apunte a Qdrant Cloud.
 - **Producción (prototipo):** API en Railway Hobby (`railway.json`, `https://mia-main.up.railway.app`), metadata en Neon Postgres free, vectores en Qdrant Cloud free (región N. Virginia en AWS), LLM por OpenRouter con saldo prepagado. La API es la misma en todos los entornos; solo cambian las variables de entorno. Hasta el 2026-10-07 la API estuvo en Render free (`render.yaml`, hoy suspendido) con Gemini gratuito.
+- **Bot de WhatsApp:** `mia-whatsapp` es otro servicio de Railway (creado desde la interfaz con *Root Directory* `whatsapp`; `whatsapp/Dockerfile` y `whatsapp/railway.json`), que habla con la API por HTTP y con Kapso. Se despliega después de la API (que migra la base a la `0007` al arrancar) con `python scripts/servicios.py encender mia-whatsapp`; ver [OPERACION.md](OPERACION.md).
 - **Sitios web:** el panel (`mia-panel`) y las dos Consultas (`mia-computacion` y `mia-administracion`) son servicios de Railway que sirven archivos estáticos desde el mismo proyecto. No hay auto-deploy: se despliegan a mano con `railway up -s <servicio>` (ver [OPERACION.md](OPERACION.md), "Desplegar cambios").
 - **Consulta administrativa:** un servicio estático de Railway por instancia (`web/consulta/Dockerfile` y `web/consulta/railway.json`), apagable con *Remove* y encendible con *Redeploy*; ver [OPERACION.md](OPERACION.md).
 - **Ingesta en producción:** en Railway no hay límite de 512 MB, así que la API ingiere en el propio servidor. Para cargas masivas también se puede levantar la API en la máquina de quien opera, con `DATABASE_URL`, `QDRANT_URL` y `QDRANT_API_KEY` de producción: escribe en las mismas bases que lee Railway. Pasos en [OPERACION.md](OPERACION.md). (En Render free, con 512 MB, la ingesta de actas llegaba a 460-520 MB y estaba desactivada.)

@@ -12,8 +12,14 @@ describe("capabilities", () => {
       canSeeBalance: true,
       canUseAllDomains: true,
       canEditEquivalences: true,
+      canManageBots: true,
       showGlobalCaps: true,
     });
+  });
+
+  it("solo el alcance global administra los bots de WhatsApp", () => {
+    expect(capabilities(global).canManageBots).toBe(true);
+    expect(capabilities(unidad).canManageBots).toBe(false);
   });
 
   it("el alcance de unidad no crea unidades ni ve el saldo", () => {
@@ -22,6 +28,7 @@ describe("capabilities", () => {
       canSeeBalance: false,
       canUseAllDomains: false,
       canEditEquivalences: false,
+      canManageBots: false,
       showGlobalCaps: false,
     });
   });
@@ -30,6 +37,7 @@ describe("capabilities", () => {
     expect(capabilities(null).canCreateUnit).toBe(false);
     expect(capabilities(undefined).canSeeBalance).toBe(false);
     expect(capabilities(null).canEditEquivalences).toBe(false);
+    expect(capabilities(null).canManageBots).toBe(false);
   });
 });
 

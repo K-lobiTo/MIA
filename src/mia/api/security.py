@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from mia.access.admins import find_active_admin
 from mia.access.entra import KeySource, MicrosoftKeys, validate_id_token
 from mia.access.errors import not_authorized, unauthenticated
-from mia.access.keys import admin_key_matches, hash_key
+from mia.access.keys import admin_key_matches, bot_service_key_matches, hash_key
 from mia.access.scope import AUTOMATION, Principal
 from mia.storage.db import get_session
 from mia.storage.models import Artifact
@@ -65,3 +65,10 @@ def require_artifact(artifact: Artifact | None = Depends(optional_artifact)) -> 
     if artifact is None:
         raise HTTPException(status_code=401, detail="Falta la clave de artefacto (X-Artifact-Key).")
     return artifact
+
+
+def require_bot_service(x_bot_service_key: str = Header(default="")) -> None:
+    """Exige la credencial de servicio del bot de WhatsApp (X-Bot-Service-Key). No acepta claves de artefacto ni de
+    administración: abre solo las rutas /bot/... Con BOT_SERVICE_KEY vacía responde 401 como con una incorrecta."""
+    if not bot_service_key_matches(x_bot_service_key):
+        raise HTTPException(status_code=401, detail="Credencial del servicio del bot inválida.")

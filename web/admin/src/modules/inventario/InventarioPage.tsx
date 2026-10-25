@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { capabilities } from "../../auth/capabilities";
 import { useMe } from "../../auth/session";
 import { useInventory } from "../../api/inventory";
-import type { Inventory } from "../../api/types";
+import type { DocumentItem, Inventory } from "../../api/types";
 import { Notice } from "../../components/Notice";
 import { filterInventory } from "./filterTree";
 import {
@@ -14,6 +14,7 @@ import {
   NewUnitDialog,
   RenameFolderDialog,
 } from "./forms/Dialogs";
+import { ImagenesDialog } from "./ImagenesDialog";
 import { DomainBranch, UnitBranch, type NodeRef } from "./TreeNode";
 import { UploadList } from "./UploadList";
 import { useUploads, type UploadTarget } from "./useUploads";
@@ -51,6 +52,8 @@ export function InventarioPage() {
   const inventory = useInventory();
   const [query, setQuery] = useState("");
   const [dialog, setDialog] = useState<DialogState | null>(null);
+  // Documento cuyas imágenes se están viendo (feature 011).
+  const [imagesFor, setImagesFor] = useState<{ domainId: string; document: DocumentItem } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const pickTarget = useRef<UploadTarget | null>(null);
 
@@ -148,6 +151,7 @@ export function InventarioPage() {
   }
 
   const close = () => setDialog(null);
+  const openImages = (domainId: string, document: DocumentItem) => setImagesFor({ domainId, document });
 
   return (
     <>
@@ -203,7 +207,14 @@ export function InventarioPage() {
       {filtered && (
         <div className="tree">
           {filtered.units.map((unit) => (
-            <UnitBranch key={unit.id} unit={unit} forceOpen={searching} renderActions={renderActions} onDropFiles={dropFiles} />
+            <UnitBranch
+              key={unit.id}
+              unit={unit}
+              forceOpen={searching}
+              renderActions={renderActions}
+              onDropFiles={dropFiles}
+              onImages={openImages}
+            />
           ))}
           {filtered.unassigned_domains.length > 0 && (
             <Paper withBorder p="xs" radius="md">
@@ -219,6 +230,7 @@ export function InventarioPage() {
                     forceOpen={searching}
                     renderActions={renderActions}
                     onDropFiles={dropFiles}
+                    onImages={openImages}
                   />
                 ))}
               </div>
@@ -237,6 +249,7 @@ export function InventarioPage() {
       )}
       {dialog?.kind === "rename" && <RenameFolderDialog folderId={dialog.folderId} currentName={dialog.name} onClose={close} />}
       {dialog?.kind === "delete" && <DeleteFolderDialog folderId={dialog.folderId} name={dialog.name} onClose={close} />}
+      {imagesFor && <ImagenesDialog domainId={imagesFor.domainId} document={imagesFor.document} onClose={() => setImagesFor(null)} />}
     </>
   );
 }

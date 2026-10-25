@@ -15,6 +15,7 @@ from mia.access.caps import CapStatus, check_caps, seconds_until
 from mia.access.permissions import allowed_domain_ids, allowed_modes
 from mia.api.security import require_artifact
 from mia.config import settings
+from mia.images.lookup import images_for_documents
 from mia.rag.citations import (
     CITATION_INSTRUCTIONS,
     SAFETY_RULE_NOTE,
@@ -82,6 +83,14 @@ class Source(BaseModel):
     excerpt: str
 
 
+class Image(BaseModel):
+    # Ruta relativa `/media/{public_id}`: quien la use la completa con la dirección pública de la API.
+    url: str
+    caption: str
+    # Nombre del archivo del documento al que pertenece la imagen.
+    document: str
+
+
 class QueryRequest(BaseModel):
     domains: list[str] = Field(min_length=1)
     question: str = Field(min_length=1, max_length=2000)
@@ -96,6 +105,9 @@ class QueryResponse(BaseModel):
     latency_ms: int
     # La respuesta es "sin información suficiente": el cliente la distingue sin comparar el texto.
     no_info: bool = False
+    # Imágenes asociadas a los documentos de las fuentes de la respuesta, en el orden de las fuentes (feature 011).
+    # Siempre presente; vacía sin imágenes, sin información o si la consulta de imágenes falla.
+    images: list[Image] = []
 
 
 class Feedback(BaseModel):
@@ -224,12 +236,33 @@ def cap_message(status: CapStatus) -> str:
     )
 
 
+def _images_of_sources(session: Session, document_ids: list[str], names: dict[str, str]) -> list[Image]:
+    """Las imágenes asociadas a los documentos de las fuentes de la respuesta, en el orden de las fuentes (feature 011).
+    Si la consulta de imágenes falla, la respuesta se entrega sin ellas: una consulta que ya gastó modelo no debe perder su
+    texto por esto."""
+    try:
+        return [
+            Image(url=f"/media/{ref.public_id}", caption=ref.caption, document=names.get(ref.document_id, ref.document_id))
+            for ref in images_for_documents(session, document_ids)
+        ]
+    except Exception:
+        logger.warning("No se pudieron consultar las imágenes de los documentos citados: la respuesta va sin imágenes", exc_info=True)
+        return []
+
+
 @router.post("/query", response_model=QueryResponse)
 def query(
     payload: QueryRequest,
     artifact: Artifact = Depends(require_artifact),
     session: Session = Depends(get_session),
 ) -> QueryResponse:
+    return run_query(payload, artifact, session)
+
+
+def run_query(payload: QueryRequest, artifact: Artifact, session: Session) -> QueryResponse:
+    """Una consulta completa con la configuración de `artifact` (permisos, topes, registro en Uso). La usan `POST /query`
+    (el artefacto de la clave) y `POST /bot/query` (el artefacto asignado al bot de WhatsApp, feature 011): así los dos
+    caminos aplican siempre las mismas reglas."""
     started = time.perf_counter()
     log = QueryLog(
         id=str(uuid.uuid4()),
@@ -424,6 +457,9 @@ def query(
     cite_sources = cited_sources_enabled(settings.query_cited_sources)
 
     sources: list[Source] = []
+    # Documento de cada fuente (mismo orden que `sources`) y su nombre, para las imágenes asociadas (feature 011).
+    source_document_ids: list[str] = []
+    document_names: dict[str, str] = {}
     context: list[RagContext] = []
     for position, passage in enumerate(passages, start=1):
         document = session.get(Document, passage.document_id)
@@ -431,6 +467,8 @@ def query(
         document_label = document.filename if document else passage.document_id
         domain_label = domain.name if domain else passage.domain
         sources.append(Source(domain=domain_label, document=document_label, excerpt=passage.text))
+        source_document_ids.append(passage.document_id)
+        document_names[passage.document_id] = document_label
         context.append(
             RagContext(
                 domain=domain_label,
@@ -525,6 +563,7 @@ def query(
         # Con la línea FUENTES: ya quitada del texto, se eligen las fuentes que el modelo dice haber usado.
         selection = select_sources(parsed, len(passages))
         sources = [sources[i - 1] for i in selection.indexes]
+        source_document_ids = [source_document_ids[i - 1] for i in selection.indexes]
         if parsed.invalid:
             logger.info("El modelo citó fragmentos inexistentes: %s (entregados: %d)", parsed.invalid, len(passages))
         if selection.safety_rule and not is_no_info_answer(answer_text):
@@ -546,7 +585,12 @@ def query(
     session.add(log)
     session.commit()
     return QueryResponse(
-        id=log.id, answer=answer_text, sources=sources, mode=payload.mode, latency_ms=log.latency_ms
+        id=log.id,
+        answer=answer_text,
+        sources=sources,
+        mode=payload.mode,
+        latency_ms=log.latency_ms,
+        images=_images_of_sources(session, source_document_ids, document_names),
     )
 
 

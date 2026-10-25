@@ -13,10 +13,11 @@ cd web/admin && npm ci && cd ../..    # solo si se prueba el panel
 ## 1. Pruebas automáticas (sin red, sin Kapso y sin cuota)
 
 ```bash
-pytest tests/unit/test_bots.py tests/unit/test_bot_service.py tests/unit/test_images.py tests/unit/test_query_images.py
+pytest tests/unit/test_bots.py tests/unit/test_bots_usage.py tests/unit/test_bot_service.py tests/unit/test_bot_end_to_end.py
+pytest tests/unit/test_images.py tests/unit/test_image_validate.py tests/unit/test_query_images.py tests/unit/test_cors.py
 pytest tests/unit/test_migrations.py tests/unit/test_config.py tests/unit/test_servicios.py tests/unit/test_probar_migracion.py
 pytest whatsapp/tests                      # el receptor con Kapso y la API simulados
-pytest && ruff check src tests scripts bot
+pytest && ruff check src tests scripts whatsapp
 cd web/admin && npm run typecheck && npm test && npm run build
 ```
 
@@ -24,6 +25,7 @@ Lo que deben demostrar:
 - **API**: bots (registro, cambio de artefacto, activar y desactivar, alcance global, auditoría), la credencial de servicio, el contador mensual (atómico, mes nuevo en cero, `cap_reached`), `POST /bot/query` (artefacto asignado, modo literal fijo, dominios del artefacto, rechazos, registro en Uso sin teléfono) y que un cambio de artefacto o de dominios rige en la consulta siguiente.
 - **Imágenes**: formato por contenido, tamaño, final del archivo, alcance, orden, reemplazo con enlace nuevo, `/media` pública, y el campo `images` de la consulta (orden de las fuentes, sin información, sin imágenes, falla de la consulta de imágenes).
 - **Servicio**: firma inválida, evento ignorado, lote, duplicado, no texto, pregunta larga, sin información, 403 y 429, límite por persona (un solo aviso), cola con descarte, tope mensual, saludo una vez en 24 h, destino sin teléfono, partición, formato, imagen que falla, y que ningún texto por defecto contiene contacto.
+- **De punta a punta** (`test_bot_end_to_end.py`): el servicio y la API real en un solo proceso, con Kapso, el almacén de vectores y el modelo simulados: una pregunta llega a la API, la persona recibe texto, fuentes e imagen con su enlace público, el enlace sirve la imagen, la cuota del mes queda contada y un cambio de artefacto, de accesos o de estado hecho desde el panel rige en el mensaje siguiente.
 - **Sin regresiones**: las pruebas existentes pasan y `POST /query` responde igual con `images: []`.
 
 ## 2. Recorrer el flujo completo en la laptop (sin Kapso)
@@ -37,7 +39,7 @@ BOT_SERVICE_KEY=clave-local QUERY_CITED_SOURCES=on ADMIN_KEY=admin-local uvicorn
 python whatsapp/scripts/kapso_falso.py --puerto 9000
 # Terminal 3: el bot apuntando al Kapso falso
 cd whatsapp && MIA_API_URL=http://localhost:8000 BOT_SERVICE_KEY=clave-local KAPSO_API_KEY=x \
-  KAPSO_WEBHOOK_SECRET=secreto KAPSO_API_URL=http://localhost:9000 uvicorn mia_whatsapp.main:app --port 8100
+  KAPSO_WEBHOOK_SECRET=secreto KAPSO_API_URL=http://localhost:9000 uvicorn mia_whatsapp.main:create_app --factory --port 8100
 ```
 
 1. En el panel (`web/admin`, con `ADMIN_KEY`): crear un artefacto con los dominios de prueba, registrar un bot con `kapso_number_id` `111` y ese artefacto, y asociar una imagen a un documento (historias 3 y 4).

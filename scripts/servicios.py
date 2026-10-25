@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Enciende, apaga y consulta el estado de los servicios de MIA en Railway.
 
-Los cuatro servicios no se redespliegan solos (Railway no tiene instalada su aplicación de GitHub):
+Los cinco servicios no se redespliegan solos (Railway no tiene instalada su aplicación de GitHub):
 encender es `railway up` desde esta carpeta y apagar es `railway down` (equivale a "Remove" en el
 panel de Railway). Apagar no borra nada: se conservan variables, dominios y datos (Neon y Qdrant
 viven fuera de Railway). Ver "Desplegar cambios" en docs/OPERACION.md.
@@ -9,13 +9,13 @@ viven fuera de Railway). Ver "Desplegar cambios" en docs/OPERACION.md.
 Uso (desde la raíz del repositorio, con la CLI de Railway iniciada y vinculada: `railway login`
 y `railway link`):
     python scripts/servicios.py estado
-    python scripts/servicios.py encender                    # los cuatro, la API primero
+    python scripts/servicios.py encender                    # los cinco, la API primero
     python scripts/servicios.py encender mia-computacion    # solo uno (o varios)
-    python scripts/servicios.py apagar                      # los cuatro, la API al final
+    python scripts/servicios.py apagar                      # los cinco, la API al final
     python scripts/servicios.py apagar mia-panel
 
-Los nombres válidos: MIA (la API), mia-computacion, mia-administracion y mia-panel. Los sitios
-necesitan la API encendida para funcionar.
+Los nombres válidos: MIA (la API), mia-whatsapp (el bot de WhatsApp), mia-computacion,
+mia-administracion y mia-panel. Los sitios y el bot necesitan la API encendida para funcionar.
 
 `encender` despliega por defecto lo que hay en `main` de GitHub (`origin/main`, tras un `git fetch`),
 no lo que haya en la carpeta local: exporta esa versión del repositorio a una carpeta temporal y la
@@ -60,9 +60,10 @@ class Servicio:
     descripcion: str
 
 
-# La API va primero: los sitios llaman a la API, y al apagar se deja para el final.
+# La API va primero: los sitios y el bot llaman a la API, y al apagar se deja para el final.
 SERVICIOS = [
     Servicio("MIA", "https://mia-main.up.railway.app", "/health", "API"),
+    Servicio("mia-whatsapp", "https://mia-whatsapp.up.railway.app", "/health", "Bot de WhatsApp (Kapso)"),
     Servicio("mia-computacion", "https://mia-computacion.up.railway.app", "/", "Consulta de la Unidad de Postgrados de Computación"),
     Servicio(
         "mia-administracion",
@@ -256,7 +257,7 @@ def estado(servicios: list[Servicio]) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Enciende, apaga y consulta los servicios de MIA en Railway.")
     parser.add_argument("accion", choices=["estado", "encender", "apagar"])
-    parser.add_argument("servicios", nargs="*", help="MIA, mia-computacion, mia-administracion, mia-panel (por defecto, todos)")
+    parser.add_argument("servicios", nargs="*", help="MIA, mia-whatsapp, mia-computacion, mia-administracion, mia-panel (por defecto, todos)")
     parser.add_argument("--forzar", action="store_true", help="no pedir confirmación")
     parser.add_argument("--sin-esperar", action="store_true", help="con encender: lanzar los despliegues sin esperar su resultado")
     parser.add_argument(

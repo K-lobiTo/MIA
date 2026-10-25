@@ -129,7 +129,9 @@ def test_el_segundo_intento_encuentra_y_el_modelo_responde_con_la_pregunta_origi
     assert modelo.answer.call_args.args[0] == PREGUNTA
     # El contexto es el de los fragmentos del segundo intento.
     assert modelo.answer.call_args.args[1][0].document == "NataliaSoto.pdf"
-    assert set(cuerpo) == {"id", "answer", "sources", "mode", "latency_ms", "no_info"}
+    # `images` (feature 011) es un campo nuevo, siempre presente y vacío sin imágenes: el resto de la estructura no cambia.
+    assert set(cuerpo) == {"id", "answer", "sources", "mode", "latency_ms", "no_info", "images"}
+    assert cuerpo["images"] == []
 
 
 def test_el_segundo_intento_usa_el_contexto_completo_de_la_007(client, base, make_artifact):

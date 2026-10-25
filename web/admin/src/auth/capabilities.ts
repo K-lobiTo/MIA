@@ -5,6 +5,7 @@ export interface Capabilities {
   canSeeBalance: boolean;
   canUseAllDomains: boolean;
   canEditEquivalences: boolean;
+  canManageBots: boolean;
   showGlobalCaps: boolean;
 }
 
@@ -17,6 +18,8 @@ export function capabilities(me: Pick<Me, "is_global"> | null | undefined): Capa
     canSeeBalance: global,
     canUseAllDomains: global,
     canEditEquivalences: global,
+    // El número de WhatsApp y la cuota de mensajes son de toda la institución, no de un programa.
+    canManageBots: global,
     showGlobalCaps: global,
   };
 }

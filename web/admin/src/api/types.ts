@@ -9,6 +9,8 @@ export interface DocumentItem {
   status: DocumentStatus;
   uploaded_at: string;
   folder_id: string | null;
+  // Imágenes asociadas al documento (feature 011).
+  image_count: number;
 }
 
 export interface FolderNode {
@@ -114,6 +116,58 @@ export interface ArtifactsResponse {
     caps_exceed_global: boolean;
   } | null;
   modes: ModeInfo[];
+}
+
+// Imágenes asociadas a documentos (feature 011, contracts/imagenes-api.md).
+export interface ImageItem {
+  id: string;
+  public_id: string;
+  // Ruta relativa `/media/{public_id}`: se completa con la dirección de la API.
+  url: string;
+  content_type: "image/png" | "image/jpeg";
+  size_bytes: number;
+  caption: string;
+  position: number;
+}
+
+export interface ImagesResponse {
+  images: ImageItem[];
+  max_image_mb: number;
+}
+
+// Bots de WhatsApp (feature 011, contracts/bots-api.md).
+export interface BotArtifactRef {
+  id: string;
+  name: string;
+  active: boolean;
+}
+
+export interface BotUsage {
+  received: number;
+  sent: number;
+  total: number;
+  cap_reached: boolean;
+}
+
+export interface Bot {
+  id: string;
+  name: string;
+  kapso_number_id: string;
+  active: boolean;
+  artifact: BotArtifactRef | null;
+  // Etiquetas "Programa / Dominio" de lo que el bot ve hoy (los dominios del artefacto asignado).
+  domains: string[];
+  available: boolean;
+  unavailable_reason: string | null;
+  usage: BotUsage;
+  created_at: string;
+}
+
+export interface BotsResponse {
+  monthly_cap: number;
+  service_configured: boolean;
+  month: string;
+  bots: Bot[];
 }
 
 export interface ConfigResponse {

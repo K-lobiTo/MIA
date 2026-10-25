@@ -20,3 +20,9 @@
 .upload-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 10px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); }
 .upload-row .name { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
 .upload-row .dest { color: var(--muted); font-size: 0.85rem; }
+
+/* Imágenes asociadas a un documento (feature 011). */
+.img-list { display: flex; flex-direction: column; gap: 8px; }
+.img-item { display: flex; gap: 12px; align-items: flex-start; }
+.img-thumb { width: 96px; height: 96px; object-fit: contain; flex: 0 0 96px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+.img-fields { flex: 1 1 auto; min-width: 0; }

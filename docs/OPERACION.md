@@ -12,6 +12,7 @@ Guía práctica para desplegar, cargar documentos y mantener funcionando el prot
 | LLM | [OpenRouter](https://openrouter.ai): modo literal con `z-ai/glm-5.3-flash` (razonamiento bajo) y modo con razonamiento con `z-ai/glm-5.3` (esfuerzo medio) | Saldo prepagado | Al agotarse el saldo, las consultas fallan (502). La cuenta exige proveedores de retención cero y que no entrenen con los datos |
 | Embeddings | Modelo local e5-small (ONNX), dentro de la imagen | Sin costo | Ninguno externo |
 | Sitios web (Consulta administrativa y panel) | Tres servicios más de Railway que sirven archivos estáticos: `mia-computacion`, `mia-administracion` y `mia-panel` (`https://<nombre>.up.railway.app`) | Mismo plan Hobby | Cada uno gasta solo mientras está encendido; se apagan con *Remove*. Sin auto-deploy: se despliegan con `railway up` (ver "Desplegar cambios") |
+| Bot de WhatsApp (feature 011) | Servicio `mia-whatsapp` de Railway (`https://mia-whatsapp.up.railway.app`, `whatsapp/Dockerfile` y `whatsapp/railway.json`), más [Kapso](https://kapso.ai) como canal (primera entrega: solo su sandbox) | Mismo plan Hobby; plan gratuito de Kapso | El límite real es la cuota de mensajes de Kapso (2.000 al mes entre recibidos y enviados), no el gasto de modelos; ver "El bot de WhatsApp". Un servicio pequeño (imagen de unos 170 MB): medir su costo en Railway la primera semana |
 | Ingesta de documentos | La propia API en Railway, o una API local contra producción (cargas masivas con `scripts/cargar_carpeta.py`) | Sin costo adicional | Los archivos originales no quedan guardados en el servidor |
 
 ## Variables de entorno
@@ -52,6 +53,9 @@ Guía práctica para desplegar, cargar documentos y mantener funcionando el prot
 | `HYBRID_MAX_GROUPS` / `HYBRID_MIN_TOKEN_LEN` / `HYBRID_RRF_K` | `8` / `3` / `60` | palabras de la pregunta que se consultan (1 a 16); letras mínimas de una palabra (3 a 6); constante de la fusión (1 a 200) | no se usa |
 | `HYBRID_BUDGET_MS` / `HYBRID_EQUIVALENCES_TTL_SECONDS` | `800` / `60` | espera máxima de la parte léxica en ms (0 sin tope); superado, la consulta usa el significado. Vigencia en segundos de la caché de siglas (0 la desactiva) | no se usa |
 | `QUERY_CITED_SOURCES` | `off` | `off` por defecto; `on` hace que la respuesta liste solo las fuentes que el modelo dice haber usado (ver más abajo) | no se usa |
+| `BOT_SERVICE_KEY` | vacía (las rutas `/bot/...` quedan apagadas, 401) | valor aleatorio largo, **el mismo** que `BOT_SERVICE_KEY` del servicio `mia-whatsapp` (feature 011) | no se usa |
+| `BOT_MONTHLY_MESSAGE_CAP` | `1800` | tope mensual de mensajes (recibidos más enviados) de cada bot, de 1 a 100000; al alcanzarlo el bot no envía nada más | no se usa |
+| `MAX_IMAGE_MB` | `2` | tamaño máximo de una imagen asociada a un documento, de 1 a 10 (la base gratuita de Neon tiene 0,5 GB) | no se usa |
 | `MAX_UPLOAD_MB` | `25` | `25` | `25` |
 | `OPENROUTER_MANAGEMENT_KEY` | vacía | vacía (no recomendada, ver "Topes de gasto y saldo") | no se usa |
 
@@ -268,11 +272,11 @@ python scripts/reorganizar_v2.py --env-file .env.produccion             # una se
 
 ### Desplegar cambios (no hay auto-deploy)
 
-**Forma normal: `scripts/servicios.py`, desde `main` de GitHub.** Enciende, apaga y consulta el estado de los cuatro servicios (`./scripts/servicios.py estado`, `encender [servicio...]`, `apagar [servicio...]`; la API va primero al encender y al final al apagar; espera cada despliegue y comprueba que responda). Apagar equivale a *Remove* y no borra nada.
+**Forma normal: `scripts/servicios.py`, desde `main` de GitHub.** Enciende, apaga y consulta el estado de los cinco servicios (`MIA`, `mia-whatsapp`, `mia-computacion`, `mia-administracion` y `mia-panel`) (`./scripts/servicios.py estado`, `encender [servicio...]`, `apagar [servicio...]`; la API va primero al encender y al final al apagar; espera cada despliegue y comprueba que responda). Apagar equivale a *Remove* y no borra nada.
 
 **`encender` despliega por defecto lo publicado en `main` de GitHub (`origin/main`), no la carpeta local.** Hace `git fetch`, muestra el commit que va a subir, lo exporta a una carpeta temporal y lo sube de ahí, así el trabajo de `dev` sin fusionar no llega a producción por accidente. El flujo es: trabajar en `dev`, hacer merge a `main`, **hacer `git push origin main`** (si no se empuja, `origin/main` sigue siendo la versión anterior y es esa la que se despliega) y entonces `./scripts/servicios.py encender`. Opciones: `--ref origin/dev` despliega otra rama publicada (por ejemplo para probar algo antes del merge) y `--local` sube la carpeta actual tal cual (con aviso si hay cambios sin commitear).
 
-**Cuidado con las migraciones.** La API migra la base al arrancar. Si se despliega una versión con menos migraciones de las que la base ya tiene (por ejemplo, `main` anterior sobre una base que ya aplicó una migración posterior), la API **no arranca**. Antes de desplegar una versión anterior hay que devolver la base con `alembic downgrade <revisión>` (con `DATABASE_URL` de producción), y al volver a una versión nueva la API la sube sola. La revisión actual de producción se ve con `select version_num from alembic_version`. La `0005` (feature 010) es solo aditiva (una tabla nueva); para volver a una versión anterior a ella aplica el `alembic downgrade 0004` de "Búsqueda híbrida". Los comandos de abajo son lo que el script hace por dentro.
+**Cuidado con las migraciones.** La API migra la base al arrancar. Si se despliega una versión con menos migraciones de las que la base ya tiene (por ejemplo, `main` anterior sobre una base que ya aplicó una migración posterior), la API **no arranca**. Antes de desplegar una versión anterior hay que devolver la base con `alembic downgrade <revisión>` (con `DATABASE_URL` de producción), y al volver a una versión nueva la API la sube sola. La revisión actual de producción se ve con `select version_num from alembic_version`. La `0005` (feature 010) y la `0006` y la `0007` (feature 011) son solo aditivas (tablas nuevas); para volver a una versión anterior a la feature 011 aplica antes `alembic downgrade 0005` (se pierden los bots registrados, su consumo del mes y las imágenes: anotar los bots y exportar las imágenes si se quieren conservar), y para una anterior a la 010, el `alembic downgrade 0004` de "Búsqueda híbrida". Los comandos de abajo son lo que el script hace por dentro.
 
 Railway tiene los servicios conectados al repositorio como público, **sin su aplicación de GitHub instalada**, así que un push a `main` no dispara ningún deploy (el aviso es *"This is a public repository without a Railway GitHub App installation"*). Decisión tomada: mantener los deploys manuales. Hay dos formas:
 
@@ -282,6 +286,7 @@ railway up -s MIA --detach                  # API
 railway up -s mia-computacion --detach      # Consulta de Computación
 railway up -s mia-administracion --detach   # Consulta de Administración de Empresas
 railway up -s mia-panel --detach            # panel de administración
+railway up -s mia-whatsapp --detach         # bot de WhatsApp (feature 011)
 ```
 
 `railway up` desde la raíz sube los archivos de la carpeta local (respeta `.gitignore`, así que `.env*`, `tmp/` y `mia.db` no se suben) y respeta el *Root Directory* de cada servicio. El despliegue no muestra commit en el panel de Railway. Alternativas: el botón **Deploy** del servicio, que aplica las variables en espera y el último commit, o instalar la aplicación de GitHub de Railway para activar el auto-deploy (entonces conviene fijar *Watch Paths* por servicio: `/web/consulta/**` y `/web/admin/**`).
@@ -436,6 +441,35 @@ python scripts/linea_base.py comparar base mejora-1                             
 - El umbral y los límites se toman del archivo de entorno, no de Railway: antes de dar por buena una medición, comprobar que coinciden (`railway variables -s MIA`).
 - La salida cruda queda en `tmp/linea_base/` (ignorado por git).
 
+## El bot de WhatsApp (feature 011)
+
+Un canal de WhatsApp sobre [Kapso](https://docs.kapso.ai) para atraer estudiantes. Cómo está construido en [ARQUITECTURA.md](ARQUITECTURA.md#bot-de-whatsapp-feature-011), qué se pidió en [Definicion_Requerimientos_Bot_WhatsApp.md](Definicion_Requerimientos_Bot_WhatsApp.md) y el recorrido de validación paso a paso en [specs/011-bot-whatsapp-kapso/quickstart.md](../specs/011-bot-whatsapp-kapso/quickstart.md). **La primera entrega funciona solo con el sandbox de Kapso** (solo escriben los teléfonos registrados como de prueba); el camino a producción está en la sección 11 de ese documento de requerimientos.
+
+**Variables del servicio `mia-whatsapp`** (en Railway, servicio > Variables; plantilla en `whatsapp/.env.example`). Obligatorias, y si falta una el servicio no arranca y el mensaje la nombra:
+
+| Variable | Qué es |
+|---|---|
+| `MIA_API_URL` | Dirección pública de la API, con `https://` y sin barra final (`https://mia-main.up.railway.app`). También forma los enlaces de las imágenes |
+| `BOT_SERVICE_KEY` | Credencial de servicio: **el mismo valor** que `BOT_SERVICE_KEY` de la API |
+| `KAPSO_API_KEY` | Clave de la API de Kapso (`X-API-Key`), del panel de Kapso. Solo como variable: nunca en el repositorio |
+| `KAPSO_WEBHOOK_SECRET` | Secreto con que Kapso firma los avisos. **Lo eliges tú** al crear el webhook del número (puede ser el mismo para todos los números): un valor aleatorio largo |
+
+Opcionales, con su valor por defecto y su rango en `whatsapp/.env.example` y en [contracts/servicio-whatsapp.md](../specs/011-bot-whatsapp-kapso/contracts/servicio-whatsapp.md): `KAPSO_API_URL`, los límites (`BOT_MAX_MESSAGES_PER_HOUR` 10, `BOT_MAX_MESSAGES_PER_DAY` 30, `BOT_MAX_QUESTION_CHARS` 500, `BOT_MAX_CONCURRENT_QUERIES` 5, `BOT_QUEUE_SIZE` 20, `BOT_MAX_IMAGES` 1, `BOT_GREETING_HOURS` 24, `BOT_QUERY_TIMEOUT_S` 30, `BOT_KAPSO_RATE_PER_MIN` 90, `BOT_SEEN_TTL_HOURS` 24) y los seis textos fijos (`BOT_TEXT_*`, en español y **sin el contacto del programa**: al arrancar se avisa en el registro si uno cambiado trae un correo, un enlace o un teléfono). Un valor fuera de rango impide arrancar con un mensaje que nombra la variable.
+
+**Crear el servicio en Railway** (lo hace quien opera, desde la interfaz, como los sitios): *New > GitHub Repo*, *Settings > Source > Root Directory* `whatsapp` (sin ruta en *Config-as-code* ni en *Dockerfile Path*, igual que `web/admin`), las variables de arriba, generar el dominio, y encenderlo con `python scripts/servicios.py encender mia-whatsapp`. Se despliega **después de la API** (que migra la base a la `0007` al arrancar). Con el servicio sin crear en Railway, `servicios.py encender` sin nombres también lo intenta y falla: encender por nombre mientras tanto.
+
+**Conectar Kapso.** Los avisos de mensajes son **por número**, no del proyecto: se crea el webhook del número con `POST https://api.kapso.ai/platform/v1/whatsapp/phone_numbers/{phone_number_id}/webhooks` y el encabezado `X-API-Key`, con `url` = `https://<dominio de mia-whatsapp>/webhooks/kapso`, `events` = `["whatsapp.message.received"]` y `secret_key` = el `KAPSO_WEBHOOK_SECRET` del servicio. En el sandbox, los webhooks se agregan desde la configuración *Sandbox WhatsApp* > *Manage Webhooks*. El `phone_number_id` del sandbox no aparece documentado: se descubre enviando un primer mensaje desde el teléfono de prueba, porque el servicio, que aún no tiene bot para ese número, escribe en su registro una línea `bot_desconocido` con el `number_id`.
+
+**Registrar el bot** en el módulo Bots del panel (alcance global): nombre, ese `phone_number_id` y el artefacto asignado. El artefacto define lo que el bot ve (dominios), su tope diario de gasto y su estado; cambiarlo, o cambiar los dominios del artefacto, rige desde el mensaje siguiente sin reiniciar nada. Crear antes un artefacto solo para el bot (modo literal, tope diario bajo, y **solo dominios con información que se pueda decir a cualquiera**: nunca las actas del Consejo ni dominios con datos de personas). Las imágenes se asocian a los documentos desde el Inventario (botón "Imágenes" de cada documento); **son públicas**. Para que el bot sepa qué imágenes enviar, `QUERY_CITED_SOURCES` debe estar en `on` en la API.
+
+**Qué mirar.** El módulo Bots muestra el consumo del mes frente al tope. El registro de `mia-whatsapp` (`railway logs -s mia-whatsapp`) trae una línea JSON por mensaje con el resultado (`respondido`, `sin_informacion`, `no_disponible`, `limite`, `descartado`, `tope_mensual`, `duplicado`...), sin teléfonos ni textos. Las consultas del bot quedan en el módulo Uso con el artefacto asignado. Para apagarlo: desactivarlo en el panel (responde el aviso de no disponible y el artefacto sigue activo para los demás), o `python scripts/servicios.py apagar mia-whatsapp`.
+
+**Probar sin Kapso ni cuota.** `python whatsapp/scripts/kapso_falso.py --puerto 9000` imita la API de envío de Kapso (imprime lo que el bot enviaría) y `python whatsapp/scripts/enviar_webhook.py --secreto ... --numero ... "pregunta"` envía al bot un aviso firmado; el servicio local se arranca con `KAPSO_API_URL=http://localhost:9000`. Pasos completos en el quickstart de la spec.
+
+**Costo.** El servicio es pequeño (cuatro dependencias, un proceso, sin disco), pero la cuenta de Railway ya ronda 4 a 4,5 USD de los 5 incluidos: medir lo que suma durante la primera semana. El modelo cuesta unos 0,0004 USD por consulta en modo literal; el límite que se alcanza primero es la cuota de mensajes de Kapso (unas 500 a 1.000 preguntas al mes con el plan gratuito).
+
+**Reversión.** Basta con desactivar el bot o apagar el servicio. Para quitar también lo de la base: `alembic downgrade 0005` antes de desplegar una versión anterior de la API (ver "Cuidado con las migraciones").
+
 ## Problemas frecuentes
 
 | Síntoma | Causa probable | Qué hacer |
@@ -452,6 +486,11 @@ python scripts/linea_base.py comparar base mejora-1                             
 | `/query` responde 500 y el log de Qdrant dice "Index required but not found for \"domain\"" | La colección se creó sin índices de payload (Qdrant Cloud los exige para filtrar) | Reiniciar la API: `ensure_collection()` crea los índices al arrancar |
 | El módulo Uso muestra la nota "Respuesta cortada: se entregó con aviso" | El modelo terminó la generación de forma anormal dos veces seguidas (límite de longitud u otro motivo) con `QUERY_RETRY_CUT_ANSWERS=on` | Ver `railway logs -s MIA` (línea `Fin de la generación`), probar el modo con razonamiento o repetir la pregunta; si pasa con frecuencia, revisar `OPENROUTER_MAX_TOKENS` y el tamaño del contexto |
 | La respuesta es correcta pero incompleta ("el fragmento se interrumpe...") | La sección o lista ocupa más fragmentos de los que se recuperan | Encender `QUERY_COMPLETE_CONTEXT=on` (ver "Respuestas completas y sin cortes"). Sin esa opción, verificar `QUERY_SEARCH_LIMIT` (8) y `QUERY_CONTEXT_NEIGHBORS` (1) en Render; subir los vecinos a 2 si el documento tiene secciones muy largas |
+| El bot de WhatsApp no responde nada y el registro de `mia-whatsapp` dice "La API rechazó la credencial de servicio" | `BOT_SERVICE_KEY` distinta en la API y en el servicio, o vacía en la API (las rutas `/bot/...` apagadas) | Poner el mismo valor en las dos y reiniciar los dos servicios |
+| Kapso reintenta o pausa el webhook, o responde 401 en el registro del bot | El servicio tardó más de 10 s en confirmar (no debería: confirma de inmediato), o `KAPSO_WEBHOOK_SECRET` no es el secreto con que se creó el webhook del número | Revisar el secreto (ver "El bot de WhatsApp") y `railway logs -s mia-whatsapp` |
+| El registro de `mia-whatsapp` dice `bot_desconocido` | Llegó un mensaje de un número de Kapso que no es de ningún bot registrado | La línea trae el `number_id` (el `phone_number_id` de Kapso): registrar el bot con ese número en el módulo Bots |
+| El bot dejó de responder y el panel dice "Tope mensual alcanzado" | El consumo del mes (recibidos más enviados) llegó a `BOT_MONTHLY_MESSAGE_CAP` | Es lo esperado: protege la cuota de Kapso. Se reinicia el mes siguiente; para seguir, subir el tope (con la cuota que corresponda) y reiniciar la API |
+| El bot envía el texto pero no la imagen | El sandbox de Kapso puede no admitir imágenes (solo documenta texto e interactivos), o la imagen se quitó o reemplazó (su enlace anterior da 404), o `QUERY_CITED_SOURCES` está apagada y el documento no se cita | Ver el registro del bot (`imagen_fallida`), probar `GET /media/<id>` y revisar la sección del bot |
 | Toda consulta responde 401 desde la versión 2 | Falta la clave del artefacto (`X-Artifact-Key`), o se regeneró y la que se usa es la anterior | Usar la clave vigente; si se perdió, regenerarla en el panel |
 | Una consulta responde 403 | El artefacto está desactivado, o pide un dominio o un modo que no tiene permitido | Revisar el artefacto en el panel (*Artefactos y accesos*); el mensaje dice cuál es el motivo |
 | Una consulta responde 429 | Se alcanzó un tope diario de gasto (de toda la API, del artefacto o de su modo con razonamiento) | El mensaje dice cuál. Se reinicia a la medianoche de Costa Rica; mientras tanto, subir el tope del artefacto desde el panel, o `DAILY_CAP_USD` en Railway |

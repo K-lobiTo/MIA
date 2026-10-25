@@ -197,3 +197,33 @@ def test_un_valor_invalido_del_interruptor_de_la_busqueda_hibrida_se_trata_como_
     # El campo es texto libre justamente para que un valor inválido no impida el arranque.
     assert Settings(_env_file=None, query_hybrid_search="quizas").query_hybrid_search == "quizas"
     assert hybrid_enabled("quizas") is False
+
+
+# --- Bot de WhatsApp (feature 011): variables de la API -------------------------------------------------------
+
+
+def test_los_valores_por_defecto_del_bot_de_whatsapp():
+    from mia.config import Settings
+
+    base = Settings(_env_file=None)
+    assert base.bot_service_key == ""
+    assert base.bot_monthly_message_cap == 1800
+    assert base.max_image_mb == 2
+
+
+@pytest.mark.parametrize(
+    ("campo", "valor"),
+    [
+        ("bot_monthly_message_cap", 0),
+        ("bot_monthly_message_cap", 100001),
+        ("max_image_mb", 0),
+        ("max_image_mb", 11),
+    ],
+)
+def test_un_valor_del_bot_de_whatsapp_fuera_de_rango_no_deja_arrancar(campo, valor):
+    from pydantic import ValidationError
+
+    from mia.config import Settings
+
+    with pytest.raises(ValidationError, match=campo):
+        Settings(_env_file=None, **{campo: valor})

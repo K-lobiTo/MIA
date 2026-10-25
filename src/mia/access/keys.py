@@ -26,3 +26,11 @@ def admin_key_matches(given: str) -> bool:
     if not settings.admin_key:
         return False
     return hmac.compare_digest(given.encode(), settings.admin_key.encode())
+
+
+def bot_service_key_matches(given: str) -> bool:
+    """Credencial con que el servicio `mia-whatsapp` llama a las rutas /bot/... Con BOT_SERVICE_KEY vacía las rutas
+    están apagadas: se rechaza igual que una incorrecta."""
+    if not settings.bot_service_key:
+        return False
+    return hmac.compare_digest(given.encode(), settings.bot_service_key.encode())

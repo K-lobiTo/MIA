@@ -109,6 +109,15 @@ class Settings(BaseSettings):
     hybrid_budget_ms: int = Field(default=800, ge=0, le=30000)
     hybrid_equivalences_ttl_seconds: int = Field(default=60, ge=0, le=3600)
 
+    # Bot de WhatsApp (feature 011, ver specs/011-bot-whatsapp-kapso/). `bot_service_key` es la credencial con que el
+    # servicio `mia-whatsapp` llama a las rutas /bot/... (el mismo valor en la API y en el servicio); vacía deja esas
+    # rutas apagadas (401). `bot_monthly_message_cap` es el tope mensual de mensajes (recibidos más enviados) de cada bot:
+    # el plan gratuito de Kapso incluye 2.000, y 1.800 deja una reserva. `max_image_mb` es el tamaño máximo de una imagen
+    # asociada a un documento.
+    bot_service_key: str = ""
+    bot_monthly_message_cap: int = Field(default=1800, ge=1, le=100000)
+    max_image_mb: int = Field(default=2, ge=1, le=10)
+
     # En Render free (512 MB) ingerir actas grandes agota la memoria: allí se desactiva y la ingesta
     # se hace desde una instancia local apuntando a las mismas bases (ver docs/OPERACION.md).
     ingestion_enabled: bool = True

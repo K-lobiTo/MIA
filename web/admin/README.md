@@ -1,6 +1,6 @@
 # Panel de administración de MIA
 
-Artefacto de gestión de MIA, con cuatro módulos: **Inventario** (programas, dominios, carpetas y documentos), **Artefactos y accesos** (claves, dominios y modos permitidos, topes de gasto), **Uso** (métricas, gráficas y registro de consultas) y **Siglas y equivalencias** (la lista de siglas y formas desarrolladas de la búsqueda híbrida, feature [010](../../specs/010-busqueda-hibrida/spec.md); la ven todas las personas que administran y solo el alcance global la edita). Especificación en [specs/002-panel-administracion/](../../specs/002-panel-administracion/spec.md).
+Artefacto de gestión de MIA, con cinco módulos: **Inventario** (programas, dominios, carpetas y documentos, y las imágenes asociadas a cada documento), **Artefactos y accesos** (claves, dominios y modos permitidos, topes de gasto), **Uso** (métricas, gráficas y registro de consultas) **Siglas y equivalencias** (la lista de siglas y formas desarrolladas de la búsqueda híbrida, feature [010](../../specs/010-busqueda-hibrida/spec.md); la ven todas las personas que administran y solo el alcance global la edita) y **Bots** (los números de WhatsApp y el artefacto que consulta cada uno, feature [011](../../specs/011-bot-whatsapp-kapso/spec.md); solo el alcance global). Especificación en [specs/002-panel-administracion/](../../specs/002-panel-administracion/spec.md).
 
 ## Uso
 
@@ -35,14 +35,20 @@ Variables de **compilación** (`.env.local` o en la orden):
 |---|---|
 | `src/api/` | Cliente tipado de la API (token de identidad con renovación y un reintento) y hooks de TanStack Query |
 | `src/auth/` | Inicio de sesión: configuración de MSAL, estado de la sesión, mensajes de rechazo y capacidades por alcance |
-| `src/modules/inventario/` | Árbol, búsqueda, formularios, subida de documentos |
+| `src/modules/inventario/` | Árbol, búsqueda, formularios, subida de documentos y el diálogo de imágenes de cada documento (`ImagenesDialog`) |
 | `src/modules/artefactos/` | Lista y formulario de artefactos, clave de una sola vez, topes |
 | `src/modules/uso/` | Filtros, indicadores, gráfica, tablas, registro de consultas, saldo |
+| `src/modules/bots/` | Módulo Bots: tarjeta de cada bot (estado, artefacto, dominios y barra de mensajes del mes), formulario de registro y edición con la advertencia de acceso público |
 | `src/components/` | Marco con el menú lateral y la sesión (`AppShell` de Mantine), pantalla de inicio de sesión |
 | `src/theme.ts` | Tema de Mantine: paletas y tipografía, derivadas de los colores de `styles/tokens.css` |
 | `src/styles/` | Variables de color (claro y oscuro) y estilos base |
 
-Un módulo nuevo es una entrada más en `MODULES` (`src/modules/index.tsx`) más un grupo de rutas en la API.
+Un módulo nuevo es una entrada más en `MODULES` (`src/modules/index.tsx`) más un grupo de rutas en la API. Una entrada puede exigir una capacidad con `requires` (por ejemplo `canManageBots`): el menú la oculta a quien no la tiene (`visibleModules`), y es la API la que hace cumplir el permiso.
+
+## Bots de WhatsApp e imágenes de documentos (feature 011)
+
+- **Módulo Bots** (solo alcance global; la entrada del menú se oculta para los demás y la API responde 403 `global_only`). Cada bot es un número de WhatsApp de Kapso (su `phone_number_id`) con un **artefacto asignado**. La tarjeta muestra el estado (activo, desactivado o "No responde" con el motivo), el artefacto, los dominios que el bot ve hoy y la barra de **mensajes del mes** frente al tope (recibidos, enviados y total; coral desde el 80 % y roja al alcanzarlo, y el texto siempre dice las cifras). Se puede registrar un bot, editar su nombre, número o artefacto, y desactivarlo o reactivarlo; no se borra. Al asignar o cambiar el artefacto, el formulario pide confirmar con la advertencia de que **el bot responde a cualquiera que escriba al número** y con la lista de dominios que verá. Si la API no tiene `BOT_SERVICE_KEY`, un aviso arriba lo dice. Lo cambiado rige desde el mensaje siguiente del bot, sin reiniciar nada.
+- **Imágenes de un documento** (botón "Imágenes (n)" en cada fila del Inventario, para todas las personas con alcance sobre el documento). El diálogo permite agregar una imagen PNG o JPG (hasta el tamaño máximo que dice la API, 2 MB por defecto) con una descripción opcional que el bot usa de pie de foto, cambiar la descripción, subir y bajar para ordenar, reemplazar y quitar. Comprueba el formato y el tamaño antes de subir y siempre muestra la advertencia de que **las imágenes son públicas**: cualquiera con el enlace las ve, así que nada que no pueda ver cualquiera. Cuando una respuesta se apoya en el documento, el bot envía sus primeras imágenes en este orden; no hay que configurar nada más. Reemplazar una imagen cambia su enlace (el anterior deja de servir).
 
 ## Interfaz: Mantine
 

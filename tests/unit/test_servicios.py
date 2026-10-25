@@ -20,8 +20,8 @@ def nombres(lista):
     return [s.nombre for s in lista]
 
 
-def test_sin_nombres_se_eligen_los_cuatro_con_la_api_primero():
-    assert nombres(servicios.seleccionar([])) == ["MIA", "mia-computacion", "mia-administracion", "mia-panel"]
+def test_sin_nombres_se_eligen_los_cinco_con_la_api_primero():
+    assert nombres(servicios.seleccionar([])) == ["MIA", "mia-whatsapp", "mia-computacion", "mia-administracion", "mia-panel"]
 
 
 def test_al_apagar_se_invierte_el_orden_y_la_api_queda_al_final():
@@ -44,6 +44,30 @@ def test_un_nombre_desconocido_da_un_error_con_los_validos():
     with pytest.raises(ValueError) as error:
         servicios.seleccionar(["otro"])
     assert "otro" in str(error.value) and "mia-computacion" in str(error.value)
+
+
+def test_el_bot_de_whatsapp_va_despues_de_la_api_y_antes_de_los_sitios():
+    """El servicio depende de la API (la llama por HTTP): al encender va después de ella; al apagar, antes."""
+    todos = nombres(servicios.seleccionar([]))
+    assert todos.index("MIA") < todos.index("mia-whatsapp") < todos.index("mia-computacion")
+    apagado = nombres(servicios.seleccionar([], invertir=True))
+    assert apagado.index("mia-whatsapp") < apagado.index("MIA") == len(apagado) - 1
+
+
+def test_el_bot_de_whatsapp_se_puede_elegir_solo_y_sin_importar_las_mayusculas():
+    assert nombres(servicios.seleccionar(["mia-whatsapp"])) == ["mia-whatsapp"]
+    assert nombres(servicios.seleccionar(["MIA-WhatsApp", "mia"])) == ["MIA", "mia-whatsapp"]
+
+
+def test_el_bot_de_whatsapp_se_revisa_en_su_ruta_de_salud():
+    servicio = servicios.POR_NOMBRE["mia-whatsapp"]
+    assert servicio.ruta_salud == "/health" and servicio.url == "https://mia-whatsapp.up.railway.app"
+
+
+def test_el_mensaje_de_servicio_desconocido_lista_tambien_el_bot_de_whatsapp():
+    with pytest.raises(ValueError) as error:
+        servicios.seleccionar(["otro"])
+    assert "mia-whatsapp" in str(error.value)
 
 
 def test_cada_servicio_tiene_su_direccion_https_sin_barra_final():

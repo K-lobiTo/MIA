@@ -12,6 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Setup
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
+pip install -e "./whatsapp[dev]"   # el servicio del bot de WhatsApp (feature 011)
 cp .env.example .env
 docker compose up -d qdrant        # Qdrant local para desarrollo
 
@@ -23,7 +24,7 @@ pytest
 pytest tests/unit/test_health.py::test_health   # un solo test
 
 # Lint
-ruff check src tests scripts
+ruff check src tests scripts whatsapp
 ```
 
 ## Arquitectura

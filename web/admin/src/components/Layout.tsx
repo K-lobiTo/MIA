@@ -1,17 +1,19 @@
 import { AppShell, Burger, Button, Group, NavLink, Stack, Text } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconAbc, IconChartBar, IconDatabase, IconKey, IconLogout, type Icon } from "@tabler/icons-react";
+import { IconAbc, IconBrandWhatsapp, IconChartBar, IconDatabase, IconKey, IconLogout, type Icon } from "@tabler/icons-react";
 import { NavLink as RouterLink, Outlet } from "react-router-dom";
 import { ColorSchemeToggle } from "./ColorSchemeToggle";
-import { scopeLabel } from "../auth/capabilities";
+import { capabilities, scopeLabel } from "../auth/capabilities";
 import { signOut, useMe } from "../auth/session";
 import { MODULES } from "../modules";
+import { visibleModules } from "../modules/visibleModules";
 
 const ICONS: Record<string, Icon> = {
   "/inventario": IconDatabase,
   "/artefactos": IconKey,
   "/uso": IconChartBar,
   "/siglas": IconAbc,
+  "/bots": IconBrandWhatsapp,
 };
 
 export function Layout() {
@@ -38,7 +40,7 @@ export function Layout() {
           <small>Panel de administración</small>
         </div>
         <Stack gap={4} component="nav" aria-label="Módulos">
-          {MODULES.map((module) => {
+          {visibleModules(MODULES, capabilities(me)).map((module) => {
             const ModuleIcon = ICONS[module.path];
             return (
               <NavLink

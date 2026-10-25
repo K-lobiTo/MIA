@@ -9,12 +9,16 @@ from fastapi.responses import JSONResponse
 from mia.access.errors import AuthError
 from mia.api.routes import (
     artifacts,
+    bot_service,
+    bots,
     config,
     domains,
     equivalences,
     health,
+    images,
     inventory,
     me,
+    media,
     query,
     usage,
 )
@@ -62,6 +66,10 @@ if not _mia_logger.handlers:
 
 app = FastAPI(title="MIA", description="Memoria Institucional Académica", lifespan=lifespan)
 
+# Métodos HTTP que los sitios estáticos pueden usar. Toda ruta de la API debe usar uno de estos (lo comprueba
+# tests/unit/test_cors.py): PUT es de las rutas de imágenes de documentos (feature 011).
+CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"]
+
 # Los sitios estáticos (panel, Consulta administrativa) llaman directo a la API desde el navegador.
 # Sin orígenes configurados no se agrega CORS: en desarrollo el proxy de Vite lo hace innecesario.
 _cors_origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
@@ -69,7 +77,7 @@ if _cors_origins:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=_cors_origins,
-        allow_methods=["GET", "POST", "PATCH", "DELETE"],
+        allow_methods=CORS_ALLOW_METHODS,
         allow_headers=["content-type", "Authorization", "X-Admin-Key", "X-Artifact-Key"],
         expose_headers=["Retry-After"],
     )
@@ -91,6 +99,10 @@ app.include_router(inventory.router)
 app.include_router(artifacts.router)
 app.include_router(config.router)
 app.include_router(equivalences.router)
+app.include_router(bots.router)
+app.include_router(bot_service.router)
+app.include_router(images.router)
+app.include_router(media.router)
 app.include_router(usage.router)
 app.include_router(domains.router)
 app.include_router(query.router)

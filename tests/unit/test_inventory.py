@@ -108,3 +108,75 @@ def test_lista_de_unidades(client, db, admin):
     assert response.status_code == 200
     assert [u["name"] for u in response.json()] == ["Administración de Empresas", "Computación"]
     assert set(response.json()[0]) == {"id", "name", "description"}
+
+
+# --- Imágenes asociadas a documentos (feature 011) -------------------------------------------------------------
+
+
+def _imagen(document_id, n, public_id):
+    from mia.storage.models import DocumentImage
+
+    return DocumentImage(
+        id=f"img-{document_id}-{n}", document_id=document_id, public_id=public_id, content_type="image/png",
+        content=b"\x89PNG\r\n\x1a\n" + b"\x00" * 2000, size_bytes=2008, caption="", position=n, created_by="automatizacion",
+    )
+
+
+def _documentos(cuerpo):
+    """Todos los documentos del árbol del inventario por id, sin importar en qué nivel estén."""
+    encontrados = {}
+
+    def carpeta(nodo):
+        for documento in nodo["documents"]:
+            encontrados[documento["id"]] = documento
+        for hija in nodo.get("folders", []):
+            carpeta(hija)
+
+    for unidad in cuerpo["units"]:
+        for dominio in unidad["domains"]:
+            carpeta(dominio)
+    for dominio in cuerpo["unassigned_domains"]:
+        carpeta(dominio)
+    return encontrados
+
+
+def test_cada_documento_trae_la_cantidad_de_sus_imagenes(client, db, admin):
+    _sembrar(db)
+    with db() as session:
+        session.add_all([
+            _imagen("doc1", 0, "a" * 32), _imagen("doc1", 1, "b" * 32), _imagen("doc1", 2, "c" * 32),
+            _imagen("doc4", 0, "d" * 32),
+        ])
+        session.commit()
+
+    documentos = _documentos(client.get("/inventory", headers=admin).json())
+
+    assert documentos["doc1"]["image_count"] == 3
+    assert documentos["doc4"]["image_count"] == 1
+    # Sin imágenes, cero (nunca falta el campo).
+    assert documentos["doc2"]["image_count"] == 0 and documentos["doc3"]["image_count"] == 0
+    assert documentos["doc5"]["image_count"] == 0
+
+
+def test_el_inventario_cuenta_las_imagenes_con_una_sola_consulta_y_sin_leer_el_binario(client, db, admin):
+    from sqlalchemy import event
+
+    _sembrar(db)
+    with db() as session:
+        session.add_all([_imagen("doc1", n, f"{n}" * 32) for n in range(4)] + [_imagen("doc2", 0, "z" * 32)])
+        session.commit()
+    sentencias = []
+    engine = db.kw["bind"]
+
+    def espiar(conn, cursor, statement, parameters, context, executemany):
+        sentencias.append(statement)
+
+    event.listen(engine, "before_cursor_execute", espiar)
+    try:
+        client.get("/inventory", headers=admin)
+    finally:
+        event.remove(engine, "before_cursor_execute", espiar)
+
+    consultas = [s for s in sentencias if "document_images" in s]
+    assert len(consultas) == 1
+    assert "document_images.content" not in consultas[0] and "count" in consultas[0].lower()

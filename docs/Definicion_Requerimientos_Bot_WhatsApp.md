@@ -178,13 +178,18 @@ En la primera entrega se verifican con el número de pruebas (sandbox) de Kapso,
 4. Límites propuestos en 3.3, a ajustar con el uso.
 5. El servicio se crea desde la interfaz de Railway, como los demás.
 
+**Resueltas en el plan (2026-10-24)** (la razón y las alternativas están en la [investigación de la spec 011](../specs/011-bot-whatsapp-kapso/research.md))
+
+6. **Lenguaje del servicio:** Python 3.12 con FastAPI y `httpx`, en `whatsapp/` con un paquete propio (`mia_whatsapp`) que no importa `mia` (R1). El servicio se llama `mia-whatsapp`, atiende todos los números de WhatsApp, y los bots incrustados en páginas web no pasan por él (R16).
+7. **Credencial de servicio y cómo identifica a cada bot:** una credencial compartida (`BOT_SERVICE_KEY`, encabezado `X-Bot-Service-Key`, el mismo valor en la API y en el servicio) más el `phone_number_id` de Kapso del mensaje; la API resuelve el artefacto asignado en las rutas `/bot/messages` y `/bot/query` (R2). La consulta del bot reutiliza la de los artefactos (`run_query`, R3).
+8. **Contador mensual de mensajes (WAP-12):** una fila por bot y mes en la base de la API (`bot_message_counts`, incremento atómico), con el tope `BOT_MONTHLY_MESSAGE_CAP` en la API (R4).
+9. **Qué imágenes se envían (pendiente 5 del borrador):** las de todo documento citado por la respuesta, en el orden de las fuentes (R6). Si el uso real muestra ruido, el siguiente paso es pedir además un puntaje mínimo de relevancia.
+10. **Alcance de la primera entrega:** solo el sandbox de Kapso (2026-10-24); producción en la sección 11 (R17).
+
 **Pendientes**
 
 1. **Si la cuota gratuita alcanza (solo para producción, sección 11).** 2.000 mensajes de Kapso y 1.000 de Meta al mes dan 500 a 1.000 preguntas. Decidir antes de la campaña si se acepta ese límite (con el tope de WAP-12) o se contrata un plan de Kapso y se paga a Meta; falta la tarifa de Meta para el país de las personas que escriban.
-2. **Lenguaje del servicio**, a decidir en el plan. Recomendación: Python con FastAPI, igual que la API (misma herramienta de pruebas y de despliegue), llamando a la API REST de Kapso con `httpx`; Kapso ofrece SDK en TypeScript, pero no es necesario.
-3. **Mecanismo de la credencial de servicio** y cómo identifica a cada bot (BOT, sección 3.1), a confirmar en el plan.
-4. **Dónde se guarda el contador mensual de mensajes** (WAP-12): en la base de la API, por bot.
-5. **Cómo se confirma que un documento merece la imagen.** Esta versión envía las imágenes de todo documento citado; si se ve ruido en el uso real, se puede pedir además un puntaje mínimo de relevancia.
+2. **Lo que solo el sandbox de Kapso puede confirmar:** si admite el envío de imágenes (solo documenta texto e interactivos), la forma de la respuesta de Kapso a un envío, cuántos teléfonos admite y cuánto dura la sesión, y si Kapso avisa por algún evento cuando Meta no puede descargar el enlace de una imagen. Se anotan en la investigación de la spec al probar.
 
 ## 10. Para escalar más adelante
 

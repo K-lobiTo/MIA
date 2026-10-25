@@ -33,11 +33,11 @@ from sqlalchemy.orm import Session
 from mia.storage.db import BASELINE_REVISION, MIGRATIONS_DIR, _normalize_url, init_db
 from mia.storage.models import Domain, Unit
 
-DESTINO = "0005"
+DESTINO = "0007"
 # Revisión a la que baja la ida y vuelta por defecto: la anterior a la `DESTINO`. Bajar hasta `0001` ya no es posible con
 # los datos de producción de la versión 2 (hay dominios con el mismo nombre en programas distintos y la `0002` exigiría
 # que el nombre sea único por sí solo); sigue disponible con --bajar-a 0001 para bases sin esos datos.
-BAJAR_A = "0004"
+BAJAR_A = "0005"
 
 
 @dataclass
@@ -175,7 +175,10 @@ def probar(url: str, produccion: str | None = None, ida_y_vuelta: bool = True, b
         f"antes {antes_conteos}, después {despues}",
     )
     tablas = set(inspect(engine).get_table_names())
-    nuevas = {"units", "folders", "artifacts", "artifact_units", "artifact_domains", "queries", "sigla_equivalences"}
+    nuevas = {
+        "units", "folders", "artifacts", "artifact_units", "artifact_domains", "queries", "sigla_equivalences",
+        "bots", "bot_message_counts", "document_images",
+    }
     resultado.registrar("existen las tablas nuevas", nuevas <= tablas, f"faltan {sorted(nuevas - tablas)}" if not nuevas <= tablas else "")
     columnas = {c["name"] for c in inspect(engine).get_columns("domains")}
     resultado.registrar("domains tiene unit_id", "unit_id" in columnas)
@@ -207,6 +210,11 @@ def probar(url: str, produccion: str | None = None, ida_y_vuelta: bool = True, b
                     any(cols == ["name"] for _, cols in _unicas_de_dominios(engine)),
                 )
             if bajar_a < DESTINO:
+                resultado.registrar(
+                    "al volver, las tablas de bots e imágenes ya no existen",
+                    not ({"bots", "bot_message_counts", "document_images"} & set(inspect(engine).get_table_names())),
+                )
+            if bajar_a < "0005":
                 resultado.registrar(
                     "al volver, la tabla de equivalencias de siglas ya no existe",
                     "sigla_equivalences" not in inspect(engine).get_table_names(),

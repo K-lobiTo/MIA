@@ -53,3 +53,30 @@ def test_sources_solo_incluye_fragmentos_por_encima_del_umbral(client, base, mak
         "excerpt": "fragmento relevante",
     }
     fake_llm_provider.answer.assert_called_once()
+
+
+def test_la_respuesta_incluye_images_vacia_y_conserva_el_resto_de_la_estructura(client, base, make_artifact):
+    """Feature 011: `images` es un campo nuevo, siempre presente; sin imágenes asociadas va vacío."""
+    artefacto = make_artifact(units=["u1"])
+    fake_vector_store = MagicMock()
+    fake_vector_store.count_chunks.return_value = 100
+    fake_vector_store.search.return_value = [
+        SearchResult(chunk_id="c1", document_id="doc-1", domain="dom-1", text="fragmento relevante", score=0.9),
+    ]
+    fake_embedding_provider = MagicMock()
+    fake_embedding_provider.embed.return_value = [[0.1, 0.2]]
+    fake_llm_provider = MagicMock()
+    fake_llm_provider.answer.return_value = LLMAnswer(text="Respuesta.")
+
+    with (
+        patch.object(query_routes, "get_vector_store", return_value=fake_vector_store),
+        patch.object(query_routes, "get_embedding_provider", return_value=fake_embedding_provider),
+        patch.object(query_routes, "get_llm_provider", return_value=fake_llm_provider),
+    ):
+        body = client.post(
+            "/query", json={"domains": ["dom-1"], "question": "¿Qué se aprobó?"}, headers=artefacto.headers
+        ).json()
+
+    assert set(body) == {"id", "answer", "sources", "mode", "latency_ms", "no_info", "images"}
+    assert body["images"] == []
+    assert body["answer"] == "Respuesta." and body["no_info"] is False

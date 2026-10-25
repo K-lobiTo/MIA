@@ -7,13 +7,14 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     MetaData,
     Numeric,
     String,
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, deferred, mapped_column, relationship
 
 # Nombres estables para índices y restricciones: las migraciones de Alembic (sobre todo el modo
 # batch de SQLite) necesitan poder referirse a ellos.
@@ -183,6 +184,65 @@ class SiglaEquivalence(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_by: Mapped[str | None] = mapped_column(String, nullable=True)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class Bot(Base):
+    """Canal de WhatsApp registrado (feature 011): el número de Kapso al que responde y el artefacto con cuya
+    configuración (dominios, modos, tope diario, estado) consulta a MIA. Se administra desde el módulo Bots del
+    panel; no se borra, se desactiva. `kapso_number_id` es el `phone_number_id` de Kapso (el número de la
+    institución, no el de ninguna persona)."""
+
+    __tablename__ = "bots"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String, unique=True)
+    kapso_number_id: Mapped[str] = mapped_column(String, unique=True)
+    # Siempre se pide uno al registrar y al cambiar; es nulo solo si el artefacto desaparece (un bot sin artefacto
+    # responde "no disponible").
+    artifact_id: Mapped[str | None] = mapped_column(ForeignKey("artifacts.id"), nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
+
+
+class BotMessageCount(Base):
+    """Mensajes de WhatsApp que usó un bot en un mes (recibidos y enviados): lo que se compara con el tope mensual.
+    Una fila por bot y mes; `month` es el mes calendario en la zona de CAP_TIMEZONE, con formato AAAA-MM."""
+
+    __tablename__ = "bot_message_counts"
+
+    bot_id: Mapped[str] = mapped_column(ForeignKey("bots.id"), primary_key=True)
+    month: Mapped[str] = mapped_column(String, primary_key=True)
+    received: Mapped[int] = mapped_column(Integer, default=0)
+    # Cada texto y cada imagen enviados cuenta uno.
+    sent: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
+
+
+class DocumentImage(Base):
+    """Imagen PNG o JPG asociada a un documento (feature 011): el bot la envía cuando el documento aporta a la
+    respuesta. Se guarda en la base (el disco de Railway no persiste) y se sirve por GET /media/{public_id}, una ruta
+    pública: `public_id` es aleatorio, no adivinable, y cambia al reemplazar la imagen (el enlace anterior deja de
+    servir). El binario es `deferred`: listar imágenes no lo lee."""
+
+    __tablename__ = "document_images"
+    __table_args__ = (Index("ix_document_images_document_id_position", "document_id", "position"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"))
+    public_id: Mapped[str] = mapped_column(String, unique=True)
+    # image/png o image/jpeg
+    content_type: Mapped[str] = mapped_column(String)
+    content: Mapped[bytes] = deferred(mapped_column(LargeBinary))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    # Descripción opcional (pie de foto), hasta 1.000 caracteres; la API lo valida.
+    caption: Mapped[str] = mapped_column(String, default="")
+    # Orden dentro del documento, desde 0 y sin huecos.
+    position: Mapped[int] = mapped_column(Integer)
+    # Correo de quien la subió, o "automatizacion".
+    created_by: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 
 
 class QueryLog(Base):

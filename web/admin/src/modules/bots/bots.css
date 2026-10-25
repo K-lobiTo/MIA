@@ -1,0 +1,16 @@
+.bot-list { display: flex; flex-direction: column; gap: 12px; }
+.bot-card { display: flex; flex-direction: column; gap: 8px; }
+.bot-name { font-size: 1.05rem; font-weight: 700; }
+.bot-number { font-family: var(--font-mono); font-size: 0.85rem; color: var(--muted); }
+.bot-meta { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; font-size: 0.92rem; margin: 0; }
+.bot-meta dt { color: var(--muted); }
+.bot-meta dd { margin: 0; overflow-wrap: anywhere; }
+.bot-domains { margin: 0; padding-left: 18px; }
+
+/* Barra de mensajes del mes frente al tope: verde, coral desde 80 % y rojo oscuro al alcanzarlo. */
+.bot-meter-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.bot-meter { flex: 1 1 140px; max-width: 280px; height: 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; }
+.bot-meter-fill { height: 100%; background: var(--ok); }
+.bot-meter-warn .bot-meter-fill { background: var(--highlight); }
+.bot-meter-full .bot-meter-fill { background: var(--danger); }
+.bot-meter-text { font-family: var(--font-mono); font-size: 0.82rem; }
