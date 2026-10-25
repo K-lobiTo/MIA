@@ -183,6 +183,7 @@ Las cuatro decisiones que la spec dejó al plan son R1 (lenguaje), R2 (credencia
 - **El limitador** evita perder respuestas ante una ráfaga (5 consultas a la vez con 2 o 3 envíos cada una) sin necesidad de una cola externa.
 - **Un solo reintento** cubre un tropiezo de red sin multiplicar mensajes que cuestan cuota.
 - **Faltan en la documentación consultada** la forma de la respuesta y los códigos de error de Kapso: el cliente trata cualquier 2xx como entregado y registra el cuerpo de un error (sin teléfonos) para diagnóstico; se confirma con el número de pruebas (quickstart).
+- **Límite conocido de los fallos de imagen**: Kapso responde al envío cuando acepta el mensaje, y Meta descarga el enlace de la imagen después, de forma asíncrona. Si esa descarga falla (por ejemplo, el enlace ya no sirve porque la imagen se reemplazó), el bot no lo sabe: el envío ya figuraba como aceptado. Solo se registran los rechazos que Kapso devuelve al enviar. Se acepta en el prototipo; el sandbox dirá si Kapso informa un estado de fallo por otro evento (tarea de anotación de hallazgos), y ese evento sería el camino para registrarlos.
 
 **Alternatives considered**:
 

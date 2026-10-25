@@ -66,7 +66,7 @@ Una persona pregunta "¿Cuándo es la matrícula?". El sistema encuentra que la 
 
 1. **Given** un documento con una imagen asociada que aporta a la respuesta, **When** una persona hace una pregunta que se responde con ese documento, **Then** recibe el texto y a continuación la imagen con su descripción como pie de foto.
 2. **Given** una respuesta que se apoya en varios documentos con imágenes asociadas, **When** el bot responde, **Then** envía como máximo el número de imágenes configurado (una por defecto), en el orden de las fuentes de la respuesta.
-3. **Given** una imagen que no se puede enviar (falla del proveedor), **When** el bot responde, **Then** la persona conserva el texto ya enviado y el fallo queda registrado.
+3. **Given** una imagen que el proveedor rechaza al enviarla, **When** el bot responde, **Then** la persona conserva el texto ya enviado y el fallo queda registrado (una descarga que Meta intente después de aceptar el envío y falle no se detecta: el envío ya figuraba como aceptado).
 4. **Given** una respuesta "sin información suficiente", **When** el bot responde, **Then** no envía ninguna imagen.
 5. **Given** un documento que se le pasó al modelo pero no aportó a la respuesta, **When** el bot responde, **Then** no se envían sus imágenes.
 6. **Given** un documento sin imágenes asociadas, **When** se responde con él, **Then** la respuesta es solo texto, como hoy.
@@ -189,7 +189,7 @@ La Consulta administrativa y cualquier otro artefacto existente siguen funcionan
 - El proveedor reintenta un mismo mensaje hasta tres veces y después pausa el aviso si fallan muchas entregas seguidas: el bot debe confirmar siempre y rápido, y no responder dos veces.
 - Un aviso sin firma válida, o de un número que no es de ningún bot: se rechaza o se ignora y queda en el registro, sin consultar a MIA.
 - La respuesta cita varios documentos con imágenes: se envían solo las del máximo configurado, en el orden de las fuentes.
-- Una imagen se reemplaza mientras un mensaje que la usaba está en cola: el enlace anterior deja de servir y el bot envía solo el texto, registrando el fallo.
+- Una imagen se reemplaza mientras un mensaje que la usaba está en cola: el enlace anterior deja de servir y la persona recibe el texto; si el proveedor ya aceptó el envío y luego no puede descargar la imagen, el bot no lo detecta (se acepta en esta entrega).
 - Una imagen de más de 2 MB, de otro formato o corrupta: se rechaza al subirla.
 - Se asocia una imagen a un documento y luego se sube otra versión del mismo PDF: es un documento distinto y no hereda las imágenes (limitación conocida, se asocian de nuevo).
 - Se cambia el artefacto asignado o sus dominios mientras hay una consulta en curso: la consulta en curso termina con los accesos con que empezó; la siguiente usa los nuevos.
@@ -216,7 +216,7 @@ La Consulta administrativa y cualquier otro artefacto existente siguen funcionan
 - **FR-006**: Un mismo servicio debe atender a todos los bots; cada número de WhatsApp se atiende registrando un bot, sin cambios de código. Un mensaje de un número sin bot registrado se ignora y queda en el registro.
 - **FR-007**: Al asignar un artefacto, el panel debe advertir que el bot responde a cualquiera que escriba al número y que los dominios deben ser información que se pueda decir a cualquiera.
 - **FR-008**: Los textos fijos y los límites son los mismos para todos los bots en esta versión, y se pueden cambiar sin modificar el código.
-- **FR-009**: Las acciones de administración de bots (registrar, cambiar artefacto, activar, desactivar) deben exigir un administrador y quedar en el registro de auditoría, como las de los demás módulos del panel.
+- **FR-009**: Las acciones de administración de bots (registrar, cambiar artefacto, activar, desactivar) deben exigir un administrador con alcance global (el número de WhatsApp y la cuota de mensajes son de toda la institución, no de un programa) y quedar en el registro de auditoría, como las de los demás módulos del panel.
 
 **Comportamiento del bot**
 

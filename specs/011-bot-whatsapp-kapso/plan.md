@@ -97,7 +97,7 @@ src/mia/
 │       └── 0007_imagenes_de_documentos.py   # NUEVO: document_images
 └── api/
     ├── security.py                    # + require_bot_service
-    ├── main.py                        # incluye los routers nuevos; CORS sin cambios
+    ├── main.py                        # incluye los routers nuevos; CORS_ALLOW_METHODS suma PUT (rutas de imágenes)
     └── routes/
         ├── query.py                   # run_query(payload, artifact, session) extraída; + images en QueryResponse
         ├── bots.py                    # NUEVO: GET/POST/PATCH /bots (alcance global)
@@ -148,6 +148,9 @@ tests/unit/
 ├── test_bot_service.py                # NUEVO
 ├── test_images.py                     # NUEVO
 ├── test_query_images.py               # NUEVO
+├── test_bots_usage.py                 # NUEVO: mes, incremento atómico, estado y dominios del bot
+├── test_image_validate.py             # NUEVO: firma y final de PNG y JPEG
+├── test_cors.py                       # NUEVO: todo método de las rutas está permitido por CORS (el PUT de las imágenes)
 ├── test_migrations.py                 # + cabeza 0007, subida y bajada
 ├── test_servicios.py                  # + el servicio nuevo
 └── test_config.py                     # + variables nuevas
