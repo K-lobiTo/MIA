@@ -1,6 +1,6 @@
 # MIA: Definición de Requerimientos del Bot de WhatsApp
 
-**Qué es este documento:** requerimientos del primer bot de WhatsApp de MIA, un canal nuevo para la **atracción de estudiantes** (personas interesadas en los posgrados que preguntan por horarios de matrícula, requisitos, planes de estudio, etc.), construido sobre [Kapso](https://docs.kapso.ai). Es **independiente de la versión 3** ([Definicion_Requerimientos_V3.md](Definicion_Requerimientos_V3.md), cerrada el 2026-10-21): parte del estado de [Definicion_Requerimientos_V2.md](Definicion_Requerimientos_V2.md) (artefactos, accesos y topes) y de [ARQUITECTURA.md](ARQUITECTURA.md). Estado: **borrador de requerimientos (2026-10-21)**; la especificación de implementación se hace después con `/speckit-specify` en la rama `dev`.
+**Qué es este documento:** requerimientos del primer bot de WhatsApp de MIA, un canal nuevo para la **atracción de estudiantes** (personas interesadas en los posgrados que preguntan por horarios de matrícula, requisitos, planes de estudio, etc.), construido sobre [Kapso](https://docs.kapso.ai). Es **independiente de la versión 3** ([Definicion_Requerimientos_V3.md](Definicion_Requerimientos_V3.md), cerrada el 2026-10-21): parte del estado de [Definicion_Requerimientos_V2.md](Definicion_Requerimientos_V2.md) (artefactos, accesos y topes) y de [ARQUITECTURA.md](ARQUITECTURA.md). Estado: **borrador de requerimientos (2026-10-21)**, con la especificación en `specs/011-bot-whatsapp-kapso/`. **Primera entrega: solo el sandbox de Kapso** (decisión del 2026-10-24, por ahora no es posible más que eso): todo lo funcional se construye y se acepta con el número de pruebas, y el camino a producción está en la sección 11 sin implementarse.
 
 ## 1. Alcance acordado
 
@@ -9,7 +9,7 @@
 | Naturaleza | El bot consulta a MIA como un artefacto más: usa los dominios, modos y topes de un **artefacto asignado**, que se puede cambiar en cualquier momento desde el panel (sección 3.1) | Es el principio I de la constitución: la API es el único punto de contacto entre el almacenamiento y los artefactos. Editar los dominios del artefacto asignado, o asignarle otro artefacto, cambia a qué información accede el bot, sin tocar el servicio. |
 | Varios bots | Hoy **uno solo** (el plan gratuito de Kapso incluye 1 número), pero la estructura admite varios: cada bot tiene su número de Kapso y su artefacto | Agregar un bot en el futuro es registrar una fila en el panel y apuntar el webhook del número nuevo al mismo servicio, sin escribir código. |
 | Modo de respuesta | El bot pide siempre el modo **literal** | Uso masivo y el modo literal es el más barato: `z-ai/glm-5.3-flash` con razonamiento bajo, 0,0004 USD por consulta de costo medio en la V3. Aunque el artefacto asignado permita razonamiento, el bot no lo usa. |
-| Dónde corre la lógica | **Servicio propio pequeño**, aparte de la API de MIA, creado desde la interfaz de Railway como los demás servicios | Recibe los webhooks de Kapso, llama a la API y responde. Confirma en menos de 10 s, responde después, evita duplicados por reintento y limita mensajes (sección 3.2). No mezcla el canal con el motor. |
+| Dónde corre la lógica | **Servicio propio pequeño**, aparte de la API de MIA, creado desde la interfaz de Railway como los demás servicios. Se llama `mia-whatsapp` (carpeta `whatsapp/`) porque atiende solo el canal de WhatsApp, y un único servicio atiende todos los números (sección 10) | Recibe los webhooks de Kapso, llama a la API y responde. Confirma en menos de 10 s, responde después, evita duplicados por reintento y limita mensajes (sección 3.2). No mezcla el canal con el motor. |
 | Imágenes | Se **asocian a documentos** desde el panel y el bot las envía cuando el documento aporta a la respuesta | El RAG ya sabe qué documentos usó una respuesta (fuentes citadas, BUS-5): la asociación documento a imagen hace el resto de forma automática. |
 | Dónde viven las imágenes | En la **base SQL** (Neon) y la API las sirve en una ruta pública con identificador no adivinable | El disco de Railway no es persistente y Kapso envía una imagen a partir de un enlace público. Sin servicio ni cuenta nuevos. |
 | Contacto del programa | **El bot no lo da** | Se quiere que las personas prueben el bot antes de pasar con la asistente del programa. Quien quiera el contacto lo busca por su cuenta. |
@@ -130,7 +130,7 @@ Que quien administra el inventario asocie una o varias imágenes a un documento,
 | `POST /query` y la ruta del bot | Agregan el campo `images` (lista de `{url, caption, document}`), vacío si no hay | IMG-5 y IMG-9 |
 | Panel, módulo nuevo **Bots** | Lista, registro, cambio de artefacto, estado y dominios que ve cada bot | BOT-1 a BOT-7 |
 | Panel, módulo Inventario | Acción "Imágenes" por documento con subida, orden, descripción y aviso de que son públicas | IMG-1 y IMG-4 |
-| Servicio nuevo (el bot) | Receptor de webhooks de Kapso que llama a la API y responde por Kapso; se despliega con `scripts/servicios.py` desde `origin/main`, que hay que extender | WAP-1 a WAP-13 |
+| Servicio nuevo `mia-whatsapp` (carpeta `whatsapp/`) | Receptor de webhooks de Kapso que llama a la API y responde por Kapso; se despliega con `scripts/servicios.py` desde `origin/main`, que hay que extender | WAP-1 a WAP-13 |
 
 ## 6. Requerimientos no funcionales
 
@@ -143,6 +143,8 @@ Que quien administra el inventario asocie una o varias imágenes a un documento,
 - **Documentación:** al implementarse, actualizar ARQUITECTURA.md y OPERACION.md (nuevo servicio, variables y despliegue).
 
 ## 7. Criterios de aceptación (borrador)
+
+En la primera entrega se verifican con el número de pruebas (sandbox) de Kapso, desde un teléfono registrado como de prueba; lo que el sandbox no admita (posiblemente las imágenes) se verifica con el proveedor simulado.
 
 - Una pregunta al número de pruebas recibe respuesta de texto con los documentos que la respaldan, en modo literal, en pocos segundos.
 - Con el documento `horario_matricula.pdf` y la imagen `horario_matricula.png` asociada desde el panel, la pregunta por el horario de matrícula devuelve el texto y la imagen, sin otra configuración.
@@ -178,7 +180,7 @@ Que quien administra el inventario asocie una o varias imágenes a un documento,
 
 **Pendientes**
 
-1. **Si la cuota gratuita alcanza.** 2.000 mensajes de Kapso y 1.000 de Meta al mes dan 500 a 1.000 preguntas. Decidir antes de la campaña si se acepta ese límite (con el tope de WAP-12) o se contrata un plan de Kapso y se paga a Meta; falta la tarifa de Meta para el país de las personas que escriban.
+1. **Si la cuota gratuita alcanza (solo para producción, sección 11).** 2.000 mensajes de Kapso y 1.000 de Meta al mes dan 500 a 1.000 preguntas. Decidir antes de la campaña si se acepta ese límite (con el tope de WAP-12) o se contrata un plan de Kapso y se paga a Meta; falta la tarifa de Meta para el país de las personas que escriban.
 2. **Lenguaje del servicio**, a decidir en el plan. Recomendación: Python con FastAPI, igual que la API (misma herramienta de pruebas y de despliegue), llamando a la API REST de Kapso con `httpx`; Kapso ofrece SDK en TypeScript, pero no es necesario.
 3. **Mecanismo de la credencial de servicio** y cómo identifica a cada bot (BOT, sección 3.1), a confirmar en el plan.
 4. **Dónde se guarda el contador mensual de mensajes** (WAP-12): en la base de la API, por bot.
@@ -190,6 +192,7 @@ Nada de esto es de esta versión: el prototipo tiene una vigencia corta y un sol
 
 | Cuando pase esto | Qué conviene |
 |---|---|
+| Se quieren varios bots, de WhatsApp y también incrustados en las páginas web de los postgrados (mínimo dos de cada tipo: Postgrados de Computación y Analítica de Negocios van separados, anotado el 2026-10-24) | **WhatsApp: un solo servicio `mia-whatsapp` para todos los números.** Cada aviso de Kapso trae el número al que escribió la persona y la API resuelve el bot y su artefacto, así que un bot nuevo es una fila en el panel y apuntar el webhook de su número al mismo servicio (un servicio por bot multiplicaría el costo y las variables, y solo se justifica por otra cuenta de Kapso, aislar fallos o una carga muy distinta). **Web: sin servicio.** Un chat incrustado no tiene webhook, ni envío por Kapso, ni cuota de mensajes: es un componente de interfaz que llama a una ruta pública de la API, con identificador público del bot, orígenes permitidos y límite por IP (la clave de un artefacto no puede ir en el código de una página pública). Es una feature aparte, que reutiliza la tabla `bots` y el artefacto asignado. Cada bot usa su propio artefacto (dominios y tope diario). Con dos bots de WhatsApp se vuelven necesarios los textos, límites y tope mensual por bot (BOT-8) y revisar si el módulo Bots sigue siendo solo del alcance global. Detalle en [la investigación de la spec 011](../specs/011-bot-whatsapp-kapso/research.md) (R16). |
 | Se agrega otro número de Kapso (otro programa u otro público) | Registrar otro bot en el módulo Bots con su artefacto y apuntar el webhook del número al mismo servicio (BOT-6). Si los textos o los límites deben ser distintos, pasarlos de variables del servicio a campos del bot (BOT-8). El plan gratuito de Kapso solo admite 1 número: hará falta un plan que admita más. |
 | La cuota de mensajes se agota (sección 6) | Contratar un plan de Kapso y pagar los mensajes de servicio de Meta (tarifa según el país). El tope mensual de WAP-12 pasa de límite de la cuota gratuita a presupuesto de gasto. Mientras tanto, lo que más ahorra es no enviar mensajes de más: saludo dentro de la primera respuesta, texto y fuentes en un solo mensaje y pocas imágenes. |
 | El servicio corre en más de una réplica o se reinicia a menudo | Los ids de mensajes ya vistos, los límites por número y el saludo por conversación viven hoy en la memoria del servicio: se pierden al reiniciar y no se comparten entre réplicas. Moverlos a la base de la API o a un almacén clave-valor. El contador mensual ya nace persistente (WAP-12). |
@@ -199,11 +202,32 @@ Nada de esto es de esta versión: el prototipo tiene una vigencia corta y un sol
 | Se quiere un bot que decida qué buscar en varios pasos, o dar el modo con razonamiento | Primero un bucle simple con un máximo de iteraciones, como dice [ARQUITECTURA.md](ARQUITECTURA.md#orquestación-sin-langchain-ni-langgraph). Solo si crece más se evalúa LangGraph, para ese modo y detrás de la misma interfaz. El modo con razonamiento tarda más de 10 s (p95 de 11,2 s), pero el diseño asíncrono lo tolera; el costo por consulta sube bastante y habría que revisar los límites. |
 | Se quiere ver cómo rinde cada bot | Estadísticas propias por bot en Uso (consultas, mensajes del mes, imágenes enviadas, "sin información" por tema), hoy fuera de alcance (sección 8). Es el dato que también decide si se retoma el reranker (V3, sección 2.10). |
 
-## Anexo A. Fuentes consultadas (2026-10-21)
+## 11. Del sandbox a producción
+
+La primera entrega funciona solo con el sandbox (2026-10-24). Esta sección es el camino, en orden, para abrir el bot al público; **nada de esto se implementa ni se valida en esta versión**. El diseño no cambia para ese paso: un número de producción se registra como un bot nuevo en el módulo Bots, con su `phone_number_id` y su artefacto, y el mismo servicio `mia-whatsapp` lo atiende.
+
+| # | Qué hacer | Detalles y advertencias |
+|---|---|---|
+| 1 | **Cuenta de Meta de la institución** | Meta exige un Business Portfolio y una cuenta de WhatsApp Business (se pueden crear durante el alta), con razón social, dirección, teléfono y un **sitio web público con HTTPS**, sin problemas pendientes de verificación o de facturación. Puede pedir verificación del negocio y revisar el nombre que se muestra; los plazos no están documentados, por eso conviene empezarlo antes. Debe quedar a nombre de la institución, no de una cuenta personal. Preguntar a Comunicación o a TI si ya existe. |
+| 2 | **Elegir el número** | Tres opciones en Kapso: (a) *instant setup*, un número de EE. UU. de Kapso (gratis en el plan gratuito, una sola vez, y se libera si pasa 30 días sin mensajes de producción; la documentación no aclara si sirve para atender público en Costa Rica); (b) un **número propio dedicado**, que pasa por completo a la API y deja de funcionar en la app de WhatsApp Business (recomendado para producción); (c) *coexistencia* con la app de WhatsApp Business, que mezclaría las conversaciones de la asistente con las del bot. |
+| 3 | **Conectar el número en Kapso** | *Connected numbers > Connect new number* y el alta incorporada de Meta. Anotar el `phone_number_id` del número (no es el teléfono ni el id de la cuenta de WhatsApp Business). |
+| 4 | **Plan y cuota** | El plan gratuito incluye 1 número, 2.000 mensajes al mes (recibidos y enviados) y 100 solicitudes por minuto; Meta cobra los mensajes de servicio desde el 2026-10-01 salvo 1.000 gratis al mes por número, con tarifa según el país (no publicada en la página de Kapso). Decidir antes de la campaña: aceptar entre 500 y 1.000 preguntas al mes con el tope de 1.800 (`BOT_MONTHLY_MESSAGE_CAP`), o contratar un plan y pagar a Meta, y entonces el tope pasa de límite de la cuota gratuita a presupuesto de gasto. Un **segundo número exige un plan de pago**; falta saber si la cuota es por cuenta o por número. |
+| 5 | **Webhook del número** | Los avisos de mensajes son por número: crearlo con `POST https://api.kapso.ai/platform/v1/whatsapp/phone_numbers/{phone_number_id}/webhooks`, `url` de `mia-whatsapp`, `events` `["whatsapp.message.received"]` y un `secret_key` que se elige (puede ser el mismo para todos los números). Si Kapso agrupa los avisos (buffering), el servicio ya procesa los lotes. |
+| 6 | **Registrar el bot** | En el módulo Bots: nombre, `phone_number_id` de producción y artefacto. El bot del sandbox puede quedar para pruebas. |
+| 7 | **Revisar qué ve y qué publica** | El artefacto del bot solo con información que se pueda decir a cualquiera (no las actas del Consejo ni dominios con datos de personas); las imágenes asociadas son públicas. Revisar la lista de dominios que muestra el panel antes de abrir el número. |
+| 8 | **Validar con el número real lo que el sandbox no cubrió** | Las imágenes (si el sandbox no las admitió), la forma de la respuesta de Kapso a un envío, los tiempos reales, el aspecto del formato y del pie de foto en el teléfono, y la batería del MVP (19 de 19). |
+| 9 | **Ajustar los límites con datos reales** | 10 mensajes por hora y 30 por día por persona, cola de 20, 1 imagen por respuesta, tope mensual de 1.800 y tope diario del artefacto: se ajustan con el uso, mirando el módulo Uso y el consumo del módulo Bots. |
+| 10 | **Operación** | Medir el costo del servicio nuevo en Railway durante la primera semana (la cuenta ya ronda 4 a 4,5 USD de los 5 incluidos, V3 sección 2.7) y mantener el límite de gasto de Railway. Definir quién atiende si el bot se cae o llega al tope mensual (el panel lo muestra). Vigilar el espacio de las imágenes en la base gratuita (0,5 GB). |
+| 11 | **Cuando crezca** | La sección 10 (réplicas, cola externa, imágenes en almacenamiento de objetos, memoria de conversación) y, para varios bots, textos, límites y tope por bot (BOT-8), más los bots incrustados en páginas web, que son otra feature. |
+
+**Lo que ya queda listo en la primera entrega y no habrá que rehacer**: la estructura para varios bots, los límites por persona y por ráfaga, el tope mensual persistente, el saludo con el aviso a terceros, la advertencia de acceso público en el panel, las imágenes asociadas a documentos y el simulador para pruebas sin gastar cuota.
+
+## Anexo A. Fuentes consultadas (2026-10-21 y 2026-10-24)
 
 - [Webhooks de Kapso: visión general](https://docs.kapso.ai/docs/platform/webhooks/overview) (respuesta en menos de 10 s, firma HMAC-SHA256)
 - [Webhooks de Kapso: entrega](https://docs.kapso.ai/docs/platform/webhooks/advanced.md) (hasta 3 intentos, orden por conversación, pausa automática)
 - [Enviar una imagen con Kapso](https://docs.kapso.ai/docs/whatsapp/send-messages/image.md) (imagen por enlace público con `image.link` y pie de foto)
 - [Precios de Kapso](https://docs.kapso.ai/docs/whatsapp/pricing-faq.md) (plan gratuito: 1 número, 2.000 mensajes al mes, 1 GB de medios; mensajes de servicio de Meta facturables desde el 2026-10-01 con 1.000 gratis por número)
 - [Límites de la API de Kapso](https://docs.kapso.ai/api/rate-limits.md) (100 solicitudes por minuto en el plan gratuito)
+- [Conectar WhatsApp](https://docs.kapso.ai/docs/how-to/whatsapp/connect-whatsapp.md), [alta instantánea](https://docs.kapso.ai/docs/platform/phone-numbers/instant-setup.md), [sandbox](https://docs.kapso.ai/docs/how-to/whatsapp/use-sandbox-for-testing.md) y [resumen de webhooks](https://docs.kapso.ai/docs/platform/webhooks/overview.md) (2026-10-24: requisitos de Meta, opciones de número, sandbox solo con texto e interactivos, webhook por número con secreto elegido)
 - [Nodo webhook de Kapso](https://docs.kapso.ai/docs/flows/step-types/webhook-node.md) (alternativa descartada: su tiempo máximo no está documentado)

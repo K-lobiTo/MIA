@@ -14,6 +14,8 @@ Contexto: hoy MIA solo se consulta desde la Consulta administrativa, que usa el 
 2. **El límite real es la cuota de mensajes, no el gasto de modelos.** El plan gratuito del proveedor de WhatsApp incluye 2.000 mensajes al mes entre recibidos y enviados, y el proveedor de la red cobra los mensajes de servicio salvo 1.000 gratuitos por número cada mes: unas 500 a 1.000 preguntas al mes. Un modelo de costo medio de 0,0004 USD por consulta no es el cuello de botella.
 3. **Muchas respuestas son un dato que se entiende mejor en una imagen** (un horario, un calendario, un cuadro de costos). El bot debe poder enviarla cuando la respuesta se apoya en el documento al que esa imagen pertenece, y quien administra la información debe poder asociarla sin tocar código.
 
+**Alcance de esta entrega (2026-10-24).** Por ahora solo se dispone del **número de pruebas (sandbox) de Kapso**: solo pueden escribirle los teléfonos registrados como de prueba, no el público. Esta entrega se construye, se prueba y se acepta **únicamente con el sandbox**. Se conservan los límites y protecciones pensados para el público (ya son parte del servicio y cuestan poco) y el diseño admite un número de producción sin cambios de código, pero la puesta en producción (registro en Meta, número propio, plan, campaña) no se implementa ni se valida: queda documentada en la sección 11 del documento de requerimientos.
+
 ## Clarifications
 
 ### Session 2026-10-21
@@ -25,6 +27,11 @@ Contexto: hoy MIA solo se consulta desde la Consulta administrativa, que usa el 
 - Q: ¿Dónde se guardan las imágenes y cómo se envían? → A: Se guardan con el resto de la información de MIA (no en un disco que se borra) y se sirven por un enlace público no adivinable, porque el proveedor de WhatsApp envía las imágenes a partir de un enlace.
 - Q: ¿Hay memoria de conversación? → A: No: cada mensaje se responde por sí solo.
 - Q: ¿Dónde corre la lógica del bot? → A: En un servicio propio pequeño, aparte de la API de MIA, creado por el usuario desde la interfaz de Railway como los demás servicios.
+
+### Session 2026-10-24
+
+- Q: ¿Qué entorno cubre esta entrega? → A: Solo el sandbox de Kapso (número de pruebas), porque por ahora no es posible más. Todo lo funcional se construye y se acepta con él; el camino a producción se documenta y no se implementa.
+- Q: ¿Los bots futuros (más números de WhatsApp y bots incrustados en páginas web de los postgrados, mínimo dos de cada tipo) cambian esta entrega? → A: No. Un servicio de WhatsApp atenderá todos los números y los bots web serán otra feature que llama a la API directamente (investigación R16 del plan).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -145,18 +152,19 @@ Cuando el bot no encuentra la información, no entiende el tipo de mensaje, reci
 
 ---
 
-### User Story 7 - Probar el bot sin usar el número de producción (Priority: P3)
+### User Story 7 - Usar y probar el bot completo con el número de pruebas (sandbox) de Kapso (Priority: P1)
 
-Antes de publicar el número, la persona que opera prueba el bot completo (texto, imagen, límites) con el número de pruebas del proveedor.
+La persona que opera registra como bot el número de pruebas del proveedor y recorre con su teléfono, registrado como de prueba, todo lo que hace el bot (texto, imagen, límites). Es el único entorno de esta entrega: no hay número de producción.
 
-**Why this priority**: permite validar sin exponer el número real ni gastar su cuota, pero no es necesario para que el bot funcione.
+**Why this priority**: es el entorno en que se construye, se prueba y se acepta esta entrega; las demás historias se verifican aquí.
 
-**Independent Test**: registrar un bot con el número de pruebas, recorrer las historias 1 a 6 y comprobar que no se usó la cuota del número de producción.
+**Independent Test**: registrar un bot con el número de pruebas, recorrer las historias 1 a 6 desde un teléfono de prueba y comprobar que cada una se cumple.
 
 **Acceptance Scenarios**:
 
-1. **Given** el número de pruebas del proveedor registrado como un bot, **When** se le envían mensajes, **Then** se comporta igual que el de producción.
+1. **Given** el número de pruebas del proveedor registrado como un bot, **When** se le envían mensajes desde un teléfono registrado como de prueba, **Then** se comporta como describen las historias 1 a 6.
 2. **Given** pruebas automáticas con el proveedor simulado, **When** se ejecutan, **Then** cubren firma inválida, mensaje duplicado, mensaje que no es texto, tope diario, límite por número y tope mensual.
+3. **Given** que el sandbox no admite el envío de imágenes (no está documentado), **When** el bot intenta enviarla, **Then** el texto ya enviado se conserva, el fallo queda registrado y la historia 2 se verifica con el proveedor simulado hasta contar con un número de producción.
 
 ---
 
@@ -191,6 +199,8 @@ La Consulta administrativa y cualquier otro artefacto existente siguen funcionan
 - La pregunta pide algo que está solo en un dominio no habilitado para el bot: responde "sin información", sin revelar que existe.
 - Dos personas distintas escriben a la vez desde números distintos: sus consultas son independientes y no se mezclan respuestas ni imágenes.
 - El proveedor no incluye el número de teléfono en el aviso: el bot no falla y responde a la conversación.
+- El sandbox solo admite texto y mensajes interactivos según su documentación: si rechaza una imagen, el texto ya enviado se conserva, el fallo queda en el registro y las imágenes se verifican con el proveedor simulado.
+- Un teléfono que no está registrado como de prueba no puede escribir al sandbox: el bot no recibe nada de él.
 
 ## Requirements *(mandatory)*
 
@@ -223,7 +233,7 @@ La Consulta administrativa y cualquier otro artefacto existente siguen funcionan
 - **FR-020**: La primera respuesta a un número en 24 horas debe llevar, dentro del mismo mensaje, un saludo que aclara que es un asistente automático que responde con documentos oficiales, pide no enviar datos personales e informa que las preguntas pasan por WhatsApp, el proveedor del bot y el proveedor del modelo.
 - **FR-021**: El bot debe responder en español, a la conversación que originó el mensaje, sin depender de que el aviso incluya el número de teléfono.
 - **FR-022**: Cada mensaje debe responderse por sí solo: el bot no recuerda mensajes anteriores de la conversación.
-- **FR-023**: El bot debe poder probarse con el número de pruebas del proveedor sin usar el número de producción.
+- **FR-023**: El bot debe funcionar de punta a punta con el número de pruebas (sandbox) del proveedor, que es el único entorno de esta entrega: solo los teléfonos registrados como de prueba le pueden escribir y no hace falta ningún número de producción.
 
 **Límites y protección**
 
@@ -283,7 +293,8 @@ La Consulta administrativa y cualquier otro artefacto existente siguen funcionan
 
 - Quien opera MIA es una sola persona (el usuario); quien escribe al bot es el público externo (personas interesadas en los posgrados), anónimo y sin identificación previa.
 - Los requerimientos acordados están en `docs/Definicion_Requerimientos_Bot_WhatsApp.md` (borrador del 2026-10-21); esta spec los concreta como historias y requisitos verificables y no los reemplaza. Donde ese documento propone un valor (límites, textos), es el valor de partida y se puede ajustar con el uso.
-- Hay un solo número de WhatsApp (plan gratuito del proveedor). La estructura admite varios bots, pero registrar el segundo bot, su plan y su número quedan fuera de esta feature.
+- **El entorno de esta entrega es el sandbox de Kapso** (decisión del 2026-10-24: por ahora no es posible más). Solo escriben los teléfonos registrados como de prueba (cuántos admite y cuánto dura la sesión de prueba lo define Kapso), y el sandbox admite texto y mensajes interactivos; si admite el envío de imágenes por enlace no está documentado y es lo primero que se comprueba. El registro en Meta, un número de producción, un plan de pago y la campaña no se implementan ni se validan aquí: se documentan en la sección 11 del documento de requerimientos.
+- Hay un solo número de WhatsApp, el del sandbox. La estructura admite varios bots, pero registrar el segundo bot, su plan y su número quedan fuera de esta feature.
 - Qué dominios ve el bot en su primera versión se decide al configurar el artefacto asignado, desde el panel. Para la atracción de estudiantes deben ser información que se pueda decir a cualquiera (la constitución exige un control de acceso antes de exponer datos de personas por WhatsApp); no se asignan las actas del Consejo.
 - La cuota gratuita (2.000 mensajes al mes del proveedor y 1.000 gratuitos por número de Meta) da unas 500 a 1.000 preguntas al mes. Si esa cuota alcanza para la campaña, o conviene contratar un plan y pagar los mensajes de servicio de Meta (cuya tarifa depende del país y no se conoce), es una decisión del usuario fuera de esta feature; el tope mensual de mensajes protege la cuota gratuita mientras tanto.
 - El bot depende de las fuentes citadas por la respuesta (feature 006, `QUERY_CITED_SOURCES` en `on`, decidido en el cierre de la V3 el 2026-10-21) para saber qué documentos aportaron y cuáles imágenes enviar. Con esa opción apagada se mostrarían imágenes de todos los pasajes, por lo que debe estar encendida para el bot.
@@ -293,4 +304,4 @@ La Consulta administrativa y cualquier otro artefacto existente siguen funcionan
 - El proveedor puede no incluir el número de teléfono en el aviso (migración a identificadores de usuario): el bot responde a la conversación sin depender de él.
 - El servicio del bot lo crea el usuario desde la interfaz de Railway y se despliega con el flujo de los demás servicios; el lenguaje del servicio, el mecanismo con que se identifica ante la API y dónde se guarda el contador mensual se deciden en el plan.
 - La API aplica las migraciones de la base al arrancar: la feature agrega migraciones nuevas tras la `0005` y no debe desplegarse una versión con menos migraciones que las de la base.
-- Quedan fuera de esta feature: memoria de conversación, mensajes que no son texto, mensajes iniciados por el programa, ofrecer el contacto o pasar a una persona, modo con razonamiento, textos y límites distintos por bot, imágenes que dependan de la pregunta y no del documento, estadísticas propias del bot en Uso y todo lo de la sección 10 del documento de requerimientos (cómo escalar). El bot tampoco usa LangChain ni LangGraph (decisión del 2026-10-21 en `docs/ARQUITECTURA.md`).
+- Quedan fuera de esta feature: memoria de conversación, mensajes que no son texto, mensajes iniciados por el programa, ofrecer el contacto o pasar a una persona, modo con razonamiento, textos y límites distintos por bot, imágenes que dependan de la pregunta y no del documento, estadísticas propias del bot en Uso todo lo de las secciones 10 y 11 del documento de requerimientos (cómo escalar y pasar a producción), y el registro en Meta, un número de producción, un plan de pago de Kapso y la campaña. El bot tampoco usa LangChain ni LangGraph (decisión del 2026-10-21 en `docs/ARQUITECTURA.md`).
