@@ -12,6 +12,7 @@ from mia.api.routes import (
     bot_service,
     bots,
     config,
+    documents,
     domains,
     equivalences,
     health,
@@ -105,4 +106,5 @@ app.include_router(images.router)
 app.include_router(media.router)
 app.include_router(usage.router)
 app.include_router(domains.router)
+app.include_router(documents.router)
 app.include_router(query.router)

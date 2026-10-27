@@ -28,6 +28,7 @@ Guía práctica para desplegar, cargar documentos y mantener funcionando el prot
 | `GLM_API_KEY` / `GLM_THINKING` | solo si `LLM_PROVIDER=glm` | no se usa | no se usa al ingerir (en Cloud Run: clave de Z.ai / `true`) |
 | `INGESTION_ENABLED` | `true` | `true` | `true` |
 | `INGESTION_SYNC` | `false` | `false` | `false` (en Cloud Run: `true`) |
+| `DELETE_WAIT_SECONDS` | `60` | `60` (opcional) | no se usa al ingerir |
 | `QUERY_SIMILARITY_THRESHOLD` | ver `.env.example` | igual | no se usa al ingerir |
 | `ADMIN_KEY` | una clave cualquiera | clave de **automatización** de los scripts (larga y aleatoria, secreto); vacía la desactiva | la misma de producción, para subir documentos |
 | `ENTRA_CLIENT_ID` / `ENTRA_TENANT_ID` / `ENTRA_REQUIRE_MFA` | vacío / el del TEC / `true` | el client ID que entrega TI / el del TEC / `true` (ver "Acceso al panel con cuentas del TEC") | no se usa |
@@ -369,7 +370,39 @@ Desde el panel también se pueden subir documentos (en el inventario, *Subir* en
 
 Subir dos veces el mismo archivo al mismo dominio (en cualquier carpeta) no duplica nada: devuelve el documento existente con `already_existed: true`. El límite de tamaño por archivo es `MAX_UPLOAD_MB` (25).
 
-Si un documento queda en `error`, ver el log de la API local (el mensaje empieza con "Fallo indexando documento"). Un documento que quedó en `processing` porque se cortó la API no se reintenta solo; hoy la forma de reintentar es borrar esa fila en Neon y sus puntos en Qdrant (filtro `document_id`) y volver a subir el archivo.
+Si un documento queda en `error`, ver el log de la API local (el mensaje empieza con "Fallo indexando documento"). Un documento que quedó en `processing` porque se cortó la API no se reintenta solo; la forma de reintentar es eliminarlo (ver "Eliminar documentos" más abajo) y volver a subir el archivo.
+
+## Eliminar documentos (feature 012)
+
+Un documento cargado se puede eliminar de un dominio, con el mismo alcance que se tiene para subirlo (global o por programa). Es **definitivo**: no hay papelera ni deshacer. Especificación y decisiones en [specs/012-eliminar-documentos/](../specs/012-eliminar-documentos/spec.md).
+
+**Qué se quita.** El registro del documento, sus imágenes asociadas (y su enlace público `/media/...` pasa a responder 404), todos sus fragmentos del almacén de búsqueda (desde la consulta siguiente ningún artefacto, el bot de WhatsApp incluido, lo usa ni lo cita) y el archivo original de `uploads/` si existe. Se quita también la huella con que se detectan duplicados, así que el mismo archivo se puede volver a subir. **Lo que no cambia:** los demás documentos, los dominios y carpetas (una carpeta que se quedó sin documentos se puede borrar con "Borrar" como siempre), los artefactos y sus topes, y el historial del módulo Uso (las consultas pasadas conservan el nombre del documento que citaron).
+
+**Desde el panel (Inventario).** Cada documento tiene un botón **Eliminar**. El botón **Seleccionar** activa casillas por documento (y por carpeta, dominio o programa) y una barra con **Eliminar seleccionados (n)** para borrar varios con una sola confirmación. La ventana de confirmación nombra los documentos (hasta 10 y "y N más"), las imágenes que se pierden y avisa que no se puede deshacer; si alguno está en cola o procesándose, avisa que se cancela su procesamiento. Si algo falla, el documento afectado sigue como estaba, la ventana dice por qué y se puede reintentar; en un lote, los demás sí se eliminan.
+
+**Desde la API** (con la clave de automatización o una cuenta del panel; una clave de artefacto no puede eliminar):
+
+```bash
+# Un documento: 204 si se eliminó, 404 si no existe (también al repetir)
+curl -X DELETE "$API/domains/<id del dominio>/documents/<id del documento>" -H "X-Admin-Key: $ADMIN_KEY"
+# Varios (hasta 100): 200 con el resultado de cada uno (deleted, not_found, out_of_scope, busy o error)
+curl -X POST "$API/documents/bulk-delete" -H "X-Admin-Key: $ADMIN_KEY" -H "Content-Type: application/json" \
+     -d '{"document_ids": ["<id>", "<id>"]}'
+```
+
+La API elimina al recibir la petición: la confirmación es del panel, no de la API. Cada eliminación deja la línea `document.delete` en el registro de administración (quién, nombre del documento y dominio, sin contenido) y cada rechazo por alcance, una línea `rechazado`.
+
+**Errores y qué hacer.**
+
+| Respuesta | Significado | Qué hacer |
+|---|---|---|
+| 503 `El documento sigue como estaba` | El almacén de búsqueda (Qdrant) no respondió o no quitó todos los fragmentos. Nada se confirmó. Si el documento se estaba procesando, la ingesta ya se había detenido: queda en `error` (visible, sin fragmentos) en lugar de "Procesando" para siempre. | Reintentar cuando Qdrant responda; es seguro repetirlo (también sobre uno en `error`). Si en vez de eliminarlo se quiere conservar, se vuelve a subir el archivo. |
+| 409 `El documento se está procesando` | La ingesta de ese documento no se detuvo en `DELETE_WAIT_SECONDS` (60 s por defecto). | Esperar un momento y reintentar. |
+| 404 | El documento ya no existe (otra persona lo eliminó) | Nada: era lo que se quería. |
+
+**Un documento que se está procesando** se puede eliminar: la eliminación cancela la ingesta (que se detiene en el siguiente lote de 64 fragmentos) y no deja fragmentos. Límite conocido: la cancelación vive en la memoria de la API; si se elimina desde una instancia mientras *otra* (por ejemplo, una API local de carga masiva apuntando a producción) está procesando ese mismo documento, la ingesta se entera por la base en el siguiente lote y limpia lo que escribió, pero una carrera de milisegundos entre las dos puede dejar fragmentos hasta ese momento.
+
+**Recuperar un documento eliminado por error.** No hay papelera: se **vuelve a subir el archivo original** (desde el panel o con `scripts/cargar_carpeta.py`). Entra como un documento nuevo y responde de nuevo en cuanto termina de procesarse. Tener en cuenta que (1) **las imágenes asociadas no se recuperan**: hay que asociarlas de nuevo desde el botón "Imágenes", y (2) **el sistema no conserva el archivo original** (`uploads/` no persiste en Railway), así que quien administra debe guardar los originales fuera de MIA. Una imagen que el bot ya envió o un enlace público ya servido pueden verse en las cachés externas (Kapso, Meta, navegadores) hasta una hora aunque el documento ya no exista.
 
 ## Mostrar solo las fuentes que aportaron (`QUERY_CITED_SOURCES`)
 

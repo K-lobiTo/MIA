@@ -276,3 +276,19 @@ export interface Me {
   units: { id: string; name: string }[];
   source: string;
 }
+
+// Eliminación de documentos (feature 012).
+export type DeleteStatus = "deleted" | "not_found" | "out_of_scope" | "busy" | "error";
+
+export interface DeleteResultItem {
+  document_id: string;
+  filename?: string;
+  status: DeleteStatus;
+  detail?: string;
+}
+
+export interface BulkDeleteResponse {
+  deleted: number;
+  failed: number;
+  results: DeleteResultItem[];
+}

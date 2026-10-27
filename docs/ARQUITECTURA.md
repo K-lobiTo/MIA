@@ -16,7 +16,8 @@ src/mia/
 │   ├── security.py     require_admin / optional_admin (token de Microsoft o X-Admin-Key, devuelven un Principal), require_artifact / optional_artifact (X-Artifact-Key) y require_bot_service (X-Bot-Service-Key, solo las rutas /bot/...)
 │   └── routes/         health, me (quién soy y mi alcance), inventory (árbol, programas, carpetas), domains (dominios y documentos),
 │                       artifacts, config, query (consulta y calificación; `run_query` la comparten /query y /bot/query), usage, equivalences (lista de siglas, feature 010),
-│                       bots (administración de bots de WhatsApp), bot_service (rutas del servicio del bot), images (imágenes por documento) y media (GET /media público), feature 011
+│                       bots (administración de bots de WhatsApp), bot_service (rutas del servicio del bot), images (imágenes por documento) y media (GET /media público), feature 011,
+│                       y documents (eliminar un documento y eliminar varios, feature 012)
 ├── access/             Lógica de acceso sin HTTP, para probarla sin levantar la API
 │   ├── keys.py          generar, hashear y verificar claves (artefactos, clave de automatización y credencial de servicio del bot)
 │   ├── errors.py        AuthError: estado, mensaje y `code` de los rechazos de acceso
@@ -40,7 +41,8 @@ src/mia/
 ├── ingestion/
 │   ├── loaders/        DocumentLoader (interfaz) + PdfLoader/DocxLoader/TxtLoader
 │   ├── chunker.py      chunk_text(): split con overlap, sin dependencias externas
-│   └── pipeline.py     ingest_document(): loader → chunker → embeddings → upsert
+│   ├── pipeline.py     ingest_document(): loader → chunker → embeddings → upsert; con guardas de cancelación por lote (feature 012)
+│   └── removal.py      remove_document(): elimina un documento de la base, del almacén de vectores y del disco (feature 012)
 ├── rag/
 │   ├── embeddings.py    EmbeddingProvider (interfaz) + get_embedding_provider(name)
 │   ├── llm.py           LLMProvider (interfaz), LLMAnswer (texto, tokens y costo) + get_llm_provider(name, model, effort)
@@ -127,6 +129,17 @@ Persona (WhatsApp) -> Kapso -> webhook firmado -> mia-whatsapp -> API de MIA (/b
 - **Varios bots y varios canales** (investigación R16 de la spec): un servicio para todos los números de WhatsApp; los bots incrustados en páginas web, que habrá más adelante, **no pasarán por él** (no tienen webhook ni cuota de mensajes): llamarán a la API por una ruta pública con orígenes permitidos y límite por IP, en otra feature. Las rutas `/bot/...`, `BOT_SERVICE_KEY` y la tabla `bots` conservan su nombre hasta entonces.
 - **Panel:** el módulo Bots (solo alcance global) lista cada bot con su estado, artefacto, dominios que ve y la barra de mensajes del mes frente al tope; al asignar o cambiar el artefacto pide confirmar con la advertencia de que **el bot responde a cualquiera que escriba al número** y con la lista de dominios que verá. El control de acceso que exige la constitución para un artefacto público es ese: el bot solo ve los dominios del artefacto asignado (nunca las actas del Consejo ni dominios con datos de personas).
 - **Pruebas:** la API con `pytest` (rutas, migraciones, credencial, contador, imágenes y un recorrido de punta a punta con el servicio y la API en el mismo proceso, `tests/unit/test_bot_end_to_end.py`); el servicio con `httpx.MockTransport` en `whatsapp/tests/`; simuladores locales `whatsapp/scripts/kapso_falso.py` y `enviar_webhook.py` para recorrer el flujo sin Kapso ni cuota.
+
+## Eliminación de documentos (feature 012)
+
+`DELETE /domains/{id}/documents/{doc}` y `POST /documents/bulk-delete` (hasta 100) quitan un documento por completo, con el alcance de subirlo (`ensure_domain`) y la línea `document.delete` en el registro de administración. Spec, plan y la investigación de cada decisión en [specs/012-eliminar-documentos/](../specs/012-eliminar-documentos/). Sin migraciones: no cambia el esquema.
+
+- **Qué deja huella un documento:** su fila en `documents`, sus filas en `document_images` (sin borrado en cascada), sus fragmentos en Qdrant (campo `document_id` con índice), el archivo `uploads/<id>.<tipo>` y su huella `file_hash`. El historial de Uso (`queries.sources`) guarda **nombres**, sin clave foránea, así que no se toca.
+- **Orden (`ingestion/removal.py`):** primero se borran las imágenes y la fila dentro de una transacción **sin confirmar**; después `VectorStore.delete_document(document_id)` (filtro por `document_id`, `wait=True`) y la comprobación `count_chunks == 0`; solo entonces el `commit`; al final se borra el archivo original, de mejor esfuerzo. Así un documento nunca sale del inventario mientras sus fragmentos siguen respondiendo: si falla el almacén se hace `rollback` y el documento queda como estaba (503, reintento seguro); si fallara el `commit` tras borrar los fragmentos, queda visible sin contenido y reintentar lo completa.
+- **`VectorStore.delete_document`** es un método nuevo de la interfaz, **no abstracto** (como los de la búsqueda por palabras): un almacén que no lo implemente hace que la eliminación responda 503 sin tocar la base.
+- **Documentos en proceso:** `pipeline.py` tiene un registro de cancelaciones en memoria (`request_cancel`, `is_cancelled`, `clear_cancel`). Uno `pending` solo se marca; uno `processing` además toma el cerrojo de la ingesta (`_ingest_lock`) con espera máxima `DELETE_WAIT_SECONDS` (409 `document_busy` si no lo consigue). La ingesta comprueba antes de cada lote de 64 fragmentos y antes de marcar `done` o `error` que el documento siga existiendo (consulta la base, así que también se entera de lo que elimine otra instancia de la API) y, si no, borra lo que escribió y sale sin tocar el estado (los `commit` capturan `StaleDataError`).
+- **Si falla el almacén con el documento procesándose:** la cancelación ya detuvo la ingesta, así que `_mark_error` (en `removal.py`) lo deja en `error` (un `UPDATE` que solo toca filas `processing`) para que no quede "Procesando" sin proceso; el reintento de la eliminación es seguro. Un 409 (la ingesta no soltó el cerrojo) no cambia nada.
+- **Panel:** botón por documento, modo de selección y una ventana de confirmación única (`EliminarDocumentosDialog`, utilidades puras con pruebas en `seleccion.ts`).
 
 ## El patrón que se repite: interfaz + factory por nombre
 

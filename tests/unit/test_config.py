@@ -199,6 +199,27 @@ def test_un_valor_invalido_del_interruptor_de_la_busqueda_hibrida_se_trata_como_
     assert hybrid_enabled("quizas") is False
 
 
+# --- Eliminación de documentos (feature 012) ---------------------------------------------------------------------
+
+
+def test_la_espera_de_la_eliminacion_vale_60_segundos_por_defecto_y_se_lee_del_entorno(monkeypatch):
+    from mia.config import Settings
+
+    assert Settings(_env_file=None).delete_wait_seconds == 60
+    monkeypatch.setenv("DELETE_WAIT_SECONDS", "5")
+    assert Settings(_env_file=None).delete_wait_seconds == 5
+
+
+@pytest.mark.parametrize("valor", [0, 601])
+def test_una_espera_de_eliminacion_fuera_de_rango_no_deja_arrancar(valor):
+    from pydantic import ValidationError
+
+    from mia.config import Settings
+
+    with pytest.raises(ValidationError, match="delete_wait_seconds"):
+        Settings(_env_file=None, delete_wait_seconds=valor)
+
+
 # --- Bot de WhatsApp (feature 011): variables de la API -------------------------------------------------------
 
 

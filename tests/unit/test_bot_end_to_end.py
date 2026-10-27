@@ -175,6 +175,40 @@ def test_una_pregunta_llega_a_la_api_y_la_persona_recibe_texto_fuentes_e_imagen(
     assert registro.artifact_id == mundo["computacion"].id and registro.mode == "literal" and registro.outcome == "answered"
 
 
+def test_un_documento_citado_por_el_bot_y_eliminado_deja_de_responderse_y_su_imagen_deja_de_servir(
+    client, db, mundo, admin, monkeypatch, tmp_path
+):
+    """Feature 012, SC-001 con el artefacto más sensible: tras eliminar el documento, la pregunta siguiente del bot
+    responde "sin información", sin fuentes ni imagen, y el enlace público de la imagen da 404."""
+    from mia.api.routes import documents as documents_routes
+    from tests.unit.almacen_falso import AlmacenFalso
+
+    servicio = Servicio()
+    with Pipeline() as pipeline:
+        servicio.escribir(persona="ana")
+        assert servicio.kapso.textos[0].endswith("Fuentes: horario_matricula.pdf") and len(servicio.kapso.imagenes) == 1
+
+        class AlmacenQueOlvida(AlmacenFalso):
+            def delete_document(self, document_id):
+                super().delete_document(document_id)
+                # Sin los fragmentos del documento, la búsqueda ya no los encuentra.
+                pipeline.store.search.side_effect = lambda vector, domains, limit: []
+
+        monkeypatch.setattr(documents_routes, "get_vector_store", lambda: AlmacenQueOlvida())
+        monkeypatch.setattr(documents_routes, "UPLOAD_DIR", tmp_path)
+        assert client.delete("/domains/dom-1/documents/doc-1", headers=admin).status_code == 204
+
+        antes = len(servicio.kapso.enviados)
+        servicio.escribir(persona="ana")
+
+    nuevos = servicio.kapso.enviados[antes:]
+    assert [m["type"] for m in nuevos] == ["text"]
+    texto = nuevos[0]["text"]["body"]
+    assert "No encontré esa información en los documentos" in texto
+    assert "horario_matricula" not in texto and "Fuentes:" not in texto
+    assert client.get(f"/media/{PUBLIC_ID}").status_code == 404
+
+
 def test_el_registro_de_uso_no_guarda_ningun_dato_de_la_persona(db, mundo):
     servicio = Servicio()
 

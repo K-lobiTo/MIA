@@ -124,7 +124,7 @@ Los dominios del documento conceptual que todavía no tienen documentos (Apertur
 
 ### 2.4 Inventario: fuera de alcance de esta versión
 
-Borrar o renombrar dominios y documentos, borrar carpetas con contenido, reintentar un documento en error, mover documentos o carpetas (entre carpetas o entre dominios) y ver el contenido de un documento. Borrar exige limpiar también sus fragmentos en Qdrant, y reintentar exige conservar el archivo original, que hoy no se guarda en un almacenamiento persistente (ver [ESCALABILIDAD.md](ESCALABILIDAD.md)).
+Borrar o renombrar dominios y documentos (borrar documentos quedó resuelto después por la feature 012, ver [specs/012-eliminar-documentos/](../specs/012-eliminar-documentos/spec.md)), borrar carpetas con contenido, reintentar un documento en error, mover documentos o carpetas (entre carpetas o entre dominios) y ver el contenido de un documento. Borrar exige limpiar también sus fragmentos en Qdrant, y reintentar exige conservar el archivo original, que hoy no se guarda en un almacenamiento persistente (ver [ESCALABILIDAD.md](ESCALABILIDAD.md)).
 
 ### 2.5 Módulo Artefactos y accesos: requerimientos funcionales
 
@@ -444,7 +444,7 @@ La versión 3 se empezó a definir en [Definicion_Requerimientos_V3.md](Definici
 - **Preguntas de agregación sobre todo un dominio** ("todos los cursos"): recuperación con herramientas (el modelo decide qué buscar) o datos estructurados extraídos al cargar (créditos, horas, requisitos).
 - **Memoria de conversación:** preguntas de seguimiento que se apoyen en las anteriores.
 - **Usuarios individuales:** cuentas con su propia identidad dentro de un artefacto (hoy los permisos son por artefacto, ver 2.5, y todas las personas que usan un artefacto comparten su clave). Se agregarían como un módulo más del panel de administración.
-- **Administración completa del inventario:** borrar, renombrar, mover y reintentar documentos, con los archivos originales en almacenamiento persistente.
+- **Administración completa del inventario:** borrar, renombrar, mover y reintentar documentos, con los archivos originales en almacenamiento persistente. (Borrar documentos, uno o varios, ya existe desde la feature 012; faltan renombrar, mover y reintentar.)
 - **Consulta y permisos por carpeta:** buscar solo en una carpeta de un dominio, o habilitar a un artefacto solo algunas carpetas. Requiere guardar la carpeta en la metadata de los fragmentos en Qdrant.
 - **Nuevas fuentes:** CSV, XLSX y páginas web (ACM, repositorio Orion).
 

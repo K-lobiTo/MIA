@@ -35,7 +35,7 @@ Variables de **compilación** (`.env.local` o en la orden):
 |---|---|
 | `src/api/` | Cliente tipado de la API (token de identidad con renovación y un reintento) y hooks de TanStack Query |
 | `src/auth/` | Inicio de sesión: configuración de MSAL, estado de la sesión, mensajes de rechazo y capacidades por alcance |
-| `src/modules/inventario/` | Árbol, búsqueda, formularios, subida de documentos y el diálogo de imágenes de cada documento (`ImagenesDialog`) |
+| `src/modules/inventario/` | Árbol, búsqueda, formularios, subida de documentos, el diálogo de imágenes de cada documento (`ImagenesDialog`) y la eliminación de documentos (`EliminarDocumentosDialog`, utilidades de selección en `seleccion.ts`) |
 | `src/modules/artefactos/` | Lista y formulario de artefactos, clave de una sola vez, topes |
 | `src/modules/uso/` | Filtros, indicadores, gráfica, tablas, registro de consultas, saldo |
 | `src/modules/bots/` | Módulo Bots: tarjeta de cada bot (estado, artefacto, dominios y barra de mensajes del mes), formulario de registro y edición con la advertencia de acceso público |
@@ -44,6 +44,14 @@ Variables de **compilación** (`.env.local` o en la orden):
 | `src/styles/` | Variables de color (claro y oscuro) y estilos base |
 
 Un módulo nuevo es una entrada más en `MODULES` (`src/modules/index.tsx`) más un grupo de rutas en la API. Una entrada puede exigir una capacidad con `requires` (por ejemplo `canManageBots`): el menú la oculta a quien no la tiene (`visibleModules`), y es la API la que hace cumplir el permiso.
+
+## Eliminar documentos (feature 012)
+
+En el Inventario, cada fila de documento tiene un botón **Eliminar**, y el botón **Seleccionar** de la parte de arriba activa el modo de selección: casilla por documento (y por carpeta, dominio o programa, que marca todos sus documentos visibles; con una búsqueda activa solo cuentan los que se ven) y una barra con **Eliminar seleccionados (n)** y **Cancelar**. Todas las personas con acceso al Inventario ven los controles; la API hace cumplir el alcance (no hay permiso nuevo).
+
+- **Confirmación única** (`EliminarDocumentosDialog`, para uno o varios): nombra los documentos con su dominio (hasta 10 y "y N más"), cuántas imágenes se pierden, que se pierde el contenido en las respuestas de todos los artefactos (incluido el bot de WhatsApp) y que **no se puede deshacer** (se recupera volviendo a subir el archivo original y asociando de nuevo las imágenes); si hay documentos en cola o procesándose, avisa que se cancela su procesamiento. No se puede cerrar mientras la petición está en curso.
+- **Resultado:** si todo se eliminó, la ventana se cierra y la página muestra un aviso (`Documento eliminado`, `3 documentos eliminados`). Un documento que ya no existía (404 o `not_found`) cuenta como eliminado y se menciona en el aviso; no es un fallo. Si alguno falla (fuera de tu alcance, se está procesando, almacén de búsqueda no disponible), la ventana queda abierta solo con esos, cada uno con su motivo, y **Reintentar**.
+- **Lógica sin DOM:** `seleccion.ts` concentra lo que se prueba (alternar y marcar grupos, recorte de nombres, textos, `ejecutar` que elige entre la ruta por documento y la de lote y ordena el resultado). `DocumentNode` de la API no trae el dominio; el tipo `DocumentoAEliminar` se arma en el panel con el contexto del árbol.
 
 ## Bots de WhatsApp e imágenes de documentos (feature 011)
 

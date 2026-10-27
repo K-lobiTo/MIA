@@ -124,6 +124,9 @@ class Settings(BaseSettings):
     # Ingerir dentro de la misma petición en vez de en segundo plano. Necesario en Cloud Run con
     # cobro por petición: al responder se frena la CPU y una tarea en segundo plano no avanza.
     ingestion_sync: bool = False
+    # Al eliminar un documento que se está procesando, segundos que se espera a que la ingesta en curso
+    # suelte el cerrojo antes de responder 409 (feature 012).
+    delete_wait_seconds: int = Field(default=60, ge=1, le=600)
 
     # Clave de automatización para los scripts (cargar documentos, reorganizar): alcance global. El
     # panel ya no la usa, entra con cuentas del TEC. Vacía, queda desactivada.

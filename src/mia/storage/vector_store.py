@@ -7,6 +7,7 @@ from qdrant_client.models import (
     Distance,
     FieldCondition,
     Filter,
+    FilterSelector,
     HasIdCondition,
     MatchAny,
     MatchText,
@@ -78,6 +79,12 @@ class VectorStore(ABC):
     @abstractmethod
     def get_chunks(self, document_id: str, chunk_indexes: list[int]) -> list[SearchResult]:
         """Fragmentos de un documento por posición (sin puntaje de similitud, `score=0`)."""
+
+    # Eliminación de documentos (feature 012). No es abstracto, como los de abajo: un almacén que no lo tenga hace
+    # que la eliminación responda 503 sin tocar la base.
+    def delete_document(self, document_id: str) -> None:
+        """Quita todos los fragmentos del documento. No falla si no hay ninguno."""
+        raise NotImplementedError("Este almacén no sabe eliminar documentos")
 
     # Búsqueda por palabras (feature 010). No son abstractos: un almacén que no los tenga cae a la búsqueda por
     # significado (la ruta trata NotImplementedError como "parte léxica no disponible").
@@ -264,6 +271,17 @@ class QdrantVectorStore(VectorStore):
             ),
             exact=True,
         ).count
+
+    def delete_document(self, document_id: str) -> None:
+        self.client.delete(
+            collection_name=self.collection,
+            points_selector=FilterSelector(
+                filter=Filter(
+                    must=[FieldCondition(key="document_id", match=MatchValue(value=document_id))]
+                )
+            ),
+            wait=True,
+        )
 
     def set_domain(self, document_id: str, domain_id: str) -> None:
         self.client.set_payload(

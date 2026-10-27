@@ -14,8 +14,20 @@ import {
   NewUnitDialog,
   RenameFolderDialog,
 } from "./forms/Dialogs";
+import { EliminarDocumentosDialog } from "./EliminarDocumentosDialog";
 import { ImagenesDialog } from "./ImagenesDialog";
-import { DomainBranch, UnitBranch, type NodeRef } from "./TreeNode";
+import {
+  aEliminar,
+  alternar,
+  avisoFinal,
+  documentosDelInventario,
+  idsRetirados,
+  marcarGrupo,
+  sinEliminados,
+  type DocumentoAEliminar,
+  type Resultado,
+} from "./seleccion";
+import { DomainBranch, SeleccionContext, UnitBranch, type NodeRef, type Seleccion } from "./TreeNode";
 import { UploadList } from "./UploadList";
 import { useUploads, type UploadTarget } from "./useUploads";
 import "./inventario.css";
@@ -54,6 +66,11 @@ export function InventarioPage() {
   const [dialog, setDialog] = useState<DialogState | null>(null);
   // Documento cuyas imágenes se están viendo (feature 011).
   const [imagesFor, setImagesFor] = useState<{ domainId: string; document: DocumentItem } | null>(null);
+  // Eliminación de documentos (feature 012): los que se van a eliminar, el modo de selección y el aviso del resultado.
+  const [eliminar, setEliminar] = useState<DocumentoAEliminar[] | null>(null);
+  const [modoSeleccion, setModoSeleccion] = useState(false);
+  const [seleccionados, setSeleccionados] = useState<ReadonlySet<string>>(new Set());
+  const [aviso, setAviso] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const pickTarget = useRef<UploadTarget | null>(null);
 
@@ -63,6 +80,31 @@ export function InventarioPage() {
   const lookup = useMemo(() => (data ? buildLookup(data) : null), [data]);
   const filtered = useMemo(() => (data ? filterInventory(data, query) : undefined), [data, query]);
   const searching = query.trim().length > 0;
+  const documentos = useMemo(() => (data ? documentosDelInventario(data) : new Map<string, DocumentoAEliminar>()), [data]);
+  // Solo cuentan los seleccionados que se ven con la búsqueda actual.
+  const visibles = useMemo(() => (filtered ? documentosDelInventario(filtered) : new Map<string, DocumentoAEliminar>()), [filtered]);
+  const elegidos = useMemo(() => [...seleccionados].filter((id) => visibles.has(id)), [seleccionados, visibles]);
+  const seleccion: Seleccion = {
+    activa: modoSeleccion,
+    seleccionados,
+    alternar: (id) => setSeleccionados((actual) => alternar(actual, id)),
+    alternarGrupo: (ids) => setSeleccionados((actual) => marcarGrupo(actual, ids)),
+  };
+
+  function salirDeLaSeleccion() {
+    setModoSeleccion(false);
+    setSeleccionados(new Set());
+  }
+
+  function eliminarSeleccionados() {
+    const lista = elegidos.map((id) => documentos.get(id)).filter((d): d is DocumentoAEliminar => d !== undefined);
+    if (lista.length > 0) setEliminar(lista);
+  }
+
+  function resultadoDeEliminar(resultado: Resultado) {
+    setSeleccionados((actual) => sinEliminados(actual, idsRetirados(resultado)));
+    if (idsRetirados(resultado).length > 0) setAviso(avisoFinal(resultado));
+  }
 
   function targetOf(node: NodeRef): UploadTarget | null {
     if (!lookup || !node.domainId) return null;
@@ -152,6 +194,10 @@ export function InventarioPage() {
 
   const close = () => setDialog(null);
   const openImages = (domainId: string, document: DocumentItem) => setImagesFor({ domainId, document });
+  const openDelete = (domainId: string, document: DocumentItem) => {
+    setAviso(null);
+    setEliminar([aEliminar(document, domainId, lookup?.domains.get(domainId) ?? "dominio")]);
+  };
 
   return (
     <>
@@ -166,12 +212,40 @@ export function InventarioPage() {
           onChange={(event) => setQuery(event.currentTarget.value)}
           style={{ flex: "1 1 260px", maxWidth: 420 }}
         />
+        <Button variant={modoSeleccion ? "filled" : "default"} onClick={() => (modoSeleccion ? salirDeLaSeleccion() : setModoSeleccion(true))}>
+          {modoSeleccion ? "Cancelar selección" : "Seleccionar"}
+        </Button>
         {canCreateUnit && (
           <Button leftSection={<IconPlus size={16} />} onClick={() => setDialog({ kind: "unit" })}>
             Nuevo programa
           </Button>
         )}
       </Group>
+
+      {modoSeleccion && (
+        <Paper withBorder p="xs" radius="md" aria-label="Barra de selección">
+          <Group justify="space-between" gap="sm" wrap="wrap">
+            <Text fw={600}>{elegidos.length === 1 ? "1 seleccionado" : `${elegidos.length} seleccionados`}</Text>
+            <Group gap="xs">
+              <Button color="coral" disabled={elegidos.length === 0} onClick={eliminarSeleccionados}>
+                {`Eliminar seleccionados (${elegidos.length})`}
+              </Button>
+              <Button variant="default" onClick={salirDeLaSeleccion}>
+                Cancelar
+              </Button>
+            </Group>
+          </Group>
+        </Paper>
+      )}
+
+      {aviso && (
+        <Notice tone="ok">
+          {aviso}{" "}
+          <Button variant="default" size="compact-sm" onClick={() => setAviso(null)}>
+            Cerrar
+          </Button>
+        </Notice>
+      )}
 
       {data && !ingestionEnabled && (
         <Notice tone="warn">
@@ -205,6 +279,7 @@ export function InventarioPage() {
       )}
 
       {filtered && (
+        <SeleccionContext.Provider value={seleccion}>
         <div className="tree">
           {filtered.units.map((unit) => (
             <UnitBranch
@@ -214,6 +289,7 @@ export function InventarioPage() {
               renderActions={renderActions}
               onDropFiles={dropFiles}
               onImages={openImages}
+              onDelete={openDelete}
             />
           ))}
           {filtered.unassigned_domains.length > 0 && (
@@ -231,6 +307,7 @@ export function InventarioPage() {
                     renderActions={renderActions}
                     onDropFiles={dropFiles}
                     onImages={openImages}
+                    onDelete={openDelete}
                   />
                 ))}
               </div>
@@ -240,6 +317,7 @@ export function InventarioPage() {
             <Text c="dimmed">{searching ? "Ninguna coincidencia con la búsqueda." : "Todavía no hay información cargada."}</Text>
           )}
         </div>
+        </SeleccionContext.Provider>
       )}
 
       {dialog?.kind === "unit" && <NewUnitDialog onClose={close} />}
@@ -249,6 +327,9 @@ export function InventarioPage() {
       )}
       {dialog?.kind === "rename" && <RenameFolderDialog folderId={dialog.folderId} currentName={dialog.name} onClose={close} />}
       {dialog?.kind === "delete" && <DeleteFolderDialog folderId={dialog.folderId} name={dialog.name} onClose={close} />}
+      {eliminar && (
+        <EliminarDocumentosDialog documentos={eliminar} onClose={() => setEliminar(null)} onResultado={resultadoDeEliminar} />
+      )}
       {imagesFor && <ImagenesDialog domainId={imagesFor.domainId} document={imagesFor.document} onClose={() => setImagesFor(null)} />}
     </>
   );
