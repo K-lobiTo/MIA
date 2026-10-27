@@ -199,7 +199,7 @@ description: "Tareas de implementación de la feature 012: eliminación de docum
 - [X] T034 [P] En `docs/Definicion_Requerimientos_V2.md` (línea 127, lo que queda fuera de la V2, y línea 447, pendientes de administración del inventario) anotar que **borrar documentos** quedó resuelto por la feature 012 (con referencia a `specs/012-eliminar-documentos/`), dejando pendientes los demás (renombrar y mover documentos, reintentar, borrar dominios)
 - [X] T035 Correr `cd web/admin && npm run typecheck && npm test && npm run build` y `pytest && ruff check src tests scripts whatsapp`; revisar con `grep -rnP "\x{2014}" specs/012-eliminar-documentos docs src tests web/admin/src` que no haya guiones largos nuevos
 - [ ] T036 [USUARIO] Recorrer el [quickstart](quickstart.md) sección 2 en la laptop (con Qdrant local) y, cuando lo autorices, hacer el merge a `main` y el despliegue (`python scripts/servicios.py encender MIA --forzar` y el panel; sin migraciones)
-- [ ] T037 [USUARIO] En producción, eliminar con el panel los documentos de prueba del bot (`Maestria_en_Ciberseguridad.txt` y `Maestria_en_Ciberseguridad_enfasis.txt` de "Apertura de promoción") y comprobar que el bot responde "sin información" a lo que antes respondía (quickstart sección 4)
+- [X] T037 [USUARIO] En producción, eliminar con el panel los documentos de prueba del bot (`Maestria_en_Ciberseguridad.txt` y `Maestria_en_Ciberseguridad_enfasis.txt` de "Apertura de promoción") y comprobar que el bot responde "sin información" a lo que antes respondía (quickstart sección 4)
 
 ---
 
