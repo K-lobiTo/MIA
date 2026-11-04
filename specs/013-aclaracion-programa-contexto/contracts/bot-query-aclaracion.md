@@ -18,12 +18,14 @@ Cambio de `POST /bot/query` (feature 011, [bot-servicio-api.md](../../011-bot-wh
 
 Un cliente que no conozca `clarify` ve una respuesta "sin información", que es lo que veía antes.
 
+**Con `BOT_CLARIFY=off` la respuesta es la de antes**: `clarify` y `programs` siempre vacías, sin búsqueda extra ni lectura de títulos (la función entera queda inerte; el servicio, sin programas, no tiene programa que recordar). `programs` solo se llena con `BOT_CLARIFY=on`.
+
 ## Cuándo hay aclaración
 
 Solo si todo esto es cierto:
 1. `BOT_CLARIFY=on`.
 2. La búsqueda de la pregunta (vectorial, híbrida y con pregunta limpia si están encendidas, como hoy) **no dejó ningún fragmento** sobre el umbral (`QUERY_SIMILARITY_THRESHOLD`): el camino que hoy termina en "sin información" sin pasar por el modelo.
-3. Una búsqueda vectorial adicional con el mismo embedding (`limit` del modo) deja, con puntaje **mayor o igual a `BOT_CLARIFY_MIN_SIMILARITY`**, fragmentos de documentos de **dos o más programas distintos** (por clave, sin contar los documentos sin programa).
+3. Una búsqueda vectorial adicional con el mismo embedding (`BOT_CLARIFY_CANDIDATES` fragmentos) deja, con puntaje **mayor o igual a `BOT_CLARIFY_MIN_SIMILARITY`** y con **evidencia léxica de la pregunta** (alguna palabra con contenido de la pregunta, de 4 letras o más y sin interrogativos ni palabras genéricas, aparece al inicio de una palabra del fragmento), fragmentos de documentos de **dos o más programas distintos** (por clave, sin contar los documentos sin programa). Una pregunta sin palabras con contenido no pide aclaración.
 
 Si no, la respuesta es la de hoy. La respuesta "sin información" que da el modelo después de recibir fragmentos relevantes **no** produce aclaración.
 

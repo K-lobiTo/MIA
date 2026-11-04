@@ -37,7 +37,8 @@ Extiende `QueryResponse` (id, answer, sources, mode, latency_ms, no_info, images
 | Variable | Defecto | Rango | Para qué |
 |---|---|---|---|
 | `BOT_CLARIFY` | `off` | `on` / `off` (inválido: apagado y avisa una vez) | Enciende la búsqueda de decisión y la aclaración del bot. |
-| `BOT_CLARIFY_MIN_SIMILARITY` | calibrar (R9, punto de partida 0,55) | 0,0 a 1,0 | Puntaje mínimo de un fragmento para contar su programa como candidato. Menor que `QUERY_SIMILARITY_THRESHOLD`. |
+| `BOT_CLARIFY_MIN_SIMILARITY` | `0.70` (calibrado, R9) | 0,0 a 1,0 | Piso del puntaje de un fragmento para contar su programa como candidato (menor que `QUERY_SIMILARITY_THRESHOLD`). Solo es un piso: lo que discrimina es la evidencia léxica de la pregunta en el fragmento. |
+| `BOT_CLARIFY_CANDIDATES` | `30` | 5 a 100 | Fragmentos que mira la búsqueda de decisión (más que los de la consulta, para que entren los de cada programa). |
 | `BOT_CLARIFY_MAX_PROGRAMS` | `5` | 2 a 10 | Máximo de programas que se listan. |
 
 ## En el servicio del bot (memoria, sin base)

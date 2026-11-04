@@ -11,11 +11,12 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from mia_whatsapp.api_client import ImageRef, MiaApiClient
+from mia_whatsapp.clarify import match_candidate, render_clarify, with_program
 from mia_whatsapp.config import Settings
 from mia_whatsapp.format import compose_text, split_message
 from mia_whatsapp.kapso import KapsoClient
 from mia_whatsapp.logs import log_result
-from mia_whatsapp.state import State
+from mia_whatsapp.state import State, Turn
 from mia_whatsapp.webhook import IncomingMessage
 
 logger = logging.getLogger("mia_whatsapp")
@@ -87,6 +88,18 @@ async def _respond(
     return Outcome("imagen_fallida" if image_failed else resultado, sent=sent, images=images_sent)
 
 
+# Resultados de un envío que dejan la conversación en el contexto: lo que la persona recibió (aunque una imagen fallara).
+_SENT = frozenset({"respondido", "aclaracion", "sin_informacion", "imagen_fallida"})
+
+
+def _remember(deps: Deps, message: IncomingMessage, question: str, outcome: Outcome, bot_turn: Turn) -> None:
+    """Guarda en el contexto la pregunta de la persona y la respuesta del bot, solo si el envío salió bien: un envío fallido
+    no deja la conversación a medias (la siguiente pregunta se trata como nueva)."""
+    if outcome.resultado in _SENT:
+        deps.state.conversations.add_person(message.person_key, question)
+        deps.state.conversations.add(message.person_key, bot_turn)
+
+
 async def _process(deps: Deps, message: IncomingMessage) -> Outcome:
     settings = deps.settings
 
@@ -134,12 +147,32 @@ async def _process(deps: Deps, message: IncomingMessage) -> Outcome:
             deps, message, "muy_largo", _with_greeting(settings.bot_text_too_long, greeting), greeted=bool(greeting)
         )
 
+    # 6b. Contexto (feature 013): si el bot acaba de preguntar a qué programa se refiere y la persona nombra exactamente uno,
+    # su pregunta original sigue con ese programa. Si no lo nombra (o nombra varios), la aclaración se descarta y el mensaje
+    # es una pregunta nueva: máximo una aclaración por pregunta.
+    conversations = deps.state.conversations
+    person = message.person_key
+    to_send = question
+    chosen: str | None = None
+    pending = conversations.pending(person)
+    if pending is not None:
+        chosen = match_candidate(question, list(pending.candidates))
+        if chosen is not None:
+            to_send = with_program(pending.question, chosen)
+
     # 7 y 8. Consulta a MIA con el artefacto del bot, con un lugar en la cola de consultas simultáneas: lo que llega con la
-    # cola llena se descarta sin responder.
+    # cola llena se descarta sin responder. El reintento con el programa recordado usa el mismo lugar.
     if not await deps.state.gate.enter():
         return Outcome("descartado")
+    used_program = chosen
     try:
-        result = await deps.api.query(message.number_id, question)
+        result = await deps.api.query(message.number_id, to_send)
+        # Sin respuesta ni aclaración resuelta, y con un programa de la conversación: se reintenta una vez con él.
+        remembered = conversations.remembered_program(person)
+        if result.kind in ("no_info", "clarify") and chosen is None and remembered is not None:
+            retry = await deps.api.query(message.number_id, with_program(question, remembered))
+            if retry.kind == "answer":
+                result, used_program = retry, remembered
     finally:
         deps.state.gate.leave()
     if result.kind == "unknown_bot":
@@ -148,14 +181,26 @@ async def _process(deps: Deps, message: IncomingMessage) -> Outcome:
         return await _respond(
             deps, message, "no_disponible", _with_greeting(settings.bot_text_unavailable, greeting), greeted=bool(greeting)
         )
-    if result.kind == "no_info":
-        return await _respond(
+    if result.kind == "clarify" and chosen is None:
+        # La pregunta es ambigua entre programas: se pregunta a cuál se refiere (un solo mensaje, cuenta en la cuota).
+        text = render_clarify(settings.bot_text_clarify, result.candidates)
+        outcome = await _respond(deps, message, "aclaracion", _with_greeting(text, greeting), greeted=bool(greeting))
+        _remember(deps, message, question, outcome, Turn(role="bot", kind="clarify", candidates=tuple(result.candidates)))
+        return outcome
+    if result.kind in ("no_info", "clarify"):
+        # Con la pregunta ya aclarada, otra ambigüedad se trata como "sin información": nunca dos aclaraciones.
+        outcome = await _respond(
             deps, message, "sin_informacion", _with_greeting(settings.bot_text_no_info, greeting), greeted=bool(greeting)
         )
+        _remember(deps, message, question, outcome, Turn(role="bot", kind="no_info"))
+        return outcome
 
     # 9. Respuesta: saludo, texto y fuentes en un solo mensaje (cada mensaje cuenta para la cuota).
     text = compose_text(result.answer, result.sources, greeting)
-    return await _respond(deps, message, "respondido", text, greeted=bool(greeting), images=result.images)
+    outcome = await _respond(deps, message, "respondido", text, greeted=bool(greeting), images=result.images)
+    programs = tuple(result.programs) or ((used_program,) if used_program else ())
+    _remember(deps, message, question, outcome, Turn(role="bot", kind="answer", programs=programs))
+    return outcome
 
 
 async def handle_message(message: IncomingMessage, deps: Deps) -> None:

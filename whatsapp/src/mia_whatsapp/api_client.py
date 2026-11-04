@@ -36,12 +36,23 @@ class CountResult:
 
 @dataclass
 class QueryResult:
-    # answer, no_info, unknown_bot, o unavailable (403, 429, 5xx, tiempo agotado, error de red o respuesta inválida).
+    # answer, no_info, clarify (la pregunta es ambigua entre programas, feature 013), unknown_bot, o unavailable (403, 429,
+    # 5xx, tiempo agotado, error de red o respuesta inválida).
     kind: str
     answer: str = ""
     sources: list[str] = field(default_factory=list)
     images: list[ImageRef] = field(default_factory=list)
     status_code: int | None = None
+    # En `clarify`, los programas candidatos; en `answer`, los programas de los documentos citados.
+    candidates: list[str] = field(default_factory=list)
+    programs: list[str] = field(default_factory=list)
+
+
+def _names(value) -> list[str]:
+    """Una lista de nombres de programa de la respuesta; todo lo que no sea texto no vacío se ignora."""
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str) and item.strip()]
 
 
 class MiaApiClient:
@@ -114,9 +125,14 @@ class MiaApiClient:
                 for i in body.get("images") or []
             ]
             no_info = bool(body.get("no_info", False))
+            candidates = _names(body.get("clarify"))
+            programs = _names(body.get("programs"))
         except (ValueError, KeyError, TypeError, AttributeError):
             logger.warning("La API respondió algo inesperado a la consulta")
             return QueryResult(kind="unavailable", status_code=status)
         if no_info:
-            return QueryResult(kind="no_info", status_code=status)
-        return QueryResult(kind="answer", answer=answer, sources=sources, images=images, status_code=status)
+            kind = "clarify" if candidates else "no_info"
+            return QueryResult(kind=kind, candidates=candidates, status_code=status)
+        return QueryResult(
+            kind="answer", answer=answer, sources=sources, images=images, status_code=status, programs=programs
+        )

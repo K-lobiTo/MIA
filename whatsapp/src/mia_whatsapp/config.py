@@ -20,6 +20,10 @@ DEFAULT_TEXT_NO_INFO = (
     "No encontré esa información en los documentos. Prueba con otras palabras o pregunta por otro tema, "
     "por ejemplo matrícula, requisitos o plan de estudios."
 )
+DEFAULT_TEXT_CLARIFY = (
+    "¿A qué programa te refieres? Tengo información de:\n{programs}\n"
+    "Responde con el nombre del programa o su número."
+)
 DEFAULT_TEXT_UNAVAILABLE = "Ahora mismo no puedo responder. Intenta de nuevo más tarde."
 DEFAULT_TEXT_RATE_LIMIT = "Enviaste muchos mensajes seguidos. Intenta de nuevo en un rato."
 DEFAULT_TEXT_NOT_TEXT = "Por ahora solo entiendo mensajes de texto. Escribe tu pregunta, por favor."
@@ -47,6 +51,10 @@ class Settings(BaseSettings):
     bot_query_timeout_s: int = Field(default=30, ge=1, le=120)
     bot_kapso_rate_per_min: int = Field(default=90, ge=1, le=100)
     bot_seen_ttl_hours: int = Field(default=24, ge=1, le=168)
+    # Contexto de conversación (feature 013): los últimos turnos de cada persona, en memoria, y cuánto se recuerdan.
+    bot_context_messages: int = Field(default=4, ge=2, le=10)
+    bot_context_minutes: int = Field(default=30, ge=1, le=1440)
+    bot_context_max_people: int = Field(default=5000, ge=100, le=100000)
 
     bot_text_greeting: str = DEFAULT_TEXT_GREETING
     bot_text_no_info: str = DEFAULT_TEXT_NO_INFO
@@ -54,6 +62,8 @@ class Settings(BaseSettings):
     bot_text_rate_limit: str = DEFAULT_TEXT_RATE_LIMIT
     bot_text_not_text: str = DEFAULT_TEXT_NOT_TEXT
     bot_text_too_long: str = DEFAULT_TEXT_TOO_LONG
+    # `{programs}` se reemplaza por la lista numerada de programas candidatos.
+    bot_text_clarify: str = DEFAULT_TEXT_CLARIFY
 
     @field_validator("mia_api_url", "kapso_api_url")
     @classmethod
@@ -76,6 +86,7 @@ _TEXT_FIELDS = {
     "BOT_TEXT_RATE_LIMIT": "bot_text_rate_limit",
     "BOT_TEXT_NOT_TEXT": "bot_text_not_text",
     "BOT_TEXT_TOO_LONG": "bot_text_too_long",
+    "BOT_TEXT_CLARIFY": "bot_text_clarify",
 }
 
 

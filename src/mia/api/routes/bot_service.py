@@ -20,7 +20,10 @@ from mia.api.routes.query import NO_INFO_ANSWER, QueryRequest, QueryResponse, ru
 from mia.api.security import require_bot_service
 from mia.bots.status import bot_state, find_bot_by_number
 from mia.bots.usage import add_messages, current_month
+from mia.config import settings
+from mia.rag.completeness import switch_enabled
 from mia.rag.modes import mode_available
+from mia.rag.programs import ClarifyPolicy, QueryExtras
 from mia.storage.db import get_session
 from mia.storage.models import Artifact, QueryLog
 
@@ -52,6 +55,15 @@ class BotQuery(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
 
 
+class BotQueryResponse(QueryResponse):
+    """La respuesta de `QueryResponse` más lo que el servicio del bot necesita para la aclaración (feature 013):
+    `clarify` son los programas candidatos cuando la pregunta es ambigua entre programas (con `no_info` verdadero) y
+    `programs` los programas de los documentos citados en una respuesta. `POST /query` no los tiene."""
+
+    clarify: list[str] = Field(default_factory=list)
+    programs: list[str] = Field(default_factory=list)
+
+
 @router.post("/messages", response_model=BotMessagesOut)
 def bot_messages(payload: BotMessages, session: Session = Depends(get_session)) -> BotMessagesOut:
     """Cuenta mensajes del mes de un bot y dice en qué estado está. Se suma **antes** de calcular el estado, así el
@@ -66,8 +78,8 @@ def bot_messages(payload: BotMessages, session: Session = Depends(get_session)) 
     return BotMessagesOut(status=state.status, month=month, month_messages=state.usage.total, month_cap=state.cap)
 
 
-@router.post("/query", response_model=QueryResponse)
-def bot_query(payload: BotQuery, session: Session = Depends(get_session)) -> QueryResponse:
+@router.post("/query", response_model=BotQueryResponse)
+def bot_query(payload: BotQuery, session: Session = Depends(get_session)) -> BotQueryResponse:
     """Consulta con el artefacto asignado al bot, siempre en modo literal. Es la misma consulta que `POST /query`
     (`run_query`): mismos rechazos, topes diarios, citas y registro en Uso, con el artefacto asignado."""
     bot = find_bot_by_number(session, payload.number_id)
@@ -84,10 +96,23 @@ def bot_query(payload: BotQuery, session: Session = Depends(get_session)) -> Que
     if not domains and artifact.active and BOT_MODE in allowed_modes(artifact) and mode_available(BOT_MODE)[0]:
         return _no_domains_response(session, artifact.id, payload.question)
     request = QueryRequest(domains=domains or [NO_DOMAINS], question=payload.question, mode=BOT_MODE)
-    return run_query(request, artifact, session)
+    # Con BOT_CLARIFY encendida (feature 013) una pregunta sin resultados puede volver con los programas candidatos.
+    policy = (
+        ClarifyPolicy(
+            settings.bot_clarify_min_similarity, settings.bot_clarify_max_programs, settings.bot_clarify_candidates
+        )
+        if switch_enabled(settings.bot_clarify, "BOT_CLARIFY")
+        else None
+    )
+    # Con la opción apagada no se pide nada extra: la respuesta es exactamente la de antes (`clarify` y `programs` vacíos).
+    extras = QueryExtras() if policy is not None else None
+    result = run_query(request, artifact, session, clarify=policy, extras=extras)
+    if extras is None:
+        return BotQueryResponse(**result.model_dump())
+    return BotQueryResponse(**result.model_dump(), clarify=extras.clarify, programs=extras.programs)
 
 
-def _no_domains_response(session: Session, artifact_id: str, question: str) -> QueryResponse:
+def _no_domains_response(session: Session, artifact_id: str, question: str) -> BotQueryResponse:
     """El artefacto no cubre ningún dominio (por ejemplo, un programa sin dominios): no hay dónde buscar. Responde
     "sin información" sin gastar nada y deja la consulta en Uso."""
     started = time.perf_counter()
@@ -104,6 +129,6 @@ def _no_domains_response(session: Session, artifact_id: str, question: str) -> Q
     )
     session.add(log)
     session.commit()
-    return QueryResponse(
+    return BotQueryResponse(
         id=log.id, answer=NO_INFO_ANSWER, sources=[], mode=BOT_MODE, latency_ms=log.latency_ms or 0, no_info=True
     )

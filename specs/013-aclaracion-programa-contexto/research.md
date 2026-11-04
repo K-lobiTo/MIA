@@ -32,7 +32,7 @@ Decisiones de diseño con su razón y las alternativas. El qué y el por qué es
 
 ## R4. La búsqueda de decisión: un solo `search` vectorial con umbral bajo, sin embedding nuevo
 
-**Decision**: solo en el camino `if not relevant` de `run_query` (la búsqueda terminó sin nada sobre el umbral) y solo cuando se pidió con una política de aclaración (el bot), se hace **una** búsqueda vectorial adicional con el mismo embedding de la pregunta (ya calculado), `limit = search_limit` del modo, y se queda con los resultados con puntaje **mayor o igual a `BOT_CLARIFY_MIN_SIMILARITY`**. Se agrupan por programa (R3); si hay **dos o más programas** se responde con aclaración, con hasta `BOT_CLARIFY_MAX_PROGRAMS` (5) programas, ordenados por su mejor puntaje. Con uno o ninguno, "sin información" como hoy. Sin búsqueda híbrida, sin reranker y sin pregunta limpia en esta búsqueda: es solo para decidir. Interruptor `BOT_CLARIFY` (`on` u `off`, `off` por defecto, como las opciones de la V3).
+**Decision**: solo en el camino `if not relevant` de `run_query` (la búsqueda terminó sin nada sobre el umbral) y solo cuando se pidió con una política de aclaración (el bot), se hace **una** búsqueda vectorial adicional con el mismo embedding de la pregunta (ya calculado), con `BOT_CLARIFY_CANDIDATES` (30) fragmentos, y se queda con los resultados con puntaje **mayor o igual a `BOT_CLARIFY_MIN_SIMILARITY`** (un piso amplio) **y con evidencia léxica de la pregunta** (alguna de sus palabras con contenido aparece en el fragmento: la medición de R9 mostró que el puntaje solo no distingue una pregunta ambigua de una sin relación). Se agrupan por programa (R3); si hay **dos o más programas** se responde con aclaración, con hasta `BOT_CLARIFY_MAX_PROGRAMS` (5) programas, ordenados por su mejor puntaje. Con uno o ninguno, "sin información" como hoy. Sin búsqueda híbrida, sin reranker y sin pregunta limpia en esta búsqueda: es solo para decidir. Interruptor `BOT_CLARIFY` (`on` u `off`, `off` por defecto, como las opciones de la V3).
 
 **Rationale**: reutiliza el embedding (cero costo de modelo) y una consulta a Qdrant que ya sabemos que cuesta milisegundos; no cambia lo que hoy se responde (FR-007) porque ocurre después de decidir que no hay respuesta. El valor por defecto del umbral bajo se **calibra con los seis documentos reales** al implementar (tarea de medición, R9) y queda anotado aquí.
 
@@ -80,6 +80,42 @@ Decisiones de diseño con su razón y las alternativas. El qué y el por qué es
 **Decision**: el valor por defecto de `BOT_CLARIFY_MIN_SIMILARITY` se mide con los seis documentos reales ingeridos en un Qdrant local (con el mismo modelo de embeddings): puntajes de las preguntas ambiguas ("¿Cuándo empiezan las lecciones?", "¿Cuánto cuesta?", "¿Cuáles son los requisitos?"), de preguntas con un solo programa y de preguntas sin relación ("¿Cuánto cuesta la luna?"). El valor se elige para que las ambiguas den dos programas y las sin relación no den ninguno, y se anota aquí con los puntajes. Casos nuevos en `scripts/datos/casos_busqueda.json` (categoría `aclaracion`) y un script de prueba de punta a punta con el servicio y la API reales en un proceso (el patrón de `test_bot_end_to_end.py`).
 
 **Rationale**: el umbral correcto depende del modelo y de los documentos; no se adivina. Con él se decide el valor por defecto antes de encender `BOT_CLARIFY` en producción.
+
+### Resultado de la medición (2026-10-27) y cambio de diseño pendiente
+
+Medido con los seis documentos de `tmp/nuevos/` (31 + 20 fragmentos) en un Qdrant local y el modelo `multilingual-e5-small` de producción (puntajes de la búsqueda vectorial, 8 mejores resultados):
+
+| Pregunta | Mejor puntaje | Programas entre los 8 mejores |
+|---|---|---|
+| "¿Cuándo empiezan las lecciones?" (ambigua) | 0,816 | Analítica y Ciberseguridad (0,809 a 0,816) |
+| "¿Cuánto cuesta?" / "¿Cuáles son los requisitos?" / "¿Cómo me postulo?" (ambiguas) | 0,83 a 0,87 | los dos, pero ya pasan el umbral de 0,82 (las responde el modelo, no entran al camino de aclaración) |
+| "¿Cuánto cuesta la luna?" (sin relación) | 0,803 | Ciberseguridad y Analítica (0,791 a 0,803) |
+| "¿Qué hora es?" (sin relación) | 0,838 | pasa el umbral (lo responde el modelo) |
+| "¿Cómo se prepara un pastel de chocolate?" | 0,790 | |
+| "¿Quién ganó el mundial?" | 0,749 | |
+
+**Hallazgo: el puntaje de similitud solo no distingue una pregunta ambigua de una sin relación.** Este modelo comprime los puntajes entre 0,79 y 0,87 para casi cualquier pregunta: "¿Cuándo empiezan las lecciones?" (ambigua, 0,816) y "¿Cuánto cuesta la luna?" (sin relación, 0,803) quedan a 0,013 y con los dos programas en ambos casos. Con la regla actual ("dos o más programas sobre `BOT_CLARIFY_MIN_SIMILARITY`") no hay un valor del umbral que separe los dos casos con margen: con 0,55 (el valor de partida) la pregunta de la luna también pediría aclaración, lo que contradice SC-003.
+
+**Cambio de diseño implementado (2026-11-03):** además del puntaje, un programa solo cuenta como candidato si **el fragmento tiene evidencia léxica de la pregunta**, es decir, si alguna palabra con contenido de la pregunta aparece en su texto (`content_words` y `has_evidence` en `src/mia/rag/programs.py`).
+- Palabras con contenido: la pregunta en minúsculas y sin tildes, de al menos 4 letras, sin repetir y sin interrogativos, palabras vacías ni palabras genéricas (`maestria`, `programa`, `posgrado`...).
+- Coincidencia: inicio de palabra con los primeros 6 caracteres de la palabra (`lecciones` coincide con "Inicio de lecciones"; `postulo` con "postularse" y "postulación"; `luna` no coincide con nada ni con "columna").
+- La búsqueda de decisión pide más candidatos (`BOT_CLARIFY_CANDIDATES`, 30, rango 5 a 100) para que entren los fragmentos de admisión de cada programa, y `BOT_CLARIFY_MIN_SIMILARITY` baja a un piso amplio (**0,70**), porque ya no es lo que discrimina.
+- Sin palabras con contenido no hay aclaración (no se puede saber).
+
+**Medición con la regla (mismos seis documentos y modelo; solo cuentan las preguntas que no pasan el umbral de 0,82, que son las que llegan a la búsqueda de decisión):**
+
+| Pregunta | Mejor puntaje | Palabras con contenido | Programas candidatos | Resultado |
+|---|---|---|---|---|
+| "¿Cuándo empiezan las lecciones?" (ambigua) | 0,816 | empiezan, lecciones | Ciberseguridad y Analítica | **aclaración** |
+| "¿Cuánto cuesta la luna?" (sin relación) | 0,803 | cuesta, luna | ninguno | sin información |
+| "¿Cómo se prepara un pastel de chocolate?" | 0,790 | prepara, pastel, chocolate | uno (Analítica) | sin información |
+| "¿Quién ganó el mundial?" | 0,749 | gano, mundial | ninguno | sin información |
+| "¿Cuándo empiezan las vacaciones de verano?" | 0,805 | empiezan, vacaciones, verano | ninguno | sin información |
+| "¿Cuánto cuesta la entrada al cine?" | 0,813 | cuesta, entrada, cine | ninguno | sin información |
+
+Las demás preguntas ambiguas medidas ("¿Cómo me postulo?", "¿Cuáles son las fechas de admisión?", "¿Cuál es la fecha de matrícula?", "¿Qué documentos necesito para aplicar?", "¿Cuándo inician las clases?", "¿Cuánto dura?") tienen un mejor puntaje de 0,835 a 0,874: **ya pasan el umbral de 0,82** y las responde el modelo con los fragmentos que recuperó, sin entrar a la aclaración (la aclaración es solo para lo que hoy termina en "sin información" sin pasar por el modelo, FR-001). Con la regla, todas darían los dos programas si llegaran a la búsqueda de decisión, así que la regla no deja afuera ninguna ambigua. Limitación conocida: "¿Cuánto cuesta?" no tiene coincidencia léxica con los documentos ("Inversión", "costo"), y tampoco entra a la aclaración.
+
+**El reintento con el programa (R7)**: "¿Cuándo empiezan las lecciones? (Maestría en Ciberseguridad)" recupera como mejor fragmento el de la admisión de Ciberseguridad con el dato ("Inicio de lecciones: I Trimestre de 2027", puntaje 0,897); con "(Maestría en Analítica de Negocio (Business Analytics))" el fragmento de admisión con "5 de octubre" queda entre los tres primeros (0,894); "¿Y cuánto cuesta? (Maestría en Analítica de Negocio (Business Analytics))" recupera el fragmento de la presentación con ₡61 000. Todos con puntajes de 0,88 a 0,90, sobre el umbral.
 
 ## R10. Lo que no cambia, privacidad y cuota
 

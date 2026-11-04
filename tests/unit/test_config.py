@@ -220,6 +220,45 @@ def test_una_espera_de_eliminacion_fuera_de_rango_no_deja_arrancar(valor):
         Settings(_env_file=None, delete_wait_seconds=valor)
 
 
+# --- Aclaración de programa del bot (feature 013) ------------------------------------------------------------------
+
+
+def test_los_valores_por_defecto_de_la_aclaracion_de_programa():
+    from mia.config import Settings
+
+    base = Settings(_env_file=None)
+    assert base.bot_clarify == "off"
+    assert base.bot_clarify_min_similarity == 0.70 and base.bot_clarify_max_programs == 5
+    assert base.bot_clarify_candidates == 30
+
+
+@pytest.mark.parametrize(
+    ("campo", "valor"),
+    [
+        ("bot_clarify_min_similarity", -0.1),
+        ("bot_clarify_min_similarity", 1.1),
+        ("bot_clarify_max_programs", 1),
+        ("bot_clarify_max_programs", 11),
+        ("bot_clarify_candidates", 4),
+        ("bot_clarify_candidates", 101),
+    ],
+)
+def test_un_valor_de_la_aclaracion_fuera_de_rango_no_deja_arrancar(campo, valor):
+    from pydantic import ValidationError
+
+    from mia.config import Settings
+
+    with pytest.raises(ValidationError, match=campo):
+        Settings(_env_file=None, **{campo: valor})
+
+
+@pytest.mark.parametrize(("valor", "esperado"), [("on", True), ("ON", True), ("off", False), ("", False), ("tal vez", False)])
+def test_el_interruptor_de_la_aclaracion_trata_un_valor_invalido_como_apagado(valor, esperado):
+    from mia.rag.completeness import switch_enabled
+
+    assert switch_enabled(valor, "BOT_CLARIFY") is esperado
+
+
 # --- Bot de WhatsApp (feature 011): variables de la API -------------------------------------------------------
 
 

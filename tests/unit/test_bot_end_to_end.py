@@ -8,6 +8,7 @@ servicio, estados y forma de la respuesta), y que un cambio hecho en el panel ri
 import asyncio
 import json
 import uuid
+from typing import ClassVar
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -18,6 +19,7 @@ from mia_whatsapp.flow import Deps, handle_message
 from mia_whatsapp.kapso import KapsoClient
 from mia_whatsapp.state import State
 from mia_whatsapp.webhook import EVENT, parse_event
+from sqlalchemy import text
 
 from mia.api.main import app
 from mia.api.routes import query as query_routes
@@ -310,3 +312,127 @@ def test_el_audio_y_la_pregunta_larga_no_llegan_al_modelo(db, mundo):
     pipeline.llm.answer.assert_not_called()
     assert "solo entiendo mensajes de texto" in servicio.kapso.textos[0]
     assert "muy largo" in servicio.kapso.textos[1]
+
+
+# --- Aclaración de programa y contexto (feature 013) -----------------------------------------------------------
+
+CIBER = "MAESTRÍA EN CIBERSEGURIDAD"
+ANALITICA = "MAESTRÍA EN ANALÍTICA DE NEGOCIO (BUSINESS ANALYTICS)"
+AMBIGUA = "¿Cuándo empiezan las lecciones?"
+
+
+class PipelineProgramas(Pipeline):
+    """Dos programas en el dominio del bot. El vector de la pregunta dice de cuál habla: 1 Ciberseguridad, 2 Analítica,
+    0 ninguno (ambigua). Una pregunta sin programa no pasa el umbral pero sí el umbral bajo de los dos."""
+
+    TITULOS: ClassVar[dict[str, str]] = {"ciber-adm": f"{CIBER}: ADMISIÓN\nFechas...", "ana-adm": f"{ANALITICA}: ADMISIÓN\nFechas..."}
+
+    def __init__(self):
+        super().__init__(texto="Las lecciones inician en el I trimestre de 2027.\nFUENTES: 1")
+
+        def vector(textos, is_query=False):
+            texto = textos[0].lower()
+            return [[1.0 if "ciberseguridad" in texto else 2.0 if "analítica" in texto else 0.0, 0.0]]
+
+        def resultado(documento, puntaje):
+            return SearchResult(chunk_id=f"c-{documento}", document_id=documento, domain="dom-1", text="Inicio de lecciones", score=puntaje)
+
+        def buscar(vector, domains, limit):
+            if vector[0] == 1.0:
+                return [resultado("ciber-adm", 0.95)]
+            if vector[0] == 2.0:
+                return [resultado("ana-adm", 0.95)]
+            return [resultado("ciber-adm", 0.70), resultado("ana-adm", 0.66)]
+
+        def trozos(document_id, indexes):
+            if indexes == [0] and document_id in self.TITULOS:
+                return [SearchResult(chunk_id="c0", document_id=document_id, domain="dom-1", text=self.TITULOS[document_id], score=0.0)]
+            return []
+
+        self.embeddings.embed.side_effect = vector
+        self.store.search.side_effect = buscar
+        self.store.get_chunks.side_effect = trozos
+
+
+@pytest.fixture
+def programas(db, mundo, monkeypatch):
+    """Dos documentos de programas distintos en el dominio del bot y la aclaración encendida."""
+    monkeypatch.setattr(settings, "bot_clarify", "on")
+    monkeypatch.setattr(settings, "bot_clarify_min_similarity", 0.55)
+    from mia.rag import programs as programs_module
+
+    programs_module.clear_cache()
+    with db() as session:
+        session.add_all([
+            Document(id="ciber-adm", domain_id="dom-1", filename="Maestria_en_Ciberseguridad_Admision.txt", source_type="txt", file_hash="h-c", status="done"),
+            Document(id="ana-adm", domain_id="dom-1", filename="Maestria_en_Analitica_de_Negocio_Admision.txt", source_type="txt", file_hash="h-a", status="done"),
+        ])
+        session.commit()
+    yield mundo
+    programs_module.clear_cache()
+
+
+def test_una_pregunta_ambigua_recibe_la_aclaracion_y_contestarla_entrega_la_respuesta_con_4_mensajes_de_cuota(client, db, programas):
+    servicio = Servicio()
+
+    with PipelineProgramas() as pipeline:
+        servicio.escribir(AMBIGUA)
+        servicio.escribir("Ciberseguridad")
+
+    aclaracion, respuesta = servicio.kapso.textos
+    assert "¿A qué programa te refieres?" in aclaracion
+    assert "1. Maestría en Ciberseguridad" in aclaracion and "2. Maestría en Analítica de Negocio (Business Analytics)" in aclaracion
+    assert "I trimestre de 2027" in respuesta and respuesta.endswith("Fuentes: Maestria_en_Ciberseguridad_Admision.txt")
+    pipeline.llm.answer.assert_called_once()  # el modelo solo se usó para la respuesta, nunca para decidir ni aclarar
+    with db() as session:
+        uso = month_usage(session, programas["bot_id"], current_month())
+        registros = session.query(QueryLog).order_by(QueryLog.created_at).all()
+    assert (uso.received, uso.sent) == (2, 2)  # pregunta, aclaración, respuesta de la persona y respuesta final
+    assert [r.outcome for r in registros] == ["no_info", "answered"]  # la aclaración queda en Uso como "sin información"
+
+
+def test_una_pregunta_que_nombra_el_programa_responde_igual_con_la_aclaracion_encendida_o_apagada(client, db, programas, monkeypatch):
+    pregunta = "¿Cuándo empiezan las lecciones de la maestría en ciberseguridad?"
+    resultados = {}
+    for valor in ("on", "off"):
+        monkeypatch.setattr(settings, "bot_clarify", valor)
+        servicio = Servicio()
+        with PipelineProgramas() as pipeline:
+            servicio.escribir(pregunta, persona=f"persona-{valor}")
+        assert pipeline.store.search.call_count == 1  # sin búsqueda extra
+        resultados[valor] = servicio.kapso.textos
+
+    assert resultados["on"] == resultados["off"]
+    assert resultados["on"][0].endswith("Fuentes: Maestria_en_Ciberseguridad_Admision.txt")
+
+
+def test_con_la_aclaracion_apagada_la_pregunta_ambigua_recibe_sin_informacion_como_en_la_011(client, db, programas, monkeypatch):
+    monkeypatch.setattr(settings, "bot_clarify", "off")
+    servicio = Servicio()
+
+    with PipelineProgramas():
+        servicio.escribir(AMBIGUA)
+
+    assert "No encontré esa información en los documentos" in servicio.kapso.textos[0]
+    assert "¿A qué programa" not in servicio.kapso.textos[0]
+
+
+def test_el_contexto_no_deja_el_telefono_ni_el_texto_en_la_base_y_no_sobrevive_a_un_servicio_nuevo(client, db, programas):
+    servicio = Servicio()
+    telefono = f"506{abs(hash('ana')) % 10**8:08d}"
+
+    with PipelineProgramas():
+        servicio.escribir(AMBIGUA, persona="ana")
+        servicio.escribir("Ciberseguridad", persona="ana")
+
+    with db() as session:
+        volcado = []
+        for tabla in ("queries", "bots", "bot_message_counts"):
+            filas = session.execute(text(f"select * from {tabla}")).all()
+            volcado.extend(str(tuple(f)) for f in filas)
+    todo = "\n".join(volcado)
+    assert telefono not in todo and "conv-ana" not in todo and "wamid" not in todo
+    # El texto "Ciberseguridad" de la respuesta a la aclaración no es una consulta registrada: solo lo es la pregunta compuesta.
+    assert todo.count(f"{AMBIGUA} (Maestría en Ciberseguridad)") == 1
+    assert servicio.deps.state.conversations.count == 1
+    assert Servicio().deps.state.conversations.count == 0  # un servicio nuevo (reinicio) no recuerda nada

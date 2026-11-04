@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from mia_whatsapp.config import (
+    DEFAULT_TEXT_CLARIFY,
     DEFAULT_TEXT_GREETING,
     DEFAULT_TEXT_NO_INFO,
     DEFAULT_TEXT_NOT_TEXT,
@@ -54,9 +55,21 @@ def test_valores_por_defecto():
     assert base.bot_text_greeting == DEFAULT_TEXT_GREETING and base.bot_text_no_info == DEFAULT_TEXT_NO_INFO
 
 
+def test_el_contexto_de_conversacion_y_el_texto_de_aclaracion_por_defecto():
+    base = hacer()
+    assert (base.bot_context_messages, base.bot_context_minutes, base.bot_context_max_people) == (4, 30, 5000)
+    assert base.bot_text_clarify == DEFAULT_TEXT_CLARIFY and "{programs}" in DEFAULT_TEXT_CLARIFY
+
+
 @pytest.mark.parametrize(
     ("campo", "valor"),
     [
+        ("bot_context_messages", 1),
+        ("bot_context_messages", 11),
+        ("bot_context_minutes", 0),
+        ("bot_context_minutes", 1441),
+        ("bot_context_max_people", 99),
+        ("bot_context_max_people", 100001),
         ("bot_max_messages_per_hour", 0),
         ("bot_max_messages_per_hour", 1001),
         ("bot_max_messages_per_day", 0),
@@ -98,6 +111,7 @@ TEXTOS = {
     "límite por persona": DEFAULT_TEXT_RATE_LIMIT,
     "no es texto": DEFAULT_TEXT_NOT_TEXT,
     "pregunta larga": DEFAULT_TEXT_TOO_LONG,
+    "aclaración": DEFAULT_TEXT_CLARIFY.format(programs="1. Maestría en Ciberseguridad"),
 }
 
 
@@ -144,3 +158,8 @@ def test_se_reportan_todos_los_textos_que_tengan_contacto():
 
 def test_unos_pocos_digitos_no_son_un_telefono():
     assert contact_warnings(hacer(bot_text_no_info="Son 3 pasos de los 12 del trámite, del 2026.")) == []
+
+
+def test_un_texto_de_aclaracion_con_contacto_se_reporta_por_el_nombre_de_su_variable():
+    assert contact_warnings(hacer(bot_text_clarify="Escribe a admision@tec.ac.cr. {programs}")) == ["BOT_TEXT_CLARIFY"]
+    assert contact_warnings(hacer(bot_text_clarify="¿A cuál te refieres?\n{programs}")) == []

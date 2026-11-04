@@ -1,0 +1,16 @@
+[
+  {"id": "AC1", "pregunta": "¿Cuándo empiezan las lecciones?", "espera": "aclaracion", "nota": "El caso que origina la feature: ambigua entre dos programas, no pasa el umbral (0,816 el 27 de octubre de 2026)."},
+  {"id": "AC2", "pregunta": "¿Cómo me postulo?", "espera": "aclaracion", "nota": "Ambigua; hoy pasa el umbral y la responde el modelo."},
+  {"id": "AC3", "pregunta": "¿Cuáles son las fechas de admisión?", "espera": "aclaracion", "nota": "Ambigua; hoy pasa el umbral."},
+  {"id": "AC4", "pregunta": "¿Cuándo es la matrícula?", "espera": "aclaracion", "nota": "Ambigua; hoy pasa el umbral."},
+  {"id": "AC5", "pregunta": "¿Qué documentos necesito para aplicar?", "espera": "aclaracion", "nota": "Ambigua; hoy pasa el umbral."},
+  {"id": "AC6", "pregunta": "¿Cuándo inician las clases?", "espera": "aclaracion", "nota": "Ambigua con otra redacción; hoy pasa el umbral."},
+  {"id": "AC7", "pregunta": "¿Cuáles son los requisitos de admisión?", "espera": "aclaracion", "nota": "Ambigua; hoy pasa el umbral."},
+  {"id": "UP1", "pregunta": "¿Qué énfasis puedo elegir?", "espera": "sin_aclaracion", "nota": "Solo Ciberseguridad tiene énfasis: un programa, no se pregunta."},
+  {"id": "UP2", "pregunta": "¿Cuál es el requisito del curso de big data?", "espera": "sin_aclaracion", "nota": "Solo Analítica tiene ese curso."},
+  {"id": "SR1", "pregunta": "¿Cuánto cuesta la luna?", "espera": "sin_aclaracion", "nota": "Sin relación con puntaje parecido al de AC1 (0,803): solo la evidencia léxica lo separa."},
+  {"id": "SR2", "pregunta": "¿Cómo se prepara un pastel de chocolate?", "espera": "sin_aclaracion", "nota": "Sin relación; entra un programa por una coincidencia casual."},
+  {"id": "SR3", "pregunta": "¿Quién ganó el mundial?", "espera": "sin_aclaracion", "nota": "Sin relación."},
+  {"id": "SR4", "pregunta": "¿Cuándo empiezan las vacaciones de verano?", "espera": "sin_aclaracion", "nota": "Sin relación pero con palabras de AC1 (empiezan): no debe preguntar."},
+  {"id": "SR5", "pregunta": "¿Cuánto cuesta la entrada al cine?", "espera": "sin_aclaracion", "nota": "Sin relación pero con palabras de las preguntas de costo."}
+]

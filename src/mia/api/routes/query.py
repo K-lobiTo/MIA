@@ -53,6 +53,13 @@ from mia.rag.lexical import (
 )
 from mia.rag.llm import RagContext, get_llm_provider, is_no_info_answer
 from mia.rag.modes import estimate_cost, mode_available, mode_config
+from mia.rag.programs import (
+    ClarifyPolicy,
+    QueryExtras,
+    content_words,
+    group_by_program,
+    program_of_document,
+)
 from mia.rag.query_rewrite import clean_note, clean_question, clean_question_enabled
 from mia.rag.rerank import (
     RerankOutcome,
@@ -113,6 +120,26 @@ class QueryResponse(BaseModel):
 class Feedback(BaseModel):
     rating: Literal["util", "no_util"]
     comment: str | None = None
+
+
+def _clarify_candidates(
+    vector_store, domains, question: str, question_embedding, limit: int, policy: ClarifyPolicy
+) -> list[str]:
+    """Los programas candidatos de una pregunta ambigua (feature 013): una búsqueda vectorial más, con el mismo embedding y
+    más candidatos, solo para decidir. Un programa cuenta si tiene un fragmento con puntaje mínimo **y** con evidencia
+    léxica de la pregunta (alguna de sus palabras con contenido): el puntaje solo no separa una pregunta ambigua de una sin
+    relación. Dos o más programas son una ambigüedad; uno o ninguno, no (la respuesta sigue siendo "sin información").
+    Nunca rompe la consulta."""
+    try:
+        words = content_words(question)
+        if not words:
+            return []
+        results = vector_store.search(question_embedding, domains=domains, limit=max(limit, policy.candidates))
+        found = group_by_program(results, vector_store, policy.min_similarity, policy.max_programs, evidence_words=words)
+    except Exception:
+        logger.warning("No se pudo decidir la aclaración de programa", exc_info=True)
+        return []
+    return [program.name for program in found] if len(found) >= 2 else []
 
 
 def _elapsed_ms(started: float) -> int:
@@ -259,10 +286,20 @@ def query(
     return run_query(payload, artifact, session)
 
 
-def run_query(payload: QueryRequest, artifact: Artifact, session: Session) -> QueryResponse:
+def run_query(
+    payload: QueryRequest,
+    artifact: Artifact,
+    session: Session,
+    clarify: ClarifyPolicy | None = None,
+    extras: QueryExtras | None = None,
+) -> QueryResponse:
     """Una consulta completa con la configuración de `artifact` (permisos, topes, registro en Uso). La usan `POST /query`
     (el artefacto de la clave) y `POST /bot/query` (el artefacto asignado al bot de WhatsApp, feature 011): así los dos
-    caminos aplican siempre las mismas reglas."""
+    caminos aplican siempre las mismas reglas.
+
+    Solo el bot pasa `clarify` y `extras` (feature 013): con ellos, una consulta que no deja nada sobre el umbral decide si
+    la pregunta es ambigua entre programas (`extras.clarify`), y una respuesta informa los documentos y los programas de
+    sus fuentes. Sin ellos la consulta es exactamente la de siempre."""
     started = time.perf_counter()
     log = QueryLog(
         id=str(uuid.uuid4()),
@@ -429,6 +466,10 @@ def run_query(payload: QueryRequest, artifact: Artifact, session: Session) -> Qu
         )
 
     if not relevant:
+        if clarify is not None and extras is not None:
+            extras.clarify = _clarify_candidates(
+                vector_store, payload.domains, payload.question, question_embedding, config.search_limit, clarify
+            )
         return no_info()
 
     # Con QUERY_COMPLETE_CONTEXT encendida el documento principal se entrega completo o prolongado hacia
@@ -584,6 +625,13 @@ def run_query(payload: QueryRequest, artifact: Artifact, session: Session) -> Qu
     log.latency_ms = _elapsed_ms(started)
     session.add(log)
     session.commit()
+    if extras is not None:
+        extras.source_document_ids = list(dict.fromkeys(source_document_ids))
+        try:
+            found = [program_of_document(vector_store, document_id) for document_id in extras.source_document_ids]
+            extras.programs = list(dict.fromkeys(p.name for p in found if p is not None))
+        except Exception:
+            logger.warning("No se pudieron leer los programas de las fuentes", exc_info=True)
     return QueryResponse(
         id=log.id,
         answer=answer_text,

@@ -117,6 +117,16 @@ class Settings(BaseSettings):
     bot_service_key: str = ""
     bot_monthly_message_cap: int = Field(default=1800, ge=1, le=100000)
     max_image_mb: int = Field(default=2, ge=1, le=10)
+    # Aclaración de programa del bot (feature 013, specs/013-aclaracion-programa-contexto/). Con `bot_clarify` en `on`, si
+    # una pregunta del bot no deja nada sobre el umbral de similitud, una búsqueda vectorial adicional con
+    # `bot_clarify_min_similarity` y la evidencia léxica de la pregunta deciden si dos o más programas tienen algo
+    # relacionado y, entonces, `/bot/query` devuelve
+    # los programas candidatos para que el bot pregunte a cuál se refiere. `bot_clarify_max_programs` limita la lista.
+    bot_clarify: str = "off"
+    bot_clarify_min_similarity: float = Field(default=0.70, ge=0.0, le=1.0)
+    bot_clarify_max_programs: int = Field(default=5, ge=2, le=10)
+    # Fragmentos que mira la búsqueda de decisión (más que los de la consulta, para que entren los de cada programa).
+    bot_clarify_candidates: int = Field(default=30, ge=5, le=100)
 
     # En Render free (512 MB) ingerir actas grandes agota la memoria: allí se desactiva y la ingesta
     # se hace desde una instancia local apuntando a las mismas bases (ver docs/OPERACION.md).

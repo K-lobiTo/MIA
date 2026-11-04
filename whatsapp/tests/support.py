@@ -129,6 +129,8 @@ class FakeMia:
             "no_info": False,
             "images": [],
         }
+        # Opcional: función que dada la pregunta devuelve el cuerpo de la respuesta (para conversaciones de varios pasos).
+        self.query_responder = None
         self.query_delay = None  # función asíncrona opcional que se espera antes de responder
         self.counts_error: int | None = None
 
@@ -150,7 +152,8 @@ class FakeMia:
             if request.url.path.endswith("/bot/query"):
                 if self.query_delay is not None:
                     await self.query_delay(entry)
-                return httpx.Response(self.query_status, json=self.query_body if self.query_status == 200 else {"detail": "x"})
+                body = self.query_responder(entry["json"]["question"]) if self.query_responder else self.query_body
+                return httpx.Response(self.query_status, json=body if self.query_status == 200 else {"detail": "x"})
             return httpx.Response(404)
 
         return httpx.MockTransport(handler)

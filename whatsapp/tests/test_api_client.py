@@ -202,3 +202,61 @@ def test_la_cuenta_de_mensajes_no_espera_tanto_como_la_consulta():
     _count(_client_with(handler, bot_query_timeout_s=30), received=1)
 
     assert vistos[0] <= 10
+
+
+# --- Aclaración de programa y programas de las fuentes (feature 013) -------------------------------------------
+
+
+def test_una_aclaracion_es_clarify_con_los_programas_candidatos_en_orden():
+    fake = FakeMia()
+    fake.query_body.update(
+        {
+            "no_info": True,
+            "sources": [],
+            "images": [],
+            "answer": "No encontré información suficiente",
+            "clarify": ["Maestría en Ciberseguridad", "Maestría en Analítica de Negocio (Business Analytics)"],
+            "programs": [],
+        }
+    )
+
+    resultado = _query(_client(fake))
+
+    assert resultado.kind == "clarify"
+    assert resultado.candidates == ["Maestría en Ciberseguridad", "Maestría en Analítica de Negocio (Business Analytics)"]
+    assert resultado.sources == [] and resultado.images == []
+
+
+def test_sin_informacion_y_sin_candidatos_sigue_siendo_no_info():
+    fake = FakeMia()
+    fake.query_body.update({"no_info": True, "sources": [], "images": [], "clarify": [], "programs": []})
+
+    resultado = _query(_client(fake))
+
+    assert resultado.kind == "no_info" and resultado.candidates == []
+
+
+def test_una_respuesta_trae_los_programas_de_sus_fuentes():
+    fake = FakeMia()
+    fake.query_body.update({"clarify": [], "programs": ["Maestría en Ciberseguridad"]})
+
+    resultado = _query(_client(fake))
+
+    assert resultado.kind == "answer" and resultado.programs == ["Maestría en Ciberseguridad"]
+
+
+def test_una_respuesta_de_una_api_anterior_sin_los_campos_nuevos_se_lee_como_antes():
+    fake = FakeMia()  # el cuerpo por defecto no trae `clarify` ni `programs`
+
+    resultado = _query(_client(fake))
+
+    assert resultado.kind == "answer" and resultado.programs == [] and resultado.candidates == []
+
+
+def test_un_clarify_o_programs_con_formas_raras_se_ignoran_sin_romper():
+    fake = FakeMia()
+    fake.query_body.update({"clarify": "no es una lista", "programs": [None, 3, "Maestría en A"]})
+
+    resultado = _query(_client(fake))
+
+    assert resultado.kind == "answer" and resultado.candidates == [] and resultado.programs == ["Maestría en A"]
