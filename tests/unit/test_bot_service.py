@@ -124,6 +124,7 @@ def test_un_bot_en_orden_responde_ok_y_suma_lo_recibido(client, db, mundo, servi
         "month": current_month(),
         "month_messages": 1,
         "month_cap": settings.bot_monthly_message_cap,
+        "context_turns": 2,
     }
     with db() as session:
         assert month_usage(session, bot_id).received == 1

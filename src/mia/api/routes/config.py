@@ -24,6 +24,8 @@ class ModeConfigOut(BaseModel):
 class ArtifactInfo(BaseModel):
     name: str
     active: bool
+    # Vueltas que recuerda el artefacto (feature 014): cuántas puede enviar el cliente como historial. 0: ninguna.
+    context_turns: int = 0
 
 
 class ConfigOut(BaseModel):
@@ -81,7 +83,9 @@ def get_config(
         return ConfigOut(**base)
     return ArtifactConfigOut(
         **base,
-        artifact=ArtifactInfo(name=artifact.name, active=artifact.active),
+        artifact=ArtifactInfo(
+            name=artifact.name, active=artifact.active, context_turns=artifact.context_turns
+        ),
         caps=CapsOut(
             cap_reached=state.cap_reached,
             reasoning_cap_reached=state.reasoning_cap_reached,

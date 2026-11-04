@@ -133,3 +133,56 @@ def test_informa_el_motivo_de_fin_de_la_generacion(motivo, esperado):
 def test_sin_el_campo_de_motivo_queda_desconocido():
     # Las respuestas simuladas de las demás pruebas no traen finish_reason: debe quedar en None, no fallar.
     assert _provider(_client()).answer("¿?", []).finish_reason is None
+
+
+# --- Reescritura de la pregunta con el historial (feature 014) --------------------------------------------------------
+
+
+def test_rewrite_pide_una_pregunta_autonoma_sin_razonamiento_y_devuelve_el_uso():
+    from mia.config import settings
+    from mia.rag.history import HistoryTurn
+
+    client = _client("¿Cuánto cuesta la maestría en analítica de negocio?")
+    client.chat.completions.create.return_value.usage = SimpleNamespace(
+        prompt_tokens=300, completion_tokens=20, cost=0.00004, completion_tokens_details=None
+    )
+    provider = _provider(client, openrouter_reasoning_effort="high", openrouter_zdr=True)
+    historial = [HistoryTurn("¿Cuándo empiezan las lecciones de analítica?", "El 5 de octubre.")]
+
+    with patch.multiple(
+        openrouter_llm.settings, openrouter_reasoning_effort="high", openrouter_zdr=True
+    ):
+        resultado = provider.rewrite("¿y cuánto cuesta?", historial)
+
+    kwargs = client.chat.completions.create.call_args.kwargs
+    sistema, usuario = kwargs["messages"]
+    assert (
+        sistema["role"] == "system"
+        and "responde solo con la pregunta" in sistema["content"].lower()
+    )
+    assert "reescribe la última pregunta" in sistema["content"].lower()
+    assert (
+        "Conversación anterior" in usuario["content"]
+        and "¿Cuándo empiezan las lecciones de analítica?" in usuario["content"]
+    )
+    assert usuario["content"].rstrip().endswith("¿y cuánto cuesta?")
+    assert kwargs["max_tokens"] == settings.history_rewrite_max_tokens
+    # Sin razonamiento, con las mismas restricciones de proveedores.
+    assert kwargs["extra_body"] == {"provider": {"data_collection": "deny", "zdr": True}}
+    assert resultado.text == "¿Cuánto cuesta la maestría en analítica de negocio?"
+    assert (resultado.prompt_tokens, resultado.completion_tokens, resultado.cost_usd) == (
+        300,
+        20,
+        0.00004,
+    )
+
+
+def test_los_demas_proveedores_no_reescriben():
+    from mia.rag.llm import LLMProvider
+
+    class Minimo(LLMProvider):
+        def answer(self, question, context, instructions="", history=None):
+            raise AssertionError
+
+    with pytest.raises(NotImplementedError):
+        Minimo().rewrite("¿y cuánto cuesta?", [])

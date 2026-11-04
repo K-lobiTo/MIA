@@ -2,7 +2,16 @@ from google import genai
 from google.genai import types
 
 from mia.config import settings
-from mia.rag.llm import RAG_SYSTEM_PROMPT, LLMAnswer, LLMProvider, RagContext, format_context
+from mia.rag.history import HistoryTurn
+from mia.rag.llm import (
+    RAG_SYSTEM_PROMPT,
+    LLMAnswer,
+    LLMProvider,
+    RagContext,
+    build_user_message,
+    format_context,
+    instructions_with_history,
+)
 
 MODEL = "gemini-3.5-flash-lite"
 
@@ -22,13 +31,17 @@ class GeminiLLMProvider(LLMProvider):
         )
 
     def answer(
-        self, question: str, context: list[RagContext], instructions: str = RAG_SYSTEM_PROMPT
+        self,
+        question: str,
+        context: list[RagContext],
+        instructions: str = RAG_SYSTEM_PROMPT,
+        history: list[HistoryTurn] | None = None,
     ) -> LLMAnswer:
         context_block = format_context(context)
         interaction = self._client.interactions.create(
             model=MODEL,
-            system_instruction=instructions,
-            input=f"Contexto:\n{context_block}\n\nPregunta: {question}",
+            system_instruction=instructions_with_history(instructions, history),
+            input=build_user_message(question, context_block, history),
         )
         usage = getattr(interaction, "usage", None)
         return LLMAnswer(

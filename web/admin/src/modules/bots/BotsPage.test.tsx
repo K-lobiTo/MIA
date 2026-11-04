@@ -25,6 +25,8 @@ const bot: Bot = {
   available: true,
   unavailable_reason: null,
   usage: { received: 412, sent: 530, total: 942, cap_reached: false },
+  context_turns: null,
+  context_turns_effective: 2,
   created_at: "2026-10-24T15:30:00Z",
 };
 
@@ -65,6 +67,17 @@ describe("BotsPage", () => {
     expect(html).toContain("Desactivar");
     expect(html).not.toContain("BOT_SERVICE_KEY no está configurada");
     expect(html).not.toContain("Solo el alcance global puede administrar los bots");
+  });
+
+  it("la tarjeta muestra la memoria efectiva y si es la de por defecto", () => {
+    const porDefecto = render(global, respuesta([bot]));
+    expect(porDefecto).toContain("Memoria");
+    expect(porDefecto).toContain("2 vueltas");
+    expect(porDefecto).toContain("(por defecto)");
+
+    const propia = render(global, respuesta([{ ...bot, context_turns: 5, context_turns_effective: 5 }]));
+    expect(propia).toContain("5 vueltas");
+    expect(propia).not.toContain("(por defecto)");
   });
 
   it("un bot desactivado dice su estado y ofrece reactivarlo", () => {

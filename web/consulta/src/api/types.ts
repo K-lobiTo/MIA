@@ -24,7 +24,8 @@ export interface Config {
   max_upload_mb: number;
   modes: Mode[];
   // Solo cuando se pidió con la clave de un artefacto.
-  artifact?: { name: string; active: boolean };
+  // `context_turns`: cuántas vueltas anteriores recuerda el artefacto (0: ninguna; feature 014).
+  artifact?: { name: string; active: boolean; context_turns?: number };
   caps?: Caps;
 }
 
@@ -40,6 +41,13 @@ export interface Source {
   domain: string;
   document: string;
   excerpt: string;
+}
+
+/** Una vuelta anterior de la conversación que se envía como memoria (feature 014). */
+export interface HistoryTurn {
+  question: string;
+  answer: string;
+  mode: ModeId;
 }
 
 export interface QueryResponse {

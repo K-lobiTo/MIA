@@ -21,11 +21,23 @@ interface Props {
   restore: { text: string; n: number } | null;
   /** Modos disponibles y el elegido: el selector va a la izquierda del campo. Nulo mientras no hay configuración. */
   availability: Availability | null;
+  /** Aviso de la memoria del artefacto ("Recuerda las últimas N preguntas..."); vacío si no tiene (feature 014). */
+  memory?: string;
   onModeChange: (mode: ModeId) => void;
   onSend: (question: string) => void;
 }
 
-export function Composer({ selectedCount, busy, blockedReason, rejection, restore, availability, onModeChange, onSend }: Props) {
+export function Composer({
+  selectedCount,
+  busy,
+  blockedReason,
+  rejection,
+  restore,
+  availability,
+  memory = "",
+  onModeChange,
+  onSend,
+}: Props) {
   const [text, setText] = useState("");
 
   // `n` cambia en cada rechazo, así que dos rechazos seguidos de la misma pregunta también la restauran.
@@ -81,7 +93,7 @@ export function Composer({ selectedCount, busy, blockedReason, rejection, restor
         </Button>
       </div>
       <div className="composer-hint">
-        <span role={hint ? "status" : undefined}>{hint ?? ""}</span>
+        <span role={hint ? "status" : undefined}>{hint ?? memory}</span>
         {text.length >= COUNTER_FROM && (
           <span>
             {text.length} / {MAX_QUESTION_LENGTH}

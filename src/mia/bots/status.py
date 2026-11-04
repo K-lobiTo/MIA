@@ -17,6 +17,16 @@ from mia.storage.models import Artifact, Bot, Domain, Unit
 
 Status = Literal["ok", "disabled", "cap_reached"]
 
+# Memoria del bot (feature 014): cuántas vueltas (pregunta y respuesta) recuerda de cada conversación para pedir una
+# aclaración de programa y recordar el programa. Sin valor propio rige este (4 turnos, como antes de la 014).
+DEFAULT_BOT_CONTEXT_TURNS = 2
+
+
+def effective_context_turns(bot: Bot) -> int:
+    """Las vueltas que recuerda el bot: la suya o la predeterminada."""
+    return bot.context_turns if bot.context_turns is not None else DEFAULT_BOT_CONTEXT_TURNS
+
+
 REASON_BOT_DISABLED = "El bot está desactivado."
 REASON_NO_ARTIFACT = "No tiene artefacto asignado."
 REASON_ARTIFACT_DISABLED = "El artefacto asignado está desactivado."

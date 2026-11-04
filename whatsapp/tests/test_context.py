@@ -193,3 +193,60 @@ def test_el_programa_recordado_es_el_de_la_respuesta_mas_reciente():
     estado.conversations.add("ana", _persona("p"), _bot("answer", ["A"]), _persona("q"), _bot("answer", ["B"]))
 
     assert estado.conversations.remembered_program("ana") == "B"
+
+
+# --- Límite por lectura (feature 014): `context_turns` del bot cuenta vueltas y un turno es un mensaje -----------
+
+
+def test_guarda_hasta_veinte_turnos_por_persona_aunque_la_configuracion_sea_menor():
+    estado = _state(Reloj(), bot_context_messages=2)
+    for i in range(15):
+        estado.conversations.add("ana", _persona(f"pregunta {i}"), _bot("no_info"))
+
+    assert len(estado.conversations.turns("ana", limit=100)) == state_module.MAX_CONTEXT_TURNS == 20
+    assert estado.conversations.turns("ana", limit=100)[-2].text == "pregunta 14"
+
+
+def test_las_lecturas_miran_solo_los_ultimos_turnos_del_limite():
+    estado = _state(Reloj())
+    for i in range(3):
+        estado.conversations.add("ana", _persona(f"pregunta {i}"), _bot("no_info"))
+
+    assert [t.text for t in estado.conversations.turns("ana", limit=2) if t.role == "person"] == [
+        "pregunta 2"
+    ]
+    assert len(estado.conversations.turns("ana", limit=4)) == 4
+    assert len(estado.conversations.turns("ana", limit=6)) == 6
+    # Sin límite rige BOT_CONTEXT_MESSAGES (4).
+    assert len(estado.conversations.turns("ana")) == 4
+
+
+def test_con_limite_de_una_vuelta_una_aclaracion_pendiente_se_resuelve():
+    estado = _state(Reloj())
+    estado.conversations.add(
+        "ana", _persona("¿cuándo empiezan?"), _bot("clarify", candidates=["A", "B"])
+    )
+
+    pendiente = estado.conversations.pending("ana", limit=2)
+
+    assert pendiente is not None and pendiente.question == "¿cuándo empiezan?"
+    assert estado.conversations.pending("ana", limit=1) is None  # menos de una vuelta no alcanza
+
+
+def test_con_dos_vueltas_recuerda_un_programa_que_con_una_ya_no_ve():
+    estado = _state(Reloj())
+    estado.conversations.add("ana", _persona("p1"), _bot("answer", ["Maestría en Ciberseguridad"]))
+    estado.conversations.add("ana", _persona("p2"), _bot("no_info"))
+
+    assert estado.conversations.remembered_program("ana", limit=2) is None
+    assert estado.conversations.remembered_program("ana", limit=4) == "Maestría en Ciberseguridad"
+
+
+def test_bajar_el_limite_en_medio_de_una_conversacion_acorta_lo_que_ve_sin_borrarla():
+    estado = _state(Reloj())
+    estado.conversations.add("ana", _persona("p1"), _bot("answer", ["Maestría en Ciberseguridad"]))
+    estado.conversations.add("ana", _persona("p2"), _bot("no_info"))
+
+    assert estado.conversations.remembered_program("ana", limit=2) is None
+    assert estado.conversations.remembered_program("ana", limit=6) == "Maestría en Ciberseguridad"
+    assert estado.conversations.count == 1

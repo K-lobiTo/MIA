@@ -66,7 +66,17 @@ def test_un_bot_se_lista_con_la_forma_del_contrato(client, mundo, admin):
     assert len(bots) == 1
     bot = bots[0]
     assert set(bot) == {
-        "id", "name", "kapso_number_id", "active", "artifact", "domains", "available", "unavailable_reason", "usage",
+        "id",
+        "name",
+        "kapso_number_id",
+        "active",
+        "artifact",
+        "domains",
+        "available",
+        "unavailable_reason",
+        "usage",
+        "context_turns",
+        "context_turns_effective",
         "created_at",
     }
     assert bot == creado

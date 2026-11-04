@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import type { Artifact, UnitNode } from "../../api/types";
-import { describeBotStatus, domainsOfArtifact, monthLabel, percentOfCap, usageLevel, validateNumberId } from "./botsUtils";
+import {
+  BOT_MEMORY_HELP,
+  BOT_MEMORY_LABEL,
+  describeBotMemory,
+  describeBotStatus,
+  domainsOfArtifact,
+  monthLabel,
+  percentOfCap,
+  usageLevel,
+  validateBotTurns,
+  validateNumberId,
+} from "./botsUtils";
 
 describe("validateNumberId", () => {
   it("acepta un identificador de 1 a 64 caracteres sin espacios", () => {
@@ -100,5 +111,36 @@ describe("domainsOfArtifact", () => {
 
   it("sin acceso no da ninguno", () => {
     expect(domainsOfArtifact(artefacto({ all_domains: false, unit_ids: [], domain_ids: [] }), unidades)).toEqual([]);
+  });
+});
+
+describe("validateBotTurns", () => {
+  it("acepta vacío (el valor por defecto) y enteros de 1 a 10", () => {
+    expect(validateBotTurns("")).toEqual({ ok: true, value: null });
+    expect(validateBotTurns("   ")).toEqual({ ok: true, value: null });
+    expect(validateBotTurns("1")).toEqual({ ok: true, value: 1 });
+    expect(validateBotTurns(" 10 ")).toEqual({ ok: true, value: 10 });
+  });
+
+  it("rechaza 0, negativos, mayores que 10, decimales y texto con un mensaje claro", () => {
+    for (const texto of ["0", "-1", "11", "2.5", "2,5", "dos", "1a"]) {
+      const resultado = validateBotTurns(texto);
+      expect(resultado.ok, texto).toBe(false);
+      if (!resultado.ok) expect(resultado.message).toContain("entre 1 y 10");
+    }
+  });
+});
+
+describe("texto de la memoria del bot", () => {
+  it("dice para qué sirve, el mínimo y que no se entrega la conversación al modelo", () => {
+    expect(BOT_MEMORY_LABEL).toBe("Memoria (vueltas)");
+    expect(BOT_MEMORY_HELP).toContain("aclaraciones de programa");
+    expect(BOT_MEMORY_HELP).toContain("Mínimo 1");
+    expect(BOT_MEMORY_HELP).toContain("no entrega la conversación al modelo");
+  });
+
+  it("describe el valor efectivo en singular y plural", () => {
+    expect(describeBotMemory(1)).toBe("1 vuelta");
+    expect(describeBotMemory(2)).toBe("2 vueltas");
   });
 });

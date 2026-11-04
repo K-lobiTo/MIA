@@ -7,7 +7,7 @@ from decimal import Decimal
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -38,6 +38,8 @@ from mia.rag.completeness import (
 from mia.rag.context import ContextPolicy, build_passages
 from mia.rag.embeddings import get_embedding_provider
 from mia.rag.equivalences import get_equivalences
+from mia.rag.followup import search_question
+from mia.rag.history import HistoryTurn, sanitize_history
 from mia.rag.lexical import (
     LexicalOutcome,
     equivalences_failure_note,
@@ -98,10 +100,26 @@ class Image(BaseModel):
     document: str
 
 
+MAX_HISTORY_TURNS_IN = 50  # tope de vueltas que acepta la forma del pedido; la memoria del artefacto recorta mucho antes
+
+
+class HistoryTurnIn(BaseModel):
+    """Una vuelta anterior de la conversación (pregunta y su respuesta) que el cliente envía (feature 014)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    question: str = Field(min_length=1, max_length=2000)
+    answer: str = Field(min_length=1, max_length=20000)
+    mode: Literal["literal", "razonamiento"] = "literal"
+
+
 class QueryRequest(BaseModel):
     domains: list[str] = Field(min_length=1)
     question: str = Field(min_length=1, max_length=2000)
     mode: Literal["literal", "razonamiento"] = "literal"
+    # Vueltas anteriores de la conversación, de la más vieja a la más nueva. La API las usa solo si el artefacto tiene
+    # memoria (`context_turns` mayor que 0), las recorta y nunca las guarda ni las toma como fuente de datos.
+    history: list[HistoryTurnIn] | None = Field(default=None, max_length=MAX_HISTORY_TURNS_IN)
 
 
 class QueryResponse(BaseModel):
@@ -140,6 +158,11 @@ def _clarify_candidates(
         logger.warning("No se pudo decidir la aclaración de programa", exc_info=True)
         return []
     return [program.name for program in found] if len(found) >= 2 else []
+
+
+def _add_tokens(tokens: int | None, extra: int) -> int | None:
+    """Los tokens de una respuesta más los de la reescritura de la búsqueda; sin ninguno de los dos, queda como estaba."""
+    return tokens if not extra else (tokens or 0) + extra
 
 
 def _elapsed_ms(started: float) -> int:
@@ -344,15 +367,46 @@ def run_query(
 
     # Ya se validó que el modo está disponible, así que su configuración existe.
     config = mode_config(payload.mode)
+
+    # Memoria de conversación (feature 014): solo con `context_turns` > 0 se usa el historial enviado. Se recorta a las
+    # últimas vueltas y por tamaño según el modo; sin memoria o sin vueltas útiles queda vacío y la consulta es la de siempre.
+    history: list[HistoryTurn] = (
+        sanitize_history(
+            [HistoryTurn(turn.question, turn.answer, turn.mode) for turn in payload.history],
+            artifact.context_turns,
+            payload.mode,
+        )
+        if payload.history and artifact.context_turns > 0
+        else []
+    )
+    # Con historial, un seguimiento se busca con lo que se venía hablando; el modelo recibe siempre la pregunta original.
+    reformulation = search_question(payload.question, history)
+    search_text = reformulation.text
+    # La reescritura con el modelo (estrategia `model`) cuesta: se suma a la consulta, salga por donde salga.
+    rewrite_cost = Decimal(str(reformulation.cost_usd)).quantize(Decimal("0.000001"))
+    if reformulation.used == "model":
+        log.cost_usd = rewrite_cost
+        log.prompt_tokens = reformulation.prompt_tokens
+        log.completion_tokens = reformulation.completion_tokens
+    if history:
+        # Solo cantidades y la estrategia: nunca el texto del historial ni el de la pregunta de búsqueda.
+        logger.info(
+            "Memoria: %d vueltas de historial, búsqueda %s (%d caracteres, modo %s)",
+            len(history),
+            reformulation.used,
+            len(search_text),
+            payload.mode,
+        )
+
     embedding_provider = get_embedding_provider(settings.embedding_provider)
-    question_embedding = embedding_provider.embed([payload.question], is_query=True)[0]
+    question_embedding = embedding_provider.embed([search_text], is_query=True)[0]
 
     vector_store = get_vector_store()
 
     # Con QUERY_HYBRID_SEARCH=on (feature 010) la parte léxica busca por palabras en un hilo mientras corre la
     # búsqueda por significado; su resultado se fusiona con el de cada `retrieve`.
     hybrid = (
-        _HybridRun(vector_store, session, payload.question, payload.domains, question_embedding)
+        _HybridRun(vector_store, session, search_text, payload.domains, question_embedding)
         if hybrid_enabled(settings.query_hybrid_search)
         else None
     )
@@ -391,7 +445,7 @@ def run_query(
             pending = [r for r in results if r.chunk_id not in rerank_logits]
             if pending:
                 logits = rerank_provider.score(
-                    payload.question, [r.text for r in pending], deadline=deadline_for(started)
+                    search_text, [r.text for r in pending], deadline=deadline_for(started)
                 )
                 rerank_logits.update(zip((r.chunk_id for r in pending), logits, strict=True))
                 _, peak = read_memory_mb()
@@ -426,7 +480,7 @@ def run_query(
     # de lenguaje, y el modelo recibe siempre la pregunta original.
     clean_question_note: str | None = None
     if not relevant and clean_question_enabled(settings.query_clean_question):
-        cleaned = clean_question(payload.question)
+        cleaned = clean_question(search_text)
         if cleaned:
             cleaned_embedding = embedding_provider.embed([cleaned], is_query=True)[0]
             relevant = retrieve_hybrid(cleaned_embedding)
@@ -520,6 +574,8 @@ def run_query(
             )
         )
 
+    # El historial va al modelo solo si hay (sin él la llamada es idéntica a la de siempre).
+    history_arg = {"history": history} if history else {}
     try:
         llm_provider = get_llm_provider(config.provider, config.model, config.reasoning_effort)
         instructions = config.instructions
@@ -527,7 +583,9 @@ def run_query(
             instructions = f"{instructions}\n\n{COMPLETENESS_INSTRUCTIONS}"
         if cite_sources:
             instructions = f"{instructions}\n\n{CITATION_INSTRUCTIONS}"
-        answer = llm_provider.answer(payload.question, context, instructions=instructions)
+        answer = llm_provider.answer(
+            payload.question, context, instructions=instructions, **history_arg
+        )
     except Exception as exc:
         # Sin esto el motivo real (clave inválida, modelo inexistente, timeout...) no queda en el log.
         logger.exception("Falló el proveedor de LLM (%s, modo %s)", config.provider, payload.mode)
@@ -568,7 +626,9 @@ def run_query(
         second = None
         if check_caps(session, artifact, payload.mode, extra=first_cost) is None:
             try:
-                second = llm_provider.answer(payload.question, context, instructions=instructions)
+                second = llm_provider.answer(
+                    payload.question, context, instructions=instructions, **history_arg
+                )
                 logger.info(
                     "Fin de la generación (reintento): %s (modo %s)", second.finish_reason or "desconocido", payload.mode
                 )
@@ -589,14 +649,18 @@ def run_query(
 
     # El costo real lo informa el proveedor; si no, se estima con los precios de respaldo del modo.
     log.model = answer.model or config.model
-    log.prompt_tokens = answer.prompt_tokens
-    log.completion_tokens = answer.completion_tokens
+    # La reescritura de la búsqueda (estrategia `model`) se suma a la respuesta: es parte del costo de la consulta.
+    log.prompt_tokens = _add_tokens(answer.prompt_tokens, reformulation.prompt_tokens)
+    log.completion_tokens = _add_tokens(answer.completion_tokens, reformulation.completion_tokens)
     log.reasoning_tokens = answer.reasoning_tokens
     if answer.cost_usd is not None:
-        log.cost_usd = Decimal(str(answer.cost_usd)).quantize(Decimal("0.000001"))
+        log.cost_usd = Decimal(str(answer.cost_usd)).quantize(Decimal("0.000001")) + rewrite_cost
         log.cost_estimated = False
     else:
-        log.cost_usd = estimate_cost(payload.mode, answer.prompt_tokens, answer.completion_tokens)
+        log.cost_usd = (
+            estimate_cost(payload.mode, answer.prompt_tokens, answer.completion_tokens)
+            + rewrite_cost
+        )
         log.cost_estimated = True
 
     safety_note: str | None = None

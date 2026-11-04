@@ -8,6 +8,7 @@ import { MODE_LABEL, describeCost, pruneCoveredDomains } from "./accessUtils";
 import { capabilities } from "../../auth/capabilities";
 import { useMe } from "../../auth/session";
 import { approxQueries, parseUsd, validateCaps } from "./capMath";
+import { MEMORY_HELP, MAX_TURNS, validateTurns } from "./memoryUtils";
 
 interface Props {
   // Con `artifact` se edita; sin él se crea uno nuevo (y el nombre es obligatorio).
@@ -36,12 +37,15 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
   const [reasoningCap, setReasoningCap] = useState(
     artifact?.reasoning_daily_cap_usd != null ? String(artifact.reasoning_daily_cap_usd) : "",
   );
+  const [turns, setTurns] = useState(String(artifact?.context_turns ?? 0));
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   const hasAccess = allDomains || unitIds.length > 0 || domainIds.length > 0;
   const capProblem = validateCaps(dailyCap, reasoningCap);
-  const ready = (artifact ? true : name.trim() !== "") && hasAccess && selectedModes.length > 0 && capProblem === null;
+  const turnsCheck = validateTurns(turns);
+  const ready =
+    (artifact ? true : name.trim() !== "") && hasAccess && selectedModes.length > 0 && capProblem === null && turnsCheck.ok;
   const dailyValue = parseUsd(dailyCap);
 
   function toggle<T>(list: T[], item: T): T[] {
@@ -66,6 +70,7 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
     const caps = {
       daily_cap_usd: parseUsd(dailyCap)!,
       reasoning_daily_cap_usd: reasoningCap.trim() === "" ? null : parseUsd(reasoningCap),
+      context_turns: turnsCheck.ok ? turnsCheck.value : 0,
     };
     try {
       if (artifact) {
@@ -195,6 +200,17 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
                 Al alcanzar un tope el artefacto deja de responder hasta la medianoche (hora de Costa Rica), sin afectar a los demás.
               </Text>
             </Stack>
+          </Fieldset>
+
+          <Fieldset legend="Memoria de conversación" variant="unstyled">
+            <TextInput
+              label={`Memoria de conversación (vueltas, de 0 a ${MAX_TURNS})`}
+              inputMode="numeric"
+              value={turns}
+              onChange={(e) => setTurns(e.currentTarget.value)}
+              error={turnsCheck.ok ? undefined : turnsCheck.message}
+              description={MEMORY_HELP}
+            />
           </Fieldset>
 
           {error && <Notice tone="danger">{error}</Notice>}

@@ -4,7 +4,14 @@ import { useCreateBot, useUpdateBot } from "../../api/bots";
 import { ApiError } from "../../api/client";
 import type { Artifact, Bot, UnitNode } from "../../api/types";
 import { Notice } from "../../components/Notice";
-import { PUBLIC_ACCESS_WARNING, domainsOfArtifact, validateNumberId } from "./botsUtils";
+import {
+  BOT_MEMORY_HELP,
+  BOT_MEMORY_LABEL,
+  PUBLIC_ACCESS_WARNING,
+  domainsOfArtifact,
+  validateBotTurns,
+  validateNumberId,
+} from "./botsUtils";
 
 interface Props {
   // Con `bot` se edita; sin él se registra uno nuevo.
@@ -22,27 +29,39 @@ export function BotForm({ bot, artifacts, units, onClose }: Props) {
   const [name, setName] = useState(bot?.name ?? "");
   const [numberId, setNumberId] = useState(bot?.kapso_number_id ?? "");
   const [artifactId, setArtifactId] = useState<string | null>(bot?.artifact?.id ?? null);
+  const [turns, setTurns] = useState(bot?.context_turns != null ? String(bot.context_turns) : "");
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   const numberProblem = numberId === "" ? null : validateNumberId(numberId);
-  const ready = name.trim() !== "" && validateNumberId(numberId) === null && artifactId !== null;
+  const turnsCheck = validateBotTurns(turns);
+  const ready = name.trim() !== "" && validateNumberId(numberId) === null && artifactId !== null && turnsCheck.ok;
   const artifactChanged = artifactId !== (bot?.artifact?.id ?? null);
   const selected = artifacts.find((a) => a.id === artifactId) ?? null;
 
   async function save() {
-    if (!ready || pending || artifactId === null) return;
+    if (!ready || pending || artifactId === null || !turnsCheck.ok) return;
     setPending(true);
     setError(null);
     try {
       if (bot) {
         await update.mutateAsync({
           id: bot.id,
-          changes: { name: name.trim(), kapso_number_id: numberId.trim(), artifact_id: artifactId },
+          changes: {
+            name: name.trim(),
+            kapso_number_id: numberId.trim(),
+            artifact_id: artifactId,
+            context_turns: turnsCheck.value,
+          },
         });
       } else {
-        await create.mutateAsync({ name: name.trim(), kapso_number_id: numberId.trim(), artifact_id: artifactId });
+        await create.mutateAsync({
+          name: name.trim(),
+          kapso_number_id: numberId.trim(),
+          artifact_id: artifactId,
+          context_turns: turnsCheck.value,
+        });
       }
       onClose();
     } catch (caught) {
@@ -120,6 +139,15 @@ export function BotForm({ bot, artifacts, units, onClose }: Props) {
             onChange={setArtifactId}
             allowDeselect={false}
             searchable
+          />
+          <TextInput
+            label={BOT_MEMORY_LABEL}
+            description={BOT_MEMORY_HELP}
+            placeholder="Por defecto (2)"
+            inputMode="numeric"
+            value={turns}
+            onChange={(e) => setTurns(e.currentTarget.value)}
+            error={turnsCheck.ok ? undefined : turnsCheck.message}
           />
           {error && <Notice tone="danger">{error}</Notice>}
           <Group justify="flex-end">

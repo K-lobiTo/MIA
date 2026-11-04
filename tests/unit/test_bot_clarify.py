@@ -319,3 +319,24 @@ def test_una_consulta_que_responde_no_llama_a_ningun_modelo_de_mas(client, db, m
 
     pipeline.llm.answer.assert_called_once()  # el de la respuesta, nada para decidir ni para los programas
     assert pipeline.embeddings.embed.call_count == 1
+
+
+# --- Memoria de conversación (feature 014): el bot no le entrega historial al modelo -----------------------------
+
+
+def test_el_bot_nunca_entrega_historial_al_modelo_aunque_su_artefacto_tenga_memoria(
+    client, db, mundo, servicio
+):
+    from mia.storage.models import Artifact
+
+    with db() as session:
+        session.get(Artifact, mundo["artefacto"].id).context_turns = 5
+        session.commit()
+
+    with Pipeline({"ciber-admision": 0.90}) as pipeline:
+        cuerpo = _bot(client, servicio).json()
+
+    assert cuerpo["no_info"] is False and cuerpo["answer"]
+    llamada = pipeline.llm.answer.call_args
+    assert "history" not in llamada.kwargs
+    assert pipeline.embeddings.embed.call_args.args[0] == ["¿Cuándo empiezan las lecciones?"]

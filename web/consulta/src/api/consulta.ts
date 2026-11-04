@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { QUERY_TIMEOUT_MS, apiFetch, useKey } from "./client";
-import type { Config, Domain, ModeId, QueryResponse, Rating } from "./types";
+import type { Config, Domain, HistoryTurn, ModeId, QueryResponse, Rating } from "./types";
 
 export function useConfig() {
   const key = useKey();
@@ -26,6 +26,8 @@ export interface AskInput {
   domains: string[];
   question: string;
   mode: ModeId;
+  // Solo se envía con memoria (feature 014); sin él el pedido es el de siempre.
+  history?: HistoryTurn[];
 }
 
 export function useAsk() {

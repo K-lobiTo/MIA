@@ -1,0 +1,262 @@
+[
+ {
+  "id": "TA1",
+  "categoria": "tema_anterior",
+  "historial": [
+   {
+    "question": "¿Cuándo empiezan las lecciones de la Maestría en Ciberseguridad?",
+    "answer": "Inician en el I Trimestre de 2027.",
+    "mode": "literal"
+   }
+  ],
+  "pregunta": "¿y cuánto cuesta?",
+  "modo": "literal",
+  "documentos": [
+   "Maestria_en_Ciberseguridad_Presentacion.txt"
+  ],
+  "nota": "Seguimiento corto tras hablar de Ciberseguridad: el costo está en su presentación y el programa solo está en la vuelta anterior."
+ },
+ {
+  "id": "TA2",
+  "categoria": "tema_anterior",
+  "historial": [
+   {
+    "question": "¿Cuántos créditos tiene la Maestría en Analítica de Negocio?",
+    "answer": "Tiene 60 créditos en 8 bloques.",
+    "mode": "literal"
+   }
+  ],
+  "pregunta": "¿y cuántos bloques hay?",
+  "modo": "literal",
+  "documentos": [
+   "Maestria_en_Analitica_de_Negocio_Plan_de_Estudio.txt"
+  ],
+  "nota": "Seguimiento sobre el plan de Analítica sin nombrar el programa."
+ },
+ {
+  "id": "TA3",
+  "categoria": "tema_anterior",
+  "historial": [
+   {
+    "question": "¿Qué requisitos de ingreso pide la Maestría en Ciberseguridad?",
+    "answer": "Pide un grado académico afín y el cumplimiento del proceso de admisión.",
+    "mode": "literal"
+   }
+  ],
+  "pregunta": "¿y cuándo es el inicio?",
+  "modo": "literal",
+  "documentos": [
+   "Maestria_en_Ciberseguridad_Admision.txt"
+  ],
+  "nota": "Seguimiento de admisión: sin la vuelta anterior es ambigua entre programas."
+ },
+ {
+  "id": "TA4",
+  "categoria": "tema_anterior",
+  "historial": [
+   {
+    "question": "¿Qué énfasis ofrece la Maestría en Ciberseguridad?",
+    "answer": "Ofrece tres énfasis y una titulación general.",
+    "mode": "literal"
+   }
+  ],
+  "pregunta": "¿y cuánto dura?",
+  "modo": "literal",
+  "documentos": [
+   "Maestria_en_Ciberseguridad_Presentacion.txt"
+  ],
+  "nota": "Seguimiento de duración tras hablar de los énfasis."
+ },
+ {
+  "id": "PR1",
+  "categoria": "pronombre",
+  "historial": [
+   {
+    "question": "¿Qué énfasis ofrece la Maestría en Ciberseguridad?",
+    "answer": "Gestión de la Seguridad de la Información, Defensa y Ataque de Sistemas, y Seguridad del Software.",
+    "mode": "literal"
+   }
+  ],
+  "pregunta": "¿y el segundo?",
+  "modo": "literal",
+  "documentos": [
+   "Maestria_en_Ciberseguridad_Presentacion.txt",
+   "Maestria_en_Ciberseguridad_Plan_de_Estudio.txt"
+  ],
+  "nota": "Referencia ordinal a una lista de la respuesta anterior: la búsqueda necesita la pregunta anterior, no la respuesta."
+ },
+ {
+  "id": "PR2",
+  "categoria": "pronombre",
+  "historial": [
+   {
+    "question": "¿Cuántos créditos tiene el bloque 1 de la Maestría en Analítica de Negocio?",
+    "answer": "Siete créditos.",
+    "mode": "literal"
+   }
+  ],
+  "pregunta": "¿qué requisitos tiene eso?",
+  "modo": "literal",
+  "documentos": [
+   "Maestria_en_Analitica_de_Negocio_Plan_de_Estudio.txt"
+  ],
+  "nota": "Pronombre demostrativo que se refiere al bloque de la vuelta anterior."
+ },
+ {
+  "id": "PR3",
+  "categoria": "pronombre",
+  "historial": [
+   {
+    "question": "¿Cuándo es el cierre de admisión de la Maestría en Analítica de Negocio?",
+    "answer": "Según el documento de admisión, el cierre es en el período indicado.",
+    "mode": "literal"
+   }
+  ],
+  "pregunta": "¿y ahí cuántos cupos hay?",
+  "modo": "literal",
+  "documentos": [
+   "Maestria_en_Analitica_de_Negocio_Admision.txt"
+  ],
+  "nota": "Referencia con adverbio (ahí) a la admisión de Analítica."
+ },
+ {
+  "id": "CM1",
+  "categoria": "cambio_de_modo",
+  "historial": [
+   {
+    "question": "¿Cuántos créditos suman los bloques 1 al 3 de la Maestría en Analítica de Negocio?",
+    "answer": "Suman 21 créditos (7 + 7 + 7), calculado sumando los bloques.",
+    "mode": "razonamiento"
+   }
+  ],
+  "pregunta": "¿y los requisitos del bloque 2?",
+  "modo": "literal",
+  "documentos": [
+   "Maestria_en_Analitica_de_Negocio_Plan_de_Estudio.txt"
+  ],
+  "nota": "Vuelta con razonamiento y seguimiento literal: debe responder del documento sin repetir la suma como dato."
+ },
+ {
+  "id": "CM2",
+  "categoria": "cambio_de_modo",
+  "historial": [
+   {
+    "question": "¿Qué énfasis ofrece la Maestría en Ciberseguridad?",
+    "answer": "Gestión de la Seguridad de la Información, Defensa y Ataque de Sistemas, y Seguridad del Software.",
+    "mode": "literal"
+   }
+  ],
+  "pregunta": "¿cuál conviene más a quien trabaja en redes y cuántos créditos tiene cada uno?",
+  "modo": "razonamiento",
+  "documentos": [
+   "Maestria_en_Ciberseguridad_Presentacion.txt",
+   "Maestria_en_Ciberseguridad_Plan_de_Estudio.txt"
+  ],
+  "nota": "Vuelta literal y seguimiento con razonamiento: puede combinar, usando solo los documentos."
+ },
+ {
+  "id": "CM3",
+  "categoria": "cambio_de_modo",
+  "historial": [
+   {
+    "question": "¿Cuánto cuesta la Maestría en Ciberseguridad?",
+    "answer": "El costo depende de los créditos matriculados por trimestre.",
+    "mode": "razonamiento"
+   },
+   {
+    "question": "¿Y cuántos créditos tiene?",
+    "answer": "Tiene 60 créditos.",
+    "mode": "literal"
+   }
+  ],
+  "pregunta": "¿y en cuántos bloques se reparten?",
+  "modo": "literal",
+  "documentos": [
+   "Maestria_en_Ciberseguridad_Plan_de_Estudio.txt"
+  ],
+  "nota": "Historial con los dos modos mezclados y seguimiento literal."
+ },
+ {
+  "id": "CT1",
+  "categoria": "cambio_de_tema",
+  "historial": [
+   {
+    "question": "¿Cuándo empiezan las lecciones de la Maestría en Ciberseguridad?",
+    "answer": "Inician en el I Trimestre de 2027.",
+    "mode": "literal"
+   }
+  ],
+  "pregunta": "¿Cuántos bloques tiene el plan de la Maestría en Analítica de Negocio?",
+  "modo": "literal",
+  "documentos": [
+   "Maestria_en_Analitica_de_Negocio_Plan_de_Estudio.txt"
+  ],
+  "nota": "Pregunta que se entiende sola sobre otro programa: la búsqueda no debe mezclar el tema anterior."
+ },
+ {
+  "id": "CT2",
+  "categoria": "cambio_de_tema",
+  "historial": [
+   {
+    "question": "¿Cuánto cuesta la Maestría en Analítica de Negocio?",
+    "answer": "El costo depende de los créditos matriculados.",
+    "mode": "literal"
+   }
+  ],
+  "pregunta": "¿Qué énfasis ofrece la Maestría en Ciberseguridad?",
+  "modo": "literal",
+  "documentos": [
+   "Maestria_en_Ciberseguridad_Presentacion.txt"
+  ],
+  "nota": "Cambio de programa con una pregunta completa."
+ },
+ {
+  "id": "CT3",
+  "categoria": "cambio_de_tema",
+  "historial": [
+   {
+    "question": "¿Qué requisitos de ingreso pide la Maestría en Ciberseguridad?",
+    "answer": "Un grado académico afín.",
+    "mode": "literal"
+   }
+  ],
+  "pregunta": "¿Cuántos créditos tiene el bloque 1 de Analítica de Negocio?",
+  "modo": "razonamiento",
+  "documentos": [
+   "Maestria_en_Analitica_de_Negocio_Plan_de_Estudio.txt"
+  ],
+  "nota": "Cambio de tema y de modo a la vez."
+ },
+ {
+  "id": "CR1",
+  "categoria": "calculo_en_razonamiento",
+  "historial": [
+   {
+    "question": "¿Cuántos créditos suman los bloques 1 al 3 de la Maestría en Analítica de Negocio?",
+    "answer": "Suman 35 créditos (calculado sumando los bloques).",
+    "mode": "razonamiento"
+   }
+  ],
+  "pregunta": "¿Cuántos créditos suman los bloques 1 al 3 de la Maestría en Analítica de Negocio?",
+  "modo": "literal",
+  "documentos": [],
+  "no_debe_contener": "35",
+  "nota": "La vuelta con razonamiento trae una cifra calculada que NO sale de los documentos (35; la suma real es 21): si el modo literal la repite, tomó el historial como dato. Un 21 sí es válido: sale de los bloques del plan."
+ },
+ {
+  "id": "CR2",
+  "categoria": "calculo_en_razonamiento",
+  "historial": [
+   {
+    "question": "¿Cuántos créditos suman los bloques 1 y 2 de la Maestría en Ciberseguridad?",
+    "answer": "Suman 19 créditos (calculado sumando los bloques).",
+    "mode": "razonamiento"
+   }
+  ],
+  "pregunta": "¿Cuántos créditos suman en total los bloques 1 y 2 de la Maestría en Ciberseguridad?",
+  "modo": "literal",
+  "documentos": [],
+  "no_debe_contener": "19",
+  "nota": "Igual que CR1 con Ciberseguridad (cifra del historial 19; la suma real de los bloques 1 y 2 es 16)."
+ }
+]

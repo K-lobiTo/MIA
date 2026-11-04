@@ -471,3 +471,76 @@ def test_el_registro_del_servicio_no_lleva_textos_telefonos_ni_nombres_de_progra
     assert all("ms" in l and "resultado" in l for l in lineas_json)
     for secreto in ("Ciberseguridad", "Analítica", "lecciones", "cuesta", "16315551181", "persona-1"):
         assert secreto not in registro
+
+
+# --- Memoria del bot ajustable (feature 014) -------------------------------------------------------------------
+
+
+def guion_de_memoria(fake_mia):
+    """Todo responde de Ciberseguridad salvo lo que habla de la luna, que no tiene información (con o sin programa)."""
+    guion = Guion(
+        [
+            ("luna", sin_informacion()),
+            (None, respuesta("Lo dice Ciberseguridad.", [CIBER], "Ciber_Admision.txt")),
+        ]
+    )
+    fake_mia.query_responder = guion
+    return guion
+
+
+def consultas_a_la_api(guion, antes):
+    return len(guion.preguntas) - antes
+
+
+@pytest.mark.parametrize(("vueltas", "reintentos"), [(1, 1), (2, 2), (None, 2)])
+def test_las_vueltas_de_memoria_deciden_cuanto_recuerda_el_bot(mundo, vueltas, reintentos):
+    fake_mia, _, deps, _ = mundo
+    fake_mia.context_turns = vueltas
+    guion = guion_de_memoria(fake_mia)
+
+    escribir(deps, "¿Qué énfasis tiene la maestría?")  # responde de Ciberseguridad: queda recordado
+    escribir(
+        deps, "¿Cuánto cuesta la luna?"
+    )  # ve la respuesta anterior con cualquier memoria: reintenta una vez
+    antes = len(guion.preguntas)
+    escribir(deps, "¿Y la luna en invierno?")
+
+    # Con una vuelta (2 turnos) la respuesta de Ciberseguridad ya salió de la ventana: no hay programa que recordar.
+    assert consultas_a_la_api(guion, antes) == reintentos
+
+
+def test_un_cambio_de_la_memoria_rige_en_el_mensaje_siguiente_y_en_la_conversacion_en_curso(mundo):
+    fake_mia, _, deps, _ = mundo
+    fake_mia.context_turns = 1
+    guion = guion_de_memoria(fake_mia)
+    escribir(deps, "¿Qué énfasis tiene la maestría?")
+    escribir(deps, "¿Cuánto cuesta la luna?")
+
+    fake_mia.context_turns = 3  # el panel la subió: la conversación sigue y ve más
+    antes = len(guion.preguntas)
+    escribir(deps, "¿Y la luna en invierno?")
+
+    assert consultas_a_la_api(guion, antes) == 2
+
+
+def test_con_una_vuelta_alcanza_para_resolver_una_aclaracion(mundo):
+    fake_mia, fake_kapso, deps, _ = mundo
+    fake_mia.context_turns = 1
+    guion_de_dos_programas(fake_mia)
+
+    escribir(deps, AMBIGUA)
+    escribir(deps, "ciberseguridad")
+
+    assert "I trimestre de 2027" in fake_kapso.texts[-1]
+
+
+def test_el_bot_sigue_sin_enviar_historial_a_la_api(mundo):
+    fake_mia, _, deps, _ = mundo
+    fake_mia.context_turns = 10
+    guion_de_memoria(fake_mia)
+
+    escribir(deps, "¿Qué énfasis tiene la maestría?")
+    escribir(deps, "¿Y cuánto cuesta?")
+
+    cuerpos = [r["json"] for r in fake_mia.recorded.to("/bot/query")]
+    assert cuerpos and all(set(c) == {"number_id", "question"} for c in cuerpos)

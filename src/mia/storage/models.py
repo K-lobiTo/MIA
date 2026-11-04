@@ -120,6 +120,8 @@ class Artifact(Base):
     modes: Mapped[str] = mapped_column(String, default="literal")
     daily_cap_usd: Mapped[Decimal] = mapped_column(Numeric(10, 4), default=Decimal("0.50"))
     reasoning_daily_cap_usd: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
+    # Vueltas completas (pregunta y respuesta) que recuerda y entrega al modelo (feature 014), de 0 a 10. 0: como siempre.
+    context_turns: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 
@@ -201,6 +203,8 @@ class Bot(Base):
     # responde "no disponible").
     artifact_id: Mapped[str | None] = mapped_column(ForeignKey("artifacts.id"), nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Vueltas que recuerda el bot para la aclaración de programa (feature 014), de 1 a 10; nulo: el valor por defecto (2).
+    context_turns: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 

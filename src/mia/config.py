@@ -127,6 +127,15 @@ class Settings(BaseSettings):
     bot_clarify_max_programs: int = Field(default=5, ge=2, le=10)
     # Fragmentos que mira la búsqueda de decisión (más que los de la consulta, para que entren los de cada programa).
     bot_clarify_candidates: int = Field(default=30, ge=5, le=100)
+    # Memoria de conversación (feature 014, specs/014-memoria-conversacion/). El historial lo envía el cliente y la API lo
+    # recorta a las vueltas del artefacto (`artifacts.context_turns`). `history_reformulation` es cómo se usa para buscar los
+    # documentos de un seguimiento (`rules`: junta las preguntas anteriores; `model`: una llamada corta que la reescribe;
+    # `off`: no se reformula). Los topes de respuesta y de total valen para el modo literal; el modo con razonamiento usa el doble.
+    history_reformulation: str = "rules"
+    history_max_question_chars: int = Field(default=500, ge=50, le=2000)
+    history_max_answer_chars: int = Field(default=1500, ge=200, le=20000)
+    history_max_chars: int = Field(default=6000, ge=500, le=100000)
+    history_rewrite_max_tokens: int = Field(default=100, ge=20, le=500)
 
     # En Render free (512 MB) ingerir actas grandes agota la memoria: allí se desactiva y la ingesta
     # se hace desde una instancia local apuntando a las mismas bases (ver docs/OPERACION.md).

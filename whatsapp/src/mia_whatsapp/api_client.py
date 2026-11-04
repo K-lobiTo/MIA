@@ -32,6 +32,16 @@ class CountResult:
     status: str
     month_messages: int | None = None
     month_cap: int | None = None
+    # Las vueltas (pregunta y respuesta) que recuerda el bot, de 1 a 10 (feature 014); vacío si la API no lo informa.
+    context_turns: int | None = None
+
+
+def _context_turns(body: dict) -> int | None:
+    """La memoria del bot de la respuesta de la API; una forma rara (no entero, fuera de 1 a 10) se ignora."""
+    value = body.get("context_turns")
+    if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 10:
+        return None
+    return value
 
 
 @dataclass
@@ -89,7 +99,10 @@ class MiaApiClient:
         try:
             body = response.json()
             return CountResult(
-                status=str(body["status"]), month_messages=body.get("month_messages"), month_cap=body.get("month_cap")
+                status=str(body["status"]),
+                month_messages=body.get("month_messages"),
+                month_cap=body.get("month_cap"),
+                context_turns=_context_turns(body),
             )
         except (ValueError, KeyError, TypeError, AttributeError):
             logger.warning("La API respondió algo inesperado al contar mensajes")

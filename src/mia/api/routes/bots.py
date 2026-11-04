@@ -8,7 +8,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, StringConstraints
+from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -19,7 +19,7 @@ from mia.access.guards import ensure_global
 from mia.access.scope import Principal
 from mia.api.routes.inventory import Name
 from mia.api.security import require_admin
-from mia.bots.status import bot_state, domain_labels
+from mia.bots.status import bot_state, domain_labels, effective_context_turns
 from mia.bots.usage import current_month
 from mia.config import settings
 from mia.storage.db import get_session
@@ -31,10 +31,15 @@ router = APIRouter(tags=["bots"])
 NumberId = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64, pattern=r"^\S+$")]
 
 
+# Vueltas de memoria del bot: de 1 (lo mínimo para resolver una aclaración) a 10, igual que el máximo de un artefacto.
+ContextTurns = Annotated[int, Field(ge=1, le=10, strict=True)]
+
+
 class BotCreate(BaseModel):
     name: Name
     kapso_number_id: NumberId
     artifact_id: str
+    context_turns: ContextTurns | None = None
 
 
 class BotUpdate(BaseModel):
@@ -42,6 +47,8 @@ class BotUpdate(BaseModel):
     kapso_number_id: NumberId | None = None
     artifact_id: str | None = None
     active: bool | None = None
+    # Con `null` explícito vuelve al valor por defecto; sin enviarlo no cambia.
+    context_turns: ContextTurns | None = None
 
 
 class ArtifactRef(BaseModel):
@@ -67,6 +74,9 @@ class BotOut(BaseModel):
     available: bool
     unavailable_reason: str | None
     usage: UsageOut
+    # La memoria propia del bot (nulo: la predeterminada) y la que rige (feature 014).
+    context_turns: int | None
+    context_turns_effective: int
     created_at: str
 
 
@@ -95,8 +105,14 @@ def _to_out(session: Session, bot: Bot, month: str) -> BotOut:
             total=state.usage.total,
             cap_reached=state.status == "cap_reached",
         ),
+        context_turns=bot.context_turns,
+        context_turns_effective=effective_context_turns(bot),
         created_at=bot.created_at.isoformat() + "Z",
     )
+
+
+def _show_turns(value: int | None) -> str:
+    return "por defecto" if value is None else str(value)
 
 
 def _conflict_name(name: str) -> HTTPException:
@@ -152,6 +168,7 @@ def create_bot(
         kapso_number_id=payload.kapso_number_id,
         artifact_id=artifact.id,
         active=True,
+        context_turns=payload.context_turns,
     )
     session.add(bot)
     try:
@@ -202,6 +219,9 @@ def update_bot(
     if "active" in changes and payload.active is not None and payload.active != bot.active:
         detail.append(f"activo: {str(payload.active).lower()}")
         bot.active = payload.active
+    previous_turns = bot.context_turns
+    if "context_turns" in changes and payload.context_turns != bot.context_turns:
+        bot.context_turns = payload.context_turns
     try:
         session.commit()
     except IntegrityError as exc:
@@ -210,4 +230,11 @@ def update_bot(
     session.refresh(bot)
     for line in detail:
         audit.log_write(principal, "bot.update", bot.id, line)
+    if bot.context_turns != previous_turns:
+        audit.log_write(
+            principal,
+            "bot.context_turns",
+            bot.id,
+            f"{bot.name}: {_show_turns(previous_turns)} -> {_show_turns(bot.context_turns)}",
+        )
     return _to_out(session, bot, current_month())

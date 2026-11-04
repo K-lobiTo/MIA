@@ -5,6 +5,7 @@ Cliente web para que el personal administrativo (Coordinación y Asistencia Admi
 - **Dominios:** un `MultiSelect` de Mantine en el menú lateral (agrupado por unidad si hay más de una, con búsqueda, fichas, "Todos", "Ninguno" y el recuento de elegidos).
 - **Modos:** Literal (lo que dice exactamente un documento) y Con razonamiento (combina, compara y calcula datos de varios documentos, mostrando los datos usados y el cálculo). Se elige con un `ComboboxPopover` de Mantine **a la izquierda del campo de la pregunta** (en pantallas angostas pasa a la línea de arriba); cada opción explica el modo y los no disponibles se ven deshabilitados con su motivo. Solo se muestran los que el artefacto tiene permitidos.
 - **Respuestas:** con formato, con los documentos citados y los fragmentos desplegables, el modo y el tiempo. La respuesta "sin información suficiente" se distingue.
+- **Memoria de la conversación:** si el artefacto tiene memoria (parámetro "Memoria de conversación" del panel, de 0 a 10 vueltas), cada pregunta viaja con las últimas vueltas respondidas (`history`, con su modo) para que los seguimientos como "¿y cuánto cuesta?" se entiendan, y bajo el campo se avisa "Recuerda las últimas N preguntas de esta conversación". Las vueltas fallidas, pendientes o sin información no se envían. Con memoria 0 (el valor por defecto) no se envía nada y todo es como antes. La API recorta el historial, no lo guarda y lo usa solo para entender la pregunta (`src/state/history.ts`).
 - **Calificación:** cada respuesta se puede marcar como útil o no útil, con un comentario opcional.
 - **Topes y errores:** si un modo o el envío no están disponibles se explica el motivo; ante un error hay "Reintentar" y, en razonamiento, "Reintentar en modo literal".
 
@@ -29,7 +30,7 @@ Si el servicio publicado tiene la variable de entorno `ARTIFACT_KEY`, `docker-en
 
 ## Qué se guarda en el navegador
 
-Solo la clave, la selección de dominios y el modo, en `localStorage` de la dirección de cada instancia (dos direcciones distintas no comparten nada). **La conversación nunca se guarda**: las preguntas pueden contener datos personales y al recargar la página la conversación empieza vacía. El registro completo queda en la API, visible solo con la clave de administración.
+Solo la clave, la selección de dominios y el modo, en `localStorage` de la dirección de cada instancia (dos direcciones distintas no comparten nada). **La conversación nunca se guarda** (el historial que se envía a un artefacto con memoria sale solo de la página abierta): las preguntas pueden contener datos personales y al recargar la página la conversación empieza vacía. El registro completo queda en la API, visible solo con la clave de administración.
 
 ## Publicar
 
