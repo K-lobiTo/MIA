@@ -56,4 +56,4 @@ El `ConversationStore` (feature 013) cambia en dos cosas: guarda hasta `MAX_CONT
 | Dato | Detalle |
 |---|---|
 | `CountResult.context_turns` | `int` opcional que lee de la respuesta de `/bot/messages`; vacío si la API no lo informa. |
-| Límite vigente | `2 * context_turns` turnos si la API lo informa, si no `BOT_CONTEXT_MESSAGES`. |
+| Límite vigente | `2 * context_turns` turnos si la API lo informa, si no `BOT_CONTEXT_MESSAGES`. Ojo con el vocabulario: `context_turns` cuenta **vueltas** (una pregunta y su respuesta) y un `Turn` del servicio es un **mensaje**, así que una vuelta son 2 turnos. |

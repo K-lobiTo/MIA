@@ -14,6 +14,8 @@ cd web/admin && npm ci && cd ../consulta && npm ci && cd ../..
 
 ```bash
 pytest tests/unit/test_history.py tests/unit/test_followup.py tests/unit/test_query_history.py
+pytest tests/unit/test_query_history_modos.py tests/unit/test_query_history_memoria_cero.py
+pytest tests/unit/test_query_history_validacion.py tests/unit/test_query_history_costo.py
 pytest tests/unit/test_artifacts_memory.py tests/unit/test_bots_memory.py tests/unit/test_migrations.py
 pytest whatsapp/tests/test_context.py whatsapp/tests/test_flow_clarify.py whatsapp/tests/test_api_client.py
 pytest && ruff check src tests scripts whatsapp
@@ -39,7 +41,7 @@ python scripts/medir_memoria.py --documentos tmp/nuevos --sin-modelo      # off 
 python scripts/medir_memoria.py --documentos tmp/nuevos                    # además model: llama a OpenRouter (centavos, con tu autorización)
 ```
 
-El script recorre `scripts/datos/casos_memoria.json` (conversaciones con un seguimiento final: `tema_anterior`, `pronombre`, `cambio_de_modo` y `calculo_en_razonamiento`) y reporta por estrategia cuántos seguimientos recuperan el documento esperado, el costo y el tiempo. Con ese resultado se fija `HISTORY_REFORMULATION` por defecto y se anota en research R9. El criterio de éxito es SC-001 (al menos 80 % de los seguimientos con la estrategia elegida).
+El script recorre `scripts/datos/casos_memoria.json` (conversaciones con un seguimiento final: `tema_anterior`, `pronombre`, `cambio_de_modo`, `cambio_de_tema` y `calculo_en_razonamiento`) y reporta por estrategia cuántos seguimientos recuperan el documento esperado, el costo y el tiempo. Con ese resultado se fija `HISTORY_REFORMULATION` por defecto y se anota en research R9. El criterio de éxito es SC-001 (al menos 80 % de los seguimientos con la estrategia elegida).
 
 ## 3. Recorrer la Consulta en la laptop
 

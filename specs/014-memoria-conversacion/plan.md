@@ -107,6 +107,8 @@ web/consulta/src/
 
 tests/unit/
 ├── test_history.py, test_followup.py, test_query_history.py       # NUEVOS
+├── test_query_history_{modos,memoria_cero,validacion,costo}.py     # NUEVOS (un archivo por historia)
+├── historial_de_prueba.py                                         # NUEVO: el mundo simulado compartido
 ├── test_artifacts_memory.py, test_bots_memory.py                  # NUEVOS
 └── test_migrations.py                                             # cabeza en 0008
 whatsapp/tests/test_context.py, test_api_client.py, test_flow_clarify.py   # ampliadas
