@@ -14,6 +14,8 @@ export interface BotInput {
   name: string;
   kapso_number_id: string;
   artifact_id: string;
+  // De 1 a 10; null vuelve al valor por defecto. Sin enviarlo no cambia (feature 014).
+  context_turns?: number | null;
 }
 
 function useBotMutation<TVariables, TResult>(fn: (variables: TVariables) => Promise<TResult>) {

@@ -47,7 +47,7 @@ def _alembic(engine, accion, destino):
 def test_la_migracion_crea_la_tabla_con_las_semillas(tmp_path):
     engine = create_engine(f"sqlite:///{tmp_path}/m.db")
     init_db(engine)
-    assert _revision(engine) == "0007"
+    assert _revision(engine) == "0008"
     assert "sigla_equivalences" in inspect(engine).get_table_names()
     with Session(engine) as session:
         filas = {(r.sigla, r.form): r for r in session.scalars(select(SiglaEquivalence))}
@@ -88,7 +88,7 @@ def test_downgrade_borra_solo_esa_tabla_y_no_toca_las_demas(tmp_path):
     assert antes - set(inspect(engine).get_table_names()) == {"sigla_equivalences"}
     # Y se puede volver a subir.
     init_db(engine)
-    assert _revision(engine) == "0007"
+    assert _revision(engine) == "0008"
 
 
 # --- Lectura con caché -------------------------------------------------------------------------------------

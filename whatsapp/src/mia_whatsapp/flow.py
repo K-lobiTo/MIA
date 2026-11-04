@@ -152,9 +152,13 @@ async def _process(deps: Deps, message: IncomingMessage) -> Outcome:
     # es una pregunta nueva: máximo una aclaración por pregunta.
     conversations = deps.state.conversations
     person = message.person_key
+    # La memoria del bot cuenta VUELTAS (pregunta y respuesta); un turno es un mensaje, así que una vuelta son 2 turnos
+    # (feature 014). Sin el dato (la API no lo informó) rige `BOT_CONTEXT_MESSAGES`. Se lee en cada mensaje: un cambio del
+    # panel rige desde el mensaje siguiente, también en conversaciones en curso.
+    limit = 2 * count.context_turns if count.context_turns else settings.bot_context_messages
     to_send = question
     chosen: str | None = None
-    pending = conversations.pending(person)
+    pending = conversations.pending(person, limit)
     if pending is not None:
         chosen = match_candidate(question, list(pending.candidates))
         if chosen is not None:
@@ -175,7 +179,7 @@ async def _process(deps: Deps, message: IncomingMessage) -> Outcome:
     try:
         result = await deps.api.query(message.number_id, to_send)
         # Sin respuesta ni aclaración resuelta, y con un programa de la conversación: se reintenta una vez con él.
-        remembered = conversations.remembered_program(person)
+        remembered = conversations.remembered_program(person, limit)
         if result.kind in ("no_info", "clarify") and chosen is None and remembered is not None:
             retry = await deps.api.query(message.number_id, with_program(question, remembered))
             if retry.kind == "answer":

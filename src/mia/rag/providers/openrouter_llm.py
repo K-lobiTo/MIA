@@ -1,12 +1,17 @@
 from openai import OpenAI
 
 from mia.config import settings
+from mia.rag.history import HistoryTurn
 from mia.rag.llm import (
     RAG_SYSTEM_PROMPT,
+    REWRITE_INSTRUCTIONS,
     LLMAnswer,
     LLMProvider,
     RagContext,
+    build_rewrite_message,
+    build_user_message,
     format_context,
+    instructions_with_history,
     normalize_finish_reason,
 )
 
@@ -33,7 +38,11 @@ class OpenRouterLLMProvider(LLMProvider):
         )
 
     def answer(
-        self, question: str, context: list[RagContext], instructions: str = RAG_SYSTEM_PROMPT
+        self,
+        question: str,
+        context: list[RagContext],
+        instructions: str = RAG_SYSTEM_PROMPT,
+        history: list[HistoryTurn] | None = None,
     ) -> LLMAnswer:
         context_block = format_context(context)
         # Solo proveedores que no guardan los datos para entrenar; con OPENROUTER_ZDR, además, solo
@@ -47,8 +56,8 @@ class OpenRouterLLMProvider(LLMProvider):
         completion = self._client.chat.completions.create(
             model=self._model,
             messages=[
-                {"role": "system", "content": instructions},
-                {"role": "user", "content": f"Contexto:\n{context_block}\n\nPregunta: {question}"},
+                {"role": "system", "content": instructions_with_history(instructions, history)},
+                {"role": "user", "content": build_user_message(question, context_block, history)},
             ],
             max_tokens=settings.openrouter_max_tokens,
             extra_body=extra_body,
@@ -57,6 +66,27 @@ class OpenRouterLLMProvider(LLMProvider):
             text=completion.choices[0].message.content or "",
             model=self._model,
             finish_reason=normalize_finish_reason(getattr(completion.choices[0], "finish_reason", None), "openai"),
+            **_usage(getattr(completion, "usage", None)),
+        )
+
+    def rewrite(self, question: str, history: list[HistoryTurn]) -> LLMAnswer:
+        """Reescribe un seguimiento como pregunta autónoma (feature 014): una llamada corta, sin razonamiento y con las
+        mismas restricciones de proveedores que una respuesta."""
+        completion = self._client.chat.completions.create(
+            model=self._model,
+            messages=[
+                {"role": "system", "content": REWRITE_INSTRUCTIONS},
+                {"role": "user", "content": build_rewrite_message(question, history)},
+            ],
+            max_tokens=settings.history_rewrite_max_tokens,
+            extra_body={"provider": {"data_collection": "deny", "zdr": settings.openrouter_zdr}},
+        )
+        return LLMAnswer(
+            text=completion.choices[0].message.content or "",
+            model=self._model,
+            finish_reason=normalize_finish_reason(
+                getattr(completion.choices[0], "finish_reason", None), "openai"
+            ),
             **_usage(getattr(completion, "usage", None)),
         )
 

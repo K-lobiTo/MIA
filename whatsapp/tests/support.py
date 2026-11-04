@@ -133,6 +133,8 @@ class FakeMia:
         self.query_responder = None
         self.query_delay = None  # función asíncrona opcional que se espera antes de responder
         self.counts_error: int | None = None
+        # Las vueltas de memoria que informa `/bot/messages` (feature 014); None: la API no lo informa.
+        self.context_turns: object = None
 
     def transport(self) -> httpx.MockTransport:
         async def handler(request: httpx.Request) -> httpx.Response:
@@ -147,6 +149,11 @@ class FakeMia:
                         "month": "2026-10",
                         "month_messages": None if self.status == "unknown_bot" else self.month_messages,
                         "month_cap": None if self.status == "unknown_bot" else self.month_cap,
+                        **(
+                            {}
+                            if self.context_turns is None
+                            else {"context_turns": self.context_turns}
+                        ),
                     },
                 )
             if request.url.path.endswith("/bot/query"):

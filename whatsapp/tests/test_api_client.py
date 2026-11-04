@@ -259,4 +259,27 @@ def test_un_clarify_o_programs_con_formas_raras_se_ignoran_sin_romper():
 
     resultado = _query(_client(fake))
 
-    assert resultado.kind == "answer" and resultado.candidates == [] and resultado.programs == ["Maestría en A"]
+    assert (
+        resultado.kind == "answer"
+        and resultado.candidates == []
+        and resultado.programs == ["Maestría en A"]
+    )
+
+
+# --- Memoria del bot (feature 014) -------------------------------------------------------------------------------
+
+
+def test_la_cuenta_lee_las_vueltas_de_memoria_que_informa_la_api():
+    fake = FakeMia()
+    fake.context_turns = 4
+
+    assert _count(_client(fake), received=1).context_turns == 4
+
+
+def test_sin_el_campo_o_con_una_forma_rara_la_memoria_queda_vacia():
+    for valor in (None, 0, 11, "4", 2.5, True, [3]):
+        fake = FakeMia()
+        fake.context_turns = valor
+        resultado = _count(_client(fake), received=1)
+
+        assert resultado.status == "ok" and resultado.context_turns is None, valor

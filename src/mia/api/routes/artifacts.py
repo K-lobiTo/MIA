@@ -40,6 +40,8 @@ class ArtifactCreate(BaseModel):
     modes: list[ModeId] = Field(min_length=1)
     daily_cap_usd: float | None = Field(default=None, gt=0)
     reasoning_daily_cap_usd: float | None = Field(default=None, gt=0)
+    # Vueltas completas que recuerda el artefacto (feature 014); 0 es el comportamiento de siempre.
+    context_turns: int = Field(default=0, ge=0, le=10)
 
 
 class ArtifactUpdate(BaseModel):
@@ -48,6 +50,7 @@ class ArtifactUpdate(BaseModel):
     modes: list[ModeId] | None = Field(default=None, min_length=1)
     daily_cap_usd: float | None = Field(default=None, gt=0)
     reasoning_daily_cap_usd: float | None = Field(default=None, gt=0)
+    context_turns: int | None = Field(default=None, ge=0, le=10)
     active: bool | None = None
 
 
@@ -78,6 +81,7 @@ class ArtifactOut(BaseModel):
     modes: list[str]
     daily_cap_usd: float
     reasoning_daily_cap_usd: float | None
+    context_turns: int
     today: TodayOut
     queries_last_7_days: int
     created_at: str
@@ -137,6 +141,7 @@ def _to_out(session: Session, artifact: Artifact) -> ArtifactOut:
         modes=allowed_modes(artifact),
         daily_cap_usd=float(artifact.daily_cap_usd),
         reasoning_daily_cap_usd=float(reasoning_cap) if reasoning_cap is not None else None,
+        context_turns=artifact.context_turns,
         today=TodayOut(
             spent_usd=float(state.spent),
             reasoning_spent_usd=float(state.reasoning_spent),
@@ -253,6 +258,7 @@ def create_artifact(
         reasoning_daily_cap_usd=(
             Decimal(str(payload.reasoning_daily_cap_usd)) if payload.reasoning_daily_cap_usd is not None else None
         ),
+        context_turns=payload.context_turns,
     )
     session.add(artifact)
     session.flush()
@@ -298,12 +304,24 @@ def update_artifact(
     if "daily_cap_usd" in changes and payload.daily_cap_usd is not None:
         artifact.daily_cap_usd = Decimal(str(payload.daily_cap_usd))
     if "reasoning_daily_cap_usd" in changes:
-        artifact.reasoning_daily_cap_usd = Decimal(str(reasoning)) if reasoning is not None else None
+        artifact.reasoning_daily_cap_usd = (
+            Decimal(str(reasoning)) if reasoning is not None else None
+        )
+    previous_turns = artifact.context_turns
+    if payload.context_turns is not None:
+        artifact.context_turns = payload.context_turns
     if payload.active is not None:
         artifact.active = payload.active
     session.commit()
     session.refresh(artifact)
     audit.log_write(principal, "artifact.update", artifact.id, artifact.name)
+    if artifact.context_turns != previous_turns:
+        audit.log_write(
+            principal,
+            "artifact.context_turns",
+            artifact.id,
+            f"{artifact.name}: {previous_turns} -> {artifact.context_turns}",
+        )
     return _to_out(session, artifact)
 
 

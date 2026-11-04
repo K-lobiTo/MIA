@@ -2,7 +2,7 @@ import { Button, Group, Paper, Text } from "@mantine/core";
 import type { Bot } from "../../api/types";
 import { Notice } from "../../components/Notice";
 import { StatusBadge } from "../../components/StatusBadge";
-import { describeBotStatus, monthLabel, percentOfCap, usageLevel } from "./botsUtils";
+import { describeBotMemory, describeBotStatus, monthLabel, percentOfCap, usageLevel } from "./botsUtils";
 
 interface Props {
   bot: Bot;
@@ -59,6 +59,11 @@ export function BotCard({ bot, monthlyCap, month, busy, onEdit, onToggleActive }
           ) : (
             <span className="muted">Sin artefacto asignado</span>
           )}
+        </dd>
+        <dt>Memoria</dt>
+        <dd>
+          {describeBotMemory(bot.context_turns_effective)}
+          {bot.context_turns === null && <span className="muted"> (por defecto)</span>}
         </dd>
         <dt>Mensajes del mes</dt>
         <dd>

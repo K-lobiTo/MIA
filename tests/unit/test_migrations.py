@@ -41,7 +41,7 @@ def test_base_anterior_se_migra_sin_perder_datos(tmp_path):
     assert TABLAS_NUEVAS <= set(inspector.get_table_names())
     assert "unit_id" in {c["name"] for c in inspector.get_columns("domains")}
     assert "folder_id" in {c["name"] for c in inspector.get_columns("documents")}
-    assert _revision(engine) == "0007"
+    assert _revision(engine) == "0008"
     with engine.connect() as connection:
         assert connection.execute(text("SELECT name, unit_id FROM domains")).one() == (
             "Memoria del Consejo",
@@ -75,7 +75,7 @@ def test_base_vacia_queda_en_la_ultima_revision(tmp_path):
     init_db(engine)
 
     assert TABLAS_NUEVAS <= set(inspect(engine).get_table_names())
-    assert _revision(engine) == "0007"
+    assert _revision(engine) == "0008"
 
 
 def test_init_db_se_puede_correr_dos_veces(tmp_path):
@@ -84,7 +84,7 @@ def test_init_db_se_puede_correr_dos_veces(tmp_path):
     init_db(engine)
     init_db(engine)
 
-    assert _revision(engine) == "0007"
+    assert _revision(engine) == "0008"
 
 
 def test_migracion_0003_crea_administradores_sin_tocar_datos(tmp_path):
@@ -206,7 +206,14 @@ def test_la_migracion_0006_crea_bots_y_consumo_mensual(tmp_path):
 
     inspector = inspect(engine)
     assert {c["name"] for c in inspector.get_columns("bots")} == {
-        "id", "name", "kapso_number_id", "artifact_id", "active", "created_at", "updated_at",
+        "id",
+        "name",
+        "kapso_number_id",
+        "artifact_id",
+        "active",
+        "context_turns",
+        "created_at",
+        "updated_at",
     }
     assert {c["name"] for c in inspector.get_columns("bot_message_counts")} == {
         "bot_id", "month", "received", "sent", "updated_at",
@@ -256,13 +263,13 @@ def test_la_migracion_0007_crea_las_imagenes_de_documentos(tmp_path):
         connection.execute(text(fila.replace("'i1'", "'i2'")), {"doc": "doc9", "public": "p" * 32})
 
 
-def test_subir_a_la_0007_sobre_una_base_en_la_0005_no_pierde_datos(tmp_path):
+def test_subir_a_la_cabeza_sobre_una_base_en_la_0005_no_pierde_datos(tmp_path):
     engine = _base_en(tmp_path, "0005")
     assert _revision(engine) == "0005"
 
     _hasta(engine, "head")
 
-    assert _revision(engine) == "0007"
+    assert _revision(engine) == "0008"
     with engine.connect() as connection:
         assert connection.execute(text("SELECT filename FROM documents")).scalar_one() == "acta.pdf"
         assert connection.execute(text("SELECT name FROM domains")).scalar_one() == "Memoria del Consejo"
@@ -282,5 +289,74 @@ def test_bajar_a_la_0005_borra_solo_las_tablas_nuevas_y_se_puede_volver_a_subir(
 
     _hasta(engine, "head")
 
+    assert _revision(engine) == "0008"
+    assert {"bots", "bot_message_counts", "document_images"} <= set(
+        inspect(engine).get_table_names()
+    )
+
+
+def test_la_migracion_0008_agrega_la_memoria_de_conversacion_sin_perder_datos(tmp_path):
+    engine = _base_en(tmp_path, "0007")
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO units (id, name, description, created_at) VALUES ('u1', 'U', '', '2026-11-03')"
+            )
+        )
+        connection.execute(
+            text(
+                "INSERT INTO artifacts (id, name, description, key_hash, key_prefix, active, all_domains, modes, daily_cap_usd, "
+                "created_at, updated_at) VALUES ('a1', 'Consulta', '', 'h1', 'mia_aaaa', 1, 0, 'literal', 0.5, '2026-11-03', '2026-11-03')"
+            )
+        )
+        connection.execute(
+            text(
+                "INSERT INTO bots (id, name, kapso_number_id, artifact_id, active, created_at, updated_at) "
+                "VALUES ('b1', 'Bot', '111', 'a1', 1, '2026-11-03', '2026-11-03')"
+            )
+        )
+    assert "context_turns" not in {c["name"] for c in inspect(engine).get_columns("artifacts")}
+
+    _hasta(engine, "head")
+
+    columnas = {c["name"]: c for c in inspect(engine).get_columns("artifacts")}
+    assert columnas["context_turns"]["nullable"] is False
+    bots = {c["name"]: c for c in inspect(engine).get_columns("bots")}
+    assert bots["context_turns"]["nullable"] is True
+    assert _revision(engine) == "0008"
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT name, context_turns FROM artifacts")).one() == (
+            "Consulta",
+            0,
+        )
+        assert connection.execute(text("SELECT name, context_turns FROM bots")).one() == (
+            "Bot",
+            None,
+        )
+        assert connection.execute(text("SELECT filename FROM documents")).scalar_one() == "acta.pdf"
+
+
+def test_bajar_a_la_0007_quita_las_dos_columnas_y_conserva_el_resto(tmp_path):
+    engine = _base_en(tmp_path, "head")
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO artifacts (id, name, description, key_hash, key_prefix, active, all_domains, modes, daily_cap_usd, "
+                "context_turns, created_at, updated_at) VALUES ('a1', 'Consulta', '', 'h1', 'mia_aaaa', 1, 0, 'literal', 0.5, 3, "
+                "'2026-11-03', '2026-11-03')"
+            )
+        )
+
+    _hasta(engine, "0007", accion="downgrade")
+
     assert _revision(engine) == "0007"
-    assert {"bots", "bot_message_counts", "document_images"} <= set(inspect(engine).get_table_names())
+    assert "context_turns" not in {c["name"] for c in inspect(engine).get_columns("artifacts")}
+    assert "context_turns" not in {c["name"] for c in inspect(engine).get_columns("bots")}
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT name FROM artifacts")).scalar_one() == "Consulta"
+        assert connection.execute(text("SELECT COUNT(*) FROM documents")).scalar_one() == 1
+
+    _hasta(engine, "head")  # y se puede volver a subir
+
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT context_turns FROM artifacts")).scalar_one() == 0

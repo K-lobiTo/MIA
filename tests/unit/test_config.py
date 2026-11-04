@@ -74,7 +74,11 @@ def test_con_clave_de_artefacto_solo_los_modos_permitidos(client, base, modes_co
 
     assert response.status_code == 200
     assert set(_modos(response)) == {"literal"}
-    assert response.json()["artifact"] == {"name": "Consulta Computación", "active": True}
+    assert response.json()["artifact"] == {
+        "name": "Consulta Computación",
+        "active": True,
+        "context_turns": 0,
+    }
 
 
 def test_un_artefacto_con_ambos_modos_los_ve_ambos(client, base, modes_config, make_artifact):
@@ -257,6 +261,54 @@ def test_el_interruptor_de_la_aclaracion_trata_un_valor_invalido_como_apagado(va
     from mia.rag.completeness import switch_enabled
 
     assert switch_enabled(valor, "BOT_CLARIFY") is esperado
+
+
+# --- Memoria de conversación (feature 014) --------------------------------------------------------------------------
+
+
+def test_los_valores_por_defecto_de_la_memoria_de_conversacion():
+    from mia.config import Settings
+
+    base = Settings(_env_file=None)
+    assert base.history_reformulation == "rules"
+    assert (
+        base.history_max_question_chars,
+        base.history_max_answer_chars,
+        base.history_max_chars,
+    ) == (500, 1500, 6000)
+    assert base.history_rewrite_max_tokens == 100
+
+
+@pytest.mark.parametrize(
+    ("campo", "valor"),
+    [
+        ("history_max_question_chars", 49),
+        ("history_max_question_chars", 2001),
+        ("history_max_answer_chars", 199),
+        ("history_max_answer_chars", 20001),
+        ("history_max_chars", 499),
+        ("history_max_chars", 100001),
+        ("history_rewrite_max_tokens", 19),
+        ("history_rewrite_max_tokens", 501),
+    ],
+)
+def test_un_valor_de_la_memoria_fuera_de_rango_no_deja_arrancar(campo, valor):
+    from pydantic import ValidationError
+
+    from mia.config import Settings
+
+    with pytest.raises(ValidationError, match=campo):
+        Settings(_env_file=None, **{campo: valor})
+
+
+@pytest.mark.parametrize(
+    ("valor", "esperado"),
+    [("rules", "rules"), ("MODEL", "model"), (" off ", "off"), ("", "rules"), ("tal vez", "rules")],
+)
+def test_la_estrategia_de_reformulacion_invalida_se_trata_como_rules(valor, esperado):
+    from mia.rag.followup import strategy
+
+    assert strategy(valor) == esperado
 
 
 # --- Bot de WhatsApp (feature 011): variables de la API -------------------------------------------------------

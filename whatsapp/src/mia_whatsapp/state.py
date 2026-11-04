@@ -18,6 +18,10 @@ MAX_SEEN = 50_000
 MAX_PEOPLE = 50_000
 # Tope duro de conversaciones con contexto; el de la configuración (`bot_context_max_people`) nunca lo supera.
 MAX_CONVERSATIONS = 100_000
+# Turnos que se guardan por persona: el doble del máximo de vueltas de la memoria del bot (10). Cuánto se mira de ellos lo
+# fija cada lectura con `limit` (feature 014): `context_turns` del bot cuenta VUELTAS (una pregunta y su respuesta) y un
+# `Turn` es un MENSAJE, así que una vuelta son 2 turnos y el límite es `2 * context_turns`.
+MAX_CONTEXT_TURNS = 20
 
 HOUR = 3600
 DAY = 24 * HOUR
@@ -97,8 +101,8 @@ class Pending:
 class _Conversation:
     __slots__ = ("last_seen", "turns")
 
-    def __init__(self, limit: int, now: float) -> None:
-        self.turns: deque[Turn] = deque(maxlen=limit)
+    def __init__(self, now: float) -> None:
+        self.turns: deque[Turn] = deque(maxlen=MAX_CONTEXT_TURNS)
         self.last_seen = now
 
 
@@ -136,7 +140,7 @@ class ConversationStore:
             return
         entry = self._live(person)
         if entry is None:
-            entry = _Conversation(self._settings.bot_context_messages, self._clock())
+            entry = _Conversation(self._clock())
         else:
             del self._conversations[person]
         entry.turns.extend(turns)
@@ -148,20 +152,30 @@ class ConversationStore:
         """El turno de una pregunta de la persona, con el texto recortado al máximo de la pregunta."""
         self.add(person, Turn(role="person", text=text[: self._settings.bot_max_question_chars]))
 
-    def turns(self, person: str | None) -> list[Turn]:
+    def turns(self, person: str | None, limit: int | None = None) -> list[Turn]:
+        """Los últimos `limit` turnos de la persona (por defecto `BOT_CONTEXT_MESSAGES`). Bajar el límite en medio de una
+        conversación acorta lo que se ve sin borrar nada."""
         entry = self._live(person)
-        return list(entry.turns) if entry is not None else []
+        if entry is None:
+            return []
+        window = self._settings.bot_context_messages if limit is None else limit
+        return list(entry.turns)[-window:] if window > 0 else []
 
-    def pending(self, person: str | None) -> Pending | None:
+    def pending(self, person: str | None, limit: int | None = None) -> Pending | None:
         """La aclaración sin contestar: el último turno es del bot con `clarify` y el anterior, de la persona."""
-        turns = self.turns(person)
-        if len(turns) >= 2 and turns[-1].role == "bot" and turns[-1].kind == "clarify" and turns[-2].role == "person":
+        turns = self.turns(person, limit)
+        if (
+            len(turns) >= 2
+            and turns[-1].role == "bot"
+            and turns[-1].kind == "clarify"
+            and turns[-2].role == "person"
+        ):
             return Pending(question=turns[-2].text, candidates=turns[-1].candidates)
         return None
 
-    def remembered_program(self, person: str | None) -> str | None:
+    def remembered_program(self, person: str | None, limit: int | None = None) -> str | None:
         """El único programa de la última respuesta del bot; ninguno si citó varios, ninguno o no hubo respuesta."""
-        for turn in reversed(self.turns(person)):
+        for turn in reversed(self.turns(person, limit)):
             if turn.role == "bot" and turn.kind == "answer":
                 return turn.programs[0] if len(turn.programs) == 1 else None
         return None

@@ -21,6 +21,7 @@ import {
 } from "./state/conversation";
 import { rejectionOf } from "./state/rejection";
 import { loadSelection, restoreSelection, saveSelection } from "./state/domains";
+import { buildHistory, memoryNotice } from "./state/history";
 import { loadMode, resolveAvailability, saveMode } from "./state/modes";
 
 export function App() {
@@ -75,15 +76,18 @@ export function App() {
   const mode: ModeId = availability?.effective ?? "literal";
   const modeNames = Object.fromEntries((config.data?.modes ?? []).map((m) => [m.id, m.name]));
   const busy = exchanges.some((e) => e.status === "pending");
+  const memoryTurns = config.data?.artifact?.context_turns ?? 0;
 
   const send = useCallback(
     (question: string, modeToUse: ModeId = mode) => {
       if (selected.length === 0) return;
       const exchange = newExchange(question, selected, modeToUse);
+      // Con memoria, las últimas vueltas respondidas viajan con la pregunta; sin ella el pedido es el de siempre.
+      const history = buildHistory(exchanges, memoryTurns);
       setRejection(null);
       setExchanges((list) => [...list, exchange]);
       ask.mutate(
-        { domains: selected, question, mode: modeToUse },
+        { domains: selected, question, mode: modeToUse, ...(history.length > 0 ? { history } : {}) },
         {
           onSuccess: (response) =>
             setExchanges((list) => list.map((e) => (e.localId === exchange.localId ? answeredExchange(e, response) : e))),
@@ -116,7 +120,7 @@ export function App() {
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selected, ask.mutate, mode, queryClient],
+    [selected, ask.mutate, mode, queryClient, exchanges, memoryTurns],
   );
 
   const rate = (localId: string, rating: Rating, comment?: string) =>
@@ -173,6 +177,7 @@ export function App() {
             rejection={rejection}
             restore={restore}
             availability={availability}
+            memory={memoryNotice(memoryTurns)}
             onModeChange={changeMode}
             onSend={(question) => send(question)}
           />

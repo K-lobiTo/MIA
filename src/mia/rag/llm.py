@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import lru_cache
 
+from mia.rag.history import HistoryTurn, format_history
+
 # Respuesta exacta que el LLM debe dar cuando los fragmentos no contienen la respuesta. El umbral
 # de similitud no alcanza para decidirlo (con actas reales, preguntas con y sin respuesta obtienen
 # puntajes que se solapan); con esta marca la API responde "sin información" y sin fuentes.
@@ -43,6 +45,42 @@ REASONING_SYSTEM_PROMPT = (
     "Solo si ninguno de los fragmentos trata el tema de la pregunta, responde únicamente "
     f"{NO_INFO_MARKER}, sin ningún otro texto."
 )
+
+
+# Cuando la consulta trae historial (feature 014), se agrega a la instrucción de sistema del modo.
+HISTORY_INSTRUCTIONS = (
+    "Antes del contexto recibirás la conversación anterior, que solo sirve para entender a qué se refiere la pregunta "
+    "actual (un pronombre, un seguimiento) y nunca es fuente de datos: no uses nada de ella como hecho, cifra, cálculo ni "
+    "cita, aunque una respuesta anterior lo diga. Responde únicamente con los fragmentos del contexto; si la respuesta no "
+    "está en ellos, responde como ante cualquier pregunta sin información."
+)
+
+
+# Reescritura de una pregunta de seguimiento (feature 014, estrategia `model`): una llamada corta, sin documentos.
+REWRITE_INSTRUCTIONS = (
+    "Reescribe la última pregunta como una pregunta completa y autónoma, que se entienda sin la conversación, usando la "
+    "conversación anterior solo para saber a qué se refiere (el programa, el tema, el elemento mencionado). No la "
+    "respondas ni agregues datos que la conversación no mencione. Si la pregunta ya se entiende sola, devuélvela igual. "
+    "Responde solo con la pregunta, en una línea."
+)
+
+
+def build_rewrite_message(question: str, history: list[HistoryTurn]) -> str:
+    return f"{format_history(history)}\n\nÚltima pregunta: {question}"
+
+
+def instructions_with_history(instructions: str, history: list[HistoryTurn] | None) -> str:
+    return f"{instructions}\n\n{HISTORY_INSTRUCTIONS}" if history else instructions
+
+
+def build_user_message(
+    question: str, context_block: str, history: list[HistoryTurn] | None = None
+) -> str:
+    """El mensaje de usuario, igual para todos los proveedores. Sin historial es el de siempre; con historial, el bloque
+    rotulado va antes del contexto y la pregunta queda al final."""
+    message = f"Contexto:\n{context_block}\n\nPregunta: {question}"
+    block = format_history(history)
+    return f"{block}\n\n{message}" if block else message
 
 
 def is_no_info_answer(answer: str) -> bool:
@@ -104,10 +142,20 @@ def normalize_finish_reason(raw: str | None, kind: str) -> str | None:
 class LLMProvider(ABC):
     @abstractmethod
     def answer(
-        self, question: str, context: list[RagContext], instructions: str = RAG_SYSTEM_PROMPT
+        self,
+        question: str,
+        context: list[RagContext],
+        instructions: str = RAG_SYSTEM_PROMPT,
+        history: list[HistoryTurn] | None = None,
     ) -> LLMAnswer:
-        """`instructions` es el mensaje de sistema; cada modo de respuesta trae el suyo."""
+        """`instructions` es el mensaje de sistema; cada modo de respuesta trae el suyo. `history` (feature 014) son las
+        vueltas anteriores de la conversación: solo sirven para entender la pregunta, nunca son fuente de datos."""
         ...
+
+    def rewrite(self, question: str, history: list[HistoryTurn]) -> LLMAnswer:
+        """Reescribe una pregunta de seguimiento como una pregunta completa y autónoma usando la conversación (feature 014).
+        No es abstracto: un proveedor que no lo implemente hace que la reformulación caiga a las reglas."""
+        raise NotImplementedError("Este proveedor no reescribe preguntas")
 
 
 @lru_cache

@@ -17,6 +17,8 @@ export interface ArtifactInput {
   daily_cap_usd: number;
   // null quita el tope propio del modo con razonamiento.
   reasoning_daily_cap_usd: number | null;
+  // Vueltas que recuerda el artefacto, de 0 a 10 (feature 014).
+  context_turns: number;
 }
 
 function useArtifactMutation<TVariables, TResult>(fn: (variables: TVariables) => Promise<TResult>) {

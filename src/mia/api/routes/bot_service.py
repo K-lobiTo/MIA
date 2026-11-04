@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from mia.access.permissions import allowed_modes, configured_domain_ids
 from mia.api.routes.query import NO_INFO_ANSWER, QueryRequest, QueryResponse, run_query
 from mia.api.security import require_bot_service
-from mia.bots.status import bot_state, find_bot_by_number
+from mia.bots.status import bot_state, effective_context_turns, find_bot_by_number
 from mia.bots.usage import add_messages, current_month
 from mia.config import settings
 from mia.rag.completeness import switch_enabled
@@ -48,6 +48,8 @@ class BotMessagesOut(BaseModel):
     month: str
     month_messages: int | None
     month_cap: int | None
+    # Las vueltas que recuerda el bot (de 1 a 10); nulo si el número no tiene bot (feature 014).
+    context_turns: int | None = None
 
 
 class BotQuery(BaseModel):
@@ -75,7 +77,13 @@ def bot_messages(payload: BotMessages, session: Session = Depends(get_session)) 
     if payload.received or payload.sent:
         add_messages(session, bot.id, month, payload.received, payload.sent)
     state = bot_state(session, bot, month)
-    return BotMessagesOut(status=state.status, month=month, month_messages=state.usage.total, month_cap=state.cap)
+    return BotMessagesOut(
+        status=state.status,
+        month=month,
+        month_messages=state.usage.total,
+        month_cap=state.cap,
+        context_turns=effective_context_turns(bot),
+    )
 
 
 @router.post("/query", response_model=BotQueryResponse)

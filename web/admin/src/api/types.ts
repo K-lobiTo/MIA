@@ -84,6 +84,8 @@ export interface Artifact {
   modes: ModeId[];
   daily_cap_usd: number;
   reasoning_daily_cap_usd: number | null;
+  // Vueltas que recuerda el artefacto (feature 014); 0: sin memoria.
+  context_turns: number;
   today: {
     spent_usd: number;
     reasoning_spent_usd: number;
@@ -160,6 +162,9 @@ export interface Bot {
   available: boolean;
   unavailable_reason: string | null;
   usage: BotUsage;
+  // Vueltas de memoria propias del bot (null: la predeterminada) y las que rigen (feature 014).
+  context_turns: number | null;
+  context_turns_effective: number;
   created_at: string;
 }
 

@@ -2,6 +2,7 @@ import { Button, Group, Paper, Text } from "@mantine/core";
 import type { Artifact, UnitNode } from "../../api/types";
 import { StatusBadge } from "../../components/StatusBadge";
 import { describeAccess, describeModes } from "./accessUtils";
+import { describeMemory } from "./memoryUtils";
 import { Meter } from "./Meter";
 
 interface Props {
@@ -40,6 +41,8 @@ export function ArtifactCard({ artifact, units, busy, onEdit, onRegenerate, onTo
         </dd>
         <dt>Modos</dt>
         <dd>{describeModes(artifact.modes)}</dd>
+        <dt>Memoria</dt>
+        <dd>{describeMemory(artifact.context_turns)}</dd>
         <dt>Gasto de hoy</dt>
         <dd>
           <Meter label="Tope diario total" spent={artifact.today.spent_usd} cap={artifact.daily_cap_usd} />

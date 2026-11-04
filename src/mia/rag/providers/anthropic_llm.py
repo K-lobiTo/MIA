@@ -1,12 +1,15 @@
 import anthropic
 
 from mia.config import settings
+from mia.rag.history import HistoryTurn
 from mia.rag.llm import (
     RAG_SYSTEM_PROMPT,
     LLMAnswer,
     LLMProvider,
     RagContext,
+    build_user_message,
     format_context,
+    instructions_with_history,
     normalize_finish_reason,
 )
 
@@ -18,15 +21,21 @@ class AnthropicLLMProvider(LLMProvider):
         self._client = anthropic.Anthropic(api_key=settings.anthropic_api_key or None)
 
     def answer(
-        self, question: str, context: list[RagContext], instructions: str = RAG_SYSTEM_PROMPT
+        self,
+        question: str,
+        context: list[RagContext],
+        instructions: str = RAG_SYSTEM_PROMPT,
+        history: list[HistoryTurn] | None = None,
     ) -> LLMAnswer:
         context_block = format_context(context)
         message = self._client.messages.create(
             model=MODEL,
             max_tokens=16000,
-            system=instructions,
+            system=instructions_with_history(instructions, history),
             output_config={"effort": settings.anthropic_effort},
-            messages=[{"role": "user", "content": f"Contexto:\n{context_block}\n\nPregunta: {question}"}],
+            messages=[
+                {"role": "user", "content": build_user_message(question, context_block, history)}
+            ],
         )
         usage = getattr(message, "usage", None)
         return LLMAnswer(

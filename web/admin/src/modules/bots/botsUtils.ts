@@ -55,3 +55,26 @@ export function domainsOfArtifact(artifact: Pick<Artifact, "access">, units: Uni
 /** Advertencia de acceso público que se confirma al asignar un artefacto a un bot (BOT-7). */
 export const PUBLIC_ACCESS_WARNING =
   "Este bot responde a cualquiera que escriba al número. Los dominios del artefacto deben ser información que se pueda decir a cualquiera.";
+
+export const BOT_MEMORY_LABEL = "Memoria (vueltas)";
+export const DEFAULT_BOT_TURNS = 2;
+export const BOT_MEMORY_HELP =
+  "Cuántas vueltas recuerda el bot de cada conversación para pedir aclaraciones de programa y recordar el programa. Mínimo 1. El bot no entrega la conversación al modelo.";
+
+export type BotTurnsResult = { ok: true; value: number | null } | { ok: false; message: string };
+
+/** La memoria del bot escrita como texto: vacío es el valor por defecto (2) y si no, un entero de 1 a 10. El servidor es
+ * quien hace cumplir el rango; esto evita enviar lo evidente. */
+export function validateBotTurns(text: string): BotTurnsResult {
+  const trimmed = text.trim();
+  if (trimmed === "") return { ok: true, value: null };
+  if (!/^\d+$/.test(trimmed) || Number(trimmed) < 1 || Number(trimmed) > 10) {
+    return { ok: false, message: "Escribe un número entero entre 1 y 10, o déjalo vacío para el valor por defecto." };
+  }
+  return { ok: true, value: Number(trimmed) };
+}
+
+/** La memoria que rige, para la tarjeta del bot. */
+export function describeBotMemory(turns: number): string {
+  return `${turns} ${turns === 1 ? "vuelta" : "vueltas"}`;
+}
