@@ -172,7 +172,7 @@ def test_la_respuesta_resuelta_lleva_imagen_y_fuentes_como_cualquier_otra(mundo)
     assert fake_kapso.images == [{"link": "https://mia.example.com/media/abc", "caption": "Calendario"}]
 
 
-@pytest.mark.parametrize("texto", ["no sé", "las dos", "Computación", "ciberseguridad y analítica", "¿Cuánto cuesta?"])
+@pytest.mark.parametrize("texto", ["no sé", "Computación", "¿Cuánto cuesta?"])
 def test_una_respuesta_que_no_decide_descarta_la_aclaracion_y_es_una_pregunta_nueva_sin_volver_a_preguntar(mundo, texto):
     fake_mia, fake_kapso, deps, _ = mundo
     guion = guion_de_dos_programas(fake_mia)
@@ -183,6 +183,42 @@ def test_una_respuesta_que_no_decide_descarta_la_aclaracion_y_es_una_pregunta_nu
     assert guion.preguntas == [AMBIGUA, texto]  # el mensaje se consulta tal cual, sin la pregunta original
     assert fake_kapso.texts[-1] == DEFAULT_TEXT_NO_INFO
     assert deps.state.conversations.pending("persona-1") is None
+
+
+@pytest.mark.parametrize(
+    "texto",
+    ["ciberseguridad y analítica", "la de ciberseguridad y la de analítica", "las dos", "ambas", "todas", "Ciberseguridad, Analítica"],
+)
+def test_una_respuesta_que_nombra_varios_candidatos_da_sin_informacion_sin_consultar_ni_volver_a_preguntar(mundo, texto):
+    fake_mia, fake_kapso, deps, _ = mundo
+    # Una API que ante cualquier texto respondería con otra aclaración: no debe llegar a consultarse.
+    guion = Guion([(None, aclaracion(CIBER, ANA))])
+    fake_mia.query_responder = guion
+    escribir(deps, AMBIGUA)
+
+    escribir(deps, texto)
+
+    assert guion.preguntas == [AMBIGUA]  # el mensaje con varios candidatos no se consulta
+    assert len(fake_kapso.texts) == 2 and fake_kapso.texts[1] == DEFAULT_TEXT_NO_INFO
+    assert deps.state.conversations.pending("persona-1") is None
+    ultimo = deps.state.conversations.turns("persona-1")[-1]
+    assert (ultimo.role, ultimo.kind) == ("bot", "no_info")
+
+
+def test_el_mensaje_que_nombra_varios_candidatos_cuenta_en_la_cuota_como_cualquier_otro(mundo, capsys):
+    fake_mia, _, deps, _ = mundo
+    fake_mia.query_responder = Guion([(None, aclaracion(CIBER, ANA))])
+    escribir(deps, AMBIGUA)
+    capsys.readouterr()
+
+    escribir(deps, "las dos")
+
+    assert lineas(capsys)[0]["resultado"] == "sin_informacion"
+    cuentas = [r["json"] for r in fake_mia.recorded.to("/bot/messages")]
+    assert cuentas[-2:] == [
+        {"number_id": NUMBER_ID, "received": 1, "sent": 0},
+        {"number_id": NUMBER_ID, "received": 0, "sent": 1},
+    ]
 
 
 def test_si_la_consulta_con_el_programa_elegido_vuelve_a_pedir_aclaracion_se_responde_sin_informacion(mundo):

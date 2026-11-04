@@ -11,7 +11,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from mia_whatsapp.api_client import ImageRef, MiaApiClient
-from mia_whatsapp.clarify import match_candidate, render_clarify, with_program
+from mia_whatsapp.clarify import match_candidate, names_several, render_clarify, with_program
 from mia_whatsapp.config import Settings
 from mia_whatsapp.format import compose_text, split_message
 from mia_whatsapp.kapso import KapsoClient
@@ -159,6 +159,13 @@ async def _process(deps: Deps, message: IncomingMessage) -> Outcome:
         chosen = match_candidate(question, list(pending.candidates))
         if chosen is not None:
             to_send = with_program(pending.question, chosen)
+        elif names_several(question, list(pending.candidates)):
+            # Nombra a varios ("las dos"): no se puede decidir. "Sin información", sin consultar y sin volver a preguntar.
+            outcome = await _respond(
+                deps, message, "sin_informacion", _with_greeting(settings.bot_text_no_info, greeting), greeted=bool(greeting)
+            )
+            _remember(deps, message, question, outcome, Turn(role="bot", kind="no_info"))
+            return outcome
 
     # 7 y 8. Consulta a MIA con el artefacto del bot, con un lugar en la cola de consultas simultáneas: lo que llega con la
     # cola llena se descarta sin responder. El reintento con el programa recordado usa el mismo lugar.

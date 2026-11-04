@@ -43,6 +43,27 @@ def match_candidate(text: str, candidates: list[str]) -> str | None:
     return matches[0] if len(matches) == 1 else None
 
 
+# Palabras (ya sin tildes ni plural simple) con las que una persona dice "los dos": un mensaje hecho solo de ellas los nombra a todos.
+_ALL_WORDS = frozenset({"dos", "ambo", "amba", "todo", "toda", "opcion", "opcione", "programa"})
+
+
+def names_several(text: str, candidates: list[str]) -> bool:
+    """Si la respuesta nombra a más de un candidato ("ciberseguridad y analítica") o a todos ("las dos", "ambas"): no se puede
+    decidir. Una palabra que comparten todos los candidatos no distingue a ninguno y no cuenta; "todo" dentro de una frase que
+    nombra a un solo programa tampoco ("dime todo de ciberseguridad"): solo cuenta un mensaje hecho de esas palabras."""
+    stripped = text.strip()
+    if not candidates or re.fullmatch(r"\d{1,2}", stripped):
+        return False
+    words = key_words(stripped)
+    if not words:
+        return False
+    if words <= _ALL_WORDS:
+        return True
+    key_sets = [key_words(candidate) for candidate in candidates]
+    common = frozenset.intersection(*key_sets)
+    return sum(1 for keys in key_sets if words & (keys - common)) >= 2
+
+
 def with_program(question: str, program: str) -> str:
     """La pregunta con el programa al final, como la escribiría una persona: `¿Cuánto cuesta? (Maestría en X)`."""
     return f"{question.strip()} ({program})"

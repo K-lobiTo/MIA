@@ -2,7 +2,7 @@
 
 import pytest
 
-from mia_whatsapp.clarify import match_candidate, render_clarify, with_program
+from mia_whatsapp.clarify import match_candidate, names_several, render_clarify, with_program
 
 CIBER = "Maestría en Ciberseguridad"
 ANA = "Maestría en Analítica de Negocio (Business Analytics)"
@@ -81,3 +81,49 @@ def test_un_texto_sin_programs_se_envia_seguido_de_la_lista_numerada():
     texto = render_clarify("¿A cuál te refieres?", CANDIDATOS)
 
     assert texto == f"¿A cuál te refieres?\n1. {CIBER}\n2. {ANA}"
+
+
+@pytest.mark.parametrize(
+    "texto",
+    [
+        "ciberseguridad y analítica",
+        "la de ciberseguridad y la de analítica",
+        "Ciberseguridad, Analítica",
+        "las dos",
+        "los dos",
+        "ambas",
+        "Ambos",
+        "todas",
+        "todos",
+        "las dos opciones",
+    ],
+)
+def test_nombra_varios_si_menciona_a_dos_candidatos_o_a_todos(texto):
+    assert names_several(texto, CANDIDATOS) is True
+
+
+@pytest.mark.parametrize(
+    "texto",
+    [
+        "ciberseguridad",
+        "la de analítica",
+        "1",
+        "2",
+        "no sé",
+        "¿Cuánto cuesta?",
+        "Computación",
+        "dime todo de ciberseguridad",  # "todo" dentro de una frase que nombra un solo programa
+        "",
+        "maestría",
+    ],
+)
+def test_no_nombra_varios_si_menciona_uno_o_ninguno(texto):
+    assert names_several(texto, CANDIDATOS) is False
+
+
+def test_una_palabra_que_comparten_todos_los_candidatos_no_cuenta_como_nombrarlos():
+    candidatos = ["Maestría en Datos de Salud", "Maestría en Datos de Negocio"]
+
+    assert names_several("datos", candidatos) is False  # no distingue ninguno
+    assert names_several("salud y negocio", candidatos) is True
+    assert match_candidate("datos", candidatos) is None

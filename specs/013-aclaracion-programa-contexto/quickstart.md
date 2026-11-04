@@ -25,17 +25,17 @@ Lo que deben demostrar:
 - **De punta a punta** (`test_bot_end_to_end.py`): el servicio y la API reales en un proceso, con Kapso, el almacén y el modelo simulados: aclaración, resolución con respuesta citada, y 4 mensajes de cuota contados.
 - **Sin regresiones**: las pruebas existentes pasan y la batería del MVP da 19 de 19.
 
-## 2. Calibrar el umbral bajo con los documentos reales (research R9)
+## 2. Calibrar la aclaración con los documentos reales (research R9)
 
-Con los seis documentos de Ciberseguridad y Analítica en un Qdrant local (ingeridos con `scripts/cargar_carpeta.py` y el mismo modelo de embeddings), medir los puntajes de la búsqueda de decisión para:
+Con los seis documentos de Ciberseguridad y Analítica en una carpeta (por ejemplo `tmp/nuevos/`) y un Qdrant local, correr `python scripts/calibrar_aclaracion.py --documentos tmp/nuevos`: ingiere los documentos en una colección temporal con el mismo modelo de embeddings, recorre los casos de `scripts/datos/casos_aclaracion.json` y para cada pregunta imprime el mejor puntaje, las palabras con contenido y los programas candidatos (sale con código 1 si algún caso no se comporta como se espera). Las preguntas que ya pasan `QUERY_SIMILARITY_THRESHOLD` las responde el modelo y no entran a la aclaración. Los tipos de caso:
 
 | Tipo | Preguntas de ejemplo | Debe dar |
 |---|---|---|
-| Ambiguas entre programas | "¿Cuándo empiezan las lecciones?", "¿Cuánto cuesta?", "¿Cuáles son los requisitos?", "¿Cómo me postulo?" | Dos programas sobre el umbral bajo |
-| Con un solo programa | "¿Cuántos estudiantes se aceptan?" (solo Analítica lo dice) | Un programa |
+| Ambiguas entre programas | "¿Cuándo empiezan las lecciones?", "¿Cuánto cuesta?", "¿Cuáles son los requisitos?", "¿Cómo me postulo?" | Dos programas con un fragmento sobre el piso y con evidencia léxica (las que pasan el umbral de 0,82 las responde el modelo) |
+| Con un solo programa | "¿Cuántos estudiantes se aceptan?" (solo Analítica lo dice) | Un programa o ninguno |
 | Sin relación | "¿Cuánto cuesta la luna?", "¿Qué hora es?" | Ningún programa |
 
-Elegir `BOT_CLARIFY_MIN_SIMILARITY` y anotarlo con los puntajes en research R9. Agregar esos casos a `scripts/datos/casos_busqueda.json` con categoría `aclaracion`.
+Si cambian los documentos o el modelo, repetir la medición y ajustar `BOT_CLARIFY_MIN_SIMILARITY` (piso, 0,70) y `BOT_CLARIFY_CANDIDATES` (30); los resultados de la última medición están en research R9.
 
 ## 3. Recorrer el flujo con el servicio local (sin Kapso)
 
