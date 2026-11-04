@@ -122,3 +122,5 @@ La variable `HISTORY_REFORMULATION` (`rules` por defecto, `model` u `off`) elige
 | Un cliente envía un historial malicioso (rol de sistema, textos enormes, cientos de vueltas) | `extra="forbid"`, máximos de entrada, recorte por cantidad y por tamaño en la API (R3). |
 | La Consulta envía un historial viejo tras recargar | La conversación vive en la página: al recargar empieza de cero (como hoy). |
 | El valor de memoria del bot no llega al servicio | Respaldo: `BOT_CONTEXT_MESSAGES` (R6). |
+
+**Batería de aceptación del MVP con la memoria en 0 (2026-11-04):** `python scripts/pruebas_mvp.py` contra la API en producción ya desplegada con la feature 014 y el artefacto de prueba "PRUEBA Aceptación ambas unidades" (acceso a las dos unidades, memoria 0, activado solo durante la corrida): **19 de 19 casos correctos** (FR-019, SC-004).
