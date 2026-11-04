@@ -238,3 +238,7 @@ description: "Tareas de implementación de la feature 014: memoria de conversaci
 - Los criterios de éxito se comprueban así: SC-001 en T028 y T040; SC-002 en T028 (`--respuestas`), T019 y T040; SC-003 en T018 y T040; SC-004 en T020, T021 y T022 (la batería del MVP con gasto la corre el usuario si quiere confirmarla); SC-005 en T023; SC-006 en T023; SC-007 en T029, T030 y T040; SC-008 en T028 y T040; SC-009 en T008, T031 y T042; SC-010 en T021 y T032.
 - La memoria queda en 0 en todos los artefactos hasta que el usuario la edite en el panel (T042): desplegar no cambia nada.
 - La feature no se da por terminada hasta T040: la comparación de estrategias (FR-017, SC-008) y la medición de SC-001 y SC-002 con el modelo real solo salen de esa medición.
+
+## Phase 12: Convergence
+
+- [X] T043 Correr la batería de aceptación del MVP con la memoria del artefacto en 0 (`python scripts/pruebas_mvp.py --url <API> --clave <clave de un artefacto con acceso a las dos unidades y memoria 0>`, cuesta centavos) y confirmar 19 de 19, anotando el resultado y la fecha en [research.md](research.md) R10 per FR-019 y SC-004 (missing)
