@@ -47,7 +47,7 @@ Lo que queda tras `sanitize_history(history, turns, mode)`:
 | `HISTORY_MAX_QUESTION_CHARS` | `500` | 50 a 2000 | Tope de cada pregunta del historial. |
 | `HISTORY_MAX_ANSWER_CHARS` | `1500` | 200 a 20000 | Tope de cada respuesta del historial en modo literal (el doble en razonamiento). |
 | `HISTORY_MAX_CHARS` | `6000` | 500 a 100000 | Tope del total del historial en modo literal (el doble en razonamiento). |
-| `HISTORY_REWRITE_MAX_TOKENS` | `100` | 20 a 500 | Tokens de salida de la reescritura con el modelo. |
+| `HISTORY_REWRITE_MAX_TOKENS` | `400` | 20 a 500 | Tokens de salida de la reescritura con el modelo (incluye el razonamiento de un modelo que lo exige; con menos de unos 300 la respuesta sale vacía). Era 100 hasta el 2026-11-05. |
 
 ## En el servicio del bot (memoria, sin base)
 

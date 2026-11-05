@@ -135,7 +135,9 @@ class Settings(BaseSettings):
     history_max_question_chars: int = Field(default=500, ge=50, le=2000)
     history_max_answer_chars: int = Field(default=1500, ge=200, le=20000)
     history_max_chars: int = Field(default=6000, ge=500, le=100000)
-    history_rewrite_max_tokens: int = Field(default=100, ge=20, le=500)
+    # Un modelo de razonamiento obligatorio (como z-ai/glm-5.3-flash) gasta de 100 a 170 tokens pensando antes de escribir la
+    # pregunta: con menos de unos 300 la respuesta sale vacía y la reescritura cae a las reglas.
+    history_rewrite_max_tokens: int = Field(default=400, ge=20, le=500)
 
     # Usuarios de la Consulta e historial de chats (feature 015, specs/015-historial-chats/). `chat_retention_days` son los
     # días sin actividad tras los cuales se borra una conversación; 0 apaga el guardado y borra lo guardado. La sesión es

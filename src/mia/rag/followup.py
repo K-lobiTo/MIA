@@ -140,17 +140,25 @@ def _model_question(question: str, history: list[HistoryTurn]) -> Reformulation 
             "Falló la reescritura de la pregunta con el modelo: se usan las reglas.", exc_info=True
         )
         return None
-    rewritten = _valid_rewrite(answer.text)
-    if rewritten is None:
-        logger.warning(
-            "La reescritura del modelo no es válida (vacía, de varias líneas o de largo inusual): se usan las reglas."
-        )
-        return None
+    # La llamada se cobró aunque su resultado no sirva: el costo se suma a la consulta de todos modos.
     cost = (
         float(answer.cost_usd)
         if answer.cost_usd is not None
         else float(estimate_cost(LITERAL, answer.prompt_tokens, answer.completion_tokens))
     )
+    rewritten = _valid_rewrite(answer.text)
+    if rewritten is None:
+        if answer.finish_reason == "length":
+            logger.warning(
+                "La reescritura del modelo se cortó por el límite de tokens (HISTORY_REWRITE_MAX_TOKENS, hoy %d): "
+                "un modelo de razonamiento gasta casi todo pensando. Se usan las reglas.",
+                settings.history_rewrite_max_tokens,
+            )
+        else:
+            logger.warning(
+                "La reescritura del modelo no es válida (vacía, de varias líneas o de largo inusual): se usan las reglas."
+            )
+        return Reformulation("", "invalid", cost, answer.prompt_tokens or 0, answer.completion_tokens or 0)
     return Reformulation(
         rewritten, "model", cost, answer.prompt_tokens or 0, answer.completion_tokens or 0
     )
@@ -166,6 +174,15 @@ def search_question(
         return Reformulation(question)
     if selected == "model":
         result = _model_question(question, history)
-        if result is not None:
+        if result is not None and result.used == "model":
             return result
+        if result is not None:
+            # Reescritura inválida: se busca con las reglas, pero lo que costó la llamada cuenta.
+            return Reformulation(
+                rules_question(question, history),
+                "rules",
+                result.cost_usd,
+                result.prompt_tokens,
+                result.completion_tokens,
+            )
     return Reformulation(rules_question(question, history), "rules")

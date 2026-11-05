@@ -277,7 +277,7 @@ def test_los_valores_por_defecto_de_la_memoria_de_conversacion():
         base.history_max_answer_chars,
         base.history_max_chars,
     ) == (500, 1500, 6000)
-    assert base.history_rewrite_max_tokens == 100
+    assert base.history_rewrite_max_tokens == 400
 
 
 @pytest.mark.parametrize(
