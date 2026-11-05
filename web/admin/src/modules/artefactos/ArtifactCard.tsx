@@ -3,6 +3,7 @@ import type { Artifact, UnitNode } from "../../api/types";
 import { StatusBadge } from "../../components/StatusBadge";
 import { describeAccess, describeModes } from "./accessUtils";
 import { describeMemory } from "./memoryUtils";
+import { describeSession } from "./sessionUtils";
 import { Meter } from "./Meter";
 
 interface Props {
@@ -43,6 +44,8 @@ export function ArtifactCard({ artifact, units, busy, onEdit, onRegenerate, onTo
         <dd>{describeModes(artifact.modes)}</dd>
         <dt>Memoria</dt>
         <dd>{describeMemory(artifact.context_turns)}</dd>
+        <dt>Inicio de sesión</dt>
+        <dd>{describeSession(artifact.require_login)}</dd>
         <dt>Gasto de hoy</dt>
         <dd>
           <Meter label="Tope diario total" spent={artifact.today.spent_usd} cap={artifact.daily_cap_usd} />

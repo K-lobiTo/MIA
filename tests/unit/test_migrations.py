@@ -41,7 +41,7 @@ def test_base_anterior_se_migra_sin_perder_datos(tmp_path):
     assert TABLAS_NUEVAS <= set(inspector.get_table_names())
     assert "unit_id" in {c["name"] for c in inspector.get_columns("domains")}
     assert "folder_id" in {c["name"] for c in inspector.get_columns("documents")}
-    assert _revision(engine) == "0008"
+    assert _revision(engine) == "0009"
     with engine.connect() as connection:
         assert connection.execute(text("SELECT name, unit_id FROM domains")).one() == (
             "Memoria del Consejo",
@@ -75,7 +75,7 @@ def test_base_vacia_queda_en_la_ultima_revision(tmp_path):
     init_db(engine)
 
     assert TABLAS_NUEVAS <= set(inspect(engine).get_table_names())
-    assert _revision(engine) == "0008"
+    assert _revision(engine) == "0009"
 
 
 def test_init_db_se_puede_correr_dos_veces(tmp_path):
@@ -84,7 +84,7 @@ def test_init_db_se_puede_correr_dos_veces(tmp_path):
     init_db(engine)
     init_db(engine)
 
-    assert _revision(engine) == "0008"
+    assert _revision(engine) == "0009"
 
 
 def test_migracion_0003_crea_administradores_sin_tocar_datos(tmp_path):
@@ -269,7 +269,7 @@ def test_subir_a_la_cabeza_sobre_una_base_en_la_0005_no_pierde_datos(tmp_path):
 
     _hasta(engine, "head")
 
-    assert _revision(engine) == "0008"
+    assert _revision(engine) == "0009"
     with engine.connect() as connection:
         assert connection.execute(text("SELECT filename FROM documents")).scalar_one() == "acta.pdf"
         assert connection.execute(text("SELECT name FROM domains")).scalar_one() == "Memoria del Consejo"
@@ -289,7 +289,7 @@ def test_bajar_a_la_0005_borra_solo_las_tablas_nuevas_y_se_puede_volver_a_subir(
 
     _hasta(engine, "head")
 
-    assert _revision(engine) == "0008"
+    assert _revision(engine) == "0009"
     assert {"bots", "bot_message_counts", "document_images"} <= set(
         inspect(engine).get_table_names()
     )
@@ -323,7 +323,7 @@ def test_la_migracion_0008_agrega_la_memoria_de_conversacion_sin_perder_datos(tm
     assert columnas["context_turns"]["nullable"] is False
     bots = {c["name"]: c for c in inspect(engine).get_columns("bots")}
     assert bots["context_turns"]["nullable"] is True
-    assert _revision(engine) == "0008"
+    assert _revision(engine) == "0009"
     with engine.connect() as connection:
         assert connection.execute(text("SELECT name, context_turns FROM artifacts")).one() == (
             "Consulta",
@@ -360,3 +360,73 @@ def test_bajar_a_la_0007_quita_las_dos_columnas_y_conserva_el_resto(tmp_path):
 
     with engine.connect() as connection:
         assert connection.execute(text("SELECT context_turns FROM artifacts")).scalar_one() == 0
+
+
+def test_la_migracion_0009_crea_usuarios_sesiones_y_conversaciones_sin_perder_datos(tmp_path):
+    engine = _base_en(tmp_path, "0008")
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO artifacts (id, name, description, key_hash, key_prefix, active, all_domains, modes, daily_cap_usd, "
+                "context_turns, created_at, updated_at) VALUES ('a1', 'Consulta', '', 'h1', 'mia_aaaa', 1, 0, 'literal', 0.5, 3, "
+                "'2026-11-04', '2026-11-04')"
+            )
+        )
+    assert "consulta_users" not in set(inspect(engine).get_table_names())
+
+    _hasta(engine, "head")
+
+    tablas = set(inspect(engine).get_table_names())
+    assert {"consulta_users", "consulta_sessions", "conversations", "conversation_turns"} <= tablas
+    columnas = lambda t: {c["name"]: c for c in inspect(engine).get_columns(t)}
+    assert {"id", "username", "password_hash", "unit_id", "active", "created_by", "created_at", "updated_at", "last_login_at"} == set(columnas("consulta_users"))
+    assert columnas("consulta_users")["unit_id"]["nullable"] is True
+    assert {"id", "user_id", "token_hash", "created_at", "last_seen_at", "expires_at"} == set(columnas("consulta_sessions"))
+    assert {"id", "user_id", "title", "created_at", "updated_at"} == set(columnas("conversations"))
+    assert {"id", "conversation_id", "position", "question", "answer", "sources", "mode", "no_info", "created_at"} == set(columnas("conversation_turns"))
+    indices = {i["name"] for t in ("consulta_sessions", "conversations", "conversation_turns") for i in inspect(engine).get_indexes(t)}
+    assert {"ix_consulta_sessions_token_hash", "ix_conversations_user_id_updated_at", "ix_conversation_turns_conversation_id"} <= indices
+    require_login = columnas("artifacts")["require_login"]
+    assert require_login["nullable"] is False
+    assert _revision(engine) == "0009"
+    with engine.connect() as connection:
+        # El artefacto existente no cambia y nace sin exigir sesión.
+        assert connection.execute(text("SELECT name, context_turns, require_login FROM artifacts")).one() == ("Consulta", 3, 0)
+        assert connection.execute(text("SELECT filename FROM documents")).scalar_one() == "acta.pdf"
+
+
+def test_bajar_a_la_0008_quita_lo_de_la_0009_y_conserva_el_resto(tmp_path):
+    engine = _base_en(tmp_path, "head")
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO artifacts (id, name, description, key_hash, key_prefix, active, all_domains, modes, daily_cap_usd, "
+                "context_turns, require_login, created_at, updated_at) VALUES ('a1', 'Consulta', '', 'h1', 'mia_aaaa', 1, 0, 'literal', 0.5, 3, 1, "
+                "'2026-11-04', '2026-11-04')"
+            )
+        )
+
+    _hasta(engine, "0008", accion="downgrade")
+
+    tablas = set(inspect(engine).get_table_names())
+    assert not ({"consulta_users", "consulta_sessions", "conversations", "conversation_turns"} & tablas)
+    assert "require_login" not in {c["name"] for c in inspect(engine).get_columns("artifacts")}
+    assert _revision(engine) == "0008"
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT name, context_turns FROM artifacts")).one() == ("Consulta", 3)
+
+    _hasta(engine, "head")
+
+    assert _revision(engine) == "0009"
+    assert "conversations" in set(inspect(engine).get_table_names())
+
+
+def test_borrar_una_conversacion_arrastra_sus_vueltas_con_las_claves_foraneas_activas(tmp_path):
+    engine = _base_en(tmp_path, "head")
+    with engine.begin() as connection:
+        connection.execute(text("PRAGMA foreign_keys=ON"))
+        connection.execute(text("INSERT INTO consulta_users (id, username, password_hash, active, created_by, created_at, updated_at) VALUES ('u1', 'ana', 'x', 1, 't', '2026-11-04', '2026-11-04')"))
+        connection.execute(text("INSERT INTO conversations (id, user_id, title, created_at, updated_at) VALUES ('c1', 'u1', 't', '2026-11-04', '2026-11-04')"))
+        connection.execute(text("INSERT INTO conversation_turns (id, conversation_id, position, question, answer, sources, mode, no_info, created_at) VALUES ('t1', 'c1', 1, 'p', 'r', '[]', 'literal', 0, '2026-11-04')"))
+        connection.execute(text("DELETE FROM conversations WHERE id = 'c1'"))
+        assert connection.execute(text("SELECT COUNT(*) FROM conversation_turns")).scalar_one() == 0

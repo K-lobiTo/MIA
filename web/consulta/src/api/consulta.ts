@@ -28,6 +28,8 @@ export interface AskInput {
   mode: ModeId;
   // Solo se envía con memoria (feature 014); sin él el pedido es el de siempre.
   history?: HistoryTurn[];
+  // Con sesión (feature 015): la conversación guardada a la que pertenece la pregunta.
+  conversation_id?: string;
 }
 
 export function useAsk() {

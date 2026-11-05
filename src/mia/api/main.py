@@ -9,9 +9,12 @@ from fastapi.responses import JSONResponse
 from mia.access.errors import AuthError
 from mia.api.routes import (
     artifacts,
+    auth,
     bot_service,
     bots,
     config,
+    consulta_users,
+    conversations,
     documents,
     domains,
     equivalences,
@@ -23,6 +26,7 @@ from mia.api.routes import (
     query,
     usage,
 )
+from mia.chat.retention import purge_on_startup
 from mia.config import settings
 from mia.rag.embeddings import get_embedding_provider
 from mia.rag.lexical import hybrid_enabled
@@ -48,6 +52,7 @@ def ensure_text_index() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    purge_on_startup()
     embedding_provider = get_embedding_provider(settings.embedding_provider)
     get_vector_store().ensure_collection(embedding_provider.dimension)
     ensure_text_index()
@@ -70,6 +75,8 @@ app = FastAPI(title="MIA", description="Memoria Institucional Académica", lifes
 # Métodos HTTP que los sitios estáticos pueden usar. Toda ruta de la API debe usar uno de estos (lo comprueba
 # tests/unit/test_cors.py): PUT es de las rutas de imágenes de documentos (feature 011).
 CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"]
+# Encabezados que los sitios estáticos pueden enviar: X-Session-Token es la sesión de un usuario de la Consulta (feature 015).
+CORS_ALLOW_HEADERS = ["content-type", "Authorization", "X-Admin-Key", "X-Artifact-Key", "X-Session-Token"]
 
 # Los sitios estáticos (panel, Consulta administrativa) llaman directo a la API desde el navegador.
 # Sin orígenes configurados no se agrega CORS: en desarrollo el proxy de Vite lo hace innecesario.
@@ -79,7 +86,7 @@ if _cors_origins:
         CORSMiddleware,
         allow_origins=_cors_origins,
         allow_methods=CORS_ALLOW_METHODS,
-        allow_headers=["content-type", "Authorization", "X-Admin-Key", "X-Artifact-Key"],
+        allow_headers=CORS_ALLOW_HEADERS,
         expose_headers=["Retry-After"],
     )
 
@@ -88,9 +95,10 @@ if _cors_origins:
 @app.exception_handler(AuthError)
 async def auth_error_handler(request: Request, error: AuthError) -> JSONResponse:
     # Además del mensaje, un código estable para que el panel distinga el caso.
-    headers = {"WWW-Authenticate": "Bearer"} if error.status_code == 401 else None
+    headers = {"WWW-Authenticate": "Bearer"} if error.status_code == 401 else {}
+    headers.update(error.headers or {})
     return JSONResponse(
-        status_code=error.status_code, content={"detail": error.detail, "code": error.code}, headers=headers
+        status_code=error.status_code, content={"detail": error.detail, "code": error.code}, headers=headers or None
     )
 
 
@@ -101,6 +109,9 @@ app.include_router(artifacts.router)
 app.include_router(config.router)
 app.include_router(equivalences.router)
 app.include_router(bots.router)
+app.include_router(auth.router)
+app.include_router(consulta_users.router)
+app.include_router(conversations.router)
 app.include_router(bot_service.router)
 app.include_router(images.router)
 app.include_router(media.router)

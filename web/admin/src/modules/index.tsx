@@ -5,6 +5,7 @@ import { BotsPage } from "./bots/BotsPage";
 import { EquivalenciasPage } from "./equivalencias/EquivalenciasPage";
 import { InventarioPage } from "./inventario/InventarioPage";
 import { UsoPage } from "./uso/UsoPage";
+import { UsuariosPage } from "./usuarios/UsuariosPage";
 
 export interface PanelModule {
   path: string;
@@ -20,5 +21,6 @@ export const MODULES: PanelModule[] = [
   { path: "/artefactos", label: "Artefactos y accesos", element: <ArtefactosPage /> },
   { path: "/uso", label: "Uso", element: <UsoPage /> },
   { path: "/siglas", label: "Siglas y equivalencias", element: <EquivalenciasPage /> },
+  { path: "/usuarios", label: "Usuarios de la Consulta", element: <UsuariosPage /> },
   { path: "/bots", label: "Bots", element: <BotsPage />, requires: "canManageBots" },
 ];

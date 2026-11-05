@@ -12,8 +12,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from mia.access.caps import CapStatus, check_caps, seconds_until
+from mia.access.errors import AuthError
 from mia.access.permissions import allowed_domain_ids, allowed_modes
-from mia.api.security import require_artifact
+from mia.api.security import optional_user, require_artifact
+from mia.chat import service as chat_service
 from mia.config import settings
 from mia.images.lookup import images_for_documents
 from mia.rag.citations import (
@@ -75,7 +77,7 @@ from mia.rag.rerank import (
     warn_rerank_failure,
 )
 from mia.storage.db import get_session
-from mia.storage.models import Artifact, Document, Domain, QueryLog
+from mia.storage.models import Artifact, ConsultaUser, Document, Domain, QueryLog
 from mia.storage.vector_store import get_vector_store
 
 router = APIRouter(tags=["query"])
@@ -117,6 +119,8 @@ class QueryRequest(BaseModel):
     domains: list[str] = Field(min_length=1)
     question: str = Field(min_length=1, max_length=2000)
     mode: Literal["literal", "razonamiento"] = "literal"
+    # La conversación guardada a la que pertenece la pregunta (feature 015): solo se usa con sesión de usuario; sin ella se ignora.
+    conversation_id: str | None = Field(default=None, max_length=64)
     # Vueltas anteriores de la conversación, de la más vieja a la más nueva. La API las usa solo si el artefacto tiene
     # memoria (`context_turns` mayor que 0), las recorta y nunca las guarda ni las toma como fuente de datos.
     history: list[HistoryTurnIn] | None = Field(default=None, max_length=MAX_HISTORY_TURNS_IN)
@@ -263,13 +267,17 @@ def _reject(
     outcome: str,
     reason: str,
     headers: dict[str, str] | None = None,
+    code: str | None = None,
 ) -> HTTPException:
-    """Registra la consulta rechazada (con costo cero) y devuelve el error HTTP para lanzarlo."""
+    """Registra la consulta rechazada (con costo cero) y devuelve el error HTTP para lanzarlo. Con `code` el error lleva ese
+    código estable en el cuerpo (`{detail, code}`), como los de sesión de la feature 015."""
     log.outcome = outcome
     log.reject_reason = reason
     log.latency_ms = _elapsed_ms(started)
     session.add(log)
     session.commit()
+    if code is not None:
+        return AuthError(status_code, code, reason, headers=headers)
     return HTTPException(status_code=status_code, detail=reason, headers=headers)
 
 
@@ -300,13 +308,58 @@ def _images_of_sources(session: Session, document_ids: list[str], names: dict[st
         return []
 
 
-@router.post("/query", response_model=QueryResponse)
+class QueryResponseChat(QueryResponse):
+    """La respuesta de una consulta con sesión de usuario (feature 015): además, la conversación donde quedó y si se guardó."""
+
+    conversation_id: str | None = None
+    saved: bool
+
+
+@router.post("/query", response_model=QueryResponseChat | QueryResponse)
 def query(
     payload: QueryRequest,
     artifact: Artifact = Depends(require_artifact),
     session: Session = Depends(get_session),
-) -> QueryResponse:
-    return run_query(payload, artifact, session)
+    user: ConsultaUser | None = Depends(optional_user),
+) -> QueryResponseChat | QueryResponse:
+    # Sin sesión (o con el guardado apagado) la consulta es la de siempre y no guarda nada.
+    # Un artefacto que exige sesión rechaza lo que llegue sin ella (el bot no pasa por esta ruta).
+    session_missing = artifact.require_login and user is None
+    if user is None or settings.chat_retention_days == 0:
+        return run_query(payload, artifact, session, session_missing=session_missing)
+    chat_service.check_room(session, user, payload.conversation_id)
+    # Con sesión el historial sale de lo guardado, no de lo que mande el cliente: una conversación nueva no tiene vueltas
+    # anteriores y una guardada aporta las suyas (la memoria del artefacto las recorta después, como en la 014).
+    stored = (
+        [
+            # Lo guardado ya se validó al guardarse: no se vuelve a validar el largo contra el máximo de entrada del cliente.
+            HistoryTurnIn.model_construct(question=t.question, answer=t.answer, mode=t.mode)
+            for t in chat_service.history_turns(session, user, payload.conversation_id)
+        ]
+        if payload.conversation_id
+        else []
+    )
+    payload = payload.model_copy(update={"history": stored or None})
+    response = run_query(payload, artifact, session)
+    conversation_id: str | None = payload.conversation_id
+    try:
+        conversation_id = chat_service.append_turn(
+            session,
+            user,
+            payload.conversation_id,
+            payload.question,
+            response.answer,
+            [{"domain": s.domain, "document": s.document} for s in response.sources],
+            response.mode,
+            response.no_info,
+        )
+        saved = True
+    except Exception as exc:  # noqa: BLE001  (guardar nunca hace fallar una consulta)
+        session.rollback()
+        # Solo el tipo de error: nunca el texto de la pregunta ni de la respuesta.
+        logger.warning("No se pudo guardar la vuelta de una conversación (%s)", type(exc).__name__)
+        saved = False
+    return QueryResponseChat(**response.model_dump(), conversation_id=conversation_id, saved=saved)
 
 
 def run_query(
@@ -315,6 +368,7 @@ def run_query(
     session: Session,
     clarify: ClarifyPolicy | None = None,
     extras: QueryExtras | None = None,
+    session_missing: bool = False,
 ) -> QueryResponse:
     """Una consulta completa con la configuración de `artifact` (permisos, topes, registro en Uso). La usan `POST /query`
     (el artefacto de la clave) y `POST /bot/query` (el artefacto asignado al bot de WhatsApp, feature 011): así los dos
@@ -337,6 +391,12 @@ def run_query(
     # estático se puede modificar.
     if not artifact.active:
         raise _reject(session, log, started, 403, "rejected_permission", "Este artefacto está desactivado.")
+    if session_missing:
+        # El artefacto exige sesión (feature 015) y la consulta no trajo ninguna: se rechaza antes de buscar, sin costo.
+        raise _reject(
+            session, log, started, 401, "rejected_permission",
+            "Este artefacto exige iniciar sesión para consultar.", code="login_required",
+        )
     if payload.mode not in allowed_modes(artifact):
         raise _reject(
             session, log, started, 403, "rejected_permission",

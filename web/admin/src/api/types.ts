@@ -86,6 +86,8 @@ export interface Artifact {
   reasoning_daily_cap_usd: number | null;
   // Vueltas que recuerda el artefacto (feature 014); 0: sin memoria.
   context_turns: number;
+  // Solo responde a personas con sesión de usuario de la Consulta (feature 015).
+  require_login: boolean;
   today: {
     spent_usd: number;
     reasoning_spent_usd: number;
@@ -296,4 +298,26 @@ export interface BulkDeleteResponse {
   deleted: number;
   failed: number;
   results: DeleteResultItem[];
+}
+
+// Usuarios de la Consulta (feature 015, contracts/usuarios-admin-api.md). La administración solo ve cantidad y fecha de las
+// conversaciones, nunca su texto.
+export interface ConsultaUser {
+  id: string;
+  username: string;
+  unit: { id: string; name: string } | null;
+  active: boolean;
+  created_at: string;
+  last_login_at: string | null;
+  conversation_count: number;
+  last_activity_at: string | null;
+}
+
+// La contraseña solo viene al crear: es la única vez que se puede ver.
+export interface ConsultaUserCreated extends ConsultaUser {
+  password: string;
+}
+
+export interface ConsultaUsersResponse {
+  users: ConsultaUser[];
 }

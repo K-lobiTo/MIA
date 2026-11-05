@@ -139,6 +139,7 @@ def test_config_con_la_clave_del_artefacto_trae_la_memoria_y_rige_sin_reiniciar(
         "name": "Consulta Computación",
         "active": True,
         "context_turns": 5,
+        "require_login": False,  # feature 015
     }
 
 

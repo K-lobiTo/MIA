@@ -13,6 +13,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, deferred, mapped_column, relationship
 
@@ -122,6 +123,8 @@ class Artifact(Base):
     reasoning_daily_cap_usd: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
     # Vueltas completas (pregunta y respuesta) que recuerda y entrega al modelo (feature 014), de 0 a 10. 0: como siempre.
     context_turns: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    # Exige iniciar sesión para consultar (feature 015). Falso: el artefacto responde sin sesión como siempre.
+    require_login: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 
@@ -275,3 +278,70 @@ class QueryLog(Base):
     sources: Mapped[str] = mapped_column(Text, default="[]")  # JSON: [{domain, document}]
     rating: Mapped[str | None] = mapped_column(String, nullable=True)  # util, no_util
     rating_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class ConsultaUser(Base):
+    """Usuario de la Consulta (feature 015): inicia sesión con usuario y contraseña que entrega la administración. No tiene
+    permisos propios sobre los documentos (los decide el artefacto); su programa solo decide qué cuentas de administración
+    lo gestionan. La contraseña se guarda únicamente como hash lento con sal."""
+
+    __tablename__ = "consulta_users"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    # Siempre en minúsculas: único sin distinguir mayúsculas.
+    username: Mapped[str] = mapped_column(String, unique=True)
+    password_hash: Mapped[str] = mapped_column(String)
+    unit_id: Mapped[str | None] = mapped_column(ForeignKey("units.id"), nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class ConsultaSession(Base):
+    """Sesión de un usuario de la Consulta: el token solo se guarda como SHA-256, así que cerrarla es borrar la fila."""
+
+    __tablename__ = "consulta_sessions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("consulta_users.id", ondelete="CASCADE"), index=True)
+    token_hash: Mapped[str] = mapped_column(String, unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+
+
+class Conversation(Base):
+    """Conversación guardada de un usuario (feature 015). Solo la ve su dueño; su `updated_at` define la retención."""
+
+    __tablename__ = "conversations"
+    __table_args__ = (Index("ix_conversations_user_id_updated_at", "user_id", "updated_at"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("consulta_users.id", ondelete="CASCADE"))
+    title: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, index=True)
+
+
+class ConversationTurn(Base):
+    """Una vuelta guardada: pregunta, respuesta, fuentes (dominio y documento, sin extracto), modo y fecha. No guarda la clave
+    del artefacto, teléfonos, costos ni imágenes."""
+
+    __tablename__ = "conversation_turns"
+    __table_args__ = (
+        UniqueConstraint("conversation_id", "position", name="uq_conversation_turns_conversation_id_position"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    conversation_id: Mapped[str] = mapped_column(
+        ForeignKey("conversations.id", ondelete="CASCADE"), index=True
+    )
+    position: Mapped[int] = mapped_column(Integer)
+    question: Mapped[str] = mapped_column(Text)
+    answer: Mapped[str] = mapped_column(Text)
+    sources: Mapped[str] = mapped_column(Text, default="[]")  # JSON: [{domain, document}]
+    mode: Mapped[str] = mapped_column(String, default="literal")
+    no_info: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)

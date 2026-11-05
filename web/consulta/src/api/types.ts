@@ -25,7 +25,9 @@ export interface Config {
   modes: Mode[];
   // Solo cuando se pidió con la clave de un artefacto.
   // `context_turns`: cuántas vueltas anteriores recuerda el artefacto (0: ninguna; feature 014).
-  artifact?: { name: string; active: boolean; context_turns?: number };
+  artifact?: { name: string; active: boolean; context_turns?: number; require_login?: boolean };
+  // Historial de chats (feature 015): si se guardan las conversaciones y por cuántos días.
+  chat?: { enabled: boolean; retention_days: number };
   caps?: Caps;
 }
 
@@ -57,4 +59,39 @@ export interface QueryResponse {
   mode: ModeId;
   latency_ms: number;
   no_info: boolean;
+  // Solo con sesión de usuario (feature 015): la conversación donde quedó y si se pudo guardar.
+  conversation_id?: string | null;
+  saved?: boolean;
+}
+
+// Conversaciones guardadas (feature 015, contracts/conversaciones-api.md).
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  turn_count: number;
+}
+
+export interface ConversationsResponse {
+  retention_days: number;
+  conversations: ConversationSummary[];
+}
+
+export interface StoredTurn {
+  position: number;
+  question: string;
+  answer: string;
+  sources: { domain: string; document: string }[];
+  mode: ModeId;
+  no_info: boolean;
+  created_at: string;
+}
+
+export interface StoredConversation {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  turns: StoredTurn[];
 }

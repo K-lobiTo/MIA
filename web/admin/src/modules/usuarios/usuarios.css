@@ -1,0 +1,6 @@
+.user-list { display: flex; flex-direction: column; gap: 12px; }
+.user-card { display: flex; flex-direction: column; gap: 8px; }
+.user-name { font-size: 1.05rem; font-weight: 700; font-family: var(--font-mono); }
+.user-meta { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; font-size: 0.92rem; margin: 0; }
+.user-meta dt { color: var(--muted); }
+.user-meta dd { margin: 0; overflow-wrap: anywhere; }
