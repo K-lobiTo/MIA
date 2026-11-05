@@ -1,4 +1,4 @@
-import { AppShell, Box, Loader, Text } from "@mantine/core";
+import { AppShell, Loader, Text } from "@mantine/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, setInvalidKeyHandler, setSessionHandlers, useKey } from "./api/client";
@@ -15,15 +15,13 @@ import {
 } from "./api/conversations";
 import { useSession } from "./api/session";
 import type { ModeId, Rating } from "./api/types";
-import { ColorSchemeToggle } from "./components/ColorSchemeToggle";
 import { Composer } from "./components/Composer";
 import { Conversation } from "./components/Conversation";
-import { ConversationList } from "./components/ConversationList";
-import { DomainPicker } from "./components/DomainPicker";
 import { Header } from "./components/Header";
 import { KeyScreen } from "./components/KeyScreen";
 import { LoginPanel } from "./components/LoginPanel";
 import { Notice } from "./components/Notice";
+import { Sidebar } from "./components/Sidebar";
 import {
   answeredExchange,
   failedExchange,
@@ -313,29 +311,27 @@ export function App() {
         onLoggedOut={newConversation}
         onLogin={chatEnabled ? () => setShowLogin(true) : undefined}
       />
-      <AppShell.Navbar p="md" aria-label="Dominios y modo de respuesta">
-        <Box hiddenFrom="sm" mb="md">
-          <ColorSchemeToggle />
-        </Box>
-        <div className="sidebar-scroll" style={{ display: "flex", flexDirection: "column", gap: 18, overflowY: "auto" }}>
-          {session && chatEnabled && (
-            <ConversationList
-              conversations={conversations.data?.conversations ?? []}
-              activeId={conversationId}
-              loading={conversations.isPending}
-              retentionDays={config.data.chat?.retention_days}
-              onOpen={(id) => void openConversation(id)}
-              onNew={newConversation}
-              onDelete={(id) => void removeConversation(id)}
-              onDeleteAll={() => void removeAllConversations()}
-            />
-          )}
-          {session && !chatEnabled && (
-            <Notice tone="info">El guardado de conversaciones está desactivado: lo que preguntes no se guarda.</Notice>
-          )}
-          <DomainPicker domains={domains.data ?? []} selected={selected} onChange={changeSelection} />
-        </div>
-      </AppShell.Navbar>
+      <Sidebar
+        domains={domains.data ?? []}
+        selected={selected}
+        onSelect={changeSelection}
+        history={
+          session && chatEnabled
+            ? {
+                conversations: conversations.data?.conversations ?? [],
+                activeId: conversationId,
+                loading: conversations.isPending,
+                retentionDays: config.data.chat?.retention_days,
+                onOpen: (id) => void openConversation(id),
+                onNew: newConversation,
+                onDelete: (id) => void removeConversation(id),
+                onDeleteAll: () => void removeAllConversations(),
+              }
+            : null
+        }
+        savingOff={Boolean(session) && !chatEnabled}
+        onLogin={!session && chatEnabled ? () => setShowLogin(true) : undefined}
+      />
       <AppShell.Main>
         <main className="main">
           <Conversation

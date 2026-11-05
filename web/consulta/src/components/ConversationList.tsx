@@ -42,9 +42,14 @@ export function ConversationList({
 
   return (
     <section className="conversation-list" aria-label="Conversaciones guardadas">
-      <Button variant="light" size="compact-sm" leftSection={<IconPlus size={14} />} onClick={onNew}>
-        Nueva conversación
-      </Button>
+      <Group justify="space-between" align="center" gap="xs" wrap="nowrap">
+        <Text component="h2" className="sidebar-title">
+          Conversaciones
+        </Text>
+        <Button variant="light" size="compact-sm" leftSection={<IconPlus size={14} />} onClick={onNew}>
+          Nueva conversación
+        </Button>
+      </Group>
       {loading && (
         <Text c="dimmed" fz="sm">
           Cargando conversaciones...
