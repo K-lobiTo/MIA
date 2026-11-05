@@ -26,6 +26,14 @@ class ArtifactInfo(BaseModel):
     active: bool
     # Vueltas que recuerda el artefacto (feature 014): cuántas puede enviar el cliente como historial. 0: ninguna.
     context_turns: int = 0
+    # El artefacto solo responde a personas con sesión (feature 015).
+    require_login: bool = False
+
+
+class ChatInfo(BaseModel):
+    # Si el servidor guarda conversaciones (CHAT_RETENTION_DAYS mayor que 0) y por cuántos días sin actividad.
+    enabled: bool
+    retention_days: int
 
 
 class ConfigOut(BaseModel):
@@ -44,6 +52,7 @@ class CapsOut(BaseModel):
 class ArtifactConfigOut(ConfigOut):
     # Solo cuando se pidió con la clave de un artefacto.
     artifact: ArtifactInfo
+    chat: ChatInfo
     caps: CapsOut
 
 
@@ -84,8 +93,12 @@ def get_config(
     return ArtifactConfigOut(
         **base,
         artifact=ArtifactInfo(
-            name=artifact.name, active=artifact.active, context_turns=artifact.context_turns
+            name=artifact.name,
+            active=artifact.active,
+            context_turns=artifact.context_turns,
+            require_login=artifact.require_login,
         ),
+        chat=ChatInfo(enabled=settings.chat_retention_days > 0, retention_days=settings.chat_retention_days),
         caps=CapsOut(
             cap_reached=state.cap_reached,
             reasoning_cap_reached=state.reasoning_cap_reached,

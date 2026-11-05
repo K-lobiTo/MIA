@@ -47,14 +47,22 @@ export function Exchange({ exchange, onRetry, literalAvailable, busy, modeNames,
           <Answer text={response.answer} />
           {status === "answered" && response.sources.length > 0 && <Sources exchange={exchange} />}
           <p className="footnote">
-            {modeNames[response.mode] ?? response.mode} · {formatLatency(response.latency_ms)}
+            {modeNames[response.mode] ?? response.mode}
+            {!exchange.stored && <> · {formatLatency(response.latency_ms)}</>}
           </p>
-          <Rating
-            queryId={response.id}
-            rating={exchange.rating}
-            comment={exchange.ratingComment}
-            onRate={(rating, comment) => onRate(exchange.localId, rating, comment)}
-          />
+          {exchange.notSaved && (
+            <p className="footnote" role="status">
+              Esta respuesta no se pudo guardar en tu historial.
+            </p>
+          )}
+          {!exchange.stored && (
+            <Rating
+              queryId={response.id}
+              rating={exchange.rating}
+              comment={exchange.ratingComment}
+              onRate={(rating, comment) => onRate(exchange.localId, rating, comment)}
+            />
+          )}
         </div>
       )}
     </>
@@ -74,12 +82,15 @@ function Sources({ exchange }: { exchange: ExchangeData }) {
           </li>
         ))}
       </ul>
-      <details>
-        <summary>Ver fragmentos ({sources.length})</summary>
-        {sources.map((source, index) => (
-          <Excerpt key={index} index={index + 1} document={source.document} text={source.excerpt} />
-        ))}
-      </details>
+      {/* Las conversaciones guardadas conservan el documento de cada fuente, no su fragmento. */}
+      {sources.some((source) => source.excerpt) && (
+        <details>
+          <summary>Ver fragmentos ({sources.length})</summary>
+          {sources.map((source, index) => (
+            <Excerpt key={index} index={index + 1} document={source.document} text={source.excerpt} />
+          ))}
+        </details>
+      )}
     </div>
   );
 }

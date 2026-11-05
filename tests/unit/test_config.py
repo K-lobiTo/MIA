@@ -78,6 +78,7 @@ def test_con_clave_de_artefacto_solo_los_modos_permitidos(client, base, modes_co
         "name": "Consulta Computación",
         "active": True,
         "context_turns": 0,
+        "require_login": False,  # feature 015
     }
 
 
@@ -339,3 +340,58 @@ def test_un_valor_del_bot_de_whatsapp_fuera_de_rango_no_deja_arrancar(campo, val
 
     with pytest.raises(ValidationError, match=campo):
         Settings(_env_file=None, **{campo: valor})
+
+
+# --- Usuarios de la Consulta e historial de chats (feature 015) ------------------------------------------------------
+
+
+def test_los_valores_por_defecto_del_historial_de_chats():
+    from mia.config import Settings
+
+    base = Settings(_env_file=None)
+    assert (base.chat_retention_days, base.chat_max_turns, base.chat_max_conversations) == (90, 200, 100)
+    assert base.chat_max_answer_chars == 20000
+    assert (base.session_hours, base.session_max_days) == (8, 7)
+    assert (base.login_max_attempts, base.login_max_attempts_per_origin, base.login_lock_minutes) == (5, 20, 15)
+    assert base.password_min_chars == 10
+    assert base.trust_forwarded_for == "off"
+
+
+@pytest.mark.parametrize(
+    ("campo", "valor"),
+    [
+        ("chat_retention_days", -1),
+        ("chat_retention_days", 3651),
+        ("chat_max_turns", 1),
+        ("chat_max_turns", 2001),
+        ("chat_max_conversations", 0),
+        ("chat_max_conversations", 5001),
+        ("chat_max_answer_chars", 999),
+        ("chat_max_answer_chars", 100001),
+        ("session_hours", 0),
+        ("session_hours", 721),
+        ("session_max_days", 0),
+        ("session_max_days", 91),
+        ("login_max_attempts", 0),
+        ("login_max_attempts", 101),
+        ("login_max_attempts_per_origin", 0),
+        ("login_max_attempts_per_origin", 1001),
+        ("login_lock_minutes", 0),
+        ("login_lock_minutes", 1441),
+        ("password_min_chars", 7),
+        ("password_min_chars", 129),
+    ],
+)
+def test_un_valor_del_historial_de_chats_fuera_de_rango_no_deja_arrancar(campo, valor):
+    from pydantic import ValidationError
+
+    from mia.config import Settings
+
+    with pytest.raises(ValidationError, match=campo):
+        Settings(_env_file=None, **{campo: valor})
+
+
+def test_la_retencion_en_cero_es_valida_porque_apaga_el_guardado():
+    from mia.config import Settings
+
+    assert Settings(_env_file=None, chat_retention_days=0).chat_retention_days == 0

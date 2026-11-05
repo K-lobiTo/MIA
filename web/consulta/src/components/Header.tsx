@@ -2,14 +2,20 @@ import { AppShell, Box, Burger, Button, Group, Title } from "@mantine/core";
 import { setKey } from "../api/client";
 import { FIXED_KEY } from "../api/fixedKey";
 import { ColorSchemeToggle } from "./ColorSchemeToggle";
+import { AccountMenu } from "./AccountMenu";
 
 interface Props {
   name: string;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
+  /** Persona con la sesión abierta (feature 015), o nada si consulta sin sesión. */
+  username?: string;
+  onLoggedOut?: () => void;
+  /** Abre el inicio de sesión opcional; se omite si no hay nada que ofrecer. */
+  onLogin?: () => void;
 }
 
-export function Header({ name, sidebarOpen, onToggleSidebar }: Props) {
+export function Header({ name, sidebarOpen, onToggleSidebar, username, onLoggedOut, onLogin }: Props) {
   return (
     <AppShell.Header>
       <Group h="100%" px="md" gap="sm" wrap="nowrap">
@@ -21,6 +27,15 @@ export function Header({ name, sidebarOpen, onToggleSidebar }: Props) {
         <Box visibleFrom="sm" w={132}>
           <ColorSchemeToggle />
         </Box>
+        {username ? (
+          <AccountMenu username={username} onLoggedOut={onLoggedOut ?? (() => {})} />
+        ) : (
+          onLogin && (
+            <Button variant="default" size="compact-sm" onClick={onLogin}>
+              Iniciar sesión
+            </Button>
+          )
+        )}
         {!FIXED_KEY && (
           <Button variant="default" size="compact-sm" onClick={() => setKey("")}>
             Cambiar clave

@@ -116,7 +116,7 @@ web/admin/src/
 tests/unit/
 ├── test_chat_passwords.py · test_chat_throttle.py · test_chat_sessions.py     # piezas puras
 ├── test_consulta_users_admin.py     # US1
-├── test_auth_routes.py              # US2
+├── test_consulta_auth_routes.py              # US2
 ├── test_query_chat.py · test_conversations_api.py                              # US3
 ├── test_query_chat_retomar.py       # US4
 ├── test_chat_retention.py           # US5

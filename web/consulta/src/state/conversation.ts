@@ -20,6 +20,10 @@ export interface Exchange {
   error?: ExchangeError;
   rating?: Rating;
   ratingComment?: string;
+  /** Viene de una conversación guardada (feature 015): no tiene calificación, tiempo ni fragmentos. */
+  stored?: boolean;
+  /** La respuesta llegó pero no se pudo guardar en el historial. */
+  notSaved?: boolean;
 }
 
 let counter = 0;
@@ -30,7 +34,12 @@ export function newExchange(question: string, domainIds: string[], mode: ModeId)
 }
 
 export function answeredExchange(exchange: Exchange, response: QueryResponse): Exchange {
-  return { ...exchange, status: response.no_info ? "no_info" : "answered", response };
+  return {
+    ...exchange,
+    status: response.no_info ? "no_info" : "answered",
+    response,
+    notSaved: response.saved === false ? true : undefined,
+  };
 }
 
 export function failedExchange(exchange: Exchange, error: ExchangeError): Exchange {

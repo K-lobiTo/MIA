@@ -5,8 +5,8 @@ class AuthError(HTTPException):
     """Error de acceso de administración: además del mensaje lleva un `code` estable para que el panel
     distinga el caso sin comparar frases (ver specs/004-acceso-panel-tec/contracts/api-acceso.md)."""
 
-    def __init__(self, status_code: int, code: str, detail: str):
-        super().__init__(status_code=status_code, detail=detail)
+    def __init__(self, status_code: int, code: str, detail: str, headers: dict[str, str] | None = None):
+        super().__init__(status_code=status_code, detail=detail, headers=headers)
         self.code = code
 
 
@@ -51,3 +51,50 @@ def login_not_configured() -> AuthError:
 
 def identity_unavailable() -> AuthError:
     return AuthError(503, "identity_unavailable", "No se pudo verificar tu identidad ahora mismo. Intenta de nuevo en unos minutos.")
+
+
+# --- Usuarios de la Consulta (feature 015) --------------------------------------------------------------------------
+
+
+def session_invalid() -> AuthError:
+    return AuthError(401, "session_invalid", "Tu sesión no es válida o venció. Inicia sesión de nuevo.")
+
+
+def login_required() -> AuthError:
+    return AuthError(401, "login_required", "Este artefacto exige iniciar sesión para consultar.")
+
+
+def invalid_credentials() -> AuthError:
+    # El mismo mensaje para usuario inexistente, desactivado y contraseña incorrecta.
+    return AuthError(401, "invalid_credentials", "Usuario o contraseña incorrectos.")
+
+
+def too_many_attempts(seconds: int) -> AuthError:
+    minutes = max(1, -(-seconds // 60))
+    plural = "minuto" if minutes == 1 else "minutos"
+    return AuthError(
+        429,
+        "too_many_attempts",
+        f"Demasiados intentos. Espera {minutes} {plural} e intenta de nuevo.",
+        headers={"Retry-After": str(seconds)},
+    )
+
+
+
+def conversation_not_found() -> HTTPException:
+    # Igual para una conversación ajena que para una inexistente: no se revela cuál es.
+    return HTTPException(status_code=404, detail="Conversación no encontrada.")
+
+
+def conversation_full() -> AuthError:
+    return AuthError(
+        409, "conversation_full", "Esta conversación llegó al máximo de preguntas. Empieza una conversación nueva."
+    )
+
+
+def too_many_conversations() -> AuthError:
+    return AuthError(
+        409,
+        "too_many_conversations",
+        "Llegaste al máximo de conversaciones guardadas. Borra alguna para empezar otra.",
+    )

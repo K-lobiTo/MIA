@@ -13,7 +13,7 @@ source .venv/bin/activate && pip install -e ".[dev]"
 
 ```bash
 pytest tests/unit/test_chat_passwords.py tests/unit/test_chat_throttle.py tests/unit/test_chat_sessions.py
-pytest tests/unit/test_consulta_users_admin.py tests/unit/test_auth_routes.py
+pytest tests/unit/test_consulta_users_admin.py tests/unit/test_consulta_auth_routes.py
 pytest tests/unit/test_query_chat.py tests/unit/test_conversations_api.py
 pytest tests/unit/test_chat_retention.py tests/unit/test_chat_privacidad.py tests/unit/test_query_chat_compat.py
 pytest && ruff check src tests scripts whatsapp

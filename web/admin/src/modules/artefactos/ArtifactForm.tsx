@@ -1,4 +1,4 @@
-import { Button, Checkbox, Fieldset, Group, Modal, Paper, Stack, Text, TextInput, Textarea } from "@mantine/core";
+import { Button, Checkbox, Fieldset, Group, Modal, Paper, Stack, Switch, Text, TextInput, Textarea } from "@mantine/core";
 import { useState } from "react";
 import { ApiError } from "../../api/client";
 import { useCreateArtifact, useUpdateArtifact } from "../../api/artifacts";
@@ -9,6 +9,7 @@ import { capabilities } from "../../auth/capabilities";
 import { useMe } from "../../auth/session";
 import { approxQueries, parseUsd, validateCaps } from "./capMath";
 import { MEMORY_HELP, MAX_TURNS, validateTurns } from "./memoryUtils";
+import { REQUIRE_LOGIN_HELP, REQUIRE_LOGIN_LABEL } from "./sessionUtils";
 
 interface Props {
   // Con `artifact` se edita; sin él se crea uno nuevo (y el nombre es obligatorio).
@@ -38,6 +39,7 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
     artifact?.reasoning_daily_cap_usd != null ? String(artifact.reasoning_daily_cap_usd) : "",
   );
   const [turns, setTurns] = useState(String(artifact?.context_turns ?? 0));
+  const [requireLogin, setRequireLogin] = useState(artifact?.require_login ?? false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -71,6 +73,7 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
       daily_cap_usd: parseUsd(dailyCap)!,
       reasoning_daily_cap_usd: reasoningCap.trim() === "" ? null : parseUsd(reasoningCap),
       context_turns: turnsCheck.ok ? turnsCheck.value : 0,
+      require_login: requireLogin,
     };
     try {
       if (artifact) {
@@ -210,6 +213,15 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
               onChange={(e) => setTurns(e.currentTarget.value)}
               error={turnsCheck.ok ? undefined : turnsCheck.message}
               description={MEMORY_HELP}
+            />
+          </Fieldset>
+
+          <Fieldset legend="Inicio de sesión" variant="unstyled">
+            <Switch
+              label={REQUIRE_LOGIN_LABEL}
+              description={REQUIRE_LOGIN_HELP}
+              checked={requireLogin}
+              onChange={(e) => setRequireLogin(e.currentTarget.checked)}
             />
           </Fieldset>
 

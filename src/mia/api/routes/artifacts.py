@@ -42,6 +42,8 @@ class ArtifactCreate(BaseModel):
     reasoning_daily_cap_usd: float | None = Field(default=None, gt=0)
     # Vueltas completas que recuerda el artefacto (feature 014); 0 es el comportamiento de siempre.
     context_turns: int = Field(default=0, ge=0, le=10)
+    # Exige iniciar sesión para consultar (feature 015); falso: responde sin sesión como siempre.
+    require_login: bool = False
 
 
 class ArtifactUpdate(BaseModel):
@@ -51,6 +53,7 @@ class ArtifactUpdate(BaseModel):
     daily_cap_usd: float | None = Field(default=None, gt=0)
     reasoning_daily_cap_usd: float | None = Field(default=None, gt=0)
     context_turns: int | None = Field(default=None, ge=0, le=10)
+    require_login: bool | None = None
     active: bool | None = None
 
 
@@ -82,6 +85,7 @@ class ArtifactOut(BaseModel):
     daily_cap_usd: float
     reasoning_daily_cap_usd: float | None
     context_turns: int
+    require_login: bool
     today: TodayOut
     queries_last_7_days: int
     created_at: str
@@ -142,6 +146,7 @@ def _to_out(session: Session, artifact: Artifact) -> ArtifactOut:
         daily_cap_usd=float(artifact.daily_cap_usd),
         reasoning_daily_cap_usd=float(reasoning_cap) if reasoning_cap is not None else None,
         context_turns=artifact.context_turns,
+        require_login=artifact.require_login,
         today=TodayOut(
             spent_usd=float(state.spent),
             reasoning_spent_usd=float(state.reasoning_spent),
@@ -259,6 +264,7 @@ def create_artifact(
             Decimal(str(payload.reasoning_daily_cap_usd)) if payload.reasoning_daily_cap_usd is not None else None
         ),
         context_turns=payload.context_turns,
+        require_login=payload.require_login,
     )
     session.add(artifact)
     session.flush()
@@ -310,6 +316,9 @@ def update_artifact(
     previous_turns = artifact.context_turns
     if payload.context_turns is not None:
         artifact.context_turns = payload.context_turns
+    previous_login = artifact.require_login
+    if payload.require_login is not None:
+        artifact.require_login = payload.require_login
     if payload.active is not None:
         artifact.active = payload.active
     session.commit()
@@ -321,6 +330,13 @@ def update_artifact(
             "artifact.context_turns",
             artifact.id,
             f"{artifact.name}: {previous_turns} -> {artifact.context_turns}",
+        )
+    if artifact.require_login != previous_login:
+        audit.log_write(
+            principal,
+            "artifact.require_login",
+            artifact.id,
+            f"{artifact.name}: {str(previous_login).lower()} -> {str(artifact.require_login).lower()}",
         )
     return _to_out(session, artifact)
 

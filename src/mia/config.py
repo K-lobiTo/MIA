@@ -137,6 +137,23 @@ class Settings(BaseSettings):
     history_max_chars: int = Field(default=6000, ge=500, le=100000)
     history_rewrite_max_tokens: int = Field(default=100, ge=20, le=500)
 
+    # Usuarios de la Consulta e historial de chats (feature 015, specs/015-historial-chats/). `chat_retention_days` son los
+    # días sin actividad tras los cuales se borra una conversación; 0 apaga el guardado y borra lo guardado. La sesión es
+    # deslizante (`session_hours`) con un tope absoluto (`session_max_days`). Tras `login_max_attempts` fallos seguidos de un
+    # usuario (o `login_max_attempts_per_origin` de un origen) se bloquea `login_lock_minutes`. `trust_forwarded_for` en `on`
+    # toma como origen el último valor de X-Forwarded-For (detrás del proxy de Railway).
+    chat_retention_days: int = Field(default=90, ge=0, le=3650)
+    chat_max_turns: int = Field(default=200, ge=2, le=2000)
+    chat_max_conversations: int = Field(default=100, ge=1, le=5000)
+    chat_max_answer_chars: int = Field(default=20000, ge=1000, le=100000)
+    session_hours: int = Field(default=8, ge=1, le=720)
+    session_max_days: int = Field(default=7, ge=1, le=90)
+    login_max_attempts: int = Field(default=5, ge=1, le=100)
+    login_max_attempts_per_origin: int = Field(default=20, ge=1, le=1000)
+    login_lock_minutes: int = Field(default=15, ge=1, le=1440)
+    password_min_chars: int = Field(default=10, ge=8, le=128)
+    trust_forwarded_for: str = "off"
+
     # En Render free (512 MB) ingerir actas grandes agota la memoria: allí se desactiva y la ingesta
     # se hace desde una instancia local apuntando a las mismas bases (ver docs/OPERACION.md).
     ingestion_enabled: bool = True

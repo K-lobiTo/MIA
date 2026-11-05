@@ -59,3 +59,13 @@ a:not([class]) { color: var(--accent); }
   .messages { padding: 12px; }
   .composer { padding: 10px 12px; }
 }
+
+/* Conversaciones guardadas (feature 015) */
+.conversation-list { display: flex; flex-direction: column; gap: 8px; }
+.conversation-list ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.conversation-list li { display: flex; align-items: center; gap: 2px; }
+.conversation-item { flex: 1; min-width: 0; width: 100%; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 6px 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.conversation-item:hover { background: var(--accent-soft); }
+.conversation-item.active { border-color: var(--accent); background: var(--accent-soft); }
+.conversation-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.conversation-date { font-size: 0.78rem; color: var(--muted); flex: none; }

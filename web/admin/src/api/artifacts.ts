@@ -19,6 +19,8 @@ export interface ArtifactInput {
   reasoning_daily_cap_usd: number | null;
   // Vueltas que recuerda el artefacto, de 0 a 10 (feature 014).
   context_turns: number;
+  // Exigir inicio de sesión para consultar (feature 015).
+  require_login: boolean;
 }
 
 function useArtifactMutation<TVariables, TResult>(fn: (variables: TVariables) => Promise<TResult>) {

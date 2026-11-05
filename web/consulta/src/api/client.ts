@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from "react";
+import { classifyAuthError } from "../state/chat";
 import { FIXED_KEY } from "./fixedKey";
+import { clearSession, getSession } from "./session";
 
 // En desarrollo, el proxy de Vite atiende /api. Publicado como sitio estático se construye con
 // VITE_API_URL apuntando a la API (que debe permitir el origen del sitio en CORS_ORIGINS).
@@ -15,6 +17,10 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** Código estable de la API (p. ej. `session_invalid`, `too_many_attempts`), si lo trae. */
+    public code?: string,
+    /** Segundos de espera de `Retry-After`, si los trae (429). */
+    public retryAfter?: number,
   ) {
     super(message);
   }
@@ -65,6 +71,22 @@ export function setInvalidKeyHandler(handler: () => void): void {
   onInvalidKey = handler;
 }
 
+// Se avisa a la interfaz cuando la sesión venció o el artefacto exige una (feature 015), para pedir el inicio de sesión.
+let onSessionInvalid: () => void = () => {};
+let onLoginRequired: () => void = () => {};
+export function setSessionHandlers(handlers: { onSessionInvalid?: () => void; onLoginRequired?: () => void }): void {
+  onSessionInvalid = handlers.onSessionInvalid ?? (() => {});
+  onLoginRequired = handlers.onLoginRequired ?? (() => {});
+}
+
+function codeOf(data: unknown): string | undefined {
+  if (typeof data === "object" && data !== null && "code" in data) {
+    const code = (data as { code: unknown }).code;
+    return typeof code === "string" ? code : undefined;
+  }
+  return undefined;
+}
+
 /** Texto legible del `detail` de la API: un texto, o el primer mensaje de una lista de errores 422. */
 export function detailText(data: unknown, status: number): string {
   if (typeof data === "object" && data !== null && "detail" in data) {
@@ -85,6 +107,8 @@ export async function apiFetch<T>(
   const { method = "GET", body, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
   const headers: Record<string, string> = {};
   if (currentKey) headers["X-Artifact-Key"] = currentKey;
+  const session = getSession();
+  if (session) headers["X-Session-Token"] = session.token;
   if (body !== undefined) headers["content-type"] = "application/json";
 
   const controller = new AbortController();
@@ -115,13 +139,27 @@ export async function apiFetch<T>(
     data = text;
   }
   if (!response.ok) {
-    // Una clave guardada que dejó de valer (se regeneró o se desactivó) se olvida y se vuelve a pedir.
-    if (response.status === 401 && currentKey) {
+    const code = codeOf(data);
+    const kind = classifyAuthError(response.status, code);
+    if (kind === "session_invalid") {
+      // La sesión venció o se cerró: se olvida y se pide iniciar sesión, sin tocar la clave del artefacto.
+      clearSession();
+      onSessionInvalid();
+    } else if (kind === "login_required") {
+      onLoginRequired();
+    } else if (kind === "invalid_key" && currentKey) {
+      // Una clave guardada que dejó de valer (se regeneró o se desactivó) se olvida y se vuelve a pedir.
       // setKey no hace nada con una clave fija: se muestra el aviso de que está rechazada.
       setKey("");
       onInvalidKey();
     }
-    throw new ApiError(response.status, detailText(data, response.status));
+    const retry = Number(response.headers.get("Retry-After"));
+    throw new ApiError(
+      response.status,
+      detailText(data, response.status),
+      code,
+      Number.isFinite(retry) && retry > 0 ? retry : undefined,
+    );
   }
   return data as T;
 }
