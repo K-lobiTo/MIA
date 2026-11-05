@@ -444,7 +444,7 @@ def run_query(
     search_text = reformulation.text
     # La reescritura con el modelo (estrategia `model`) cuesta: se suma a la consulta, salga por donde salga.
     rewrite_cost = Decimal(str(reformulation.cost_usd)).quantize(Decimal("0.000001"))
-    if reformulation.used == "model":
+    if reformulation.cost_usd or reformulation.prompt_tokens:
         log.cost_usd = rewrite_cost
         log.prompt_tokens = reformulation.prompt_tokens
         log.completion_tokens = reformulation.completion_tokens

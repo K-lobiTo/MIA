@@ -271,13 +271,13 @@ def test_los_valores_por_defecto_de_la_memoria_de_conversacion():
     from mia.config import Settings
 
     base = Settings(_env_file=None)
-    assert base.history_reformulation == "rules"
+    assert base.history_reformulation == "model"
     assert (
         base.history_max_question_chars,
         base.history_max_answer_chars,
         base.history_max_chars,
     ) == (500, 1500, 6000)
-    assert base.history_rewrite_max_tokens == 100
+    assert base.history_rewrite_max_tokens == 400
 
 
 @pytest.mark.parametrize(

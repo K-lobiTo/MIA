@@ -240,3 +240,11 @@ def make_admin(db):
             return add_admin(session, email, is_global=global_, unit_names=list(units))
 
     return _make
+
+
+@pytest.fixture(autouse=True)
+def reformulacion_por_reglas(monkeypatch):
+    """La estrategia por defecto de la reformulación es `model` (llama al modelo real): las pruebas usan las reglas, salvo las
+    que fijan otra estrategia a propósito, para no gastar ni depender de la red."""
+    monkeypatch.setattr(settings, "history_reformulation", "rules")
+

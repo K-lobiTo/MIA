@@ -206,3 +206,25 @@ def test_el_aviso_de_una_reescritura_invalida_no_copia_lo_que_dijo_el_modelo(con
         search_question("¿y cuánto cuesta?", HISTORIAL, "model")
 
     assert "texto-del-modelo-77" not in caplog.text
+
+
+def test_una_reescritura_cortada_por_el_limite_de_tokens_lo_dice_y_conserva_su_costo(con_proveedor, caplog):
+    """Un modelo de razonamiento obligatorio gasta los tokens pensando y devuelve texto vacío (finish_reason length)."""
+    cortada = _proveedor(texto="", costo=0.00002, tokens=(215, 100))
+    cortada.rewrite.return_value.finish_reason = "length"
+    with con_proveedor(cortada), caplog.at_level(logging.WARNING):
+        resultado = search_question("¿y cuánto cuesta?", HISTORIAL, "model")
+
+    assert resultado.used == "rules" and resultado.text == rules_question("¿y cuánto cuesta?", HISTORIAL)
+    assert "HISTORY_REWRITE_MAX_TOKENS" in caplog.text
+    # La llamada se cobró aunque no sirvió: su costo y sus tokens se suman a la consulta.
+    assert (resultado.cost_usd, resultado.prompt_tokens, resultado.completion_tokens) == (
+        pytest.approx(0.00002),
+        215,
+        100,
+    )
+
+
+def test_el_limite_de_tokens_de_la_reescritura_deja_margen_para_el_razonamiento():
+    assert settings.history_rewrite_max_tokens >= 300
+
