@@ -121,3 +121,6 @@ La comprobación de `require_login` vive en la ruta `POST /query` (se la pasa a 
 **Rationale**: la parte difícil de esta feature es la seguridad y el aislamiento, que se verifican con pruebas exactas, no con casos de calidad de respuesta.
 
 **Alternatives considered**: ninguna.
+
+**Batería de aceptación del MVP sin sesión, tras desplegar la feature (2026-11-05):** `python scripts/pruebas_mvp.py` contra la API en producción con la `0009` aplicada y el artefacto de prueba "PRUEBA Aceptación ambas unidades" (acceso a las dos unidades, memoria 0, sin exigir sesión, activado solo durante la corrida): **19 de 19 casos correctos** (FR-028, SC-007).
+
