@@ -131,7 +131,7 @@ class Settings(BaseSettings):
     # recorta a las vueltas del artefacto (`artifacts.context_turns`). `history_reformulation` es cómo se usa para buscar los
     # documentos de un seguimiento (`rules`: junta las preguntas anteriores; `model`: una llamada corta que la reescribe;
     # `off`: no se reformula). Los topes de respuesta y de total valen para el modo literal; el modo con razonamiento usa el doble.
-    history_reformulation: str = "rules"
+    history_reformulation: str = "model"
     history_max_question_chars: int = Field(default=500, ge=50, le=2000)
     history_max_answer_chars: int = Field(default=1500, ge=200, le=20000)
     history_max_chars: int = Field(default=6000, ge=500, le=100000)
