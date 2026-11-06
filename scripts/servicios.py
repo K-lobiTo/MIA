@@ -67,7 +67,7 @@ SERVICIOS = [
     Servicio("mia-computacion", "https://mia-computacion.up.railway.app", "/", "Consulta de la Unidad de Postgrados de Computación"),
     Servicio(
         "mia-administracion",
-        "https://mia-administracion.up.railway.app",
+        "https://mia-analitica-negocio.up.railway.app",
         "/",
         "Consulta del Área académica de Analítica de Negocios",
     ),
