@@ -47,6 +47,8 @@ Antes de elegir proveedor conviene consultar con TI de la institución si ya exi
 
 El bot (canal para atraer estudiantes, definido en [Definicion_Requerimientos_Bot_WhatsApp.md](Definicion_Requerimientos_Bot_WhatsApp.md); la primera entrega funciona solo con el sandbox de Kapso y el camino a producción está en su sección 11) se limita primero por la cuota de mensajes, no por el gasto de modelos: el plan gratuito de Kapso incluye 2.000 mensajes al mes y Meta cobra los mensajes de servicio salvo 1.000 gratis por número, lo que da unas 500 a 1.000 preguntas al mes. Está construido como un servicio pequeño (`mia-whatsapp`) que atiende todos los números, con el consumo mensual en la base de la API y el resto del estado (ventanas por persona, mensajes vistos, cola de consultas) en su memoria, acotado: un solo proceso alcanza para ese volumen. Qué conviene hacer al crecer (más números, plan de pago, estado compartido entre réplicas, cola externa, imágenes en almacenamiento de objetos, memoria de conversación, bots incrustados en páginas web) está en la sección 10 de ese documento, y el paso del sandbox a producción en la 11.
 
+Un segundo canal posible, no implementado, es un artefacto de correo electrónico (un servicio aparte que reciba el correo y consulte a la API como lo hace `mia-whatsapp`). Está documentado como idea a futuro, con sus opciones de recepción y decisiones abiertas, en [Idea_Artefacto_Correo.md](Idea_Artefacto_Correo.md).
+
 ## Railway y OpenRouter (decisión del 2026-10-07)
 
 Reemplaza a la decisión de Cloud Run de la sección siguiente, que quedó descartada porque Google Cloud pidió un prepago de 30 USD.
