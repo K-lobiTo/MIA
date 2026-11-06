@@ -11,7 +11,7 @@ Guía práctica para desplegar, cargar documentos y mantener funcionando el prot
 | Vectores | [Qdrant Cloud](https://cloud.qdrant.io) | Free | 1 GB; el clúster se suspende tras 1 semana sin uso (se reactiva desde el panel) |
 | LLM | [OpenRouter](https://openrouter.ai): modo literal con `z-ai/glm-5.3-flash` (razonamiento bajo) y modo con razonamiento con `z-ai/glm-5.3` (esfuerzo medio) | Saldo prepagado | Al agotarse el saldo, las consultas fallan (502). La cuenta exige proveedores de retención cero y que no entrenen con los datos |
 | Embeddings | Modelo local e5-small (ONNX), dentro de la imagen | Sin costo | Ninguno externo |
-| Sitios web (Consulta administrativa y panel) | Tres servicios más de Railway que sirven archivos estáticos: `mia-computacion`, `mia-administracion` y `mia-panel` (`https://<nombre>.up.railway.app`) | Mismo plan Hobby | Cada uno gasta solo mientras está encendido; se apagan con *Remove*. Sin auto-deploy: se despliegan con `railway up` (ver "Desplegar cambios") |
+| Sitios web (Consulta administrativa y panel) | Tres servicios más de Railway que sirven archivos estáticos: `mia-computacion`, `mia-administracion` y `mia-panel` (`https://<nombre>.up.railway.app`; la Consulta de Analítica de Negocio conserva el nombre de servicio `mia-administracion` pero su dirección es `https://mia-analitica-negocio.up.railway.app` desde el 2026-11-06) | Mismo plan Hobby | Cada uno gasta solo mientras está encendido; se apagan con *Remove*. Sin auto-deploy: se despliegan con `railway up` (ver "Desplegar cambios") |
 | Bot de WhatsApp (feature 011) | Servicio `mia-whatsapp` de Railway (`https://mia-whatsapp.up.railway.app`, `whatsapp/Dockerfile` y `whatsapp/railway.json`), más [Kapso](https://kapso.ai) como canal (primera entrega: solo su sandbox) | Mismo plan Hobby; plan gratuito de Kapso | El límite real es la cuota de mensajes de Kapso (2.000 al mes entre recibidos y enviados), no el gasto de modelos; ver "El bot de WhatsApp". Un servicio pequeño (imagen de unos 170 MB): medir su costo en Railway la primera semana |
 | Ingesta de documentos | La propia API en Railway, o una API local contra producción (cargas masivas con `scripts/cargar_carpeta.py`) | Sin costo adicional | Los archivos originales no quedan guardados en el servidor |
 
@@ -286,7 +286,7 @@ Railway tiene los servicios conectados al repositorio como público, **sin su ap
 cd <raíz del repositorio>           # con el árbol limpio y en la rama que se quiere publicar
 railway up -s MIA --detach                  # API
 railway up -s mia-computacion --detach      # Consulta de Computación
-railway up -s mia-administracion --detach   # Consulta de Administración de Empresas
+railway up -s mia-administracion --detach   # Consulta de Analítica de Negocio (https://mia-analitica-negocio.up.railway.app)
 railway up -s mia-panel --detach            # panel de administración
 railway up -s mia-whatsapp --detach         # bot de WhatsApp (feature 011)
 ```
@@ -618,3 +618,14 @@ Opcionales, con su valor por defecto y su rango en `whatsapp/.env.example` y en 
 - Desde la versión 2 la API exige claves: una cuenta del TEC autorizada (o la clave de automatización de los scripts) para gestionar y la de un artefacto para consultar, y cada artefacto solo ve los dominios que se le permitieron. La administración es individual y por unidad (feature 004); en cambio las personas que usan un artefacto de consulta siguen compartiendo su clave, y la clave de un sitio público (un chatbot) se puede copiar, por eso cada artefacto tiene su propio tope de gasto. No publicar las claves de artefacto ni la clave de automatización.
 - El registro de consultas guarda las preguntas, que pueden contener datos personales (nombres de estudiantes, carnés). Solo lo ve una cuenta autorizada (cada unidad, solo el de sus artefactos), el CSV las omite por defecto, y no hay política de retención: se conservan durante todo el prototipo. Tratarlo con las mismas condiciones que los documentos con datos personales.
 - **Conversaciones guardadas por usuario (feature 015):** las personas con usuario guardan en el servidor sus preguntas y las respuestas de MIA (con el nombre de los documentos citados) para retomarlas. Es la única excepción a que el servidor no guarda conversaciones: la consulta sin sesión y el bot de WhatsApp no guardan nada. Protección: cada usuario ve solo lo suyo, la administración no puede leer el texto (solo ve cuántas hay), se borran solas tras `CHAT_RETENTION_DAYS` días sin actividad (90 por defecto), cada persona puede borrarlas, y poner la retención en 0 apaga el guardado y borra lo guardado. Las contraseñas se guardan solo con hash lento y sal. Tratar la base con las mismas condiciones que los documentos con datos personales.
+
+### Cambiar la dirección de un sitio
+
+La dirección `https://<nombre>.up.railway.app` de un servicio de Railway se cambia sin tocar el servicio: `railway domain update <dirección actual> --domain <nombre nuevo> -s <servicio>` (o en el panel de Railway, *Settings > Networking*). La dirección anterior deja de responder (404) en el acto. Pasos y efectos, tal como se hicieron el 2026-11-06 con la Consulta de Analítica de Negocio (de `mia-administracion` a `mia-analitica-negocio`):
+
+1. Poner la dirección nueva en `CORS_ORIGINS` de la API y quitar la vieja (la API se reinicia).
+2. Cambiar el dominio del servicio.
+3. Verificar que la nueva responde 200 y que la API acepta su origen (una petición `OPTIONS /query` con `Origin` debe devolver `access-control-allow-origin`).
+4. Actualizar `scripts/servicios.py` (la dirección con que comprueba el servicio) y esta documentación.
+
+El nombre del servicio de Railway no cambia con la dirección (los comandos `railway up -s` y `servicios.py` siguen usando `mia-administracion`); renombrarlo es aparte, en *Settings > Service name* del panel de Railway, y obligaría a cambiarlo también en `scripts/servicios.py`. Quien tenía la dirección vieja guardada pierde la clave y la sesión recordadas, porque el navegador las guarda por dirección: hay que avisar y entregar la clave de nuevo si se perdió.

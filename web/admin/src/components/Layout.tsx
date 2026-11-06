@@ -1,6 +1,6 @@
 import { AppShell, Burger, Button, Group, NavLink, Stack, Text } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconAbc, IconBrandWhatsapp, IconChartBar, IconDatabase, IconKey, IconLogout, type Icon } from "@tabler/icons-react";
+import { IconAbc, IconBrandWhatsapp, IconChartBar, IconDatabase, IconKey, IconLogout, IconUserCircle, type Icon } from "@tabler/icons-react";
 import { NavLink as RouterLink, Outlet } from "react-router-dom";
 import { ColorSchemeToggle } from "./ColorSchemeToggle";
 import { capabilities, scopeLabel } from "../auth/capabilities";
@@ -13,6 +13,7 @@ const ICONS: Record<string, Icon> = {
   "/artefactos": IconKey,
   "/uso": IconChartBar,
   "/siglas": IconAbc,
+  "/usuarios": IconUserCircle,
   "/bots": IconBrandWhatsapp,
 };
 

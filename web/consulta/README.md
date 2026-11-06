@@ -55,6 +55,8 @@ La Consulta usa [Mantine](https://mantine.dev/) como librería de componentes, i
 - **Piezas:** `Notice` (avisos con los colores de la paleta, copia del panel: no hay paquete compartido), `ComboboxPopover` (modo), `MultiSelect` (dominios), `Textarea` con crecimiento automático, `Button`, `PasswordInput`.
 - **Lo que se conserva a mano:** las burbujas de la conversación (`.message` en `styles/base.css`) y el formateador de respuestas, que nunca interpreta HTML.
 
+- **Ícono de la pestaña:** `public/favicon.svg` (monograma provisional en el violeta de la paleta #05), enlazado en `index.html`. Es el mismo para todas las instancias, porque se compila una sola vez. Para cambiarlo, reemplazar ese archivo conservando el nombre, o agregar un PNG y apuntar el `<link rel="icon">` a él.
+
 ## Estructura
 
 | Carpeta | Contenido |
