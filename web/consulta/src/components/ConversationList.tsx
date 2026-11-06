@@ -42,7 +42,7 @@ export function ConversationList({
 
   return (
     <section className="conversation-list" aria-label="Conversaciones guardadas">
-      <Group justify="space-between" align="center" gap="xs" wrap="nowrap">
+      <Group justify="space-between" align="center" gap="xs" wrap="wrap">
         <Text component="h2" className="sidebar-title">
           Conversaciones
         </Text>
