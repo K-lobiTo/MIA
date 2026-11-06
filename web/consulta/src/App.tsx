@@ -10,6 +10,7 @@ import {
   fetchConversation,
   useConversations,
   useDeleteAllConversations,
+  useRenameConversation,
   useDeleteConversation,
   useRefreshConversations,
 } from "./api/conversations";
@@ -70,6 +71,7 @@ export function App() {
   const conversations = useConversations(Boolean(session) && chatEnabled);
   const deleteConversation = useDeleteConversation();
   const deleteAllConversations = useDeleteAllConversations();
+  const renameConversation = useRenameConversation();
 
   useEffect(() => {
     setInvalidKeyHandler(() => setInvalid(true));
@@ -226,6 +228,14 @@ export function App() {
     }
   }
 
+  async function renameChosen(id: string, title: string) {
+    try {
+      await renameConversation.mutateAsync({ id, title });
+    } catch {
+      setRejection("No se pudo cambiar el título de la conversación.");
+    }
+  }
+
   async function removeAllConversations() {
     try {
       await deleteAllConversations.mutateAsync();
@@ -342,6 +352,7 @@ export function App() {
                 onNew: newConversation,
                 onDelete: (id) => void removeConversation(id),
                 onDeleteAll: () => void removeAllConversations(),
+                onRename: (id, title) => void renameChosen(id, title),
               }
             : null
         }
@@ -358,6 +369,7 @@ export function App() {
             mode={mode}
             modeNames={modeNames}
             onRate={rate}
+            onExample={(text) => setRestore((previous) => ({ text, n: (previous?.n ?? 0) + 1 }))}
           />
           <Composer
             selectedCount={selected.length}

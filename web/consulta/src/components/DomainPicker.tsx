@@ -1,5 +1,5 @@
 import { Anchor, Group, MultiSelect, Pill, Text } from "@mantine/core";
-import { IconCheck } from "@tabler/icons-react";
+import { IconCheck, IconStack2 } from "@tabler/icons-react";
 import { useMemo } from "react";
 import type { Domain } from "../api/types";
 import { groupByUnit } from "../state/domains";
@@ -33,7 +33,10 @@ export function DomainPicker({ domains, selected, onChange }: Props) {
 
   return (
     <section aria-label="Dominios" className="sidebar-section">
-      <h2>Dominios</h2>
+      <Text component="h2" className="sidebar-title">
+        <IconStack2 size={14} stroke={2} aria-hidden />
+        Dominios
+      </Text>
       <Group gap="md">
         <Anchor component="button" type="button" fz="sm" fw={600} onClick={() => onChange(domains.map((d) => d.id))}>
           Todos

@@ -4,6 +4,7 @@ import { setKey } from "../api/client";
 import { FIXED_KEY } from "../api/fixedKey";
 import { ColorSchemeToggle } from "./ColorSchemeToggle";
 import { AccountMenu } from "./AccountMenu";
+import { TecLogo } from "./TecLogo";
 
 interface Props {
   name: string;
@@ -45,6 +46,10 @@ export function Header({
             {desktopSidebarOpen ? <IconLayoutSidebarLeftCollapse size={20} /> : <IconLayoutSidebarLeftExpand size={20} />}
           </ActionIcon>
         </Tooltip>
+        {/* En pantallas angostas no cabe junto al título. */}
+        <Box visibleFrom="sm" lh={0}>
+          <TecLogo width={140} />
+        </Box>
         <Title order={1} fz="1.1rem" style={{ flex: 1, minWidth: 0 }} lineClamp={1}>
           {name}
         </Title>

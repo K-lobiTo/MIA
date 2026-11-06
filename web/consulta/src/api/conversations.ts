@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./client";
-import type { ConversationsResponse, StoredConversation } from "./types";
+import type { ConversationSummary, ConversationsResponse, StoredConversation } from "./types";
 
 export const CONVERSATIONS_KEY = ["conversations"];
 
@@ -39,3 +39,16 @@ export function useDeleteAllConversations() {
   });
 }
 
+
+/** Cambia el título de una conversación guardada (no cambia su orden en la lista). */
+export function useRenameConversation() {
+  const refresh = useRefreshConversations();
+  return useMutation({
+    mutationFn: ({ id, title }: { id: string; title: string }) =>
+      apiFetch<ConversationSummary>(`/conversations/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        body: { title },
+      }),
+    onSettled: () => refresh(),
+  });
+}
