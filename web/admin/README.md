@@ -29,6 +29,8 @@ Variables de **compilación** (`.env.local` o en la orden):
 
 **Probar sin el client ID real** (desarrollo): `python scripts/idp_simulado.py` levanta un Microsoft simulado (`https://localhost:9000`, certificado autofirmado) y la API con datos de ejemplo en el puerto 8000; luego, en esta carpeta, `VITE_ENTRA_CLIENT_ID=cliente-de-prueba VITE_ENTRA_AUTHORITY=https://localhost:9000/1119bb90-88ba-4894-b7f1-de26e129d977 npm run dev` y aceptar el certificado en el navegador. Ofrece cuentas de cada alcance, una no listada y una sin segundo factor (detalle en [specs/004-acceso-panel-tec/quickstart.md](../../specs/004-acceso-panel-tec/quickstart.md)).
 
+- **Ícono de la pestaña:** `public/favicon.svg` (monograma provisional en el azul de la paleta #03), enlazado en `index.html`. Para cambiarlo, reemplazar ese archivo conservando el nombre, o agregar un PNG y apuntar el `<link rel="icon">` a él.
+
 ## Estructura
 
 | Carpeta | Contenido |
