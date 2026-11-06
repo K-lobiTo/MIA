@@ -41,6 +41,7 @@ const historia = {
   onNew: vi.fn(),
   onDelete: vi.fn(),
   onDeleteAll: vi.fn(),
+  onRename: vi.fn(),
 };
 
 describe("Sidebar", () => {

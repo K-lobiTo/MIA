@@ -6,6 +6,10 @@ Rutas que usa la Consulta con la sesión iniciada. Datos en [data-model.md](../d
 
 **200**: `{ "retention_days": 90, "conversations": [ { "id": "uuid", "title": "¿Cuándo empieza la maestría?", "created_at": "...", "updated_at": "...", "turn_count": 4 } ] }`, de la más reciente a la más antigua (por `updated_at`). Hasta `CHAT_MAX_CONVERSATIONS` elementos, así que no se pagina. Con el guardado apagado (`CHAT_RETENTION_DAYS=0`): lista vacía y `retention_days: 0`.
 
+## `PATCH /conversations/{id}`
+
+Cambia el título (agregada el 2026-11-06, menú de cada conversación en la Consulta). Cuerpo: `{ "title": "Costos de la maestría" }`. Los espacios se normalizan y el título se recorta a 80 caracteres; vacío o de más de 200 caracteres es **422**. **200**: el resumen de la conversación (`id`, `title`, `created_at`, `updated_at`, `turn_count`). No cambia `updated_at`: ni el orden de la lista ni la retención se alteran. Ajena o inexistente: 404.
+
 ## `GET /conversations/{id}`
 
 **200**:

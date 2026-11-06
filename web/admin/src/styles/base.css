@@ -35,3 +35,9 @@ a:not([class]) { color: var(--accent); }
 .login-key { display: flex; flex-direction: column; border-top: 1px solid var(--line); padding-top: 14px; }
 .session-info { display: flex; flex-direction: column; gap: 2px; word-break: break-all; }
 .session-info small { color: var(--muted); }
+
+/* Logo del TEC: azul oscuro sobre transparente, así que en modo oscuro se pinta en blanco para que se lea. */
+.tec-logo { display: block; max-width: 100%; height: auto; }
+:root[data-mantine-color-scheme="dark"] .tec-logo { filter: brightness(0) invert(1); }
+.login-card .tec-logo { margin-bottom: 4px; }
+.brand .tec-logo { margin-bottom: 8px; }

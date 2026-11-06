@@ -1,6 +1,7 @@
-import { Button, Group, Stack, Text, Textarea, Transition } from "@mantine/core";
+import { Button, Group, Stack, Text, Textarea } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { IconCheck } from "@tabler/icons-react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useFeedback } from "../api/consulta";
 import type { Rating as RatingValue } from "../api/types";
 
@@ -12,33 +13,35 @@ interface Props {
   onRate: (rating: RatingValue, comment?: string) => void;
 }
 
+/** Aviso breve de que la API guardó la calificación o el comentario. Usa siempre el mismo `id`, así uno nuevo reemplaza al
+ * anterior en vez de apilarse. */
+export function notifySaved(rating: RatingValue, comment?: string) {
+  const sentComment = comment !== undefined;
+  notifications.show({
+    id: "calificacion",
+    title: sentComment ? (comment.trim() ? "Comentario enviado" : "Comentario eliminado") : "Calificación guardada",
+    message: sentComment
+      ? "Gracias por ayudar a mejorar las respuestas."
+      : rating === "util"
+        ? "Marcaste la respuesta como útil. Gracias."
+        : "Marcaste la respuesta como no útil. Gracias; puedes dejar un comentario.",
+    icon: <IconCheck size={16} stroke={2.5} />,
+  });
+}
+
 /** Calificación de una respuesta: útil o no útil, con comentario opcional (CON-8). Una nueva reemplaza a la anterior. */
 export function Rating({ queryId, rating, comment, onRate }: Props) {
   const feedback = useFeedback();
   const [draft, setDraft] = useState(comment ?? "");
   const [failed, setFailed] = useState(false);
-  // Aviso breve de que el comentario llegó a la API; se oculta solo.
-  const [sentMessage, setSentMessage] = useState<string | null>(null);
-  const [showSent, setShowSent] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => () => clearTimeout(timer.current), []);
-
-  const confirmSent = (text: string) => {
-    clearTimeout(timer.current);
-    setSentMessage(text.trim() ? "Comentario enviado" : "Comentario eliminado");
-    setShowSent(true);
-    timer.current = setTimeout(() => setShowSent(false), 3000);
-  };
-
   const submit = (value: RatingValue, text?: string) => {
     setFailed(false);
-    setShowSent(false);
     feedback.mutate(
       { queryId, rating: value, comment: text },
       {
         onSuccess: () => {
           onRate(value, text?.trim() || undefined);
-          if (text !== undefined) confirmSent(text);
+          notifySaved(value, text);
         },
         onError: () => setFailed(true),
       },
@@ -99,19 +102,6 @@ export function Rating({ queryId, rating, comment, onRate }: Props) {
             >
               Enviar comentario
             </Button>
-            {/* Región en vivo siempre presente para que los lectores de pantalla anuncien el mensaje. */}
-            <div role="status" aria-live="polite">
-              <Transition mounted={showSent} transition="fade-right" duration={250} timingFunction="ease">
-                {(styles) => (
-                  <Group gap={6} wrap="nowrap" style={styles}>
-                    <IconCheck size={16} stroke={2.5} color="var(--mantine-primary-color-filled)" aria-hidden />
-                    <Text span fz="sm" fw={600}>
-                      {sentMessage}
-                    </Text>
-                  </Group>
-                )}
-              </Transition>
-            </div>
           </Group>
         </Stack>
       )}

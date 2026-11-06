@@ -16,6 +16,7 @@ export interface SidebarHistory {
   onNew: () => void;
   onDelete: (id: string) => void;
   onDeleteAll: () => void;
+  onRename: (id: string, title: string) => void;
 }
 
 interface Props {
@@ -55,6 +56,7 @@ export function Sidebar({ domains, selected, onSelect, history, savingOff = fals
               onNew={history.onNew}
               onDelete={history.onDelete}
               onDeleteAll={history.onDeleteAll}
+              onRename={history.onRename}
             />
           )}
           {savingOff && (
@@ -77,7 +79,7 @@ export function Sidebar({ domains, selected, onSelect, history, savingOff = fals
       {hasTop && <Divider my="md" />}
 
       <AppShell.Section>
-        <Paper withBorder radius="md" p="sm" className="sidebar-domains">
+        <Paper withBorder shadow="sm" radius="md" p="sm" className="sidebar-domains">
           <DomainPicker domains={domains} selected={selected} onChange={onSelect} />
         </Paper>
       </AppShell.Section>

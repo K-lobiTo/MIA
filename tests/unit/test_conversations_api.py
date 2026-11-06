@@ -156,3 +156,51 @@ def test_un_usuario_desactivado_pierde_el_acceso_a_su_lista(client, db):
         session.commit()
 
     assert client.get("/conversations", headers=ana["headers"]).json()["code"] == "session_invalid"
+
+
+def test_renombrar_cambia_el_titulo_sin_mover_la_conversacion_en_la_lista(client, db):
+    ana = iniciar_sesion(db, "ana")
+    vieja = sembrar_conversacion(db, ana["uid"], 3, "Vieja", hace_dias=5)
+    sembrar_conversacion(db, ana["uid"], 1, "Nueva", hace_dias=1)
+    antes = client.get("/conversations", headers=ana["headers"]).json()["conversations"]
+
+    respuesta = client.patch(
+        f"/conversations/{vieja}", json={"title": "  Costos   de la\nmaestría  "}, headers=ana["headers"]
+    )
+
+    assert respuesta.status_code == 200
+    assert respuesta.json()["title"] == "Costos de la maestría" and respuesta.json()["turn_count"] == 3
+    despues = client.get("/conversations", headers=ana["headers"]).json()["conversations"]
+    assert [c["id"] for c in despues] == [c["id"] for c in antes]
+    assert [c["updated_at"] for c in despues] == [c["updated_at"] for c in antes]
+    assert next(c for c in despues if c["id"] == vieja)["title"] == "Costos de la maestría"
+
+
+def test_renombrar_recorta_el_titulo_largo(client, db):
+    ana = iniciar_sesion(db)
+    cid = sembrar_conversacion(db, ana["uid"])
+    respuesta = client.patch(f"/conversations/{cid}", json={"title": "x" * 150}, headers=ana["headers"])
+    assert respuesta.status_code == 200 and len(respuesta.json()["title"]) == 80
+
+
+@pytest.mark.parametrize("titulo", ["", "   ", "x" * 201])
+def test_renombrar_rechaza_un_titulo_vacio_o_demasiado_largo(client, db, titulo):
+    ana = iniciar_sesion(db)
+    cid = sembrar_conversacion(db, ana["uid"])
+    assert client.patch(f"/conversations/{cid}", json={"title": titulo}, headers=ana["headers"]).status_code == 422
+    assert client.get(f"/conversations/{cid}", headers=ana["headers"]).json()["title"] == "Conversación sembrada"
+
+
+def test_renombrar_una_ajena_o_inexistente_es_404_y_sin_sesion_es_401(client, db):
+    ana = iniciar_sesion(db, "ana")
+    beto = iniciar_sesion(db, "beto")
+    de_beto = sembrar_conversacion(db, beto["uid"], 1, "De beto")
+
+    ajena = client.patch(f"/conversations/{de_beto}", json={"title": "mía"}, headers=ana["headers"])
+    falsa = client.patch(f"/conversations/{uuid.uuid4()}", json={"title": "x"}, headers=ana["headers"])
+    sin_sesion = client.patch(f"/conversations/{de_beto}", json={"title": "x"})
+
+    assert ajena.status_code == 404 and ajena.json() == NO_ENCONTRADA
+    assert falsa.status_code == 404
+    assert sin_sesion.status_code == 401
+    assert client.get(f"/conversations/{de_beto}", headers=beto["headers"]).json()["title"] == "De beto"

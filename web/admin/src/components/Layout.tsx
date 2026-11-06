@@ -3,6 +3,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { IconAbc, IconBrandWhatsapp, IconChartBar, IconDatabase, IconKey, IconLogout, IconUserCircle, type Icon } from "@tabler/icons-react";
 import { NavLink as RouterLink, Outlet } from "react-router-dom";
 import { ColorSchemeToggle } from "./ColorSchemeToggle";
+import { TecLogo } from "./TecLogo";
 import { capabilities, scopeLabel } from "../auth/capabilities";
 import { signOut, useMe } from "../auth/session";
 import { MODULES } from "../modules";
@@ -37,6 +38,7 @@ export function Layout() {
 
       <AppShell.Navbar p="md" aria-label="Módulos del panel">
         <div className="brand">
+          <TecLogo width={170} />
           MIA
           <small>Panel de administración</small>
         </div>

@@ -2,6 +2,7 @@ import { Button, Paper, PasswordInput, Text, Title } from "@mantine/core";
 import { useState } from "react";
 import { setKey } from "../api/client";
 import { Notice } from "./Notice";
+import { TecLogo } from "./TecLogo";
 
 interface Props {
   /** La clave guardada fue rechazada por la API: se explica antes de pedir la nueva. */
@@ -24,6 +25,7 @@ export function KeyScreen({ invalid }: Props) {
           if (value.trim()) setKey(value.trim());
         }}
       >
+        <TecLogo />
         <Title order={1} fz="1.4rem">
           MIA: Consulta
         </Title>

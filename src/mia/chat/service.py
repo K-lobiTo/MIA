@@ -19,6 +19,8 @@ from mia.rag.history import HistoryTurn
 from mia.storage.models import ConsultaUser, Conversation, ConversationTurn, _now
 
 TITLE_MAX = 60
+# Largo máximo de un título puesto por la persona (el automático se recorta a TITLE_MAX).
+RENAME_MAX = 80
 
 
 def make_title(question: str) -> str:
@@ -181,6 +183,15 @@ def history_turns(session: Session, user: ConsultaUser, conversation_id: str) ->
         .limit(HISTORY_FETCH)
     ).all()
     return [HistoryTurn(turn.question, turn.answer, turn.mode) for turn in reversed(rows)]
+
+
+def rename_conversation(session: Session, user: ConsultaUser, conversation_id: str, title: str) -> tuple[Conversation, int]:
+    """Cambia el título de la conversación (espacios normalizados, hasta `RENAME_MAX` caracteres) sin tocar su fecha de
+    actividad: la retención y el orden de la lista no cambian. 404 si no es del usuario o no existe."""
+    conversation = get_owned(session, user, conversation_id)
+    conversation.title = re.sub(r"\s+", " ", title or "").strip()[:RENAME_MAX] or conversation.title
+    session.commit()
+    return conversation, _turn_count(session, conversation.id)
 
 
 def delete_conversation(session: Session, user: ConsultaUser, conversation_id: str) -> None:

@@ -1,4 +1,5 @@
 import { MantineProvider } from "@mantine/core";
+import { Notifications } from "@mantine/notifications";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -7,6 +8,7 @@ import { theme } from "./theme";
 // Los estilos de Mantine van en una capa de CSS (`@layer`): los propios, que no están en capa, prevalecen
 // siempre, sin importar en qué orden se carguen los archivos.
 import "@mantine/core/styles.layer.css";
+import "@mantine/notifications/styles.layer.css";
 import "./styles/tokens.css";
 import "./styles/base.css";
 
@@ -18,6 +20,8 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     {/* "auto": sigue el modo claro u oscuro del sistema, salvo que se elija otro con el interruptor. */}
     <MantineProvider theme={theme} defaultColorScheme="auto">
+      {/* Avisos breves (calificación y comentario enviados); se cierran solos. */}
+      <Notifications position="bottom-right" limit={3} autoClose={3500} />
       <QueryClientProvider client={queryClient}>
         <App />
       </QueryClientProvider>

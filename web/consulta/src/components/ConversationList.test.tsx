@@ -41,8 +41,8 @@ describe("ConversationList", () => {
 describe("ConversationList: borrar y retención", () => {
   it("ofrece borrar cada conversación y borrarlas todas", () => {
     const html = render({ onDelete: vi.fn(), onDeleteAll: vi.fn() });
-    expect(html).toContain("Borrar conversación: Costo de la maestría");
-    expect(html).toContain("Borrar conversación: Requisitos de ingreso");
+    expect(html).toContain("Opciones de la conversación: Costo de la maestría");
+    expect(html).toContain("Opciones de la conversación: Requisitos de ingreso");
     expect(html).toContain("Borrar todas");
   });
 
@@ -60,3 +60,14 @@ describe("ConversationList: borrar y retención", () => {
     expect(render()).not.toContain("Tus conversaciones se guardan");
   });
 });
+
+describe("ConversationList: menú de cada conversación", () => {
+  it("sin acciones disponibles no ofrece el menú", () => {
+    expect(render()).not.toContain("Opciones de la conversación");
+  });
+
+  it("solo con renombrar también ofrece el menú", () => {
+    expect(render({ onRename: vi.fn() })).toContain("Opciones de la conversación: Costo de la maestría");
+  });
+});
+

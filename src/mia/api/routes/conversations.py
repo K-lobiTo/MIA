@@ -1,4 +1,4 @@
-"""Conversaciones guardadas de la persona con sesión (feature 015): GET /conversations y GET /conversations/{id}.
+"""Conversaciones guardadas de la persona con sesión (feature 015): GET /conversations, GET /conversations/{id}, PATCH /conversations/{id} (renombrar) y DELETE.
 
 Todas exigen la sesión (`X-Session-Token`) y filtran por su dueño: una ajena y una inexistente responden lo mismo (404). El
 registro del servidor escribe solo cantidades, nunca títulos ni textos.
@@ -8,7 +8,7 @@ import json
 import logging
 
 from fastapi import APIRouter, Depends, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from mia.api.security import require_user
@@ -28,6 +28,17 @@ class ConversationSummary(BaseModel):
     created_at: str
     updated_at: str
     turn_count: int
+
+
+class ConversationRename(BaseModel):
+    title: str = Field(max_length=200)
+
+    @field_validator("title")
+    @classmethod
+    def not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("El título no puede estar vacío.")
+        return value
 
 
 class ConversationsOut(BaseModel):
@@ -122,6 +133,24 @@ def get_conversation(
             )
             for t in opened.turns
         ],
+    )
+
+
+@router.patch("/conversations/{conversation_id}", response_model=ConversationSummary)
+def rename_conversation(
+    conversation_id: str,
+    payload: ConversationRename,
+    user: ConsultaUser = Depends(require_user),
+    session: Session = Depends(get_session),
+) -> ConversationSummary:
+    conversation, count = service.rename_conversation(session, user, conversation_id, payload.title)
+    logger.info("Conversaciones resultado=renombrada cantidad=1")
+    return ConversationSummary(
+        id=conversation.id,
+        title=conversation.title,
+        created_at=_iso(conversation.created_at),
+        updated_at=_iso(conversation.updated_at),
+        turn_count=count,
     )
 
 

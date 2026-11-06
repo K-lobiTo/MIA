@@ -2,6 +2,7 @@ import { Button, Paper, PasswordInput, Stack, Text } from "@mantine/core";
 import { IconBrandWindows } from "@tabler/icons-react";
 import { useState } from "react";
 import { Notice } from "./Notice";
+import { TecLogo } from "./TecLogo";
 import { fetchMe } from "../api/me";
 import { backToLogin, signIn, signInWithKey, signOut, type AccessState } from "../auth/session";
 import type { AccessProblem } from "../auth/errors";
@@ -57,6 +58,7 @@ export function LoginScreen({ state }: Props) {
     <main className="login">
       <Paper withBorder p="xl" radius="md" className="login-card">
         <div className="brand">
+          <TecLogo width={220} />
           MIA
           <small>Panel de administración</small>
         </div>

@@ -1,6 +1,7 @@
 import { Button, Paper, PasswordInput, Text, TextInput, Title } from "@mantine/core";
 import { useState } from "react";
 import { Notice } from "./Notice";
+import { TecLogo } from "./TecLogo";
 
 interface Props {
   busy: boolean;
@@ -32,6 +33,7 @@ export function LoginPanel({ busy, error, onSubmit, retentionDays, required = fa
           if (username.trim() && password) onSubmit(username.trim(), password);
         }}
       >
+        <TecLogo />
         <Title order={1} fz="1.4rem">
           Iniciar sesión
         </Title>
