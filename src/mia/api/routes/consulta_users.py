@@ -19,6 +19,7 @@ from mia.access.guards import ensure_global, ensure_unit
 from mia.access.scope import Principal, unit_in_scope
 from mia.api.security import require_admin
 from mia.chat import passwords, sessions
+from mia.chat.throttle import login_throttle
 from mia.storage.db import get_session
 from mia.storage.models import ConsultaUser, Conversation, Unit
 
@@ -202,6 +203,8 @@ def update_user(
         session.commit()
         if not user.active:
             sessions.close_user_sessions(session, user.id)
+        else:
+            login_throttle.clear_user(user.username)
         audit.log_write(
             principal,
             "consulta_user.update",
@@ -225,5 +228,8 @@ def reset_password(
     user.password_hash = passwords.hash_password(password)
     session.commit()
     sessions.close_user_sessions(session, user.id)
+    # Quien pidió el restablecimiento suele estar bloqueado por intentos fallidos: con la contraseña nueva se le libera
+    # (el bloqueo vive en la memoria de la API y se aplica antes de verificar la contraseña, aunque sea correcta).
+    login_throttle.clear_user(user.username)
     audit.log_write(principal, "consulta_user.reset_password", user.id, user.username)
     return PasswordRevealed(password=password)
