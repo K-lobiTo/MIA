@@ -137,6 +137,34 @@ def test_un_almacen_sin_busqueda_por_palabras_lanza_not_implemented():
         almacen.drop_text_index,
         lambda: almacen.match_chunks(["d"], "x", 1),
         lambda: almacen.score_chunks([0.1], ["d"], ["a"]),
+        lambda: almacen.scan_chunks(["d"], "x", 1),
     ):
         with pytest.raises(NotImplementedError):
             llamada()
+
+
+def test_scan_chunks_recorre_las_paginas_con_el_texto_completo(almacen):
+    def punto(identificador, indice):
+        return SimpleNamespace(
+            id=identificador, payload={"document_id": "doc1", "domain": "d1", "text": f"t{indice}", "chunk_index": indice}
+        )
+
+    almacen.client.scroll.side_effect = [([punto("a", 0), punto("b", 1)], "siguiente"), ([punto("c", 2)], None)]
+    hits = almacen.scan_chunks(["d1"], "contenidos", 100)
+    assert [(h.chunk_id, h.text, h.chunk_index) for h in hits] == [("a", "t0", 0), ("b", "t1", 1), ("c", "t2", 2)]
+    primera, segunda = (c.kwargs for c in almacen.client.scroll.call_args_list)
+    assert primera["offset"] is None and segunda["offset"] == "siguiente"
+    assert primera["with_payload"] is True and primera["with_vectors"] is False
+    must = primera["scroll_filter"].must
+    assert FieldCondition(key="domain", match=MatchAny(any=["d1"])) in must
+    assert FieldCondition(key="text", match=MatchText(text="contenidos")) in must
+
+
+def test_scan_chunks_respeta_el_limite(almacen):
+    def punto(i):
+        return SimpleNamespace(id=str(i), payload={"document_id": "d", "domain": "x", "text": "t", "chunk_index": i})
+
+    almacen.client.scroll.return_value = ([punto(1), punto(2)], "mas")
+    hits = almacen.scan_chunks(["x"], "contenidos", 2)
+    assert len(hits) == 2
+    assert almacen.client.scroll.call_count == 1

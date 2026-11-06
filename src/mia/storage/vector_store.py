@@ -110,6 +110,11 @@ class VectorStore(ABC):
         """Los fragmentos con esos ids (dentro de los dominios), con su coseno contra `embedding` en `score`."""
         raise NotImplementedError("Este almacén no tiene búsqueda por palabras")
 
+    def scan_chunks(self, domains: list[str], text: str, limit: int) -> list[SearchResult]:
+        """Los fragmentos de los dominios cuyo texto contiene todas las palabras de `text` (con su texto completo, sin
+        puntaje), como mucho `limit`. Recorre todas las páginas del almacén."""
+        raise NotImplementedError("Este almacén no tiene búsqueda por palabras")
+
     @abstractmethod
     def count_chunks(self, document_id: str) -> int:
         """Cantidad de fragmentos de un documento."""
@@ -244,6 +249,29 @@ class QdrantVectorStore(VectorStore):
             with_vectors=False,
         )
         return [(str(point.id), point.payload["document_id"]) for point in points]
+
+    def scan_chunks(self, domains: list[str], text: str, limit: int) -> list[SearchResult]:
+        flt = Filter(
+            must=[
+                FieldCondition(key="domain", match=MatchAny(any=domains)),
+                FieldCondition(key=TEXT_FIELD, match=MatchText(text=text)),
+            ]
+        )
+        found: list[SearchResult] = []
+        offset = None
+        while len(found) < limit:
+            points, offset = self.client.scroll(
+                collection_name=self.collection,
+                scroll_filter=flt,
+                limit=min(256, limit - len(found)),
+                offset=offset,
+                with_payload=True,
+                with_vectors=False,
+            )
+            found.extend(_to_result(point, 0.0) for point in points)
+            if offset is None:
+                break
+        return found
 
     def score_chunks(
         self, embedding: list[float], domains: list[str], chunk_ids: list[str]
