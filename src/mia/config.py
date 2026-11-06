@@ -61,6 +61,12 @@ class Settings(BaseSettings):
     query_complete_document_max_chunks: int = Field(default=25, ge=1, le=100)
     query_complete_forward_neighbors: int = Field(default=4, ge=0, le=20)
     query_context_max_chars: int = Field(default=80000, ge=5000, le=400000)
+    # Barrido de secciones (feature 016, ver mia.rag.sections). "on"/"off" (otro valor = off, con aviso). Una pregunta que pide
+    # resumir o listar los contenidos de los cursos en plural recibe la sección «Contenidos» de cada programa de curso de los
+    # dominios consultados, en vez de los fragmentos más parecidos a la pregunta. Máximo de documentos y de caracteres por sección.
+    query_section_sweep: str = "off"
+    query_section_sweep_max_documents: int = Field(default=40, ge=2, le=100)
+    query_section_sweep_max_chars: int = Field(default=6000, ge=500, le=20000)
     # Si el modelo termina la generación de forma anormal (límite de longitud u otro motivo) se reintenta una
     # vez, respetando los topes de gasto, y si vuelve a cortarse se entrega con un aviso. "on"/"off".
     query_retry_cut_answers: str = "off"

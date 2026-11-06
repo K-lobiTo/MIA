@@ -76,6 +76,13 @@ from mia.rag.rerank import (
     rerank_requested,
     warn_rerank_failure,
 )
+from mia.rag.sections import (
+    SWEEP_INSTRUCTIONS,
+    section_sweep_enabled,
+    sweep_note,
+    sweep_sections,
+    wants_course_contents,
+)
 from mia.storage.db import get_session
 from mia.storage.models import Artifact, ConsultaUser, Document, Domain, QueryLog
 from mia.storage.vector_store import get_vector_store
@@ -458,16 +465,32 @@ def run_query(
             payload.mode,
         )
 
-    embedding_provider = get_embedding_provider(settings.embedding_provider)
-    question_embedding = embedding_provider.embed([search_text], is_query=True)[0]
-
     vector_store = get_vector_store()
+
+    # Barrido de secciones (feature 016): una pregunta que pide resumir los contenidos de los cursos recibe la sección
+    # «Contenidos» de cada programa en vez de los fragmentos más parecidos. Con menos de dos documentos sigue la búsqueda.
+    sweep_passages = (
+        sweep_sections(
+            vector_store,
+            payload.domains,
+            settings.query_section_sweep_max_documents,
+            settings.query_section_sweep_max_chars,
+        )
+        if section_sweep_enabled(settings.query_section_sweep)
+        and (wants_course_contents(payload.question) or wants_course_contents(search_text))
+        else []
+    )
+    sweeping = len(sweep_passages) >= 2
+    sweep_note_text = sweep_note(sweep_passages) if sweeping else None
+
+    embedding_provider = get_embedding_provider(settings.embedding_provider)
+    question_embedding = None if sweeping else embedding_provider.embed([search_text], is_query=True)[0]
 
     # Con QUERY_HYBRID_SEARCH=on (feature 010) la parte léxica busca por palabras en un hilo mientras corre la
     # búsqueda por significado; su resultado se fusiona con el de cada `retrieve`.
     hybrid = (
         _HybridRun(vector_store, session, search_text, payload.domains, question_embedding)
-        if hybrid_enabled(settings.query_hybrid_search)
+        if hybrid_enabled(settings.query_hybrid_search) and not sweeping
         else None
     )
 
@@ -533,13 +556,13 @@ def run_query(
         results = retrieve(vector)
         return hybrid.merge(results, config.search_limit) if hybrid is not None else results
 
-    relevant = retrieve_hybrid(question_embedding)
+    relevant = [] if sweeping else retrieve_hybrid(question_embedding)
 
     # Con QUERY_CLEAN_QUESTION encendida, si nada pasó el umbral se repite la búsqueda una vez con la pregunta
     # reducida a lo que se busca (feature 008). Solo reglas de texto: el segundo intento no llama a ningún modelo
     # de lenguaje, y el modelo recibe siempre la pregunta original.
     clean_question_note: str | None = None
-    if not relevant and clean_question_enabled(settings.query_clean_question):
+    if not relevant and not sweeping and clean_question_enabled(settings.query_clean_question):
         cleaned = clean_question(search_text)
         if cleaned:
             cleaned_embedding = embedding_provider.embed([cleaned], is_query=True)[0]
@@ -566,7 +589,7 @@ def run_query(
     def no_info(model: str | None = None) -> QueryResponse:
         log.outcome = "no_info"
         log.model = model
-        log.reject_reason = combine_notes(rerank_note_text, hybrid_note_text, clean_question_note)
+        log.reject_reason = combine_notes(rerank_note_text, hybrid_note_text, clean_question_note, sweep_note_text)
         log.latency_ms = _elapsed_ms(started)
         session.add(log)
         session.commit()
@@ -579,7 +602,7 @@ def run_query(
             no_info=True,
         )
 
-    if not relevant:
+    if not relevant and not sweeping:
         if clarify is not None and extras is not None:
             extras.clarify = _clarify_candidates(
                 vector_store, payload.domains, payload.question, question_embedding, config.search_limit, clarify
@@ -599,13 +622,21 @@ def run_query(
         if complete_context
         else None
     )
-    passages = build_passages(
-        relevant,
-        vector_store,
-        settings.query_context_neighbors,
-        settings.query_full_document_max_chunks,
-        policy,
-    )
+    if sweeping:
+        # Un pasaje por documento, ya completo; en orden alfabético de documento para que la respuesta salga ordenada.
+        def sweep_label(passage):
+            document = session.get(Document, passage.document_id)
+            return (document.filename if document else passage.document_id).lower()
+
+        passages = sorted(sweep_passages, key=sweep_label)
+    else:
+        passages = build_passages(
+            relevant,
+            vector_store,
+            settings.query_context_neighbors,
+            settings.query_full_document_max_chunks,
+            policy,
+        )
 
     # Con QUERY_CITED_SOURCES encendida los pasajes se numeran y se le pide al modelo que cite los que usó.
     # Se lee en cada consulta, así que cambiar la variable y reiniciar el servicio basta.
@@ -641,6 +672,8 @@ def run_query(
         instructions = config.instructions
         if complete_context:
             instructions = f"{instructions}\n\n{COMPLETENESS_INSTRUCTIONS}"
+        if sweeping:
+            instructions = f"{instructions}\n\n{SWEEP_INSTRUCTIONS}"
         if cite_sources:
             instructions = f"{instructions}\n\n{CITATION_INSTRUCTIONS}"
         answer = llm_provider.answer(
@@ -740,7 +773,9 @@ def run_query(
 
     if notice:
         answer_text = with_notice(answer_text)
-    log.reject_reason = combine_notes(rerank_note_text, hybrid_note_text, clean_question_note, cut_note, safety_note)
+    log.reject_reason = combine_notes(
+        rerank_note_text, hybrid_note_text, clean_question_note, sweep_note_text, cut_note, safety_note
+    )
     log.outcome = "answered"
     log.sources = json.dumps(
         [{"domain": d, "document": n} for d, n in dict.fromkeys((s.domain, s.document) for s in sources)],
