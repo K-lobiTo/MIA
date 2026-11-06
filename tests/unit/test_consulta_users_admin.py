@@ -7,6 +7,7 @@ from datetime import timedelta
 import pytest
 
 from mia.chat import passwords, sessions
+from mia.chat.throttle import login_throttle
 from mia.storage.models import ConsultaSession, ConsultaUser, Conversation, _now
 
 COORD = "coord.comp@itcr.ac.cr"
@@ -238,3 +239,17 @@ def test_el_listado_trae_solo_cantidad_y_ultima_actividad_de_las_conversaciones(
     [usuario] = client.get("/consulta-users", headers=admin).json()["users"]
     assert usuario["conversation_count"] == 2
     assert usuario["last_activity_at"].startswith((ahora - timedelta(days=1)).strftime("%Y-%m-%d"))
+
+
+def test_restablecer_la_contrasena_libera_el_bloqueo_por_intentos_fallidos(client, mundo, admin):
+    creado = _crear(client, admin, "ana", mundo["units"].comp, password="la-clave-original").json()
+    login_throttle.reset()
+    for _ in range(5):
+        login_throttle.fail("ana", "origen-1")
+    assert login_throttle.check("ana", "origen-2") > 0
+
+    nueva = client.post(f"/consulta-users/{creado['id']}/reset-password", json={}, headers=admin)
+
+    assert nueva.status_code == 200
+    assert login_throttle.check("ana", "origen-2") == 0
+    login_throttle.reset()
