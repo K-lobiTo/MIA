@@ -31,6 +31,8 @@ Variables de **compilación** (`.env.local` o en la orden):
 
 - **Ícono de la pestaña:** `public/favicon.svg` (monograma provisional en el azul de la paleta #03), enlazado en `index.html`. Para cambiarlo, reemplazar ese archivo conservando el nombre, o agregar un PNG y apuntar el `<link rel="icon">` a él.
 
+- **Logo del TEC:** `public/logoTec.png`, mostrado por `components/TecLogo.tsx` en la pantalla de inicio de sesión y arriba del menú lateral. Es azul oscuro sobre fondo transparente: en modo oscuro `.tec-logo` (en `styles/base.css`) lo pinta en blanco.
+
 ## Estructura
 
 | Carpeta | Contenido |
