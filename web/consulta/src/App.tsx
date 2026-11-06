@@ -22,6 +22,7 @@ import { KeyScreen } from "./components/KeyScreen";
 import { LoginPanel } from "./components/LoginPanel";
 import { Notice } from "./components/Notice";
 import { Sidebar } from "./components/Sidebar";
+import { SIDEBAR_WIDTH, loadSidebarOpen, saveSidebarOpen } from "./state/sidebar";
 import {
   answeredExchange,
   failedExchange,
@@ -49,7 +50,9 @@ export function App() {
   const domains = useDomains();
   const ask = useAsk();
   const queryClient = useQueryClient();
+  // Menú lateral: en pantallas angostas se despliega encima (cerrado al empezar); en anchas está abierto salvo que la persona lo oculte.
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(loadSidebarOpen);
   const [selected, setSelected] = useState<string[]>([]);
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [rejection, setRejection] = useState<string | null>(null);
@@ -302,11 +305,24 @@ export function App() {
   }
 
   return (
-    <AppShell header={{ height: 56 }} navbar={{ width: 300, breakpoint: "sm", collapsed: { mobile: !sidebarOpen } }} padding={0}>
+    <AppShell
+      header={{ height: 56 }}
+      navbar={{ width: SIDEBAR_WIDTH, breakpoint: "sm", collapsed: { mobile: !sidebarOpen, desktop: !desktopSidebarOpen } }}
+      transitionDuration={250}
+      transitionTimingFunction="ease"
+      padding={0}
+    >
       <Header
         name={config.data.artifact.name}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen((open) => !open)}
+        desktopSidebarOpen={desktopSidebarOpen}
+        onToggleDesktopSidebar={() => {
+          setDesktopSidebarOpen((open) => {
+            saveSidebarOpen(!open);
+            return !open;
+          });
+        }}
         username={session?.username}
         onLoggedOut={newConversation}
         onLogin={chatEnabled ? () => setShowLogin(true) : undefined}

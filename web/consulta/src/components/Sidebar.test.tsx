@@ -3,6 +3,7 @@ import { AppShell, MantineProvider } from "@mantine/core";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { ConversationSummary, Domain } from "../api/types";
+import { SIDEBAR_WIDTH } from "../state/sidebar";
 import { theme } from "../theme";
 import { Sidebar } from "./Sidebar";
 
@@ -18,7 +19,7 @@ const conversaciones: ConversationSummary[] = [
 function render(props: Partial<React.ComponentProps<typeof Sidebar>> = {}): string {
   return renderToString(
     <MantineProvider theme={theme}>
-      <AppShell navbar={{ width: 300, breakpoint: "sm" }}>
+      <AppShell navbar={{ width: SIDEBAR_WIDTH, breakpoint: "sm" }}>
         <Sidebar
           domains={dominios}
           selected={["d1"]}
