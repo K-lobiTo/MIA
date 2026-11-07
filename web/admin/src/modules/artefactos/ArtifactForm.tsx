@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ApiError } from "../../api/client";
 import { useCreateArtifact, useUpdateArtifact } from "../../api/artifacts";
 import type { Artifact, ArtifactCreated, ModeId, ModeInfo, UnitNode } from "../../api/types";
+import { DynamicBadge } from "../../components/DynamicBadge";
 import { Notice } from "../../components/Notice";
 import { MODE_LABEL, describeCost, pruneCoveredDomains } from "./accessUtils";
 import { capabilities } from "../../auth/capabilities";
@@ -138,7 +139,12 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
                             disabled={unitChecked}
                             checked={unitChecked || domainIds.includes(domain.id)}
                             onChange={() => setDomainIds(toggle(domainIds, domain.id))}
-                            label={domain.name}
+                            label={
+                              <Group gap="xs" component="span">
+                                {domain.name}
+                                {domain.dynamic && <DynamicBadge />}
+                              </Group>
+                            }
                           />
                         ))}
                       </Stack>

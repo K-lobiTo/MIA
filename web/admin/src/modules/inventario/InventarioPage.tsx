@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { capabilities } from "../../auth/capabilities";
 import { useMe } from "../../auth/session";
 import { useInventory } from "../../api/inventory";
+import { useSetDomainDynamic } from "../../api/inventoryMutations";
 import type { DocumentItem, Inventory } from "../../api/types";
 import { Notice } from "../../components/Notice";
 import { filterInventory } from "./filterTree";
@@ -42,6 +43,7 @@ type DialogState =
 // Nombres de dominios y carpetas por id, para rotular destinos y diálogos.
 function buildLookup(inventory: Inventory) {
   const domains = new Map<string, string>();
+  const dynamicDomains = new Set<string>();
   const folders = new Map<string, string>();
   const walk = (list: Inventory["units"][number]["domains"][number]["folders"]) => {
     for (const folder of list) {
@@ -51,9 +53,10 @@ function buildLookup(inventory: Inventory) {
   };
   for (const domain of [...inventory.units.flatMap((u) => u.domains), ...inventory.unassigned_domains]) {
     domains.set(domain.id, domain.name);
+    if (domain.dynamic) dynamicDomains.add(domain.id);
     walk(domain.folders);
   }
-  return { domains, folders, units: new Map(inventory.units.map((u) => [u.id, u.name])) };
+  return { domains, dynamicDomains, folders, units: new Map(inventory.units.map((u) => [u.id, u.name])) };
 }
 
 const READ_ONLY_REASON =
@@ -62,6 +65,7 @@ const READ_ONLY_REASON =
 export function InventarioPage() {
   const canCreateUnit = capabilities(useMe()).canCreateUnit;
   const inventory = useInventory();
+  const setDynamic = useSetDomainDynamic();
   const [query, setQuery] = useState("");
   const [dialog, setDialog] = useState<DialogState | null>(null);
   // Documento cuyas imágenes se están viendo (feature 011).
@@ -151,8 +155,22 @@ export function InventarioPage() {
     }
     const domainName = lookup?.domains.get(node.domainId ?? "") ?? "el dominio";
     if (node.kind === "domain") {
+      const isDynamic = lookup?.dynamicDomains.has(node.id) ?? false;
       return (
         <>
+          <Button
+            variant="default"
+            size="compact-sm"
+            loading={setDynamic.isPending && setDynamic.variables?.domainId === node.id}
+            title={
+              isDynamic
+                ? "Quitar la etiqueta: pasa a ser un dominio persistente"
+                : "Etiquetar como dinámico: su contenido cambia cada periodo y solo debe tener información vigente"
+            }
+            onClick={() => setDynamic.mutate({ domainId: node.id, dynamic: !isDynamic })}
+          >
+            {isDynamic ? "Quitar dinámico" : "Marcar dinámico"}
+          </Button>
           <Button
             variant="default"
             size="compact-sm"

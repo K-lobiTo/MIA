@@ -41,7 +41,7 @@ def test_base_anterior_se_migra_sin_perder_datos(tmp_path):
     assert TABLAS_NUEVAS <= set(inspector.get_table_names())
     assert "unit_id" in {c["name"] for c in inspector.get_columns("domains")}
     assert "folder_id" in {c["name"] for c in inspector.get_columns("documents")}
-    assert _revision(engine) == "0009"
+    assert _revision(engine) == "0010"
     with engine.connect() as connection:
         assert connection.execute(text("SELECT name, unit_id FROM domains")).one() == (
             "Memoria del Consejo",
@@ -64,8 +64,8 @@ def test_nombre_de_dominio_pasa_a_ser_unico_por_unidad(tmp_path):
     with engine.begin() as connection:
         connection.execute(text("INSERT INTO units (id, name, description, created_at) VALUES ('u1', 'Computación', '', '2026-10-08'), ('u2', 'Administración de Empresas', '', '2026-10-08')"))
         # El mismo nombre en unidades distintas ya es posible (antes el nombre era único global).
-        connection.execute(text("INSERT INTO domains VALUES ('d2', 'Currículum', '', '2026-10-08', 'u1')"))
-        connection.execute(text("INSERT INTO domains VALUES ('d3', 'Currículum', '', '2026-10-08', 'u2')"))
+        connection.execute(text("INSERT INTO domains (id, name, description, created_at, unit_id) VALUES ('d2', 'Currículum', '', '2026-10-08', 'u1')"))
+        connection.execute(text("INSERT INTO domains (id, name, description, created_at, unit_id) VALUES ('d3', 'Currículum', '', '2026-10-08', 'u2')"))
         assert connection.execute(text("SELECT COUNT(*) FROM domains WHERE name = 'Currículum'")).scalar_one() == 2
 
 
@@ -75,7 +75,7 @@ def test_base_vacia_queda_en_la_ultima_revision(tmp_path):
     init_db(engine)
 
     assert TABLAS_NUEVAS <= set(inspect(engine).get_table_names())
-    assert _revision(engine) == "0009"
+    assert _revision(engine) == "0010"
 
 
 def test_init_db_se_puede_correr_dos_veces(tmp_path):
@@ -84,7 +84,7 @@ def test_init_db_se_puede_correr_dos_veces(tmp_path):
     init_db(engine)
     init_db(engine)
 
-    assert _revision(engine) == "0009"
+    assert _revision(engine) == "0010"
 
 
 def test_migracion_0003_crea_administradores_sin_tocar_datos(tmp_path):
@@ -269,7 +269,7 @@ def test_subir_a_la_cabeza_sobre_una_base_en_la_0005_no_pierde_datos(tmp_path):
 
     _hasta(engine, "head")
 
-    assert _revision(engine) == "0009"
+    assert _revision(engine) == "0010"
     with engine.connect() as connection:
         assert connection.execute(text("SELECT filename FROM documents")).scalar_one() == "acta.pdf"
         assert connection.execute(text("SELECT name FROM domains")).scalar_one() == "Memoria del Consejo"
@@ -289,7 +289,7 @@ def test_bajar_a_la_0005_borra_solo_las_tablas_nuevas_y_se_puede_volver_a_subir(
 
     _hasta(engine, "head")
 
-    assert _revision(engine) == "0009"
+    assert _revision(engine) == "0010"
     assert {"bots", "bot_message_counts", "document_images"} <= set(
         inspect(engine).get_table_names()
     )
@@ -323,7 +323,7 @@ def test_la_migracion_0008_agrega_la_memoria_de_conversacion_sin_perder_datos(tm
     assert columnas["context_turns"]["nullable"] is False
     bots = {c["name"]: c for c in inspect(engine).get_columns("bots")}
     assert bots["context_turns"]["nullable"] is True
-    assert _revision(engine) == "0009"
+    assert _revision(engine) == "0010"
     with engine.connect() as connection:
         assert connection.execute(text("SELECT name, context_turns FROM artifacts")).one() == (
             "Consulta",
@@ -388,7 +388,7 @@ def test_la_migracion_0009_crea_usuarios_sesiones_y_conversaciones_sin_perder_da
     assert {"ix_consulta_sessions_token_hash", "ix_conversations_user_id_updated_at", "ix_conversation_turns_conversation_id"} <= indices
     require_login = columnas("artifacts")["require_login"]
     assert require_login["nullable"] is False
-    assert _revision(engine) == "0009"
+    assert _revision(engine) == "0010"
     with engine.connect() as connection:
         # El artefacto existente no cambia y nace sin exigir sesión.
         assert connection.execute(text("SELECT name, context_turns, require_login FROM artifacts")).one() == ("Consulta", 3, 0)
@@ -417,7 +417,7 @@ def test_bajar_a_la_0008_quita_lo_de_la_0009_y_conserva_el_resto(tmp_path):
 
     _hasta(engine, "head")
 
-    assert _revision(engine) == "0009"
+    assert _revision(engine) == "0010"
     assert "conversations" in set(inspect(engine).get_table_names())
 
 
@@ -430,3 +430,26 @@ def test_borrar_una_conversacion_arrastra_sus_vueltas_con_las_claves_foraneas_ac
         connection.execute(text("INSERT INTO conversation_turns (id, conversation_id, position, question, answer, sources, mode, no_info, created_at) VALUES ('t1', 'c1', 1, 'p', 'r', '[]', 'literal', 0, '2026-11-04')"))
         connection.execute(text("DELETE FROM conversations WHERE id = 'c1'"))
         assert connection.execute(text("SELECT COUNT(*) FROM conversation_turns")).scalar_one() == 0
+
+
+def test_la_migracion_0010_agrega_dominios_dinamicos_sin_cambiar_los_existentes(tmp_path):
+    engine = _base_en(tmp_path, "0009")
+    with engine.begin() as connection:
+        connection.execute(text("INSERT INTO units (id, name, description, created_at) VALUES ('u1', 'Computación', '', '2026-11-05')"))
+        connection.execute(text("INSERT INTO domains (id, unit_id, name, description, created_at) VALUES ('dp', 'u1', 'Promoción', '', '2026-11-05')"))
+    assert "dynamic" not in {c["name"] for c in inspect(engine).get_columns("domains")}
+
+    _hasta(engine, "head")
+
+    dynamic = {c["name"]: c for c in inspect(engine).get_columns("domains")}["dynamic"]
+    assert dynamic["nullable"] is False
+    assert _revision(engine) == "0010"
+    with engine.connect() as connection:
+        # El dominio existente sigue siendo persistente.
+        assert connection.execute(text("SELECT name, dynamic FROM domains WHERE id = 'dp'")).one() == ("Promoción", 0)
+
+    _hasta(engine, "0009", accion="downgrade")
+
+    assert "dynamic" not in {c["name"] for c in inspect(engine).get_columns("domains")}
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT name FROM domains WHERE id = 'dp'")).scalar_one() == "Promoción"

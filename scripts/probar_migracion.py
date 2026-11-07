@@ -33,7 +33,7 @@ from sqlalchemy.orm import Session
 from mia.storage.db import BASELINE_REVISION, MIGRATIONS_DIR, _normalize_url, init_db
 from mia.storage.models import Domain, Unit
 
-DESTINO = "0009"
+DESTINO = "0010"
 # Revisión a la que baja la ida y vuelta por defecto: la anterior a la `DESTINO`. Bajar hasta `0001` ya no es posible con
 # los datos de producción de la versión 2 (hay dominios con el mismo nombre en programas distintos y la `0002` exigiría
 # que el nombre sea único por sí solo); sigue disponible con --bajar-a 0001 para bases sin esos datos.

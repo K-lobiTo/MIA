@@ -1,4 +1,4 @@
-import { Button, Group, Modal, Stack, Text, TextInput, Textarea } from "@mantine/core";
+import { Button, Checkbox, Group, Modal, Stack, Text, TextInput, Textarea } from "@mantine/core";
 import { useState, type ReactNode } from "react";
 import { Notice } from "./Notice";
 import { ApiError } from "../api/client";
@@ -9,6 +9,9 @@ export interface FieldSpec {
   multiline?: boolean;
   required?: boolean;
   initial?: string;
+  // Casilla: el valor es "true" cuando está marcada y "" cuando no. `description` es la ayuda bajo la casilla.
+  checkbox?: boolean;
+  description?: string;
 }
 
 interface Props<TResult> {
@@ -71,7 +74,15 @@ export function FormDialog<TResult>({ title, intro, fields, submitLabel, onSubmi
             </Text>
           )}
           {fields.map((field, index) =>
-            field.multiline ? (
+            field.checkbox ? (
+              <Checkbox
+                key={field.name}
+                label={field.label}
+                description={field.description}
+                checked={values[field.name] === "true"}
+                onChange={(e) => setValues({ ...values, [field.name]: e.currentTarget.checked ? "true" : "" })}
+              />
+            ) : field.multiline ? (
               <Textarea
                 key={field.name}
                 label={field.label}

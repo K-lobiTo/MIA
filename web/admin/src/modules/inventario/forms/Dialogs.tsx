@@ -36,8 +36,16 @@ export function NewDomainDialog({ unitId, unitName, onClose }: CloseProps & { un
       fields={[
         { name: "name", label: "Nombre", required: true },
         { name: "description", label: "Descripción", multiline: true },
+        {
+          name: "dynamic",
+          label: "Dominio dinámico",
+          checkbox: true,
+          description: "Para información que cambia cada periodo y debe estar siempre vigente (por ejemplo, Promoción). Es solo una etiqueta.",
+        },
       ]}
-      onSubmit={(v) => create.mutateAsync({ unit_id: unitId, name: v.name, description: v.description })}
+      onSubmit={(v) =>
+        create.mutateAsync({ unit_id: unitId, name: v.name, description: v.description, dynamic: v.dynamic === "true" })
+      }
       onClose={onClose}
       // INV-12: indicar qué artefactos lo verán y cuáles necesitan que se les habilite.
       renderResult={(domain) => (
