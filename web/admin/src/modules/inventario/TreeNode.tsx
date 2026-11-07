@@ -1,6 +1,7 @@
 import { ActionIcon, Button, Checkbox, Paper } from "@mantine/core";
 import { IconChevronRight, IconTrash } from "@tabler/icons-react";
 import { createContext, useContext, useState, type DragEvent, type ReactNode } from "react";
+import { DynamicBadge } from "../../components/DynamicBadge";
 import { StatusBadge, type BadgeTone } from "../../components/StatusBadge";
 import type { DocumentItem, DocumentStatus, DomainNode, FolderNode, UnitNode } from "../../api/types";
 import { estadoDeGrupo } from "./seleccion";
@@ -46,6 +47,8 @@ interface BranchProps {
   title: string;
   titleClass?: string;
   description?: string;
+  // Etiqueta junto al título (p. ej. la de un dominio dinámico).
+  badge?: ReactNode;
   count: number;
   // Los nodos abren o cierran por su cuenta; con una búsqueda activa se fuerzan abiertos.
   defaultOpen: boolean;
@@ -58,7 +61,7 @@ interface BranchProps {
   children: ReactNode;
 }
 
-function Branch({ title, titleClass, description, count, defaultOpen, forceOpen, actions, groupIds, onDropFiles, children }: BranchProps) {
+function Branch({ title, titleClass, description, badge, count, defaultOpen, forceOpen, actions, groupIds, onDropFiles, children }: BranchProps) {
   const seleccion = useContext(SeleccionContext);
   const [open, setOpen] = useState(defaultOpen);
   const [dragOver, setDragOver] = useState(false);
@@ -100,6 +103,7 @@ function Branch({ title, titleClass, description, count, defaultOpen, forceOpen,
           <GroupCheckbox title={title} ids={groupIds} seleccion={seleccion} />
         )}
         <span className={`branch-title ${titleClass ?? ""}`}>{title}</span>
+        {badge}
         <span className="branch-meta">{countLabel(count)}</span>
         {description && <span className="branch-desc">{description}</span>}
         {actions && <span className="branch-actions">{actions}</span>}
@@ -237,6 +241,7 @@ export function DomainBranch({ domain, forceOpen, renderActions, onDropFiles, on
     <Branch
       title={domain.name}
       description={domain.description}
+      badge={domain.dynamic ? <DynamicBadge /> : undefined}
       count={domain.document_count}
       groupIds={idsDeDocumentos(domain)}
       defaultOpen={false}

@@ -151,3 +151,18 @@ def test_subir_documentos_en_dominio_propio_y_ajeno(client, mundo, as_user):
     assert ajeno.status_code == 403 and ajeno.json()["code"] == "out_of_scope"
     sin_unidad = client.post("/domains/dx/documents", files={"file": ("n.pdf", b"c")}, headers=headers)
     assert sin_unidad.status_code == 403
+
+
+def test_marcar_un_dominio_como_dinamico_respeta_el_alcance(client, mundo, as_user, make_artifact):
+    propio = client.patch("/domains/dc", json={"dynamic": True}, headers=as_user(COORD))
+    assert propio.status_code == 200 and propio.json()["dynamic"] is True
+    ajeno = client.patch("/domains/da", json={"dynamic": True}, headers=as_user(COORD))
+    assert ajeno.status_code == 403 and ajeno.json()["code"] == "out_of_scope"
+    assert client.patch("/domains/no-existe", json={"dynamic": True}, headers=as_user(OPERADOR)).status_code == 404
+
+    # La etiqueta llega al inventario y a la lista de dominios de un artefacto, y se puede quitar.
+    inventario = client.get("/inventory", headers=as_user(COORD)).json()
+    assert inventario["units"][0]["domains"][0]["dynamic"] is True
+    artefacto = make_artifact("Consulta Computación", units=[mundo.comp])
+    assert [d["dynamic"] for d in client.get("/domains", headers=artefacto.headers).json()] == [True]
+    assert client.patch("/domains/dc", json={"dynamic": False}, headers=as_user(COORD)).json()["dynamic"] is False

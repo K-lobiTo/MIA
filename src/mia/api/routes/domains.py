@@ -28,6 +28,11 @@ class DomainCreate(BaseModel):
     unit_id: str
     name: Name
     description: str = ""
+    dynamic: bool = False
+
+
+class DomainUpdate(BaseModel):
+    dynamic: bool
 
 
 class DomainOut(BaseModel):
@@ -36,6 +41,7 @@ class DomainOut(BaseModel):
     unit_name: str | None
     name: str
     description: str
+    dynamic: bool = False
 
 
 class VisibleTo(BaseModel):
@@ -48,6 +54,7 @@ class DomainCreated(BaseModel):
     unit_id: str
     name: str
     description: str
+    dynamic: bool = False
     visible_to: VisibleTo
 
 
@@ -85,7 +92,11 @@ def create_domain(
     if existing is not None:
         raise HTTPException(status_code=409, detail=f"Ya existe un dominio '{payload.name}' en ese programa.")
     domain = Domain(
-        id=str(uuid.uuid4()), unit_id=payload.unit_id, name=payload.name, description=payload.description
+        id=str(uuid.uuid4()),
+        unit_id=payload.unit_id,
+        name=payload.name,
+        description=payload.description,
+        dynamic=payload.dynamic,
     )
     session.add(domain)
     session.commit()
@@ -95,7 +106,34 @@ def create_domain(
         unit_id=payload.unit_id,
         name=domain.name,
         description=domain.description,
+        dynamic=domain.dynamic,
         visible_to=_visible_to(session, principal, payload.unit_id),
+    )
+
+
+@router.patch("/domains/{domain_id}", response_model=DomainOut)
+def update_domain(
+    domain_id: str,
+    payload: DomainUpdate,
+    principal: Principal = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> DomainOut:
+    """Marca o desmarca un dominio como dinámico. Es solo una etiqueta: no toca la búsqueda ni los permisos."""
+    domain = session.get(Domain, domain_id)
+    if domain is None:
+        raise HTTPException(status_code=404, detail="Dominio no encontrado.")
+    ensure_domain(principal, domain, "domain.update")
+    domain.dynamic = payload.dynamic
+    session.commit()
+    audit.log_write(principal, "domain.update", domain.id, f"{domain.name}: dynamic={domain.dynamic}")
+    unit = session.get(Unit, domain.unit_id) if domain.unit_id else None
+    return DomainOut(
+        id=domain.id,
+        unit_id=domain.unit_id,
+        unit_name=unit.name if unit else None,
+        name=domain.name,
+        description=domain.description,
+        dynamic=domain.dynamic,
     )
 
 
@@ -113,7 +151,12 @@ def list_domains(
     allowed = allowed_domain_ids(session, artifact) if artifact is not None else None
     return [
         DomainOut(
-            id=d.id, unit_id=d.unit_id, unit_name=units.get(d.unit_id), name=d.name, description=d.description
+            id=d.id,
+            unit_id=d.unit_id,
+            unit_name=units.get(d.unit_id),
+            name=d.name,
+            description=d.description,
+            dynamic=d.dynamic,
         )
         for d in session.scalars(select(Domain))
         if (allowed is not None and d.id in allowed)

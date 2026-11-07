@@ -26,6 +26,8 @@ export interface DomainNode {
   id: string;
   name: string;
   description: string;
+  // Etiqueta: el contenido cambia cada periodo (p. ej. Promoción). Funcionalmente es un dominio como los demás.
+  dynamic?: boolean;
   document_count: number;
   folders: FolderNode[];
   documents: DocumentItem[];
@@ -62,6 +64,7 @@ export interface DomainCreated {
   unit_id: string;
   name: string;
   description: string;
+  dynamic?: boolean;
   visible_to: VisibleTo;
 }
 

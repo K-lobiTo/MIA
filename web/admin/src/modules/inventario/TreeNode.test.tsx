@@ -2,9 +2,9 @@
 import { MantineProvider } from "@mantine/core";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { DocumentItem } from "../../api/types";
+import type { DocumentItem, DomainNode } from "../../api/types";
 import { theme } from "../../theme";
-import { DocumentRow, SeleccionContext, type Seleccion } from "./TreeNode";
+import { DocumentRow, DomainBranch, SeleccionContext, type Seleccion } from "./TreeNode";
 
 const documento: DocumentItem = {
   id: "doc1",
@@ -62,5 +62,32 @@ describe("DocumentRow", () => {
 
     const marcado = render(documento, undefined, undefined, { ...base, activa: true, seleccionados: new Set(["doc1"]) });
     expect(marcado).toContain("checked");
+  });
+});
+
+describe("DomainBranch", () => {
+  const dominio = (dynamic?: boolean): DomainNode => ({
+    id: "d1",
+    name: "Promoción",
+    description: "",
+    dynamic,
+    document_count: 0,
+    folders: [],
+    documents: [],
+  });
+  const render = (domain: DomainNode) =>
+    renderToString(
+      <MantineProvider theme={theme}>
+        <DomainBranch domain={domain} forceOpen={false} />
+      </MantineProvider>,
+    );
+
+  it("etiqueta como dinámico a un dominio dinámico", () => {
+    expect(render(dominio(true))).toContain("Dinámico");
+  });
+
+  it("no etiqueta a un dominio persistente", () => {
+    expect(render(dominio(false))).not.toContain("Dinámico");
+    expect(render(dominio(undefined))).not.toContain("Dinámico");
   });
 });

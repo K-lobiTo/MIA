@@ -62,6 +62,9 @@ class Domain(Base):
     unit_id: Mapped[str | None] = mapped_column(ForeignKey("units.id"), nullable=True)
     name: Mapped[str] = mapped_column(String)
     description: Mapped[str] = mapped_column(String, default="")
+    # Solo una etiqueta: un dominio dinámico (p. ej. Promoción) se pensó para cambiar de contenido cada
+    # periodo y tener solo información vigente. Funcionalmente es igual a uno persistente.
+    dynamic: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
     unit: Mapped[Unit | None] = relationship(back_populates="domains")

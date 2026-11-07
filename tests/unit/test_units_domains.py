@@ -112,3 +112,15 @@ def test_listar_dominios_incluye_la_unidad(client, db, admin):
 
     assert body["Currículum"]["unit_id"] == "u1" and body["Currículum"]["unit_name"] == "Computación"
     assert body["Suelto"]["unit_id"] is None and body["Suelto"]["unit_name"] is None
+
+
+def test_dominio_nuevo_es_persistente_salvo_que_se_cree_dinamico(client, db, admin):
+    _unidad(db)
+
+    normal = client.post("/domains", json={"unit_id": "u1", "name": "Currículum"}, headers=admin)
+    dinamico = client.post("/domains", json={"unit_id": "u1", "name": "Promoción", "dynamic": True}, headers=admin)
+
+    assert normal.status_code == 201 and normal.json()["dynamic"] is False
+    assert dinamico.status_code == 201 and dinamico.json()["dynamic"] is True
+    por_nombre = {d["name"]: d["dynamic"] for d in client.get("/domains", headers=admin).json()}
+    assert por_nombre == {"Currículum": False, "Promoción": True}

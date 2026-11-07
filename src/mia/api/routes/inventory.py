@@ -44,6 +44,7 @@ class DomainNode(BaseModel):
     id: str
     name: str
     description: str
+    dynamic: bool = False
     document_count: int
     folders: list[FolderNode]
     documents: list[DocumentNode]
@@ -120,6 +121,7 @@ def _domain_node(
         id=domain.id,
         name=domain.name,
         description=domain.description,
+        dynamic=domain.dynamic,
         document_count=len(own) + sum(c.document_count for c in children),
         folders=children,
         documents=[_document_node(d, image_counts) for d in own],

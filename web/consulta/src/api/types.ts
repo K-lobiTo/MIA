@@ -37,6 +37,8 @@ export interface Domain {
   unit_name: string | null;
   name: string;
   description: string;
+  // Etiqueta: su contenido cambia cada periodo y solo trae información vigente (p. ej. Promoción).
+  dynamic?: boolean;
 }
 
 export interface Source {

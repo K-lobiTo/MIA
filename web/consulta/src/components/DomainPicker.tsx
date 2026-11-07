@@ -1,4 +1,4 @@
-import { Anchor, Group, MultiSelect, Pill, Text } from "@mantine/core";
+import { Anchor, Badge, Group, MultiSelect, Pill, Text } from "@mantine/core";
 import { IconCheck, IconStack2 } from "@tabler/icons-react";
 import { useMemo } from "react";
 import type { Domain } from "../api/types";
@@ -75,9 +75,22 @@ export function DomainPicker({ domains, selected, onChange }: Props) {
                 {checked && <IconCheck size={16} aria-hidden="true" />}
               </span>
               <div>
-                <Text fw={600} fz="sm">
-                  {domain?.name ?? option.label}
-                </Text>
+                <Group gap={6} wrap="nowrap">
+                  <Text fw={600} fz="sm">
+                    {domain?.name ?? option.label}
+                  </Text>
+                  {domain?.dynamic && (
+                    <Badge
+                      size="xs"
+                      variant="light"
+                      color="peach"
+                      tt="none"
+                      title="Su contenido cambia cada periodo y solo trae información vigente"
+                    >
+                      Dinámico
+                    </Badge>
+                  )}
+                </Group>
                 {domain?.description && (
                   <Text c="dimmed" fz="xs">
                     {domain.description}

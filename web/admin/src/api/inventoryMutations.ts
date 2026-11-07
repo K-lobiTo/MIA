@@ -24,8 +24,14 @@ export const useCreateUnit = () =>
   );
 
 export const useCreateDomain = () =>
-  useInventoryMutation((body: { unit_id: string; name: string; description: string }) =>
+  useInventoryMutation((body: { unit_id: string; name: string; description: string; dynamic?: boolean }) =>
     apiFetch<DomainCreated>("/domains", { method: "POST", body }),
+  );
+
+/** Marca o desmarca un dominio como dinámico (solo una etiqueta). */
+export const useSetDomainDynamic = () =>
+  useInventoryMutation((v: { domainId: string; dynamic: boolean }) =>
+    apiFetch<{ id: string; dynamic: boolean }>(`/domains/${v.domainId}`, { method: "PATCH", body: { dynamic: v.dynamic } }),
   );
 
 export const useCreateFolder = () =>
