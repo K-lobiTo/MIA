@@ -52,15 +52,19 @@ def _respuesta(payload, historial) -> tuple[str, list[Source], bool]:
     minuscula = pregunta.lower()
     if "becas" in minuscula:
         return (
-            "En el **Acta de ejemplo 02-2026** el Consejo acordó aprobar **dos becas parciales** para el segundo semestre, "
-            "una por cada línea de investigación del programa.",
+            (
+                "En el **Acta de ejemplo 02-2026** el Consejo acordó aprobar **dos becas parciales** para el segundo "
+                "semestre, una por cada línea de investigación del programa."
+            ),
             [Source(domain="Memoria del Consejo", document="Acta de ejemplo 02-2026.pdf", excerpt="ACUERDO 3. El Consejo aprueba dos becas parciales. (Documento de ejemplo)")],
             False,
         )
     if "tesis" in minuscula and "requisito" in minuscula:
         return (
-            "La **Guía de tesis de ejemplo** pide una **propuesta aprobada por el Consejo** antes de iniciar el desarrollo, "
-            "y un profesor guía asignado.",
+            (
+                "La **Guía de tesis de ejemplo** pide una **propuesta aprobada por el Consejo** antes de iniciar el "
+                "desarrollo, y un profesor guía asignado."
+            ),
             [Source(domain="Proyectos de graduación: Tesis", document="Guía de tesis de ejemplo.docx", excerpt="Requisitos: propuesta aprobada por el Consejo y profesor guía asignado. (Documento de ejemplo)")],
             False,
         )

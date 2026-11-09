@@ -28,6 +28,13 @@ cd web/admin && VITE_ENTRA_CLIENT_ID=cliente-de-prueba \
 
 Luego se publica el Artifact con el mismo `index.html`, `catalogo.json` y la carpeta `clips/` (mp4 y json). Los mp4 no se versionan en git: se regeneran con el guion. En `catalogo.json` se marca `"listo": true` cuando el video ya está publicado.
 
+## Notas de grabación
+
+- **Los videos del panel (serie B) cambian la base** (crean carpetas, suben y borran documentos, registran usuarios y artefactos). Reinicia `servidor_demo.py` antes de volver a grabar cualquiera de ellos, para partir de los mismos datos.
+- Los videos del panel inician sesión con el Microsoft simulado **sin grabarlo** (`scripts/demos/panel.py`): el guion declara `SESION_PANEL` con la cuenta, y el grabador recibe esa sesión antes de cargar la página. Solo B1 muestra la entrada, y reemplaza la pantalla del Microsoft simulado (una página de prueba) por una tarjeta que explica el paso.
+- Los videos entran con la cuenta `coord.comp@itcr.ac.cr` (alcance de un programa): por eso no aparecen «Nuevo programa», el saldo de OpenRouter ni el módulo Bots, que son del alcance global.
+- Las esperas largas que aportan (procesar un documento) se simulan con demoras de unos segundos en `servidor_demo.py`; los subtítulos se pueden corregir editando el `.json` del clip sin volver a grabar.
+
 ## Escribir un guion nuevo
 
 Un guion es `scripts/demos/guiones/<id>.py` con `ID`, `TITULO`, `URL`, `STORAGE` (por ejemplo la clave ya recordada) y `guion(g)`. Cada paso va dentro de `with g.sub("subtítulo"):` y usa `g.clic`, `g.escribir`, `g.tecla`, `g.pausa`. Reglas:

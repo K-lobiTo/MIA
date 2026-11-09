@@ -61,7 +61,7 @@
       "para": "Personas que gestionan la información y los accesos de su programa.",
       "titulo": "Entrar al panel",
       "resumen": "Inicio de sesión con la cuenta del TEC y qué ve cada alcance.",
-      "listo": false
+      "listo": true
     },
     {
       "codigo": "B2",
@@ -70,7 +70,7 @@
       "para": "Personas que gestionan la información y los accesos de su programa.",
       "titulo": "Organizar el inventario",
       "resumen": "Programas, dominios, carpetas, búsqueda y la etiqueta de dominio dinámico.",
-      "listo": false
+      "listo": true
     },
     {
       "codigo": "B3",
@@ -79,7 +79,7 @@
       "para": "Personas que gestionan la información y los accesos de su programa.",
       "titulo": "Subir documentos",
       "resumen": "Subir PDF, DOCX o TXT y seguir el estado de su procesamiento.",
-      "listo": false
+      "listo": true
     },
     {
       "codigo": "B4",
@@ -88,7 +88,7 @@
       "para": "Personas que gestionan la información y los accesos de su programa.",
       "titulo": "Eliminar documentos",
       "resumen": "Eliminar uno o varios documentos con confirmación.",
-      "listo": false
+      "listo": true
     },
     {
       "codigo": "B5",
@@ -97,7 +97,7 @@
       "para": "Personas que gestionan la información y los accesos de su programa.",
       "titulo": "Artefactos y accesos",
       "resumen": "Crear un artefacto, copiar su clave, elegir dominios, modos, topes, memoria y sesión.",
-      "listo": false
+      "listo": true
     },
     {
       "codigo": "B6",
@@ -106,7 +106,7 @@
       "para": "Personas que gestionan la información y los accesos de su programa.",
       "titulo": "Usuarios de la Consulta",
       "resumen": "Registrar usuarios, entregar su contraseña, restablecerla y desactivar cuentas.",
-      "listo": false
+      "listo": true
     },
     {
       "codigo": "B7",
@@ -115,7 +115,7 @@
       "para": "Personas que gestionan la información y los accesos de su programa.",
       "titulo": "Uso y gasto",
       "resumen": "Filtros, indicadores, gráfica, tablas, registro de consultas y descarga en CSV.",
-      "listo": false
+      "listo": true
     },
     {
       "codigo": "C1",

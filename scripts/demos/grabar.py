@@ -15,6 +15,7 @@ from pathlib import Path
 AQUI = Path(__file__).resolve().parent
 sys.path.insert(0, str(AQUI))
 import guiones
+import panel
 from grabador import Grabacion
 
 SALIDA = AQUI.parents[1] / "docs" / "demos" / "clips"
@@ -41,9 +42,11 @@ def main() -> int:
         return 0
     for id_ in args.videos:
         mod = modulos[id_]
+        correo = getattr(mod, "SESION_PANEL", None)
+        session_storage = panel.sesion_panel(correo) if correo else None
         with Grabacion(
             mod.ID, mod.TITULO, SALIDA, mod.URL,
-            storage=getattr(mod, "STORAGE", None), tema=args.tema, ignorar_https=getattr(mod, "IGNORAR_HTTPS", False),
+            storage=getattr(mod, "STORAGE", None), session_storage=session_storage, tema=args.tema, ignorar_https=getattr(mod, "IGNORAR_HTTPS", False),
         ) as g:
             mod.guion(g)
     return 0

@@ -53,9 +53,10 @@ JS_CURSOR = """
 
 
 class Grabacion:
-    def __init__(self, nombre: str, titulo: str, salida: Path, url: str, *, storage: dict | None = None, tema: str = "light", ignorar_https: bool = False):
+    def __init__(self, nombre: str, titulo: str, salida: Path, url: str, *, storage: dict | None = None, session_storage: dict | None = None, tema: str = "light", ignorar_https: bool = False):
         self.nombre, self.titulo, self.salida, self.url = nombre, titulo, Path(salida), url
         self.storage = storage or {}
+        self.session_storage = session_storage or {}
         self.tema = tema
         self.ignorar_https = ignorar_https
         self.pistas: list[dict] = []
@@ -83,6 +84,12 @@ class Grabacion:
                 "(() => { try { if (!sessionStorage.getItem('__demo_init')) { sessionStorage.setItem('__demo_init', '1');"
                 + "".join(f" localStorage.setItem({json.dumps(k)}, {json.dumps(v)});" for k, v in self.storage.items())
                 + " } } catch (e) {} })();"
+            )
+        # La sesión del panel (sessionStorage) se restaura una sola vez por pestaña, antes de que cargue la página.
+        if self.session_storage:
+            self._ctx.add_init_script(
+                "(() => { try { if (!sessionStorage.getItem('__demo_ss')) { const d = " + json.dumps(self.session_storage)
+                + "; for (const k in d) sessionStorage.setItem(k, d[k]); sessionStorage.setItem('__demo_ss', '1'); } } catch (e) {} })();"
             )
         self._ctx.add_init_script(JS_CURSOR)
         self.page: Page = self._ctx.new_page()

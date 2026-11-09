@@ -1,6 +1,5 @@
 """A5. Cuenta y conversaciones guardadas."""
 
-import re
 
 from grabador import Grabacion
 

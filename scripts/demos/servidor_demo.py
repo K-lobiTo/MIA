@@ -276,9 +276,9 @@ def simular_ingesta(session_factory):
                     s.commit()
 
         def trabajo() -> None:
-            time.sleep(4)
+            time.sleep(5)
             cambiar("processing")
-            time.sleep(6)
+            time.sleep(12)
             cambiar("done")
 
         threading.Thread(target=trabajo, daemon=True).start()
@@ -302,7 +302,7 @@ def main() -> int:
         LLM_PROVIDER_RAZONAMIENTO="openrouter",
         LLM_MODEL_RAZONAMIENTO="modelo-razonamiento-ejemplo",
     )
-    identidad = idp.Identidad(600)
+    identidad = idp.Identidad(3600)
     import uvicorn
 
     from mia.api import security
@@ -317,9 +317,22 @@ def main() -> int:
     domains.ingest_document = simular_ingesta(SessionLocal)
     # Sin Qdrant ni modelo: la respuesta es fija, lo demás de POST /query (sesión, historial, guardado, calificación) es real.
     import respuestas_demo
+
     from mia.api.routes import query as ruta_query
 
     ruta_query.run_query = respuestas_demo.responder
+
+    # Eliminar documentos: sin Qdrant, el almacén de vectores es uno que no guarda nada (el resto del borrado es real).
+    from mia.api.routes import documents as ruta_documentos
+
+    class AlmacenDemo:
+        def delete_document(self, document_id: str) -> None:
+            return None
+
+        def count_chunks(self, document_id: str) -> int:
+            return 0
+
+    ruta_documentos.get_vector_store = lambda: AlmacenDemo()
 
     cert, clave = idp._certificado(carpeta)
     servidor = uvicorn.Server(

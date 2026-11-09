@@ -1,0 +1,52 @@
+{
+  "id": "b4-eliminar-documentos",
+  "titulo": "Eliminar documentos",
+  "duracion": 52.31,
+  "pistas": [
+    {
+      "inicio": 1.66,
+      "fin": 6.95,
+      "texto": "Para eliminar un documento, búscalo en el inventario. Cada fila tiene su botón «Eliminar»."
+    },
+    {
+      "inicio": 6.95,
+      "fin": 14.48,
+      "texto": "Antes de borrar, la ventana te dice qué documento es y qué se pierde: el archivo, sus imágenes y su contenido en las respuestas."
+    },
+    {
+      "inicio": 14.48,
+      "fin": 20.37,
+      "texto": "También avisa que no se puede deshacer: para recuperarlo hay que volver a subir el archivo original."
+    },
+    {
+      "inicio": 20.37,
+      "fin": 25.9,
+      "texto": "Si estás de acuerdo, confirma con «Eliminar». El panel avisa que el documento se eliminó."
+    },
+    {
+      "inicio": 25.9,
+      "fin": 31.01,
+      "texto": "Para eliminar varios a la vez, pulsa «Seleccionar». Cada documento muestra una casilla."
+    },
+    {
+      "inicio": 31.01,
+      "fin": 37.54,
+      "texto": "La casilla de una carpeta, un dominio o un programa marca todos sus documentos. La barra cuenta cuántos llevas."
+    },
+    {
+      "inicio": 37.54,
+      "fin": 43.54,
+      "texto": "«Eliminar seleccionados» abre una sola confirmación para todos, con la lista de lo que se va a borrar."
+    },
+    {
+      "inicio": 43.54,
+      "fin": 47.19,
+      "texto": "Al confirmar, el aviso dice cuántos documentos se eliminaron."
+    },
+    {
+      "inicio": 47.19,
+      "fin": 52.31,
+      "texto": "«Cancelar selección» vuelve a la vista normal. Lo que borres solo afecta a tu programa."
+    }
+  ]
+}
