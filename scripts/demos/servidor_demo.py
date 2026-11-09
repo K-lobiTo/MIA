@@ -315,6 +315,11 @@ def main() -> int:
     fuente, _ = identidad.claves_publicas()
     api.dependency_overrides[security.get_key_source] = lambda: fuente
     domains.ingest_document = simular_ingesta(SessionLocal)
+    # Sin Qdrant ni modelo: la respuesta es fija, lo demás de POST /query (sesión, historial, guardado, calificación) es real.
+    import respuestas_demo
+    from mia.api.routes import query as ruta_query
+
+    ruta_query.run_query = respuestas_demo.responder
 
     cert, clave = idp._certificado(carpeta)
     servidor = uvicorn.Server(

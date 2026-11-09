@@ -1,0 +1,37 @@
+{
+  "id": "a6-errores",
+  "titulo": "Cuando algo falla",
+  "duracion": 41.49,
+  "pistas": [
+    {
+      "inicio": 1.66,
+      "fin": 7.23,
+      "texto": "Si se cae tu conexión, la respuesta no llega. Escribe tu pregunta como siempre."
+    },
+    {
+      "inicio": 7.23,
+      "fin": 13.23,
+      "texto": "MIA avisa que no pudo conectarse. Revisa tu conexión y usa «Reintentar» para enviar la misma pregunta."
+    },
+    {
+      "inicio": 13.23,
+      "fin": 21.69,
+      "texto": "El modo con razonamiento puede fallar si el modelo no está disponible. Cámbiate a ese modo y pregunta."
+    },
+    {
+      "inicio": 21.69,
+      "fin": 28.31,
+      "texto": "Puedes reintentar o, mejor, «Reintentar en modo literal», que responde con lo que dicen los documentos."
+    },
+    {
+      "inicio": 28.31,
+      "fin": 35.78,
+      "texto": "Quien administra MIA fija un tope de gasto diario para cada Consulta. Al alcanzarlo, no se puede preguntar hasta la medianoche."
+    },
+    {
+      "inicio": 35.78,
+      "fin": 41.49,
+      "texto": "El aviso aparece bajo el campo de pregunta y no deja enviar. El tope se reinicia a la medianoche."
+    }
+  ]
+}
