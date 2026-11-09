@@ -1,0 +1,264 @@
+<meta charset="utf-8">
+<title>Guía de uso de MIA</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
+<style>
+  /* Concepto: una guía de uso como un manual institucional. Una columna de video con su transcripción y, al lado, el
+     índice por rol. Paleta del Panel de MIA (#03): azul tinta, azul claro, hielo y un solo acento coral. */
+  :root {
+    --bg: #f2f8fa;
+    --surface: #ffffff;
+    --surface-2: #e3f0f5;
+    --ink: #1c2f45;
+    --ink-soft: #4b6178;
+    --line: #c9dde6;
+    --accent: #3d5a80;
+    --accent-ink: #ffffff;
+    --pop: #d9512f;
+    --stage: #0f1b2b;
+    --cc-bg: rgba(10, 20, 33, 0.82);
+    --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1824; --surface: #162536; --surface-2: #1d3147; --ink: #e6f1f6; --ink-soft: #a3b8c8;
+      --line: #2a425a; --accent: #98c1d9; --accent-ink: #0e1824; --pop: #f08565; --stage: #060d15;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1824; --surface: #162536; --surface-2: #1d3147; --ink: #e6f1f6; --ink-soft: #a3b8c8;
+    --line: #2a425a; --accent: #98c1d9; --accent-ink: #0e1824; --pop: #f08565; --stage: #060d15;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+    padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 24px; }
+  header h1 { font-family: var(--font-display); font-size: clamp(1.7rem, 3.2vw, 2.4rem); line-height: 1.15; margin: 0; text-wrap: balance; }
+  header p { margin: 6px 0 0; color: var(--ink-soft); max-width: 62ch; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+  /* Reproductor */
+  .player { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .stage { position: relative; background: var(--stage); aspect-ratio: 16 / 9; container-type: inline-size; }
+  .stage video { width: 100%; height: 100%; display: block; background: var(--stage); }
+  .cc {
+    position: absolute; left: 50%; bottom: 5%; transform: translateX(-50%); max-width: 86%; text-align: center;
+    background: var(--cc-bg); color: #fff; padding: .35em .8em; border-radius: 6px;
+    font-size: clamp(13px, 2.5cqw, 28px); line-height: 1.35; pointer-events: none; text-wrap: balance;
+  }
+  .cc[hidden] { display: none; }
+  .big-play {
+    position: absolute; inset: 0; display: grid; place-items: center; background: transparent; border: 0; cursor: pointer;
+  }
+  .big-play span {
+    width: 76px; height: 76px; border-radius: 50%; background: var(--pop); color: #fff; display: grid; place-items: center;
+    box-shadow: 0 6px 24px rgba(0,0,0,.35);
+  }
+  .big-play[hidden] { display: none; }
+  .controls { display: grid; gap: 8px; padding: 10px 14px 12px; }
+  .scrub { position: relative; height: 22px; }
+  .scrub .track { position: absolute; left: 0; right: 0; top: 9px; height: 5px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+  .scrub .fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--accent); }
+  .scrub .ticks span { position: absolute; top: 7px; width: 2px; height: 9px; background: var(--surface); opacity: .9; }
+  .scrub input[type=range] { position: absolute; inset: 0; width: 100%; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; }
+  .scrub input[type=range]::-webkit-slider-runnable-track { background: transparent; height: 22px; }
+  .scrub input[type=range]::-moz-range-track { background: transparent; height: 22px; }
+  .scrub input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: 4px; border-radius: 50%; background: var(--pop); border: 2px solid var(--surface); }
+  .scrub input[type=range]::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; background: var(--pop); border: 2px solid var(--surface); }
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .row .grow { flex: 1; }
+  .time { font-variant-numeric: tabular-nums; color: var(--ink-soft); font-size: .9rem; min-width: 6.5em; }
+  button.ctl {
+    font: inherit; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 12px; cursor: pointer; min-height: 36px;
+  }
+  button.ctl:hover { border-color: var(--accent); }
+  button.ctl[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid var(--pop); outline-offset: 2px; }
+
+  .meta { padding: 14px 16px 16px; border-top: 1px solid var(--line); }
+  .meta .eyebrow { margin: 0; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+  .meta h2 { font-family: var(--font-display); font-size: 1.5rem; margin: 2px 0 4px; text-wrap: balance; }
+  .meta p { margin: 0; color: var(--ink-soft); max-width: 70ch; }
+  .note { margin: 10px 0 0; font-size: .9rem; color: var(--ink-soft); }
+
+  .steps { margin-top: 18px; }
+  .steps h3 { font-size: 1rem; margin: 0 0 8px; }
+  .steps ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .steps button {
+    width: 100%; text-align: left; display: grid; grid-template-columns: 3.6em 1fr; gap: 8px; font: inherit; color: var(--ink);
+    background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 8px 10px; cursor: pointer;
+  }
+  .steps button:hover { background: var(--surface-2); }
+  .steps button[aria-current="true"] { background: var(--surface-2); border-color: var(--accent); }
+  .steps .t { font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+
+  /* Índice por rol */
+  nav.index { display: grid; gap: 18px; }
+  nav.index h2 { font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); margin: 0 0 6px; }
+  nav.index .who { margin: 0 0 8px; font-size: .9rem; color: var(--ink-soft); }
+  nav.index ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  nav.index a, nav.index .soon {
+    display: grid; gap: 2px; padding: 10px 12px; border-radius: 8px; text-decoration: none; color: var(--ink);
+    background: var(--surface); border: 1px solid var(--line);
+  }
+  nav.index a:hover { border-color: var(--accent); }
+  nav.index a[aria-current="page"] { border-color: var(--accent); box-shadow: inset 4px 0 0 var(--pop); background: var(--surface-2); }
+  nav.index .code { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent); margin-right: 6px; }
+  nav.index .soon { opacity: .62; }
+  nav.index .chip { font-size: .78rem; color: var(--ink-soft); }
+  nav.index .desc { font-size: .88rem; color: var(--ink-soft); }
+  .loading { padding: 40px 16px; color: var(--ink-soft); }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Guía de uso de MIA</h1>
+    <p>Videos cortos, con subtítulos, que recorren la Consulta y el panel paso a paso. Todos usan datos de ejemplo.</p>
+  </header>
+  <div class="layout">
+    <main id="main" aria-live="polite"><div class="loading">Cargando la guía...</div></main>
+    <nav class="index" id="index" aria-label="Videos de la guía"></nav>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (s, el = document) => el.querySelector(s);
+  const fmt = (s) => { s = Math.max(0, Math.floor(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+  const SPEEDS = [0.75, 1, 1.25, 1.5];
+  let catalogo = [], actual = null, clip = null;
+
+  async function json(url) { const r = await fetch(url); if (!r.ok) throw new Error(url); return r.json(); }
+
+  async function iniciar() {
+    try { catalogo = (await json("catalogo.json")).videos; }
+    catch { $("#main").innerHTML = '<div class="loading">No se pudo cargar el catálogo de videos.</div>'; return; }
+    dibujarIndice();
+    window.addEventListener("hashchange", abrir);
+    abrir();
+  }
+
+  function dibujarIndice() {
+    const grupos = [];
+    for (const v of catalogo) {
+      let g = grupos.find((x) => x.nombre === v.grupo);
+      if (!g) { g = { nombre: v.grupo, para: v.para, videos: [] }; grupos.push(g); }
+      g.videos.push(v);
+    }
+    $("#index").innerHTML = grupos.map((g) => `
+      <section><h2>${g.nombre}</h2><p class="who">${g.para}</p><ul>
+      ${g.videos.map((v) => v.listo
+        ? `<li><a href="#${v.id}" data-id="${v.id}"><span><span class="code">${v.codigo}</span>${v.titulo}</span><span class="desc">${v.resumen}</span></a></li>`
+        : `<li><div class="soon"><span><span class="code">${v.codigo}</span>${v.titulo}</span><span class="chip">En preparación</span></div></li>`).join("")}
+      </ul></section>`).join("");
+  }
+
+  async function abrir() {
+    const id = location.hash.slice(1);
+    const listos = catalogo.filter((v) => v.listo);
+    const v = listos.find((x) => x.id === id) || listos[0];
+    if (!v) { $("#main").innerHTML = '<div class="loading">Todavía no hay videos publicados.</div>'; return; }
+    actual = v;
+    document.querySelectorAll("#index a").forEach((a) => { if (a.dataset.id === v.id) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    try { clip = await json(`clips/${v.id}.json`); } catch { clip = { pistas: [], duracion: 0 }; }
+    montar(v);
+  }
+
+  function montar(v) {
+    const pistas = clip.pistas || [];
+    $("#main").innerHTML = `
+      <article class="player" id="player">
+        <div class="stage" id="stage">
+          <video id="vid" src="clips/${v.id}.mp4" playsinline preload="auto" aria-label="${v.titulo}"></video>
+          <div class="cc" id="cc" hidden></div>
+          <button class="big-play" id="big" aria-label="Reproducir"><span><svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></span></button>
+        </div>
+        <div class="controls">
+          <div class="scrub">
+            <div class="track"><div class="fill" id="fill"></div></div>
+            <div class="ticks" id="ticks"></div>
+            <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Posición del video">
+          </div>
+          <div class="row">
+            <button class="ctl" id="play" type="button">Reproducir</button>
+            <button class="ctl" id="back" type="button" aria-label="Retroceder 5 segundos">-5 s</button>
+            <button class="ctl" id="fwd" type="button" aria-label="Adelantar 5 segundos">+5 s</button>
+            <span class="time" id="time">0:00 / 0:00</span>
+            <span class="grow"></span>
+            <button class="ctl" id="speed" type="button" aria-label="Velocidad">1x</button>
+            <button class="ctl" id="cctoggle" type="button" aria-pressed="true">Subtítulos</button>
+            <button class="ctl" id="full" type="button">Pantalla completa</button>
+          </div>
+        </div>
+        <div class="meta">
+          <p class="eyebrow">${v.grupo} · ${v.codigo}</p>
+          <h2>${v.titulo}</h2>
+          <p>${v.resumen}</p>
+          <p class="note">Atajos: espacio reproduce o pausa, flechas avanzan o retroceden 5 segundos, C activa los subtítulos y F abre la pantalla completa.</p>
+        </div>
+      </article>
+      <section class="steps" aria-label="Pasos del video"><h3>Pasos de este video</h3>
+        <ol>${pistas.map((p, i) => `<li><button type="button" data-i="${i}"><span class="t">${fmt(p.inicio)}</span><span>${p.texto}</span></button></li>`).join("")}</ol>
+      </section>`;
+    conectar(pistas);
+  }
+
+  function conectar(pistas) {
+    const vid = $("#vid"), cc = $("#cc"), seek = $("#seek"), fill = $("#fill");
+    let ccOn = true, velocidad = 1, dur = clip.duracion || 0;
+    const dibujarTicks = () => { $("#ticks").innerHTML = dur ? pistas.map((p) => `<span style="left:${(p.inicio / dur) * 100}%"></span>`).join("") : ""; };
+    dibujarTicks();
+    const pasoActual = (t) => pistas.findIndex((p) => t >= p.inicio && t < p.fin);
+    function actualizar() {
+      const t = vid.currentTime; dur = vid.duration || clip.duracion || 0;
+      seek.value = dur ? Math.round((t / dur) * 1000) : 0;
+      fill.style.width = dur ? `${(t / dur) * 100}%` : "0";
+      $("#time").textContent = `${fmt(t)} / ${fmt(dur)}`;
+      const i = pasoActual(t);
+      cc.hidden = !(ccOn && i >= 0); if (i >= 0) cc.textContent = pistas[i].texto;
+      document.querySelectorAll(".steps button").forEach((b, k) => { if (k === i) b.setAttribute("aria-current", "true"); else b.removeAttribute("aria-current"); });
+    }
+    const alternar = () => (vid.paused ? vid.play().catch(() => {}) : vid.pause());
+    vid.addEventListener("timeupdate", actualizar);
+    vid.addEventListener("loadedmetadata", () => { dur = vid.duration; dibujarTicks(); actualizar(); });
+    vid.addEventListener("play", () => { $("#play").textContent = "Pausar"; $("#big").hidden = true; });
+    vid.addEventListener("pause", () => { $("#play").textContent = "Reproducir"; $("#big").hidden = vid.ended ? false : vid.currentTime > 0 ? true : false; });
+    vid.addEventListener("ended", () => { $("#big").hidden = false; $("#play").textContent = "Repetir"; });
+    vid.addEventListener("click", alternar);
+    $("#big").addEventListener("click", () => { if (vid.ended) vid.currentTime = 0; alternar(); });
+    $("#play").addEventListener("click", () => { if (vid.ended) vid.currentTime = 0; alternar(); });
+    $("#back").addEventListener("click", () => { vid.currentTime = Math.max(0, vid.currentTime - 5); });
+    $("#fwd").addEventListener("click", () => { vid.currentTime = Math.min(vid.duration || 0, vid.currentTime + 5); });
+    seek.addEventListener("input", () => { if (vid.duration) vid.currentTime = (seek.value / 1000) * vid.duration; });
+    $("#speed").addEventListener("click", () => { velocidad = SPEEDS[(SPEEDS.indexOf(velocidad) + 1) % SPEEDS.length]; vid.playbackRate = velocidad; $("#speed").textContent = `${velocidad}x`; });
+    $("#cctoggle").addEventListener("click", () => { ccOn = !ccOn; $("#cctoggle").setAttribute("aria-pressed", String(ccOn)); actualizar(); });
+    $("#full").addEventListener("click", () => {
+      const el = $("#player");
+      try { document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen().catch(() => {}); } catch {}
+    });
+    document.querySelectorAll(".steps button").forEach((b) => b.addEventListener("click", () => {
+      vid.currentTime = pistas[Number(b.dataset.i)].inicio + 0.05; vid.play().catch(() => {}); $("#stage").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }));
+    document.onkeydown = (e) => {
+      if (e.target.closest && e.target.closest("input, textarea")) return;
+      if (e.code === "Space" && !(e.target.tagName === "BUTTON")) { e.preventDefault(); alternar(); }
+      else if (e.key === "ArrowLeft") $("#back").click();
+      else if (e.key === "ArrowRight") $("#fwd").click();
+      else if (e.key.toLowerCase() === "c") $("#cctoggle").click();
+      else if (e.key.toLowerCase() === "f") $("#full").click();
+    };
+  }
+  iniciar();
+})();
+</script>
