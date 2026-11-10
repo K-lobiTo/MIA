@@ -1,0 +1,47 @@
+{
+  "id": "b1-entrar-panel",
+  "titulo": "Entrar al panel",
+  "duracion": 49.09,
+  "pistas": [
+    {
+      "inicio": 1.59,
+      "fin": 8.06,
+      "texto": "El panel pide iniciar sesión con tu cuenta institucional del TEC (@itcr.ac.cr), con verificación en dos pasos."
+    },
+    {
+      "inicio": 8.06,
+      "fin": 15.14,
+      "texto": "Pulsa «Iniciar sesión con Microsoft». Microsoft te pide la cuenta y el segundo factor, y luego te devuelve al panel."
+    },
+    {
+      "inicio": 15.14,
+      "fin": 21.73,
+      "texto": "Si tu cuenta no está autorizada, el panel te lo explica y no muestra ningún dato. Pide acceso a quien opera MIA."
+    },
+    {
+      "inicio": 21.73,
+      "fin": 28.74,
+      "texto": "El menú tiene un módulo por tarea: Inventario, Artefactos y accesos, Uso, Siglas y Usuarios de la Consulta."
+    },
+    {
+      "inicio": 28.74,
+      "fin": 33.74,
+      "texto": "Abajo ves con qué cuenta entraste y tu alcance. Solo ves y cambias lo de tu programa."
+    },
+    {
+      "inicio": 33.74,
+      "fin": 39.74,
+      "texto": "Quien opera MIA tiene alcance Global: ve todos los programas, el saldo de OpenRouter y el módulo Bots."
+    },
+    {
+      "inicio": 39.74,
+      "fin": 44.79,
+      "texto": "También puedes elegir la apariencia del panel: clara, oscura o la del sistema."
+    },
+    {
+      "inicio": 44.79,
+      "fin": 49.09,
+      "texto": "«Cerrar sesión» termina tu sesión. Úsala siempre en un equipo compartido."
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "id": "a3-preguntar",
+  "titulo": "Preguntar y leer la respuesta",
+  "duracion": 73.93,
+  "pistas": [
+    {
+      "inicio": 1.77,
+      "fin": 7.3,
+      "texto": "Antes de preguntar, elige los dominios donde quieres buscar (se explica en el video anterior)."
+    },
+    {
+      "inicio": 7.3,
+      "fin": 11.66,
+      "texto": "Toca un ejemplo para escribirlo en el campo, o escribe tu propia pregunta."
+    },
+    {
+      "inicio": 11.66,
+      "fin": 15.89,
+      "texto": "Pulsa Preguntar o presiona Enter. Mayúsculas más Enter agrega una línea."
+    },
+    {
+      "inicio": 15.89,
+      "fin": 21.24,
+      "texto": "MIA responde solo con lo que dicen los documentos. Abajo ves el modo y el tiempo que tardó."
+    },
+    {
+      "inicio": 21.24,
+      "fin": 26.6,
+      "texto": "Las fuentes son los documentos de donde sale la respuesta, con su dominio entre paréntesis."
+    },
+    {
+      "inicio": 26.6,
+      "fin": 31.95,
+      "texto": "«Ver fragmentos» muestra el texto exacto en que se apoya la respuesta. «Ver más» lo amplía."
+    },
+    {
+      "inicio": 31.95,
+      "fin": 35.36,
+      "texto": "El botón de copiar guarda la respuesta en tu portapapeles."
+    },
+    {
+      "inicio": 35.36,
+      "fin": 41.67,
+      "texto": "Califica la respuesta con Útil o No útil. Después puedes dejar un comentario."
+    },
+    {
+      "inicio": 41.67,
+      "fin": 47.79,
+      "texto": "Si el selector de modo aparece, elige «Con razonamiento» para comparar o calcular con varios documentos."
+    },
+    {
+      "inicio": 47.79,
+      "fin": 60.37,
+      "texto": "Escribe tu pregunta. Este modo puede tardar más; la pantalla te avisa mientras trabaja."
+    },
+    {
+      "inicio": 60.37,
+      "fin": 64.19,
+      "texto": "La respuesta separa lo que dicen los documentos de la conclusión."
+    },
+    {
+      "inicio": 64.19,
+      "fin": 73.93,
+      "texto": "Si los documentos no tienen la respuesta, MIA lo dice. Prueba con otras palabras o con otro tema."
+    }
+  ]
+}
