@@ -124,7 +124,7 @@
       "para": "Quien opera MIA para toda la institución.",
       "titulo": "Siglas y equivalencias",
       "resumen": "La lista que ayuda a la búsqueda a entender siglas como TFG.",
-      "listo": false
+      "listo": true
     },
     {
       "codigo": "C2",
@@ -133,7 +133,7 @@
       "para": "Quien opera MIA para toda la institución.",
       "titulo": "Bots e imágenes de documentos",
       "resumen": "Asignar un artefacto a un número de WhatsApp y agregar imágenes a los documentos.",
-      "listo": false
+      "listo": true
     },
     {
       "codigo": "D1",
@@ -142,7 +142,7 @@
       "para": "Quien escribe al bot de WhatsApp (por ahora solo con el sandbox).",
       "titulo": "Preguntar por WhatsApp",
       "resumen": "Saludo, preguntas, aclaración de programa, fuentes e imágenes.",
-      "listo": false
+      "listo": true
     }
   ]
 }

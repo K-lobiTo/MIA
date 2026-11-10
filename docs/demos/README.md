@@ -35,6 +35,12 @@ Luego se publica el Artifact con el mismo `index.html`, `catalogo.json` y la car
 - Los videos entran con la cuenta `coord.comp@itcr.ac.cr` (alcance de un programa): por eso no aparecen «Nuevo programa», el saldo de OpenRouter ni el módulo Bots, que son del alcance global.
 - Las esperas largas que aportan (procesar un documento) se simulan con demoras de unos segundos en `servidor_demo.py`; los subtítulos se pueden corregir editando el `.json` del clip sin volver a grabar.
 
+## Videos del alcance global y del bot (C y D)
+
+- **C1 y C2** entran como `operador@itcr.ac.cr` (alcance global): ven Siglas con permiso de edición, el módulo Bots y todos los programas. C2 sube dos imágenes ficticias de `datos_demo/` (se crean con `crear_imagenes.py`).
+- **D1 (WhatsApp)** no tiene una interfaz real que capturar: el chat es una página simulada (`scripts/demos/chat_whatsapp/index.html`) con una etiqueta que lo dice. Los mensajes **no se inventan**: `capturar_whatsapp.py` ejecuta el servicio real `mia_whatsapp` contra la API de demostración y un Kapso falso, y guarda lo que el bot envió en `datos_demo/whatsapp.json` (saludo, aclaración de programa, formato, fuentes, imagen, aviso de no texto y de límite). Para regenerarlo: con `servidor_demo.py` corriendo, `python scripts/demos/capturar_whatsapp.py` (con el entorno de MIA, que tiene instalado `mia_whatsapp`), y luego grabar `d1-whatsapp`.
+- Una sola persona recorre toda la historia de D1: el saludo va en su primera respuesta y, como el bot recuerda el programa después de una respuesta, la aclaración solo aparece mientras no haya uno recordado.
+
 ## Escribir un guion nuevo
 
 Un guion es `scripts/demos/guiones/<id>.py` con `ID`, `TITULO`, `URL`, `STORAGE` (por ejemplo la clave ya recordada) y `guion(g)`. Cada paso va dentro de `with g.sub("subtítulo"):` y usa `g.clic`, `g.escribir`, `g.tecla`, `g.pausa`. Reglas:

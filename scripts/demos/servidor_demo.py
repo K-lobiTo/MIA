@@ -297,6 +297,7 @@ def main() -> int:
         INGESTION_ENABLED="true",
         ADMIN_KEY=idp.CLAVE_ADMIN,
         BOT_SERVICE_KEY="clave-servicio-demo",
+        BOT_CLARIFY="on",  # el bot puede preguntar a qué programa se refiere la persona
         CHAT_RETENTION_DAYS="90",
         # El modo con razonamiento figura como disponible; las respuestas las pone el grabador, nunca se llama al modelo.
         LLM_PROVIDER_RAZONAMIENTO="openrouter",
@@ -321,6 +322,9 @@ def main() -> int:
     from mia.api.routes import query as ruta_query
 
     ruta_query.run_query = respuestas_demo.responder
+    from mia.api.routes import bot_service
+
+    bot_service.run_query = respuestas_demo.responder_bot
 
     # Eliminar documentos: sin Qdrant, el almacén de vectores es uno que no guarda nada (el resto del borrado es real).
     from mia.api.routes import documents as ruta_documentos

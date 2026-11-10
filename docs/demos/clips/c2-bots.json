@@ -1,0 +1,87 @@
+{
+  "id": "c2-bots",
+  "titulo": "Bots e imágenes de documentos",
+  "duracion": 102.03,
+  "pistas": [
+    {
+      "inicio": 1.67,
+      "fin": 6.9,
+      "texto": "Un bot es un número de WhatsApp de Kapso que responde con la información de un artefacto."
+    },
+    {
+      "inicio": 6.9,
+      "fin": 11.73,
+      "texto": "La tarjeta muestra el artefacto asignado, la memoria y los dominios que el bot ve."
+    },
+    {
+      "inicio": 11.73,
+      "fin": 18.49,
+      "texto": "La barra cuenta los mensajes del mes, recibidos y enviados, frente al tope. Al alcanzarlo el bot deja de responder."
+    },
+    {
+      "inicio": 18.49,
+      "fin": 25.36,
+      "texto": "«Registrar bot» da de alta otro número. El identificador es el phone_number_id de Kapso, no el teléfono de nadie."
+    },
+    {
+      "inicio": 25.36,
+      "fin": 30.99,
+      "texto": "Elige el artefacto: sus dominios, su tope diario y su estado son los del bot."
+    },
+    {
+      "inicio": 30.99,
+      "fin": 38.05,
+      "texto": "Antes de guardar, el panel avisa que el bot responde a cualquiera que escriba al número y muestra los dominios que verá."
+    },
+    {
+      "inicio": 38.05,
+      "fin": 44.46,
+      "texto": "Cambiar el artefacto o sus dominios cambia lo que el bot sabe desde el mensaje siguiente, sin reiniciar nada."
+    },
+    {
+      "inicio": 44.46,
+      "fin": 51.46,
+      "texto": "«Desactivar» apaga el bot sin borrarlo; «Reactivar» lo enciende. Mientras está apagado responde que no está disponible."
+    },
+    {
+      "inicio": 51.46,
+      "fin": 56.62,
+      "texto": "Los documentos pueden llevar imágenes que el bot envía. Se agregan en el Inventario."
+    },
+    {
+      "inicio": 56.62,
+      "fin": 60.56,
+      "texto": "Cada documento tiene un botón «Imágenes» con la cantidad que lleva."
+    },
+    {
+      "inicio": 60.56,
+      "fin": 66.27,
+      "texto": "Cuando una respuesta se apoya en este documento, el bot envía además sus imágenes, en este orden."
+    },
+    {
+      "inicio": 66.27,
+      "fin": 72.74,
+      "texto": "Las imágenes son públicas: cualquiera que tenga el enlace puede verlas. Sube solo lo que pueda ver cualquiera."
+    },
+    {
+      "inicio": 72.74,
+      "fin": 79.11,
+      "texto": "Elige un archivo PNG o JPG, escribe una descripción (el bot la envía como pie de foto) y agrégala."
+    },
+    {
+      "inicio": 79.11,
+      "fin": 88.27,
+      "texto": "Puedes agregar varias. Con las flechas cambias el orden."
+    },
+    {
+      "inicio": 88.27,
+      "fin": 94.16,
+      "texto": "El bot envía por defecto una imagen por respuesta: la primera de la lista. Por eso el orden importa."
+    },
+    {
+      "inicio": 94.16,
+      "fin": 102.03,
+      "texto": "«Reemplazar» cambia el archivo y «Quitar» la elimina, con confirmación: su enlace anterior deja de funcionar."
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "id": "c1-siglas",
+  "titulo": "Siglas y equivalencias",
+  "duracion": 54.62,
+  "pistas": [
+    {
+      "inicio": 1.65,
+      "fin": 8.65,
+      "texto": "Las personas escriben siglas como TFG. Esta lista le enseña a la búsqueda que TFG y su forma desarrollada son lo mismo."
+    },
+    {
+      "inicio": 8.65,
+      "fin": 14.0,
+      "texto": "Si la pregunta lleva la sigla, la búsqueda también busca la forma desarrollada, y al revés."
+    },
+    {
+      "inicio": 14.0,
+      "fin": 20.94,
+      "texto": "La lista vale para todos los programas. Un cambio se nota en menos de un minuto y no hay que reindexar los documentos."
+    },
+    {
+      "inicio": 20.94,
+      "fin": 30.55,
+      "texto": "«Agregar equivalencia» suma una nueva: escribe la sigla (de 3 a 20 letras o dígitos) y su forma desarrollada."
+    },
+    {
+      "inicio": 30.55,
+      "fin": 37.56,
+      "texto": "El lápiz edita una equivalencia, por ejemplo para corregir su forma desarrollada."
+    },
+    {
+      "inicio": 37.56,
+      "fin": 43.8,
+      "texto": "El bote de basura la borra. Los documentos no se tocan: solo la búsqueda deja de hacer esa equivalencia."
+    },
+    {
+      "inicio": 43.8,
+      "fin": 49.62,
+      "texto": "Las personas que administran un programa ven la lista, pero solo el alcance global puede cambiarla."
+    },
+    {
+      "inicio": 49.62,
+      "fin": 54.62,
+      "texto": "La lista solo tiene efecto cuando la búsqueda híbrida está encendida en la instancia."
+    }
+  ]
+}
