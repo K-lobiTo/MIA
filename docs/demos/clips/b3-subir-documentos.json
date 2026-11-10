@@ -1,0 +1,47 @@
+{
+  "id": "b3-subir-documentos",
+  "titulo": "Subir documentos",
+  "duracion": 47.86,
+  "pistas": [
+    {
+      "inicio": 1.69,
+      "fin": 6.86,
+      "texto": "Los documentos se suben a un dominio o a una carpeta. Aquí usaremos el dominio de tesis."
+    },
+    {
+      "inicio": 6.86,
+      "fin": 12.51,
+      "texto": "Pulsa «Subir» y elige los archivos. Se aceptan PDF, DOCX y TXT, y puedes elegir varios a la vez."
+    },
+    {
+      "inicio": 12.51,
+      "fin": 16.69,
+      "texto": "La lista «Subidas» muestra cada archivo, su destino y si se subió bien."
+    },
+    {
+      "inicio": 16.69,
+      "fin": 22.69,
+      "texto": "Ya están en el dominio, con el estado «En cola»: MIA los va a leer y a prepararlos para las consultas."
+    },
+    {
+      "inicio": 22.69,
+      "fin": 30.09,
+      "texto": "El estado pasa a «Procesando» y, cuando termina, a «Listo». La página se actualiza sola."
+    },
+    {
+      "inicio": 30.09,
+      "fin": 36.21,
+      "texto": "Solo cuando el documento está «Listo» sus respuestas pueden usarlo. Si algo falla, el estado es «Error»."
+    },
+    {
+      "inicio": 36.21,
+      "fin": 41.21,
+      "texto": "Si subes un archivo que ya está en el dominio, MIA te avisa y no lo procesa de nuevo."
+    },
+    {
+      "inicio": 41.21,
+      "fin": 47.86,
+      "texto": "«Limpiar terminadas» vacía la lista de subidas. También puedes arrastrar archivos sobre un dominio o una carpeta."
+    }
+  ]
+}

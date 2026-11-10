@@ -1,0 +1,67 @@
+{
+  "id": "a5-conversaciones",
+  "titulo": "Cuenta y conversaciones guardadas",
+  "duracion": 76.21,
+  "pistas": [
+    {
+      "inicio": 1.61,
+      "fin": 7.67,
+      "texto": "Con un usuario, MIA guarda tus conversaciones. Te lo crea quien administra MIA: no hay registro propio."
+    },
+    {
+      "inicio": 7.67,
+      "fin": 9.82,
+      "texto": "Pulsa «Iniciar sesión»."
+    },
+    {
+      "inicio": 9.82,
+      "fin": 16.87,
+      "texto": "Escribe tu usuario y tu contraseña. Se guardan 90 días sin actividad y las puedes borrar cuando quieras."
+    },
+    {
+      "inicio": 16.87,
+      "fin": 21.23,
+      "texto": "Ahora el menú lateral muestra tus conversaciones, la más reciente primero."
+    },
+    {
+      "inicio": 21.23,
+      "fin": 27.05,
+      "texto": "Toca una para retomarla. Las guardadas muestran la pregunta, la respuesta y los documentos citados."
+    },
+    {
+      "inicio": 27.05,
+      "fin": 33.87,
+      "texto": "Sigue preguntando: la conversación continúa con lo que ya se habló."
+    },
+    {
+      "inicio": 33.87,
+      "fin": 42.03,
+      "texto": "«Nueva conversación» empieza otra desde cero. Queda guardada con tu primera pregunta como título."
+    },
+    {
+      "inicio": 42.03,
+      "fin": 49.61,
+      "texto": "El menú de tres puntos de cada conversación permite renombrarla."
+    },
+    {
+      "inicio": 49.61,
+      "fin": 55.98,
+      "texto": "También permite borrarla. Pide confirmación porque no se puede deshacer."
+    },
+    {
+      "inicio": 55.98,
+      "fin": 59.04,
+      "texto": "«Borrar todas» elimina todo tu historial de una vez."
+    },
+    {
+      "inicio": 59.04,
+      "fin": 70.56,
+      "texto": "Desde tu nombre cambias la contraseña. Pide la actual y una nueva de al menos 10 caracteres."
+    },
+    {
+      "inicio": 70.56,
+      "fin": 76.21,
+      "texto": "Cuando termines, abre el mismo menú y elige «Cerrar sesión», sobre todo en un equipo compartido."
+    }
+  ]
+}

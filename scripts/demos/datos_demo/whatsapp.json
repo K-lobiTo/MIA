@@ -1,0 +1,82 @@
+{
+  "numero": "demo-phone-number-id",
+  "escenarios": [
+    {
+      "id": "aclaracion-pregunta",
+      "titulo": "Pregunta ambigua entre programas",
+      "persona": "ana",
+      "entrada": "¿Cuánto cuesta la matrícula?",
+      "mensajes": [
+        {
+          "tipo": "texto",
+          "texto": "Hola, soy un asistente automático de los posgrados. Respondo con base en documentos oficiales. Tus preguntas pasan por WhatsApp (Meta), Kapso y un proveedor de modelos de lenguaje. Por favor no envíes datos personales.\n\n¿A qué programa te refieres? Tengo información de:\n1. Unidad de Postgrados de Computación\n2. Área académica de Analítica de Negocios\nResponde con el nombre del programa o su número."
+        }
+      ]
+    },
+    {
+      "id": "aclaracion-respuesta",
+      "titulo": "La persona elige el programa",
+      "persona": "ana",
+      "entrada": "Computación",
+      "mensajes": [
+        {
+          "tipo": "texto",
+          "texto": "*Matrícula*\nPara *Unidad de Postgrados de Computación*, la matrícula se hace en las fechas del *calendario de ejemplo* del periodo.\n\n- Se paga en la oficina del programa.\n- Hay que tener el plan de estudios al día.\n\nFuentes: Calendario de ejemplo del periodo.txt"
+        }
+      ]
+    },
+    {
+      "id": "respuesta",
+      "titulo": "Una pregunta con respuesta e imagen",
+      "persona": "ana",
+      "entrada": "¿Cuántos créditos tiene el Taller de Ejemplo A?",
+      "mensajes": [
+        {
+          "tipo": "texto",
+          "texto": "El *Taller de Ejemplo A* tiene *3 créditos* y pide 6 horas de trabajo extraclase por semana.\n\nFuentes: Programa de curso Taller de Ejemplo A.pdf"
+        },
+        {
+          "tipo": "imagen",
+          "enlace": "http://localhost:8000/media/demo-horario",
+          "pie": "Horario de las clases"
+        }
+      ]
+    },
+    {
+      "id": "sin-informacion",
+      "titulo": "La pregunta no está en los documentos",
+      "persona": "ana",
+      "entrada": "¿Cuál es el menú de la cafetería?",
+      "mensajes": [
+        {
+          "tipo": "texto",
+          "texto": "No encontré esa información en los documentos. Prueba con otras palabras o pregunta por otro tema, por ejemplo matrícula, requisitos o plan de estudios."
+        }
+      ]
+    },
+    {
+      "id": "no-texto",
+      "titulo": "Un audio",
+      "persona": "ana",
+      "entrada": "(audio)",
+      "mensajes": [
+        {
+          "tipo": "texto",
+          "texto": "Por ahora solo entiendo mensajes de texto. Escribe tu pregunta, por favor."
+        }
+      ]
+    },
+    {
+      "id": "limite",
+      "titulo": "Demasiados mensajes seguidos",
+      "persona": "ana",
+      "entrada": "hola 6",
+      "mensajes": [
+        {
+          "tipo": "texto",
+          "texto": "Enviaste muchos mensajes seguidos. Intenta de nuevo en un rato."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "id": "d1-whatsapp",
+  "titulo": "Preguntar por WhatsApp",
+  "duracion": 83.57,
+  "pistas": [
+    {
+      "inicio": 1.06,
+      "fin": 9.0,
+      "texto": "El bot de WhatsApp responde preguntas sobre los documentos de los posgrados. Esta es una conversación simulada con sus mensajes reales."
+    },
+    {
+      "inicio": 9.0,
+      "fin": 16.58,
+      "texto": "Por ahora funciona solo con el número de pruebas (sandbox). Escribe tu pregunta en un mensaje de texto, de hasta 500 caracteres."
+    },
+    {
+      "inicio": 16.58,
+      "fin": 26.81,
+      "texto": "La primera respuesta de cada 24 horas trae un saludo: el bot es automático, tus preguntas pasan por Meta, Kapso y un proveedor de modelos, y no debes enviar datos personales."
+    },
+    {
+      "inicio": 26.81,
+      "fin": 35.04,
+      "texto": "Si la pregunta puede ser de varios programas, el bot te pregunta a cuál te refieres. Responde con el nombre o con su número."
+    },
+    {
+      "inicio": 35.04,
+      "fin": 40.69,
+      "texto": "Con el programa elegido responde solo con lo que dicen los documentos y termina con las fuentes."
+    },
+    {
+      "inicio": 40.69,
+      "fin": 52.64,
+      "texto": "Si el documento tiene imágenes, el bot envía la primera después del texto, con su descripción como pie de foto."
+    },
+    {
+      "inicio": 52.64,
+      "fin": 62.38,
+      "texto": "Si la información no está en los documentos, el bot lo dice y sugiere otros temas."
+    },
+    {
+      "inicio": 62.38,
+      "fin": 67.83,
+      "texto": "El bot solo entiende texto: un audio, una imagen o un sticker recibe un aviso."
+    },
+    {
+      "inicio": 67.83,
+      "fin": 77.52,
+      "texto": "Hay un límite de mensajes por persona: 10 por hora y 30 por día. Al pasarlo, el bot avisa una vez y deja de responder un rato."
+    },
+    {
+      "inicio": 77.52,
+      "fin": 83.57,
+      "texto": "El bot no entrega teléfonos ni correos de los programas: solo responde con lo que dicen los documentos."
+    }
+  ]
+}

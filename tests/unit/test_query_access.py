@@ -10,8 +10,8 @@ from sqlalchemy import select
 from mia.api.routes import query as query_routes
 from mia.api.routes.query import NO_INFO_ANSWER
 from mia.config import settings
-from mia.rag.llm import RAG_SYSTEM_PROMPT, REASONING_SYSTEM_PROMPT, LLMAnswer
-from mia.storage.models import Document, Domain, QueryLog, Unit
+from mia.rag.llm import CUSTOM_PROMPT_HEADER, RAG_SYSTEM_PROMPT, REASONING_SYSTEM_PROMPT, LLMAnswer
+from mia.storage.models import Artifact, Document, Domain, QueryLog, Unit
 from mia.storage.vector_store import SearchResult
 
 
@@ -359,6 +359,36 @@ def test_cada_modo_usa_su_instruccion_y_su_cantidad_de_resultados(client, base, 
     _consultar(client, artefacto.headers, mode="razonamiento")
     assert fakes.vector_store.search.call_args.kwargs["limit"] == 16
     assert fakes.llm.answer.call_args.kwargs["instructions"] == REASONING_SYSTEM_PROMPT
+
+
+def _con_prompt(db, artefacto, texto):
+    with db() as session:
+        session.get(Artifact, artefacto.id).custom_prompt = texto
+        session.commit()
+
+
+def test_el_prompt_propio_del_artefacto_se_anexa_a_la_instruccion_del_modo(client, db, base, fakes, make_artifact):
+    con = make_artifact("Con prompt", units=["u1"], modes="literal,razonamiento")
+    sin = make_artifact("Sin prompt", units=["u1"])
+    _con_prompt(db, con, "Centra la respuesta en el Área Académica de Analítica de Negocios.")
+
+    _consultar(client, con.headers)
+    instrucciones = fakes.llm.answer.call_args.kwargs["instructions"]
+    assert instrucciones.startswith(RAG_SYSTEM_PROMPT)
+    assert instrucciones.endswith("Centra la respuesta en el Área Académica de Analítica de Negocios.")
+    # No reemplaza nada: la marca de "sin información" sigue siendo exigida.
+    assert "SIN_INFORMACION" in instrucciones and CUSTOM_PROMPT_HEADER in instrucciones
+
+    _consultar(client, con.headers, mode="razonamiento")
+    assert fakes.llm.answer.call_args.kwargs["instructions"].startswith(REASONING_SYSTEM_PROMPT)
+    assert "Analítica de Negocios" in fakes.llm.answer.call_args.kwargs["instructions"]
+
+    # Otro artefacto no se entera, y uno con el prompt vacío o en blanco recibe la instrucción de siempre.
+    _consultar(client, sin.headers)
+    assert fakes.llm.answer.call_args.kwargs["instructions"] == RAG_SYSTEM_PROMPT
+    _con_prompt(db, con, "   \n ")
+    _consultar(client, con.headers)
+    assert fakes.llm.answer.call_args.kwargs["instructions"] == RAG_SYSTEM_PROMPT
 
 
 def test_la_respuesta_indica_si_no_hay_informacion(client, base, fakes, make_artifact):

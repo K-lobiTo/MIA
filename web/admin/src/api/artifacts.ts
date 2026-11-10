@@ -21,6 +21,8 @@ export interface ArtifactInput {
   context_turns: number;
   // Exigir inicio de sesión para consultar (feature 015).
   require_login: boolean;
+  // Instrucciones propias del artefacto, anexas a las del modo; vacío: ninguna.
+  custom_prompt: string;
 }
 
 function useArtifactMutation<TVariables, TResult>(fn: (variables: TVariables) => Promise<TResult>) {

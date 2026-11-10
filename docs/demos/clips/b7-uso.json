@@ -1,0 +1,67 @@
+{
+  "id": "b7-uso",
+  "titulo": "Uso y gasto",
+  "duracion": 75.29,
+  "pistas": [
+    {
+      "inicio": 2.16,
+      "fin": 8.75,
+      "texto": "Uso muestra cuánto se usa MIA y cuánto cuesta. Sale del registro de todas las consultas, incluso las rechazadas."
+    },
+    {
+      "inicio": 8.75,
+      "fin": 12.28,
+      "texto": "Elige el período: hoy, 7 días, 30 días o un rango de fechas."
+    },
+    {
+      "inicio": 12.28,
+      "fin": 20.39,
+      "texto": "También puedes filtrar por artefacto y por modo de respuesta. Todo el módulo se ajusta al filtro."
+    },
+    {
+      "inicio": 20.39,
+      "fin": 27.98,
+      "texto": "Los indicadores resumen el período y lo comparan con el anterior: gasto, consultas, tokens, tiempos, errores y respuestas útiles."
+    },
+    {
+      "inicio": 27.98,
+      "fin": 33.16,
+      "texto": "«Sin información» y «Errores» te dicen qué porcentaje de preguntas no se pudo responder."
+    },
+    {
+      "inicio": 33.16,
+      "fin": 38.04,
+      "texto": "La gráfica muestra la evolución. Cambia la métrica entre gasto, consultas y tokens."
+    },
+    {
+      "inicio": 38.04,
+      "fin": 41.98,
+      "texto": "El desglose separa la gráfica por artefacto, por modo o por modelo."
+    },
+    {
+      "inicio": 41.98,
+      "fin": 47.16,
+      "texto": "«Ver como tabla» muestra los mismos números en filas."
+    },
+    {
+      "inicio": 47.16,
+      "fin": 52.74,
+      "texto": "Las tablas comparan los artefactos, con el gasto de hoy frente a su tope, y los modelos usados."
+    },
+    {
+      "inicio": 52.74,
+      "fin": 61.52,
+      "texto": "El registro lista cada consulta, la más reciente primero. Filtra por resultado, por ejemplo «Sin información»."
+    },
+    {
+      "inicio": 61.52,
+      "fin": 67.99,
+      "texto": "Toca la fecha de una consulta para ver su detalle: dominios, documentos citados, modelo, costo y calificación."
+    },
+    {
+      "inicio": 67.99,
+      "fin": 75.29,
+      "texto": "«Descargar CSV» baja el registro. Las preguntas solo se incluyen si marcas la casilla, porque pueden tener datos personales."
+    }
+  ]
+}

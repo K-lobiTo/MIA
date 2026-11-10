@@ -1,0 +1,42 @@
+{
+  "id": "a1-primeros-pasos",
+  "titulo": "Primeros pasos",
+  "duracion": 42.47,
+  "pistas": [
+    {
+      "inicio": 1.58,
+      "fin": 7.58,
+      "texto": "Abre la dirección de tu Consulta. La primera vez te pide la clave que te entregó quien administra MIA."
+    },
+    {
+      "inicio": 7.58,
+      "fin": 13.13,
+      "texto": "Escribe la clave y pulsa Entrar. El navegador la recuerda para la próxima vez."
+    },
+    {
+      "inicio": 13.13,
+      "fin": 19.36,
+      "texto": "A la izquierda eliges los dominios (vienen todos elegidos). Abajo están el modo y el campo de tu pregunta."
+    },
+    {
+      "inicio": 19.36,
+      "fin": 24.78,
+      "texto": "En el centro aparece la conversación. Al empezar ves ejemplos de preguntas que puedes tocar."
+    },
+    {
+      "inicio": 24.78,
+      "fin": 30.82,
+      "texto": "Arriba a la derecha cambias la apariencia: modo claro, modo oscuro o el del sistema."
+    },
+    {
+      "inicio": 30.82,
+      "fin": 36.17,
+      "texto": "El botón de la esquina oculta o muestra el menú lateral cuando necesitas más espacio."
+    },
+    {
+      "inicio": 36.17,
+      "fin": 42.47,
+      "texto": "Si te dan una clave nueva, usa «Cambiar clave». Con «Iniciar sesión» guardas tus conversaciones (video A5)."
+    }
+  ]
+}

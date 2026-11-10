@@ -128,6 +128,8 @@ class Artifact(Base):
     context_turns: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     # Exige iniciar sesión para consultar (feature 015). Falso: el artefacto responde sin sesión como siempre.
     require_login: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    # Instrucción adicional de este artefacto: se anexa a la del modo de respuesta (no la reemplaza). Vacío: como siempre.
+    custom_prompt: Mapped[str] = mapped_column(Text, default="", server_default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 

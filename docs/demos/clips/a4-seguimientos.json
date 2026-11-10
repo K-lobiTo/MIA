@@ -1,0 +1,42 @@
+{
+  "id": "a4-seguimientos",
+  "titulo": "Preguntas de seguimiento",
+  "duracion": 47.06,
+  "pistas": [
+    {
+      "inicio": 1.61,
+      "fin": 7.78,
+      "texto": "Esta Consulta recuerda las últimas preguntas de tu conversación. El aviso está bajo el campo de pregunta."
+    },
+    {
+      "inicio": 7.78,
+      "fin": 15.8,
+      "texto": "Empieza con una pregunta completa, por ejemplo sobre los contenidos de un curso."
+    },
+    {
+      "inicio": 15.8,
+      "fin": 22.34,
+      "texto": "Ahora pregunta sin repetir el curso: MIA entiende a cuál te refieres por lo que hablaron antes."
+    },
+    {
+      "inicio": 22.34,
+      "fin": 28.97,
+      "texto": "Puedes seguir encadenando preguntas sobre el mismo tema."
+    },
+    {
+      "inicio": 28.97,
+      "fin": 34.62,
+      "texto": "Si cambias de tema, escribe la pregunta completa: lo anterior solo sirve para entender la nueva."
+    },
+    {
+      "inicio": 34.62,
+      "fin": 40.21,
+      "texto": "Sin iniciar sesión, la conversación vive solo en esta página. Si la recargas, empieza de nuevo."
+    },
+    {
+      "inicio": 40.21,
+      "fin": 47.06,
+      "texto": "Sin la conversación anterior, la misma pregunta no se entiende y MIA responde que no encontró información."
+    }
+  ]
+}

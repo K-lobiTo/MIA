@@ -20,6 +20,7 @@ const artefacto: Artifact = {
   reasoning_daily_cap_usd: null,
   context_turns: 0,
   require_login: false,
+  custom_prompt: "",
   today: { spent_usd: 0, reasoning_spent_usd: 0, cap_reached: false, reasoning_cap_reached: false },
   queries_last_7_days: 0,
   created_at: "2026-11-04T00:00:00Z",
