@@ -3,6 +3,7 @@ import type { Artifact, UnitNode } from "../../api/types";
 import { StatusBadge } from "../../components/StatusBadge";
 import { describeAccess, describeModes } from "./accessUtils";
 import { describeMemory } from "./memoryUtils";
+import { describePrompt } from "./promptUtils";
 import { describeSession } from "./sessionUtils";
 import { Meter } from "./Meter";
 
@@ -44,6 +45,8 @@ export function ArtifactCard({ artifact, units, busy, onEdit, onRegenerate, onTo
         <dd>{describeModes(artifact.modes)}</dd>
         <dt>Memoria</dt>
         <dd>{describeMemory(artifact.context_turns)}</dd>
+        <dt>Instrucciones</dt>
+        <dd>{describePrompt(artifact.custom_prompt)}</dd>
         <dt>Inicio de sesión</dt>
         <dd>{describeSession(artifact.require_login)}</dd>
         <dt>Gasto de hoy</dt>

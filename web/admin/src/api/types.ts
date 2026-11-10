@@ -91,6 +91,8 @@ export interface Artifact {
   context_turns: number;
   // Solo responde a personas con sesión de usuario de la Consulta (feature 015).
   require_login: boolean;
+  // Instrucciones propias, anexas a las del modo de respuesta; vacío: ninguna.
+  custom_prompt: string;
   today: {
     spent_usd: number;
     reasoning_spent_usd: number;

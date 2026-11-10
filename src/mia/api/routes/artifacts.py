@@ -1,10 +1,10 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
@@ -17,6 +17,7 @@ from mia.access.scope import Principal, artifact_in_scope
 from mia.api.routes.inventory import Name
 from mia.api.security import require_admin
 from mia.config import settings
+from mia.rag.llm import MAX_CUSTOM_PROMPT_CHARS
 from mia.rag.modes import MODE_IDS, MODES, mode_available
 from mia.storage.db import get_session
 from mia.storage.models import Artifact, ArtifactDomain, ArtifactUnit, Domain, QueryLog, Unit
@@ -25,6 +26,7 @@ router = APIRouter(tags=["artifacts"])
 
 ModeId = Literal["literal", "razonamiento"]
 DEFAULT_DAILY_CAP = 0.50
+CustomPrompt = Annotated[str, StringConstraints(max_length=MAX_CUSTOM_PROMPT_CHARS)]
 
 
 class Access(BaseModel):
@@ -44,6 +46,8 @@ class ArtifactCreate(BaseModel):
     context_turns: int = Field(default=0, ge=0, le=10)
     # Exige iniciar sesión para consultar (feature 015); falso: responde sin sesión como siempre.
     require_login: bool = False
+    # Instrucción adicional de este artefacto, anexa a la del modo; vacío: ninguna.
+    custom_prompt: CustomPrompt = ""
 
 
 class ArtifactUpdate(BaseModel):
@@ -54,6 +58,7 @@ class ArtifactUpdate(BaseModel):
     reasoning_daily_cap_usd: float | None = Field(default=None, gt=0)
     context_turns: int | None = Field(default=None, ge=0, le=10)
     require_login: bool | None = None
+    custom_prompt: CustomPrompt | None = None
     active: bool | None = None
 
 
@@ -86,6 +91,7 @@ class ArtifactOut(BaseModel):
     reasoning_daily_cap_usd: float | None
     context_turns: int
     require_login: bool
+    custom_prompt: str
     today: TodayOut
     queries_last_7_days: int
     created_at: str
@@ -147,6 +153,7 @@ def _to_out(session: Session, artifact: Artifact) -> ArtifactOut:
         reasoning_daily_cap_usd=float(reasoning_cap) if reasoning_cap is not None else None,
         context_turns=artifact.context_turns,
         require_login=artifact.require_login,
+        custom_prompt=artifact.custom_prompt,
         today=TodayOut(
             spent_usd=float(state.spent),
             reasoning_spent_usd=float(state.reasoning_spent),
@@ -265,6 +272,7 @@ def create_artifact(
         ),
         context_turns=payload.context_turns,
         require_login=payload.require_login,
+        custom_prompt=payload.custom_prompt.strip(),
     )
     session.add(artifact)
     session.flush()
@@ -319,6 +327,9 @@ def update_artifact(
     previous_login = artifact.require_login
     if payload.require_login is not None:
         artifact.require_login = payload.require_login
+    previous_prompt = artifact.custom_prompt
+    if payload.custom_prompt is not None:
+        artifact.custom_prompt = payload.custom_prompt.strip()
     if payload.active is not None:
         artifact.active = payload.active
     session.commit()
@@ -337,6 +348,14 @@ def update_artifact(
             "artifact.require_login",
             artifact.id,
             f"{artifact.name}: {str(previous_login).lower()} -> {str(artifact.require_login).lower()}",
+        )
+    if artifact.custom_prompt != previous_prompt:
+        # Se registra solo el largo: el texto vive en la base y no hace falta duplicarlo en el registro de auditoría.
+        audit.log_write(
+            principal,
+            "artifact.custom_prompt",
+            artifact.id,
+            f"{artifact.name}: {len(previous_prompt)} -> {len(artifact.custom_prompt)} caracteres",
         )
     return _to_out(session, artifact)
 

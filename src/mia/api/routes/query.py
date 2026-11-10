@@ -55,7 +55,12 @@ from mia.rag.lexical import (
     query_groups,
     warn_lexical_failure,
 )
-from mia.rag.llm import RagContext, get_llm_provider, is_no_info_answer
+from mia.rag.llm import (
+    RagContext,
+    get_llm_provider,
+    instructions_with_custom_prompt,
+    is_no_info_answer,
+)
 from mia.rag.modes import estimate_cost, mode_available, mode_config
 from mia.rag.programs import (
     ClarifyPolicy,
@@ -669,7 +674,7 @@ def run_query(
     history_arg = {"history": history} if history else {}
     try:
         llm_provider = get_llm_provider(config.provider, config.model, config.reasoning_effort)
-        instructions = config.instructions
+        instructions = instructions_with_custom_prompt(config.instructions, artifact.custom_prompt)
         if complete_context:
             instructions = f"{instructions}\n\n{COMPLETENESS_INSTRUCTIONS}"
         if sweeping:

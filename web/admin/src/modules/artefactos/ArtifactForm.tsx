@@ -10,6 +10,7 @@ import { capabilities } from "../../auth/capabilities";
 import { useMe } from "../../auth/session";
 import { approxQueries, parseUsd, validateCaps } from "./capMath";
 import { MEMORY_HELP, MAX_TURNS, validateTurns } from "./memoryUtils";
+import { MAX_PROMPT_CHARS, PROMPT_HELP, PROMPT_LABEL, validatePrompt } from "./promptUtils";
 import { REQUIRE_LOGIN_HELP, REQUIRE_LOGIN_LABEL } from "./sessionUtils";
 
 interface Props {
@@ -41,14 +42,21 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
   );
   const [turns, setTurns] = useState(String(artifact?.context_turns ?? 0));
   const [requireLogin, setRequireLogin] = useState(artifact?.require_login ?? false);
+  const [customPrompt, setCustomPrompt] = useState(artifact?.custom_prompt ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   const hasAccess = allDomains || unitIds.length > 0 || domainIds.length > 0;
   const capProblem = validateCaps(dailyCap, reasoningCap);
   const turnsCheck = validateTurns(turns);
+  const promptProblem = validatePrompt(customPrompt);
   const ready =
-    (artifact ? true : name.trim() !== "") && hasAccess && selectedModes.length > 0 && capProblem === null && turnsCheck.ok;
+    (artifact ? true : name.trim() !== "") &&
+    hasAccess &&
+    selectedModes.length > 0 &&
+    capProblem === null &&
+    turnsCheck.ok &&
+    promptProblem === null;
   const dailyValue = parseUsd(dailyCap);
 
   function toggle<T>(list: T[], item: T): T[] {
@@ -75,6 +83,7 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
       reasoning_daily_cap_usd: reasoningCap.trim() === "" ? null : parseUsd(reasoningCap),
       context_turns: turnsCheck.ok ? turnsCheck.value : 0,
       require_login: requireLogin,
+      custom_prompt: customPrompt.trim(),
     };
     try {
       if (artifact) {
@@ -219,6 +228,21 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
               onChange={(e) => setTurns(e.currentTarget.value)}
               error={turnsCheck.ok ? undefined : turnsCheck.message}
               description={MEMORY_HELP}
+            />
+          </Fieldset>
+
+          <Fieldset legend="Instrucciones propias" variant="unstyled">
+            <Textarea
+              label={PROMPT_LABEL}
+              autosize
+              minRows={4}
+              maxRows={14}
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.currentTarget.value)}
+              error={promptProblem ?? undefined}
+              description={PROMPT_HELP}
+              placeholder="Ejemplo: Eres el asistente del Área Académica de Analítica de Negocios. Centra tus respuestas en la información de la propia Área."
+              maxLength={MAX_PROMPT_CHARS + 500}
             />
           </Fieldset>
 
