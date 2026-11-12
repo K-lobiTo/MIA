@@ -3,6 +3,9 @@ import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -14,6 +17,7 @@ from mia.api.routes import (
     bots,
     config,
     consulta_users,
+    contacts,
     conversations,
     documents,
     domains,
@@ -92,6 +96,19 @@ if _cors_origins:
 
 
 
+# Rutas con teléfono (feature 017): el 422 por defecto de FastAPI repite lo recibido (`input`), y aquí vendría el teléfono, el
+# nombre o el correo de una persona. En estas rutas se quita; el resto de las rutas conserva el comportamiento de siempre.
+_NO_ECHO_PATHS = ("/bot/contacts", "/bot/messages")
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request: Request, error: RequestValidationError) -> JSONResponse:
+    if request.url.path not in _NO_ECHO_PATHS:
+        return await request_validation_exception_handler(request, error)
+    errors = [{key: value for key, value in item.items() if key not in ("input", "ctx")} for item in error.errors()]
+    return JSONResponse(status_code=422, content={"detail": jsonable_encoder(errors)})
+
+
 @app.exception_handler(AuthError)
 async def auth_error_handler(request: Request, error: AuthError) -> JSONResponse:
     # Además del mensaje, un código estable para que el panel distinga el caso.
@@ -109,6 +126,7 @@ app.include_router(artifacts.router)
 app.include_router(config.router)
 app.include_router(equivalences.router)
 app.include_router(bots.router)
+app.include_router(contacts.router)
 app.include_router(auth.router)
 app.include_router(consulta_users.router)
 app.include_router(conversations.router)

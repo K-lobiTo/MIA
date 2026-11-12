@@ -283,3 +283,94 @@ def test_sin_el_campo_o_con_una_forma_rara_la_memoria_queda_vacia():
         resultado = _count(_client(fake), received=1)
 
         assert resultado.status == "ok" and resultado.context_turns is None, valor
+
+
+# --- contactos (feature 017) ---
+
+
+def _put(client, event, **kwargs):
+    return asyncio.run(client.put_contact(NUMBER_ID, "16315551181", event, **kwargs))
+
+
+def test_el_telefono_va_solo_si_se_pasa():
+    fake = FakeMia()
+    cliente = _client(fake)
+
+    _count(cliente, received=1)
+    _count(cliente, received=1, phone="16315551181")
+
+    sin, con = [r["json"] for r in fake.recorded.to("/bot/messages")]
+    assert "phone" not in sin and con["phone"] == "16315551181"
+
+
+def test_el_contacto_se_lee_de_la_cuenta():
+    fake = FakeMia()
+
+    resultado = _count(_client(fake), received=1, phone="16315551181")
+
+    assert resultado.contact.status == "pendiente"
+    assert (resultado.contact.has_name, resultado.contact.has_email, resultado.contact.email_retried) == (False, False, False)
+
+
+def test_sin_telefono_o_con_una_forma_rara_el_contacto_es_nulo():
+    assert _count(_client(FakeMia()), received=1).contact is None
+
+    def raro(request):
+        return httpx.Response(200, json={"status": "ok", "contact": {"status": "inventado", "has_name": 1}})
+
+    assert _count(_client_with(raro), received=1, phone="1").contact is None
+
+
+def test_put_contact_envia_el_evento_y_lee_el_resultado():
+    fake = FakeMia()
+    cliente = _client(fake)
+    _count(cliente, received=1, phone="16315551181")
+
+    claim = _put(cliente, "claim_invite")
+    entregado = _put(cliente, "provided", name="Ana Pérez", email="ana@correo.com")
+
+    assert claim.ok and claim.claimed and claim.state.status == "invitada"
+    assert entregado.ok and entregado.state.has_name and entregado.state.has_email
+    envio = fake.recorded.to("/bot/contacts")[-1]
+    assert envio["method"] == "PUT" and envio["headers"]["x-bot-service-key"] == "clave-de-servicio"
+    assert envio["json"] == {
+        "number_id": NUMBER_ID, "phone": "16315551181", "event": "provided", "name": "Ana Pérez", "email": "ana@correo.com",
+    }
+
+
+def test_un_409_es_conflicto_y_no_falla():
+    fake = FakeMia()
+    cliente = _client(fake)
+    _count(cliente, received=1, phone="16315551181")
+
+    resultado = _put(cliente, "provided", name="Ana Pérez")  # el contacto sigue pendiente
+
+    assert resultado.ok is False and resultado.conflict is True
+
+
+def test_put_contact_nunca_lanza_y_no_registra_datos_personales(caplog):
+    def con_codigo(codigo):
+        return _client_with(lambda request: httpx.Response(codigo, json={"detail": "x"}))
+
+    def sin_red(request):
+        raise httpx.ConnectError("sin red")
+
+    def rara(request):
+        return httpx.Response(200, json={"contact": "no es un objeto"})
+
+    with caplog.at_level(logging.DEBUG, logger="mia_whatsapp"):
+        for cliente in (con_codigo(401), con_codigo(404), con_codigo(422), con_codigo(500), _client_with(sin_red), _client_with(rara)):
+            resultado = _put(cliente, "provided", name="Ana Pérez", email="ana@correo.com")
+            assert resultado.ok is False and resultado.conflict is False
+    assert "Ana" not in caplog.text and "ana@correo.com" not in caplog.text and "16315551181" not in caplog.text
+
+
+def test_un_error_de_contactos_en_el_fake_no_rompe_la_cuenta():
+    fake = FakeMia()
+    fake.contacts_error = 500
+    cliente = _client(fake)
+
+    cuenta = _count(cliente, received=1, phone="16315551181")
+
+    assert cuenta.status == "ok" and cuenta.contact is None
+    assert _put(cliente, "claim_invite").ok is False

@@ -326,3 +326,27 @@ export interface ConsultaUserCreated extends ConsultaUser {
 export interface ConsultaUsersResponse {
   users: ConsultaUser[];
 }
+
+// Contactos de WhatsApp (feature 017, contracts/contactos-admin-api.md). Datos personales: solo el alcance global los ve.
+export type ContactStatus = "pendiente" | "invitada" | "entrego" | "declino";
+
+export interface Contact {
+  id: string;
+  phone: string;
+  bot: { id: string; name: string };
+  name: string | null;
+  email: string | null;
+  status: ContactStatus;
+  created_at: string;
+  last_seen_at: string;
+  updated_at: string;
+}
+
+export interface ContactsResponse {
+  total: number;
+  page: number;
+  page_size: number;
+  items: Contact[];
+  // Conteo por estado sin el filtro de estado (pero con los demás filtros).
+  summary: Record<ContactStatus, number>;
+}

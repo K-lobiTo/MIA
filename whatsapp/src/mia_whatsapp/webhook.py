@@ -32,6 +32,9 @@ class IncomingMessage:
     person_key: str | None
     # ("to", teléfono) o ("recipient", identificador de usuario); None si no hay a quién responder.
     destination: tuple[str, str] | None
+    # El teléfono REAL de la persona (nunca el identificador de usuario ni el id de conversación); None si el aviso no lo trae.
+    # Solo se usa para el contacto (feature 017, con `BOT_CONTACT=on`) y NUNCA se registra.
+    phone: str | None = None
 
 
 @dataclass
@@ -97,6 +100,7 @@ def _message_from(item, idempotency_key: str | None) -> IncomingMessage | None:
             message.get("from_user_id"), message.get("from"), conversation.get("phone_number"), conversation.get("id")
         ),
         destination=_destination(message, conversation),
+        phone=_text(message.get("from")) or _text(conversation.get("phone_number")),
     )
 
 

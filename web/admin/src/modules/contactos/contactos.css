@@ -1,0 +1,9 @@
+/* Módulo Contactos de WhatsApp: clases con prefijo propio, sin reglas globales sobre elementos. */
+.contactos-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.contactos-count { font-variant-numeric: tabular-nums; padding: 2px 0; }
+.contactos-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-items: end; }
+.contactos-phone { font-family: var(--font-mono); white-space: nowrap; }
+.contactos-wrap { overflow-wrap: anywhere; }
+.contactos-empty { color: var(--muted); }
+/* Texto solo para lectores de pantalla (el encabezado de la columna de acciones). */
+.contactos-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

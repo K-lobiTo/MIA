@@ -436,3 +436,80 @@ def test_el_contexto_no_deja_el_telefono_ni_el_texto_en_la_base_y_no_sobrevive_a
     assert todo.count(f"{AMBIGUA} (Maestría en Ciberseguridad)") == 1
     assert servicio.deps.state.conversations.count == 1
     assert Servicio().deps.state.conversations.count == 0  # un servicio nuevo (reinicio) no recuerda nada
+
+
+# --- Datos de contacto (feature 017) ---
+
+
+def _contactos(db):
+    from mia.storage.models import WhatsAppContact
+
+    with db() as session:
+        return session.query(WhatsAppContact).all()
+
+
+def test_con_la_funcion_encendida_la_persona_recibe_la_invitacion_y_sus_datos_quedan_en_la_base(client, db, mundo):
+    servicio = Servicio(bot_contact="on")
+
+    with Pipeline():
+        servicio.escribir()
+        servicio.escribir("Ana Pérez Ana@Correo.com")
+        servicio.escribir("¿Y los requisitos?")
+
+    textos = servicio.kapso.textos
+    # Respuesta (con el saludo), invitación aparte, confirmación y, sin invitar de nuevo, la respuesta siguiente.
+    assert "Es del 3 al 7 de agosto." in textos[0] and "opcional" in textos[1].lower()
+    assert textos[2].startswith("Listo, guardé tu nombre (Ana Pérez) y tu correo (a**@correo.com)")
+    assert "Es del 3 al 7 de agosto." in textos[3] and len(textos) == 4
+    [contacto] = _contactos(db)
+    assert contacto.bot_id == mundo["bot_id"] and contacto.phone.startswith("+506") and len(contacto.phone) == 12
+    assert (contacto.name, contacto.email, contacto.status) == ("Ana Pérez", "ana@correo.com", "entrego")
+    # Los datos no llegaron a la consulta ni a Uso, y la cuota cuenta la invitación y la confirmación.
+    with db() as session:
+        preguntas = [q.question for q in session.query(QueryLog).all()]
+        uso = month_usage(session, mundo["bot_id"], current_month())
+    assert preguntas == ["¿Cuándo es la matrícula?", "¿Y los requisitos?"]
+    assert all("@" not in p and "Ana" not in p for p in preguntas)
+    assert uso.received == 3 and uso.sent == 4 + 2  # 4 textos y 2 imágenes de las respuestas
+
+
+def test_tras_reiniciar_el_servicio_no_se_vuelve_a_invitar_a_quien_ya_fue_invitado(client, db, mundo):
+    primero = Servicio(bot_contact="on")
+    with Pipeline():
+        primero.escribir()
+        reiniciado = Servicio(bot_contact="on")  # estado en memoria nuevo: solo queda lo que hay en la base
+        reiniciado.escribir("¿Y los requisitos?")
+
+    assert any("opcional" in t.lower() for t in primero.kapso.textos)
+    assert not any("opcional" in t.lower() for t in reiniciado.kapso.textos)
+    # Quien contestó "no" a la invitación (o la ignoró) queda como "declinó", sin nombre ni correo.
+    [contacto] = _contactos(db)
+    assert (contacto.status, contacto.name, contacto.email) == ("declino", None, None)
+
+
+def test_con_la_funcion_apagada_no_se_guarda_ni_se_invita_nada(client, db, mundo):
+    servicio = Servicio()  # BOT_CONTACT por defecto: off
+
+    with Pipeline():
+        servicio.escribir()
+        servicio.escribir("Ana Pérez ana@correo.com")
+
+    assert len(servicio.kapso.textos) == 2 and not any("opcional" in t.lower() for t in servicio.kapso.textos)
+    assert _contactos(db) == []
+
+
+def test_un_fallo_de_la_base_de_contactos_no_impide_responder(client, db, mundo, monkeypatch):
+    from mia.contacts import store
+
+    def _boom(*args, **kwargs):
+        raise RuntimeError("falla simulada")
+
+    monkeypatch.setattr(store, "get_or_create", _boom)
+    servicio = Servicio(bot_contact="on")
+
+    with Pipeline():
+        servicio.escribir()
+        servicio.escribir("¿Y los requisitos?")
+
+    assert len(servicio.kapso.textos) == 2 and all("Es del 3 al 7 de agosto." in t for t in servicio.kapso.textos)
+    assert _contactos(db) == []
