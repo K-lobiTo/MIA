@@ -1,5 +1,7 @@
 # Feature Specification: Bot de WhatsApp para atraer estudiantes (con imágenes asociadas a documentos)
 
+> **Nota (feature 017, 2026-11-12):** FR-027 y SC-010 de esta spec (el teléfono de la persona no se guarda) se **relajaron de forma deliberada**, solo para la tabla dedicada `whatsapp_contacts` y solo con `BOT_CONTACT=on`: ver [specs/017-datos-contacto-whatsapp/](../017-datos-contacto-whatsapp/spec.md). Uso, los registros del servicio y la auditoría siguen sin teléfonos. El resto de esta spec no cambia.
+
 **Feature Branch**: `dev` (feature `011-bot-whatsapp-kapso`, sin rama propia por decisión del usuario)
 
 **Created**: 2026-10-21

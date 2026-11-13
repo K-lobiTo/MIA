@@ -350,3 +350,28 @@ class ConversationTurn(Base):
     mode: Mapped[str] = mapped_column(String, default="literal")
     no_info: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
+class WhatsAppContact(Base):
+    """Contacto de una persona que escribió a un bot de WhatsApp (feature 017): su teléfono y, si lo entregó, su nombre y su
+    correo. Es la ÚNICA tabla donde se guarda un teléfono (excepción deliberada a FR-027 y SC-010 de la feature 011): vive
+    aparte de las consultas, los bots y los documentos, y no guarda el texto de ninguna pregunta ni respuesta. Un contacto
+    por teléfono y por bot. `status`: `pendiente` (aún no se le invitó), `invitada`, `entrego` o `declino`."""
+
+    __tablename__ = "whatsapp_contacts"
+    __table_args__ = (UniqueConstraint("bot_id", "phone", name="uq_whatsapp_contacts_bot_id_phone"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    bot_id: Mapped[str] = mapped_column(ForeignKey("bots.id"))
+    # Normalizado: "+" y de 7 a 15 dígitos.
+    phone: Mapped[str] = mapped_column(String)
+    # De 1 a 80 caracteres, sin saltos de línea; nulo si no lo entregó o lo borró.
+    name: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Hasta 254 caracteres, en minúsculas; nulo si no lo entregó o lo borró.
+    email: Mapped[str | None] = mapped_column(String, nullable=True)
+    status: Mapped[str] = mapped_column(String, default="pendiente", index=True)
+    # Si ya se repitió una vez la pregunta del correo.
+    email_retried: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, index=True)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)

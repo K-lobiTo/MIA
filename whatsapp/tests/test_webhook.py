@@ -157,3 +157,33 @@ def test_los_encabezados_se_leen_sin_importar_las_mayusculas():
         {"X-Webhook-Event": EVENT, "X-Idempotency-Key": "K9"}, _body(kapso_payload())
     ).messages
     assert mensaje.idempotency_key == "K9"
+
+
+# --- teléfono para el contacto (feature 017) ---
+
+
+def test_el_telefono_es_el_real_del_mensaje_o_el_de_la_conversacion():
+    [a] = parse_event(HEADERS, _body(kapso_payload(phone="111", conversation_phone="222"))).messages
+    assert a.phone == "111"
+    [b] = parse_event(HEADERS, _body(kapso_payload(phone=None, conversation_phone="222"))).messages
+    assert b.phone == "222"
+
+
+def test_solo_con_identificador_de_usuario_no_hay_telefono():
+    [mensaje] = parse_event(HEADERS, _body(kapso_payload(phone=None, conversation_phone=None))).messages
+    # El identificador de usuario sirve para responder, pero NO es un teléfono: no se guarda como contacto.
+    assert mensaje.phone is None and mensaje.destination == ("recipient", "US.13491208655302741918")
+
+
+def test_el_telefono_nunca_es_el_id_de_conversacion():
+    [mensaje] = parse_event(
+        HEADERS, _body(kapso_payload(phone=None, conversation_phone=None, user_id=None, conversation_id="conv_9"))
+    ).messages
+    assert mensaje.phone is None
+
+
+def test_agregar_el_telefono_no_cambia_la_clave_de_persona_ni_el_destino():
+    [mensaje] = parse_event(HEADERS, _body(kapso_payload())).messages
+    assert mensaje.phone == "16315551181"
+    assert mensaje.destination == ("to", "16315551181")
+    assert mensaje.person_key and "16315551181" not in mensaje.person_key

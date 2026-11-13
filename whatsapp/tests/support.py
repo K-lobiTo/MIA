@@ -135,6 +135,12 @@ class FakeMia:
         self.counts_error: int | None = None
         # Las vueltas de memoria que informa `/bot/messages` (feature 014); None: la API no lo informa.
         self.context_turns: object = None
+        # Contactos (feature 017), en memoria y por teléfono normalizado: la misma tabla de eventos que el contrato.
+        # `contacts_error` es un código HTTP: simula una falla de la parte de contactos (el conteo sigue funcionando).
+        self.contacts: dict[str, dict] = {}
+        self.contacts_error: int | None = None
+        # Para simular una carrera: el siguiente `claim_invite` pierde (otro mensaje ya la reclamó).
+        self.lose_next_claim = False
 
     def transport(self) -> httpx.MockTransport:
         async def handler(request: httpx.Request) -> httpx.Response:
@@ -142,9 +148,13 @@ class FakeMia:
             if request.url.path.endswith("/bot/messages"):
                 if self.counts_error is not None:
                     return httpx.Response(self.counts_error, json={"detail": "error"})
+                contact = {}
+                if (entry["json"] or {}).get("phone") and self.contacts_error is None and self.status != "unknown_bot":
+                    contact = {"contact": self._state(self._get(entry["json"]["phone"]))}
                 return httpx.Response(
                     200,
                     json={
+                        **contact,
                         "status": self.status,
                         "month": "2026-10",
                         "month_messages": None if self.status == "unknown_bot" else self.month_messages,
@@ -156,6 +166,8 @@ class FakeMia:
                         ),
                     },
                 )
+            if request.url.path.endswith("/bot/contacts"):
+                return self._contacts_response(entry["json"])
             if request.url.path.endswith("/bot/query"):
                 if self.query_delay is not None:
                     await self.query_delay(entry)
@@ -164,6 +176,72 @@ class FakeMia:
             return httpx.Response(404)
 
         return httpx.MockTransport(handler)
+
+    # --- contactos (feature 017) ---
+
+    @staticmethod
+    def _phone(raw: str) -> str:
+        return "+" + "".join(c for c in raw if c.isdigit())
+
+    def _get(self, raw_phone: str) -> dict:
+        return self.contacts.setdefault(
+            self._phone(raw_phone), {"status": "pendiente", "email_retried": False, "name": None, "email": None}
+        )
+
+    @staticmethod
+    def _state(contact: dict) -> dict:
+        return {
+            "status": contact["status"],
+            "email_retried": contact["email_retried"],
+            "has_name": bool(contact["name"]),
+            "has_email": bool(contact["email"]),
+        }
+
+    def _contacts_response(self, body: dict) -> httpx.Response:
+        if self.contacts_error is not None:
+            return httpx.Response(self.contacts_error, json={"detail": "error"})
+        contact = self._get(body["phone"])
+        event = body["event"]
+        claimed = had_data = False
+        if event == "claim_invite":
+            claimed = contact["status"] == "pendiente" and not self.lose_next_claim
+            self.lose_next_claim = False
+            if claimed:
+                contact["status"] = "invitada"
+        elif event == "erase":
+            had_data = bool(contact["name"] or contact["email"])
+            contact.update(name=None, email=None, status="declino", email_retried=False)
+        elif event == "reopen":
+            contact.update(status="invitada", email_retried=False)
+            claimed = True
+        elif contact["status"] == "invitada" or (event == "declined" and contact["status"] in ("entrego", "declino")):
+            if event == "release_invite" and not (contact["name"] or contact["email"]):
+                contact["status"] = "pendiente"
+            elif event == "provided":
+                contact["name"] = body.get("name") or contact["name"]
+                contact["email"] = body.get("email") or contact["email"]
+                contact.update(status="entrego", email_retried=False)
+            elif event == "email_retry" and not contact["email_retried"]:
+                contact["name"] = body.get("name") or contact["name"]
+                contact["email_retried"] = True
+            elif event == "declined" and contact["status"] == "invitada":
+                contact["status"] = "entrego" if (contact["name"] or contact["email"]) else "declino"
+            elif event != "declined":
+                return httpx.Response(409, json={"detail": "no aplica", "status": contact["status"]})
+        else:
+            return httpx.Response(409, json={"detail": "no aplica", "status": contact["status"]})
+        return httpx.Response(
+            200, json={"claimed": claimed, "had_data": had_data, "contact": self._state(contact)}
+        )
+
+    def contact(self, raw_phone: str = "16315551181") -> dict:
+        """El contacto simulado de un teléfono (se crea `pendiente` si no existe)."""
+        return self._get(raw_phone)
+
+    def events(self, name: str | None = None) -> list[str]:
+        """Los eventos de contacto recibidos, en orden (o solo los de un nombre)."""
+        eventos = [r["json"]["event"] for r in self.recorded.to("/bot/contacts")]
+        return [e for e in eventos if name is None or e == name]
 
 
 class FakeKapso:
@@ -226,6 +304,7 @@ def make_message(**overrides) -> IncomingMessage:
         "text": "¿Cuándo es la matrícula?",
         "person_key": "persona-1",
         "destination": ("to", "16315551181"),
+        "phone": "16315551181",
     }
     return IncomingMessage(**{**values, **overrides})
 

@@ -163,3 +163,30 @@ def test_unos_pocos_digitos_no_son_un_telefono():
 def test_un_texto_de_aclaracion_con_contacto_se_reporta_por_el_nombre_de_su_variable():
     assert contact_warnings(hacer(bot_text_clarify="Escribe a admision@tec.ac.cr. {programs}")) == ["BOT_TEXT_CLARIFY"]
     assert contact_warnings(hacer(bot_text_clarify="¿A cuál te refieres?\n{programs}")) == []
+
+
+def test_contacto_apagado_por_defecto_y_solo_acepta_off_u_on():
+    assert hacer().bot_contact == "off"
+    assert hacer(bot_contact="on").bot_contact == "on"
+    assert hacer(bot_contact=" ON ").bot_contact == "on"
+    with pytest.raises(ValidationError, match="BOT_CONTACT"):
+        hacer(bot_contact="si")
+
+
+def test_los_textos_de_contacto_no_son_advertencia_de_contactos_de_programas():
+    # Piden un correo y llevan un ejemplo con "@": es legítimo y no debe marcarse.
+    assert contact_warnings(hacer()) == []
+
+
+def test_la_invitacion_por_defecto_dice_que_es_opcional_y_que_se_guarda():
+    texto = hacer().bot_text_contact_invite.lower()
+    assert "opcional" in texto
+    assert all(palabra in texto for palabra in ("número de whatsapp", "nombre", "correo"))
+    assert "borrar mis datos" in texto
+    # No contradice el saludo ("no envíes datos personales"): aclara que estos datos no van dentro de las preguntas.
+    assert "no los uses dentro de tus preguntas" in texto
+
+
+def test_los_textos_de_contacto_llevan_sus_marcadores():
+    base = hacer()
+    assert "{saved}" in base.bot_text_contact_thanks and "{example}" in base.bot_text_contact_email_retry

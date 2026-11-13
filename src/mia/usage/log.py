@@ -65,9 +65,13 @@ def detail(session: Session, row: QueryLog) -> dict:
     }
 
 
-def _safe(value) -> str:
+def safe_cell(value) -> str:
+    """El valor como texto, con un apóstrofo delante si una hoja de cálculo lo tomaría por una fórmula."""
     text = "" if value is None else str(value)
     return "'" + text if text.startswith(FORMULA_PREFIXES) else text
+
+
+_safe = safe_cell
 
 
 def to_csv(rows: list[QueryLog], names: dict[str, str], include_questions: bool) -> str:

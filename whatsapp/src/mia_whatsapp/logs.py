@@ -42,6 +42,7 @@ def log_result(
     imagenes: int = 0,
     number_id: str | None = None,
     message_id: str | None = None,
+    contacto: str | None = None,
 ) -> None:
     line: dict = {
         "evento": "mensaje",
@@ -54,4 +55,7 @@ def log_result(
         line["number_id"] = number_id
     if message_id:
         line["message_id"] = message_id[:12]
+    # Solo el nombre del evento de contacto (feature 017: invitada, entregado, declinado...), nunca datos de la persona.
+    if contacto:
+        line["contacto"] = contacto
     print(json.dumps(line, ensure_ascii=False), flush=True)

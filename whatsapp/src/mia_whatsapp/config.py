@@ -29,6 +29,33 @@ DEFAULT_TEXT_RATE_LIMIT = "Enviaste muchos mensajes seguidos. Intenta de nuevo e
 DEFAULT_TEXT_NOT_TEXT = "Por ahora solo entiendo mensajes de texto. Escribe tu pregunta, por favor."
 DEFAULT_TEXT_TOO_LONG = "Tu mensaje es muy largo. Resúmelo en una o dos frases, por favor."
 
+# Datos de contacto (feature 017). Piden un correo y llevan un ejemplo con "@": por eso NO están en `_TEXT_FIELDS` (la
+# advertencia de contactos de programas). `{saved}` y `{example}` los reemplaza el servicio.
+DEFAULT_TEXT_CONTACT_INVITE = (
+    "Si quieres que la Coordinación del programa te contacte, puedes dejarme tu nombre y tu correo. "
+    "Es totalmente opcional: puedes seguir preguntando sin dejarlos. "
+    "Guardo tu número de WhatsApp y, si los das, tu nombre y correo, solo para que te contacten sobre los programas; "
+    "no los uses dentro de tus preguntas. "
+    "Para dejarlos escribe, por ejemplo: Ana Pérez ana@correo.com. "
+    "Si no quieres dejarlos, escribe «no». Para borrar tus datos, escribe «borrar mis datos»."
+)
+DEFAULT_TEXT_CONTACT_THANKS = (
+    "Listo, guardé {saved}. Para corregirlo escribe «quiero dejar mis datos»; para borrarlo, «borrar mis datos». "
+    "Sigue con tus preguntas cuando quieras."
+)
+DEFAULT_TEXT_CONTACT_DECLINED = (
+    "De acuerdo, no guardé tus datos. Puedes seguir preguntando; si cambias de opinión, escribe «quiero dejar mis datos»."
+)
+DEFAULT_TEXT_CONTACT_EMAIL_RETRY = (
+    "No pude leer tu correo. ¿Puedes escribirlo de nuevo? Por ejemplo: {example}. Si no quieres dejarlo, escribe «no»."
+)
+DEFAULT_TEXT_CONTACT_WHY = (
+    "Pido el nombre y el correo solo para que la Coordinación del programa pueda contactarte si te interesa. "
+    "Es opcional, y el bot funciona igual sin ellos. Puedes borrarlos cuando quieras escribiendo «borrar mis datos»."
+)
+DEFAULT_TEXT_CONTACT_ERASED = "Listo, borré tu nombre y tu correo. No te los volveré a pedir."
+DEFAULT_TEXT_CONTACT_NO_DATA = "No tenía tu nombre ni tu correo guardados."
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -55,6 +82,9 @@ class Settings(BaseSettings):
     bot_context_messages: int = Field(default=4, ge=2, le=10)
     bot_context_minutes: int = Field(default=30, ge=1, le=1440)
     bot_context_max_people: int = Field(default=5000, ge=100, le=100000)
+    # Datos de contacto (feature 017): `off` (por defecto) deja el bot exactamente como antes; `on` guarda el teléfono de quien
+    # escribe e invita, tras la primera respuesta, a dejar nombre y correo (opcional).
+    bot_contact: str = "off"
 
     bot_text_greeting: str = DEFAULT_TEXT_GREETING
     bot_text_no_info: str = DEFAULT_TEXT_NO_INFO
@@ -64,6 +94,23 @@ class Settings(BaseSettings):
     bot_text_too_long: str = DEFAULT_TEXT_TOO_LONG
     # `{programs}` se reemplaza por la lista numerada de programas candidatos.
     bot_text_clarify: str = DEFAULT_TEXT_CLARIFY
+    bot_text_contact_invite: str = DEFAULT_TEXT_CONTACT_INVITE
+    # `{saved}` = "tu nombre", "tu correo" o "tu nombre y tu correo" (con el correo enmascarado).
+    bot_text_contact_thanks: str = DEFAULT_TEXT_CONTACT_THANKS
+    bot_text_contact_declined: str = DEFAULT_TEXT_CONTACT_DECLINED
+    # `{example}` = un correo de ejemplo.
+    bot_text_contact_email_retry: str = DEFAULT_TEXT_CONTACT_EMAIL_RETRY
+    bot_text_contact_why: str = DEFAULT_TEXT_CONTACT_WHY
+    bot_text_contact_erased: str = DEFAULT_TEXT_CONTACT_ERASED
+    bot_text_contact_no_data: str = DEFAULT_TEXT_CONTACT_NO_DATA
+
+    @field_validator("bot_contact")
+    @classmethod
+    def _contact_mode(cls, value: str) -> str:
+        value = value.strip().lower()
+        if value not in ("off", "on"):
+            raise ValueError("BOT_CONTACT debe ser 'off' o 'on'")
+        return value
 
     @field_validator("mia_api_url", "kapso_api_url")
     @classmethod

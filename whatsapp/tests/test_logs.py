@@ -37,4 +37,20 @@ def test_la_linea_no_acepta_telefonos_ni_texto_de_la_pregunta(capsys):
     import inspect
 
     nombres = set(inspect.signature(log_result).parameters)
-    assert nombres == {"resultado", "ms", "mensajes_enviados", "imagenes", "number_id", "message_id"}
+    assert nombres == {"resultado", "ms", "mensajes_enviados", "imagenes", "number_id", "message_id", "contacto"}
+
+
+def test_el_evento_de_contacto_solo_aparece_si_se_pasa(capsys):
+    log_result("respondido", 5, contacto="invitada")
+    log_result("respondido", 5)
+
+    con, sin = _lineas(capsys)
+    assert con["contacto"] == "invitada" and "contacto" not in sin
+
+
+def test_la_linea_de_contacto_nunca_trae_telefono_nombre_ni_correo(capsys):
+    # La función solo acepta el nombre del evento; aunque alguien pase de más, el campo es un nombre corto de evento.
+    log_result("respondido", 5, contacto="entregado")
+
+    salida = capsys.readouterr().out
+    assert "@" not in salida and "+506" not in salida

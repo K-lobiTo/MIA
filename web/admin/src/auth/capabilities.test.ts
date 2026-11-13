@@ -13,6 +13,7 @@ describe("capabilities", () => {
       canUseAllDomains: true,
       canEditEquivalences: true,
       canManageBots: true,
+      canManageContacts: true,
       showGlobalCaps: true,
     });
   });
@@ -22,6 +23,12 @@ describe("capabilities", () => {
     expect(capabilities(unidad).canManageBots).toBe(false);
   });
 
+  it("solo el alcance global ve y administra los contactos de WhatsApp", () => {
+    expect(capabilities(global).canManageContacts).toBe(true);
+    expect(capabilities(unidad).canManageContacts).toBe(false);
+    expect(capabilities(null).canManageContacts).toBe(false);
+  });
+
   it("el alcance de unidad no crea unidades ni ve el saldo", () => {
     expect(capabilities(unidad)).toEqual({
       canCreateUnit: false,
@@ -29,6 +36,7 @@ describe("capabilities", () => {
       canUseAllDomains: false,
       canEditEquivalences: false,
       canManageBots: false,
+      canManageContacts: false,
       showGlobalCaps: false,
     });
   });

@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import type { Capabilities } from "../auth/capabilities";
 import { ArtefactosPage } from "./artefactos/ArtefactosPage";
 import { BotsPage } from "./bots/BotsPage";
+import { ContactosPage } from "./contactos/ContactosPage";
 import { EquivalenciasPage } from "./equivalencias/EquivalenciasPage";
 import { InventarioPage } from "./inventario/InventarioPage";
 import { UsoPage } from "./uso/UsoPage";
@@ -23,4 +24,5 @@ export const MODULES: PanelModule[] = [
   { path: "/siglas", label: "Siglas y equivalencias", element: <EquivalenciasPage /> },
   { path: "/usuarios", label: "Usuarios de la Consulta", element: <UsuariosPage /> },
   { path: "/bots", label: "Bots", element: <BotsPage />, requires: "canManageBots" },
+  { path: "/contactos", label: "Contactos de WhatsApp", element: <ContactosPage />, requires: "canManageContacts" },
 ];

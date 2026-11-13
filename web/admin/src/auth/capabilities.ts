@@ -6,6 +6,7 @@ export interface Capabilities {
   canUseAllDomains: boolean;
   canEditEquivalences: boolean;
   canManageBots: boolean;
+  canManageContacts: boolean;
   showGlobalCaps: boolean;
 }
 
@@ -20,6 +21,8 @@ export function capabilities(me: Pick<Me, "is_global"> | null | undefined): Capa
     canEditEquivalences: global,
     // El número de WhatsApp y la cuota de mensajes son de toda la institución, no de un programa.
     canManageBots: global,
+    // Los teléfonos, nombres y correos de quienes escriben al bot (feature 017) no son de ningún programa: solo el alcance global.
+    canManageContacts: global,
     showGlobalCaps: global,
   };
 }
