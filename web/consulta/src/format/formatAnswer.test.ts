@@ -26,8 +26,13 @@ describe("formatAnswer", () => {
 
   it("convierte líneas con 1. o 1) en una lista numerada", () => {
     expect(formatAnswer("1. uno\n2) dos")).toEqual([
-      { kind: "numbered", items: [[plain("uno")], [plain("dos")]] },
+      { kind: "numbered", items: [[plain("uno")], [plain("dos")]], start: 1 },
     ]);
+  });
+
+  it("una lista numerada interrumpida por viñetas conserva el número de inicio", () => {
+    const blocks = formatAnswer("1. uno\n   - sub\n2. dos\n\n3. tres");
+    expect(blocks.map((b) => (b.kind === "numbered" ? b.start : b.kind))).toEqual([1, "bullets", 2, 3]);
   });
 
   it("cambiar de tipo de lista cierra la anterior", () => {
