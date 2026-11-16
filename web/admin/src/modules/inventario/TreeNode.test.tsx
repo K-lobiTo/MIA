@@ -52,6 +52,19 @@ describe("DocumentRow", () => {
     expect(render(documento, vi.fn())).not.toContain("Eliminar horario_matricula.pdf");
   });
 
+  it("muestra la nota de estado de un documento en error y de uno listo con aviso, y nada si no hay nota", () => {
+    const nota = "No se pudo leer el libro: el archivo está dañado o protegido con contraseña.";
+    const enError = render({ ...documento, source_type: "xlsx", status: "error", status_note: nota });
+    expect(enError).toContain(nota);
+    expect(enError).toContain("XLSX");
+
+    const recorte = 'El libro se recortó en la fila 5000 de la hoja "Matrícula" por superar el tope de 5000 filas.';
+    expect(render({ ...documento, status: "done", status_note: recorte })).toContain("El libro se recortó");
+
+    expect(render(documento)).not.toContain("doc-note");
+    expect(render({ ...documento, status_note: null })).not.toContain("doc-note");
+  });
+
   it("la casilla de selección solo aparece en el modo de selección y refleja si está marcado", () => {
     const base: Seleccion = { activa: false, seleccionados: new Set(), alternar: vi.fn(), alternarGrupo: vi.fn() };
     expect(render(documento, undefined, undefined, base)).not.toContain("Seleccionar horario_matricula.pdf");

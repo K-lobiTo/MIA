@@ -53,7 +53,7 @@ flowchart LR
     end
 
     subgraph Ingesta["Pipeline de ingesta (modular)"]
-        L[Loader: PDF/DOCX/TXT] --> C[Chunker]
+        L[Loader: PDF/DOCX/TXT/XLSX] --> C[Chunker]
         C --> EMB[Embedding Provider]
     end
 
@@ -83,7 +83,7 @@ flowchart LR
 | Entidad | Campos clave | Dónde vive |
 |---|---|---|
 | **Domain** | `id`, `name`, `description`, `created_at` | Metadata store |
-| **Document** | `id`, `domain_id`, `filename`, `source_type` (pdf/docx/txt), `file_hash`, `status`, `uploaded_at` | Metadata store |
+| **Document** | `id`, `domain_id`, `filename`, `source_type` (pdf/docx/txt/xlsx), `file_hash`, `status`, `uploaded_at` | Metadata store |
 | **Chunk** | `id`, `document_id`, `domain` (redundante, para filtrar), `text`, `chunk_index`, `embedding` | Qdrant (vector + payload) |
 
 **Estrategia de colección en Qdrant:** una sola colección (`mia_chunks`) con `domain` como campo de payload filtrable, en lugar de una colección por dominio. Esto permite:
@@ -121,7 +121,7 @@ Para cumplir el requerimiento de "cambiar partes del pipeline sin que interfiera
 - **Backend/API:** Python 3.12 + FastAPI + Uvicorn.
 - **Base vectorial:** Qdrant (ya definida en el documento conceptual).
 - **Metadata store:** SQLAlchemy; SQLite en desarrollo y Postgres (Neon free) en la demo compartida, porque el disco de Render free se borra en cada reinicio.
-- **Procesamiento de documentos:** `pypdf`/`pdfplumber` (PDF), `python-docx` (DOCX).
+- **Procesamiento de documentos:** `pypdf`/`pdfplumber` (PDF), `python-docx` (DOCX), `openpyxl` (XLSX, feature 018).
 - **Orquestación RAG:** implementación directa, sin LangChain, LlamaIndex ni LangGraph. Decisión (2026-10-21): las interfaces propias (`DocumentLoader`, `EmbeddingProvider`, `LLMProvider`, `VectorStore`) ya cubren lo que esos frameworks abstraen, y el valor del sistema está en piezas de dominio que ninguno trae hechas. Razones y condición para reabrirla en [ARQUITECTURA.md](ARQUITECTURA.md#orquestación-sin-langchain-ni-langgraph).
 - **Contenedores:** Docker + docker-compose (API + Qdrant, para desarrollo local).
 - **Configuración:** variables de entorno vía `.env` (`pydantic-settings`).

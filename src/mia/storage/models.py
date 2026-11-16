@@ -101,6 +101,9 @@ class Document(Base):
     file_hash: Mapped[str] = mapped_column(String, index=True)
     status: Mapped[str] = mapped_column(String, default="pending")
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    # Motivo de un estado `error` o aviso de uno `done` (por ejemplo, un libro recortado). Mensaje fijo, nunca contenido
+    # del documento; máximo 500 caracteres, se recorta al guardar (feature 018).
+    status_note: Mapped[str | None] = mapped_column(String, nullable=True, default=None)
 
     domain: Mapped[Domain] = relationship(back_populates="documents")
     folder: Mapped[Folder | None] = relationship(back_populates="documents")

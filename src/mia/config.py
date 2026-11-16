@@ -189,6 +189,8 @@ class Settings(BaseSettings):
     # Orígenes (separados por comas) de los sitios estáticos que consultan la API. Vacío: sin CORS.
     cors_origins: str = ""
     max_upload_mb: int = 25
+    # Filas con contenido que se leen por libro de Excel, sumando las hojas visibles, antes de recortar (feature 018).
+    max_excel_rows: int = Field(default=5000, ge=100, le=50000)
     # Opcional: permite leer el saldo de toda la cuenta de OpenRouter. Puede crear claves sin límite,
     # por lo que no se recomienda en producción (ver specs/002-panel-administracion/research.md).
     openrouter_management_key: str = ""

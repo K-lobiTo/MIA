@@ -277,7 +277,7 @@ export function InventarioPage() {
         type="file"
         multiple
         hidden
-        accept=".pdf,.docx,.txt"
+        accept=".pdf,.docx,.txt,.xlsx"
         onChange={(event) => {
           const files = Array.from(event.target.files ?? []);
           if (files.length > 0 && pickTarget.current) uploads.add(files, pickTarget.current);

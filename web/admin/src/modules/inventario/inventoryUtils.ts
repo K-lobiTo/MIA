@@ -1,6 +1,6 @@
 import type { DomainNode, FolderNode, Inventory } from "../../api/types";
 
-export const ALLOWED_EXTENSIONS = [".pdf", ".docx", ".txt"];
+export const ALLOWED_EXTENSIONS = [".pdf", ".docx", ".txt", ".xlsx"];
 
 function folderHasPending(folder: FolderNode): boolean {
   return folder.documents.some(isInProgress) || folder.folders.some(folderHasPending);
@@ -27,7 +27,7 @@ export function hasPendingDocuments(inventory: Inventory | undefined): boolean {
 export function validateFile(file: { name: string; size: number }, maxMb: number): string | null {
   const lower = file.name.toLowerCase();
   if (!ALLOWED_EXTENSIONS.some((extension) => lower.endsWith(extension))) {
-    return "Solo se aceptan archivos PDF, DOCX y TXT.";
+    return "Solo se aceptan archivos PDF, DOCX, TXT y XLSX.";
   }
   if (file.size > maxMb * 1024 * 1024) {
     return `Supera el tamaño máximo de ${maxMb} MB.`;

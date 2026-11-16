@@ -9,7 +9,7 @@ from sqlalchemy.orm.exc import StaleDataError
 
 from mia.config import settings
 from mia.ingestion.chunker import chunk_text
-from mia.ingestion.loaders.base import get_loader
+from mia.ingestion.loaders.base import LoaderError, get_loader
 from mia.rag.embeddings import get_embedding_provider
 from mia.storage.db import SessionLocal
 from mia.storage.models import Document
@@ -18,6 +18,8 @@ from mia.storage.vector_store import Chunk, get_vector_store
 UPLOAD_DIR = Path("uploads")
 # Fragmentos por lote de embeddings + upsert: acota la memoria con documentos largos.
 INGEST_BATCH_SIZE = 64
+# Largo máximo de la nota de estado de un documento (data-model de la feature 018).
+STATUS_NOTE_MAX = 500
 
 # Las BackgroundTasks síncronas corren en el threadpool, así que varias subidas seguidas
 # ingerirían en paralelo y multiplicarían la memoria del modelo de embeddings (con 3 actas
@@ -94,13 +96,17 @@ def _ingest_document(document_id: str) -> None:
             return
 
         document.status = "processing"
+        document.status_note = None
         if not _commit_unless_removed(session, document_id):
             return
 
         status = "done"
+        note = None
         try:
             path = UPLOAD_DIR / f"{document.id}.{document.source_type}"
-            text = get_loader(document.source_type).load(path)
+            loader = get_loader(document.source_type)
+            text = loader.load(path)
+            note = " ".join(loader.notes) or None
             if not text or not text.strip():
                 raise ValueError(f"Documento sin texto extraíble: {path}")
 
@@ -128,13 +134,20 @@ def _ingest_document(document_id: str) -> None:
                         )
                     ]
                 )
+        except LoaderError as exc:
+            # Mensaje fijo y apto para personas, sin contenido del documento (feature 018).
+            logger.warning("Documento %s no procesable: %s", document_id, exc)
+            status = "error"
+            note = str(exc)
         except Exception:
             logger.exception("Fallo indexando documento %s", document_id)
             status = "error"
+            note = None
 
         # Se pudo eliminar mientras se procesaba el último lote: no se marca ni se deja nada.
         if _removed(session, document_id):
             _discard_chunks(document_id)
             return
         document.status = status
+        document.status_note = note[:STATUS_NOTE_MAX] if note else None
         _commit_unless_removed(session, document_id)

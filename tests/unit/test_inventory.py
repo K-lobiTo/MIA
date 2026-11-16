@@ -180,3 +180,15 @@ def test_el_inventario_cuenta_las_imagenes_con_una_sola_consulta_y_sin_leer_el_b
     consultas = [s for s in sentencias if "document_images" in s]
     assert len(consultas) == 1
     assert "document_images.content" not in consultas[0] and "count" in consultas[0].lower()
+
+
+def test_el_inventario_devuelve_la_nota_de_estado_o_null(client, db, admin):
+    _sembrar(db)
+    with db() as session:
+        session.get(Document, "doc1").status_note = "El libro se recortó en la fila 10 de la hoja \"A\" por superar el tope de 10 filas."
+        session.commit()
+
+    documentos = _documentos(client.get("/inventory", headers=admin).json())
+
+    assert documentos["doc1"]["status_note"].startswith("El libro se recortó")
+    assert documentos["doc2"]["status_note"] is None

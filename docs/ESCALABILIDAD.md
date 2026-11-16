@@ -92,3 +92,7 @@ Registro para no repetir caminos ya recorridos. Mediciones hechas con las actas 
 | `gemini-embedding-2` | Descartado | Es multimodal: combina todos los textos de una llamada en un único embedding, en lugar de devolver uno por texto. |
 
 Otras alternativas evaluadas sin probar: Google Cloud Run y Oracle Cloud Always Free (requieren tarjeta), Koyeb free (mismo límite de 512 MB), Railway (solo crédito de prueba; adoptada el 2026-10-07 al aceptar un gasto acotado, ver arriba).
+
+## Archivos de Excel (feature 018): riesgo aceptado
+
+La ingesta de libros `.xlsx` lee el archivo con `openpyxl` en modo de solo lectura (no ejecuta macros ni vínculos) y el tamaño ya está acotado por `MAX_UPLOAD_MB`. No se protege contra un `.xlsx` malicioso (por ejemplo, una bomba de compresión que consuma tiempo o memoria al leerse) porque solo lo suben personas administradoras autenticadas y es un prototipo de costo cero. Si se abre la carga a más personas, hay que revisarlo: instalar `defusedxml` (que `openpyxl` usa si está presente) y acotar el tiempo y la memoria de la lectura.

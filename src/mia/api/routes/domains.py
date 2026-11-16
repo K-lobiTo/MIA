@@ -64,6 +64,7 @@ class DocumentOut(BaseModel):
     source_type: str
     status: str
     folder_id: str | None = None
+    status_note: str | None = None
     already_existed: bool = False
 
     model_config = {"from_attributes": True}
@@ -189,8 +190,11 @@ def upload_document(
     ensure_domain(principal, domain, "document.upload")
 
     source_type = Path(file.filename or "").suffix.lstrip(".").lower()
-    if source_type not in {"pdf", "docx", "txt"}:
-        raise HTTPException(status_code=400, detail=f"Tipo de fuente no soportado: {source_type}")
+    if source_type not in {"pdf", "docx", "txt", "xlsx"}:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Tipo de fuente no soportado: {source_type}. Tipos aceptados: pdf, docx, txt, xlsx.",
+        )
 
     if folder_id is not None:
         folder = session.get(Folder, folder_id)

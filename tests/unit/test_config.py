@@ -395,3 +395,15 @@ def test_la_retencion_en_cero_es_valida_porque_apaga_el_guardado():
     from mia.config import Settings
 
     assert Settings(_env_file=None, chat_retention_days=0).chat_retention_days == 0
+
+
+def test_max_excel_rows_por_defecto_y_rango():
+    from pydantic import ValidationError
+
+    from mia.config import Settings
+
+    assert Settings().max_excel_rows == 5000
+    for valor in (99, 50001):
+        with pytest.raises(ValidationError):
+            Settings(max_excel_rows=valor)
+    assert Settings(max_excel_rows=100).max_excel_rows == 100

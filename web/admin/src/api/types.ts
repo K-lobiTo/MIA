@@ -11,6 +11,8 @@ export interface DocumentItem {
   folder_id: string | null;
   // Imágenes asociadas al documento (feature 011).
   image_count: number;
+  // Motivo de un error o aviso de un documento listo (feature 018).
+  status_note?: string | null;
 }
 
 export interface FolderNode {

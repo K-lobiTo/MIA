@@ -55,14 +55,17 @@ describe("hasPendingDocuments", () => {
 });
 
 describe("validateFile", () => {
-  it("acepta PDF, DOCX y TXT sin importar mayúsculas", () => {
-    for (const name of ["a.pdf", "A.PDF", "b.docx", "c.txt"]) {
+  it("acepta PDF, DOCX, TXT y XLSX sin importar mayúsculas", () => {
+    for (const name of ["a.pdf", "A.PDF", "b.docx", "c.txt", "Horarios.XLSX"]) {
       expect(validateFile({ name, size: 10 }, 25)).toBeNull();
     }
   });
 
   it("rechaza otros tipos antes de subir", () => {
-    expect(validateFile({ name: "foto.png", size: 10 }, 25)).toMatch(/PDF, DOCX y TXT/);
+    expect(validateFile({ name: "foto.png", size: 10 }, 25)).toBe("Solo se aceptan archivos PDF, DOCX, TXT y XLSX.");
+    for (const name of ["datos.csv", "datos.xls", "datos.xlsm"]) {
+      expect(validateFile({ name, size: 10 }, 25)).toMatch(/XLSX/);
+    }
     expect(validateFile({ name: "sin-extension", size: 10 }, 25)).not.toBeNull();
   });
 
