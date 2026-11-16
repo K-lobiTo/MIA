@@ -37,6 +37,10 @@ Mensajes fijos (todos en español, sin datos del libro):
 | El archivo no se puede leer como libro (dañado o con contraseña) | `error` | `No se pudo leer el libro: el archivo está dañado o protegido con contraseña.` |
 | Sin hojas visibles o sin celdas con contenido | `error` | `El libro no tiene hojas visibles con contenido.` |
 | Se llegó a `MAX_EXCEL_ROWS` | `done` | `El libro se recortó en la fila N de la hoja "X" por superar el tope de M filas.` |
+| Hay contenido más allá de la columna 200 de una hoja (una nota por hoja) | `done` | `En la hoja "X" se leyeron solo las primeras 200 columnas.` |
+| Se dejó de leer una hoja tras 10000 filas vacías seguidas (se avisa siempre que ocurre) | `done` | `Se dejó de leer la hoja "X" en la fila N tras 10000 filas vacías seguidas; si había datos después, no se ingestaron.` |
+
+Cada aviso de recorte o de lectura limitada también queda como línea `[Aviso: ...]` (con la misma frase, sin la mayúscula inicial ni el punto final) al final del texto, para que una respuesta no presente el libro como completo. Ver [research.md](research.md) R5 y R9.
 
 ## 3. Interfaz `DocumentLoader` (interna)
 

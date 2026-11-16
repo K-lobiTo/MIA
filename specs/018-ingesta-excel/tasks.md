@@ -214,3 +214,22 @@ Tarea: "T009 Pruebas del panel en web/admin/src/modules/inventario/"
 - Las dos primeras historias son las dos P1 de la spec porque solo juntas dan respuestas correctas: aceptar el archivo (US1) sin encabezados (US2) produce valores sin etiqueta.
 - Las constantes de mensaje (`No se pudo leer el libro: ...`, `El libro no tiene hojas visibles con contenido.`, el aviso de recorte) se definen **una sola vez** como constantes del módulo `xlsx_loader.py` y las pruebas las importan.
 - `[USUARIO]` no lo ejecuta quien implementa: ver las reglas arriba.
+
+---
+
+## Phase 9: Convergence
+
+- [X] T030 Acotar en `src/mia/ingestion/loaders/xlsx_loader.py` la lectura de hojas con un área usada enorme (HIGH): hoy una celda con formato en `XFD50000` hace que la lectura tarde 92 s (medido el 2026-11-15) y una en `XFD1048576` mantendría la ingesta ocupada casi una hora; leer como máximo 200 columnas (`hoja.iter_rows(max_col=200)`, constante del módulo `MAX_COLUMNAS`) y dejar de leer una hoja tras 10000 filas vacías seguidas (constante `MAX_FILAS_VACIAS_SEGUIDAS`); pruebas en `tests/unit/test_xlsx_loader.py`: un libro con los datos en `A1:C3` y una celda con formato en `XFD50000` se lee en menos de 5 s con las mismas líneas que sin la celda lejana, y uno con 15000 filas vacías entre un bloque y un segundo bloque lee solo el primero sin falla; documentar el límite en la sección de libros de Excel de `docs/OPERACION.md` y en `research.md` (nueva decisión R9) per FR-008, US4 y SC-004 (partial)
+- [X] T031 Resolver la rama que nombra por letra (`F: valor`) las celdas a la derecha del último encabezado en `_lineas_de_hoja` de `src/mia/ingestion/loaders/xlsx_loader.py`: documentarla en [research.md](research.md) R3 con una prueba que la alcance (una fila de datos más ancha que la de encabezados) o quitarla si no es alcanzable tras T030, per research R3 (unrequested)
+
+---
+
+## Phase 10: Convergence
+
+- [X] T032 Avisar cuando el cargador deja contenido sin leer por los límites de T030 (HIGH), en `src/mia/ingestion/loaders/xlsx_loader.py`: hoy una celda con valor en la columna 250 o una fila con datos después de 10000 filas vacías seguidas se descartan sin ninguna nota (comprobado el 2026-11-15: el texto sale sin ellas y `notes == []`), contra FR-008 ("nunca recortar en silencio") y US4 escenario 3; leer una columna de más (`iter_rows(max_col=MAX_COLUMNAS + 1)`) y, si la celda de la columna `MAX_COLUMNAS + 1` de alguna fila tiene contenido, agregar a `self.notes` (una sola vez por hoja) `En la hoja "X" se leyeron solo las primeras 200 columnas.`; al cortar la hoja por `MAX_FILAS_VACIAS_SEGUIDAS` agregar `Se dejó de leer la hoja "X" en la fila N tras 10000 filas vacías seguidas; si había datos después, no se ingestaron.` (se avisa siempre que el corte ocurre, porque no se sabe sin leerlo); en ambos casos añadir también la línea `[Aviso: ...]` al final del texto, como el recorte por `MAX_EXCEL_ROWS`; pruebas en `tests/unit/test_xlsx_loader.py` de las dos notas y de que un libro normal no genera ninguna; corregir `docs/OPERACION.md` y [research.md](research.md) R9, que hoy dicen "ni se avisa", per FR-008 y US4/AC3 (contradicts)
+
+---
+
+## Phase 11: Convergence
+
+- [X] T033 Alinear los contratos con las notas que hoy emite el cargador (LOW): agregar a la tabla "Mensajes fijos" de [contracts/interfaces.md](contracts/interfaces.md) las filas `done` / `En la hoja "X" se leyeron solo las primeras 200 columnas.` y `done` / `Se dejó de leer la hoja "X" en la fila N tras 10000 filas vacías seguidas; si había datos después, no se ingestaron.` (con el aviso `[Aviso: ...]` equivalente al final del texto, como el recorte por `MAX_EXCEL_ROWS`), y a la tabla de "Casos de error y recorte" de [quickstart.md](quickstart.md) los dos casos para probarlas a mano (un libro con contenido en la columna 201 y uno con 10000 filas vacías entre dos bloques), per plan: contratos y R9 (contradicts)

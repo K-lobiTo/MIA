@@ -104,3 +104,13 @@ El tamaño del archivo ya está acotado por `MAX_UPLOAD_MB` (25 MB, igual para t
 **Decisión**: sin medidas nuevas más allá de R1. Solo la persona administradora (alcance global o del dominio) sube archivos, el tamaño ya está acotado, `openpyxl` en modo de lectura no ejecuta macros ni resuelve vínculos externos y el archivo se guarda con el id del documento, no con el nombre original.
 
 **Riesgo aceptado**: un `.xlsx` malicioso (una bomba de compresión) podría consumir tiempo o memoria. No se trata aquí porque el actor es una persona administradora autenticada y el entorno es un prototipo de costo cero; `openpyxl` usa `defusedxml` si está instalado, y se deja anotado en `docs/ESCALABILIDAD.md` como punto a revisar si se abre la carga a más personas.
+
+## R9. Hojas con un área usada enorme (convergencia)
+
+**Decisión**: el cargador lee como máximo `MAX_COLUMNAS` = 200 columnas por hoja (`iter_rows(max_col=200)`) y deja de leer una hoja tras `MAX_FILAS_VACIAS_SEGUIDAS` = 10000 filas vacías seguidas. Son constantes del módulo, no ajustes de entorno.
+
+**Razón**: `openpyxl` rellena cada fila hasta el ancho declarado de la hoja. Una celda con formato muy lejos (el Ctrl+Fin de Excel llega a `XFD1048576`) hace que la hoja declare 16384 columnas y mucho alto; medido el 2026-11-15, una celda en `XFD50000` tardaba 92 s y una en `XFD1048576` habría mantenido la ingesta ocupada casi una hora. `MAX_EXCEL_ROWS` no lo evita porque solo cuenta filas con contenido. Con los dos límites la misma lectura tarda 0,23 s.
+
+**Sin recortes en silencio (FR-008)**: lo que estos límites dejan sin leer se avisa, como el recorte por `MAX_EXCEL_ROWS`, con una nota en el documento y una línea `[Aviso: ...]` al final del texto. Se lee una columna de más (la 201) solo para saber si hay contenido más allá del tope y se avisa una vez por hoja. El corte por filas vacías seguidas se avisa siempre que ocurre, porque no se puede saber si había datos después sin leerlos; por eso un libro con una celda con formato muy lejos del contenido muestra ese aviso aunque no se pierda nada (falso aviso aceptado, es lo único que se puede afirmar sin leer lo que se evita leer).
+
+**Consecuencia para R3**: como todas las filas llegan rellenadas al mismo ancho, cada valor siempre tiene su encabezado (con `Columna <LETRA>` si la celda del encabezado está vacía). No hace falta una rama aparte para valores a la derecha del último encabezado: se quitó por inalcanzable.

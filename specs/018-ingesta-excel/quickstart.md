@@ -42,6 +42,8 @@ cd web/admin && npm test && npx tsc --noEmit                              # exte
 | Libro con contraseña | proteger un libro con contraseña en Excel y subirlo | documento en `error` con el mismo tipo de mensaje |
 | Libro vacío | libro sin celdas con contenido (o solo con hojas ocultas) | documento en `error` con "sin hojas visibles con contenido" |
 | Recorte | `MAX_EXCEL_ROWS=100` y un libro de 300 filas | documento `done` con `status_note` de recorte y línea de aviso al final del texto |
+| Más de 200 columnas | un libro con un valor en la columna 201 (por ejemplo, `hoja.cell(row=2, column=201, value="x")` con `openpyxl`) | documento `done` con la nota `En la hoja "X" se leyeron solo las primeras 200 columnas.` y la línea `[Aviso: ...]` al final del texto |
+| Filas vacías seguidas | un libro con un bloque de datos, 10000 filas vacías y un segundo bloque | documento `done` con la nota `Se dejó de leer la hoja "X" en la fila N tras 10000 filas vacías seguidas; ...`; el segundo bloque no se ingesta |
 | Duplicado | subir el mismo libro dos veces al mismo dominio | segunda carga con `200` y `already_existed: true` |
 
 ## 4. Panel

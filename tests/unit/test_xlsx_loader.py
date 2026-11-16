@@ -402,3 +402,154 @@ def test_un_libro_que_no_se_recorta_deja_las_notas_vacias_y_cada_lectura_las_rei
     cargador.load(chico)
 
     assert cargador.notes == []
+
+
+# --- Convergencia: hojas con un área usada enorme ---
+
+
+def test_una_celda_con_formato_muy_lejos_no_hace_lenta_la_lectura(tmp_path):
+    import time
+
+    from openpyxl import Workbook
+
+    libro = Workbook()
+    hoja = libro.active
+    hoja.title = "H"
+    hoja.append(["a", "b", "c"])
+    hoja.append([1, 2, 3])
+    hoja["XFD50000"].number_format = "0%"  # el área usada llega a XFD50000: antes tardaba 92 s
+    ruta = tmp_path / "l.xlsx"
+    libro.save(ruta)
+
+    inicio = time.time()
+    lineas = _leer(ruta)
+
+    assert time.time() - inicio < 5
+    # Las mismas líneas que sin la celda lejana, más el aviso del corte por filas vacías.
+    assert lineas[:2] == ["## Hoja: H", "[H] a: 1 | b: 2 | c: 3"]
+    assert lineas[2].startswith('[Aviso: se dejó de leer la hoja "H"')
+
+
+def test_se_deja_de_leer_la_hoja_tras_muchas_filas_vacias_seguidas(tmp_path):
+    from openpyxl import Workbook
+
+    from mia.ingestion.loaders.xlsx_loader import MAX_FILAS_VACIAS_SEGUIDAS
+
+    libro = Workbook()
+    hoja = libro.active
+    hoja.title = "H"
+    hoja.append(["a", "b"])
+    hoja.append(["primero", 1])
+    hoja.cell(row=MAX_FILAS_VACIAS_SEGUIDAS + 100, column=1, value="lejano")
+    hoja.cell(row=MAX_FILAS_VACIAS_SEGUIDAS + 100, column=2, value=2)
+    ruta = tmp_path / "l.xlsx"
+    libro.save(ruta)
+
+    lineas = _leer(ruta)
+
+    assert lineas[:2] == ["## Hoja: H", "[H] a: primero | b: 1"]
+    assert "lejano" not in "\n".join(lineas)
+
+
+def test_los_bloques_separados_por_pocas_filas_vacias_se_leen_completos(tmp_path):
+    from openpyxl import Workbook
+
+    libro = Workbook()
+    hoja = libro.active
+    hoja.title = "H"
+    hoja.append(["a", "b"])
+    hoja.append(["primero", 1])
+    hoja.cell(row=60, column=1, value="segundo")
+    hoja.cell(row=60, column=2, value=2)
+    ruta = tmp_path / "l.xlsx"
+    libro.save(ruta)
+
+    assert _leer(ruta)[-1] == "[H] a: segundo | b: 2"
+
+
+def test_una_fila_de_datos_mas_ancha_que_la_de_encabezados_usa_el_ancho_de_la_hoja(tmp_path):
+    """Todas las filas llegan rellenadas al mismo ancho, así que cada valor tiene su encabezado (R3): la celda sin
+    encabezado se nombra `Columna <LETRA>`, no hace falta una rama aparte."""
+    ruta = hacer_libro(tmp_path / "l.xlsx", {"H": [["a", "b"], [1, 2, 3]]})
+
+    assert _leer(ruta)[1] == "[H] a: 1 | b: 2 | Columna C: 3"
+
+
+def test_el_contenido_mas_alla_del_tope_de_columnas_se_avisa(tmp_path):
+    from openpyxl import Workbook
+
+    from mia.ingestion.loaders.xlsx_loader import MAX_COLUMNAS
+
+    libro = Workbook()
+    hoja = libro.active
+    hoja.title = "H"
+    hoja.append(["a", "b"])
+    hoja.append([1, 2])
+    hoja.cell(row=2, column=MAX_COLUMNAS + 1, value="mas-alla")
+    ruta = tmp_path / "l.xlsx"
+    libro.save(ruta)
+    cargador = XlsxLoader()
+
+    lineas = cargador.load(ruta).splitlines()
+
+    assert "mas-alla" not in "\n".join(lineas)
+    assert cargador.notes == [f'En la hoja "H" se leyeron solo las primeras {MAX_COLUMNAS} columnas.']
+    assert lineas[-1] == f'[Aviso: en la hoja "H" se leyeron solo las primeras {MAX_COLUMNAS} columnas]'
+
+
+def test_el_aviso_de_columnas_sale_una_sola_vez_por_hoja(tmp_path):
+    from openpyxl import Workbook
+
+    from mia.ingestion.loaders.xlsx_loader import MAX_COLUMNAS
+
+    libro = Workbook()
+    hoja = libro.active
+    hoja.title = "H"
+    hoja.append(["a", "b"])
+    for fila in range(2, 6):
+        hoja.cell(row=fila, column=1, value=fila)
+        hoja.cell(row=fila, column=MAX_COLUMNAS + 1, value="x")
+    ruta = tmp_path / "l.xlsx"
+    libro.save(ruta)
+    cargador = XlsxLoader()
+
+    cargador.load(ruta)
+
+    assert len(cargador.notes) == 1
+
+
+def test_el_corte_por_filas_vacias_seguidas_se_avisa_con_su_fila(tmp_path):
+    from openpyxl import Workbook
+
+    from mia.ingestion.loaders.xlsx_loader import MAX_FILAS_VACIAS_SEGUIDAS
+
+    libro = Workbook()
+    hoja = libro.active
+    hoja.title = "H"
+    hoja.append(["a", "b"])
+    hoja.append(["primero", 1])
+    hoja.cell(row=MAX_FILAS_VACIAS_SEGUIDAS + 100, column=1, value="lejano")
+    hoja.cell(row=MAX_FILAS_VACIAS_SEGUIDAS + 100, column=2, value=2)
+    ruta = tmp_path / "l.xlsx"
+    libro.save(ruta)
+    cargador = XlsxLoader()
+
+    lineas = cargador.load(ruta).splitlines()
+
+    fila_del_corte = 2 + MAX_FILAS_VACIAS_SEGUIDAS
+    assert "lejano" not in "\n".join(lineas)
+    esperado = (
+        f'Se dejó de leer la hoja "H" en la fila {fila_del_corte} tras {MAX_FILAS_VACIAS_SEGUIDAS} filas vacías seguidas; '
+        "si había datos después, no se ingestaron."
+    )
+    assert cargador.notes == [esperado]
+    assert lineas[-1].startswith('[Aviso: se dejó de leer la hoja "H" en la fila ')
+
+
+def test_un_libro_normal_no_genera_avisos_por_los_limites_de_lectura(tmp_path):
+    ruta = hacer_libro(tmp_path / "l.xlsx", {"H": [["a", "b"], [1, 2], [3, 4]]})
+    cargador = XlsxLoader()
+
+    texto = cargador.load(ruta)
+
+    assert cargador.notes == [] and "[Aviso" not in texto
