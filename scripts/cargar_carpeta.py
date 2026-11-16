@@ -29,7 +29,7 @@ import urllib.request
 import uuid
 from pathlib import Path
 
-TIPOS = {".pdf", ".docx", ".txt"}
+TIPOS = {".pdf", ".docx", ".txt", ".xlsx"}
 ESPERA_ESTADO = 5  # segundos entre consultas de estado de un documento en proceso
 TIMEOUT = 900  # una tesis larga puede tardar varios minutos en indexarse
 
@@ -115,6 +115,8 @@ def main() -> int:
         for p in carpeta.rglob("*")
         if p.is_file()
         and p.suffix.lower() in TIPOS
+        # Excel crea un temporal "~$libro.xlsx" mientras el libro está abierto: no es un libro válido.
+        and not p.name.startswith("~$")
         and not any(texto in p.name for texto in args.excluir)
     )
     dominio_id = obtener_dominio(api, args.dominio, args.descripcion, args.programa)

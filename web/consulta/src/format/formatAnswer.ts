@@ -8,7 +8,9 @@ export interface Segment {
   bold: boolean;
 }
 
-type ListBlock = { kind: "bullets" | "numbered"; items: Segment[][] };
+// `start` solo existe en las numeradas: el número con el que empieza en el texto original. Así una
+// lista interrumpida por viñetas o líneas en blanco sigue contando (3, 4...) en vez de reiniciar en 1.
+type ListBlock = { kind: "bullets" | "numbered"; items: Segment[][]; start?: number };
 
 export type Block = { kind: "paragraph"; segments: Segment[] } | ListBlock;
 
@@ -28,9 +30,9 @@ export function formatAnswer(text: string): Block[] {
   const blocks: Block[] = [];
   let list = null as ListBlock | null;
 
-  const addItem = (kind: "bullets" | "numbered", content: string) => {
+  const addItem = (kind: "bullets" | "numbered", content: string, number?: number) => {
     if (!list || list.kind !== kind) {
-      list = { kind, items: [] };
+      list = kind === "numbered" ? { kind, items: [], start: number } : { kind, items: [] };
       blocks.push(list);
     }
     list.items.push(inline(content));
@@ -39,13 +41,13 @@ export function formatAnswer(text: string): Block[] {
   for (const rawLine of text.split("\n")) {
     const line = rawLine.trim();
     const bullet = line.match(/^[*-]\s+(.*)$/);
-    const numbered = line.match(/^\d+[.)]\s+(.*)$/);
+    const numbered = line.match(/^(\d+)[.)]\s+(.*)$/);
     const heading = line.match(/^#{1,6}\s+(.*)$/);
 
     if (bullet) {
       addItem("bullets", bullet[1]);
     } else if (numbered) {
-      addItem("numbered", numbered[1]);
+      addItem("numbered", numbered[2], Number(numbered[1]));
     } else if (heading) {
       // Si el modelo usa encabezados en lugar de negritas, se muestran como título en negrita.
       list = null;

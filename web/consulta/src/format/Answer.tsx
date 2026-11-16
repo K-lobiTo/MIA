@@ -24,7 +24,7 @@ export function Answer({ text }: { text: string }) {
         }
         const Tag = block.kind === "bullets" ? "ul" : "ol";
         return (
-          <Tag key={index}>
+          <Tag key={index} {...(block.kind === "numbered" && block.start ? { start: block.start } : {})}>
             {block.items.map((item, i) => (
               <li key={i}>
                 <Inline segments={item} />

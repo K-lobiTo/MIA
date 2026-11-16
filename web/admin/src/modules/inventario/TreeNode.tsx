@@ -1,4 +1,4 @@
-import { ActionIcon, Button, Checkbox, Paper } from "@mantine/core";
+import { ActionIcon, Button, Checkbox, Paper, Text } from "@mantine/core";
 import { IconChevronRight, IconTrash } from "@tabler/icons-react";
 import { createContext, useContext, useState, type DragEvent, type ReactNode } from "react";
 import { DynamicBadge } from "../../components/DynamicBadge";
@@ -174,6 +174,12 @@ export function DocumentRow({
         >
           Eliminar
         </Button>
+      )}
+      {document.status_note && (
+        // Motivo del error o aviso de un documento listo (feature 018): siempre visible, en su propia línea.
+        <Text className="doc-note" size="xs" c={document.status === "error" ? "red" : "dimmed"}>
+          {document.status_note}
+        </Text>
       )}
     </div>
   );

@@ -35,7 +35,7 @@ from mia.storage.models import ArtifactDomain, Document, Domain, Folder, Unit
 
 MAPEO_POR_DEFECTO = Path(__file__).parent / "datos" / "reorganizacion_v2.json"
 RAIZ_POR_DEFECTO = Path("tmp")
-TIPOS = {".pdf", ".docx", ".txt"}
+TIPOS = {".pdf", ".docx", ".txt", ".xlsx"}
 
 
 @dataclass
@@ -60,7 +60,8 @@ def _ubicaciones(raiz: Path, origenes: list[dict]) -> dict[str, list[str]]:
         for directorio, _, archivos in os.walk(base):
             subcarpetas = list(Path(directorio).relative_to(base).parts)
             for archivo in archivos:
-                if Path(archivo).suffix.lower() in TIPOS:
+                # Los "~$..." son temporales que Excel crea con el libro abierto.
+                if Path(archivo).suffix.lower() in TIPOS and not archivo.startswith("~$"):
                     ubicaciones.setdefault(_nfc(archivo), list(origen.get("carpeta", [])) + subcarpetas)
     return ubicaciones
 

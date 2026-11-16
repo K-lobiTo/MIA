@@ -29,6 +29,8 @@ class DocumentNode(BaseModel):
     folder_id: str | None
     # Imágenes asociadas al documento (feature 011); 0 si no tiene.
     image_count: int = 0
+    # Motivo de un error o aviso de un documento listo (feature 018); null si no hay nada que decir.
+    status_note: str | None = None
 
 
 class FolderNode(BaseModel):
@@ -82,6 +84,7 @@ def _document_node(document: Document, image_counts: dict[str, int]) -> Document
         uploaded_at=(document.uploaded_at.isoformat() + "Z") if document.uploaded_at else None,
         folder_id=document.folder_id,
         image_count=image_counts.get(document.id, 0),
+        status_note=document.status_note,
     )
 
 
