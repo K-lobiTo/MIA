@@ -7,6 +7,7 @@ entender la pregunta. Nada de esto se guarda: vive lo que dura la consulta."""
 from dataclasses import dataclass
 
 from mia.config import settings
+from mia.rag.mode_ids import is_reasoning_class
 
 # Texto con que la API responde "sin información" (el de `NO_INFO_ANSWER` de la ruta de consulta) y marcador del modelo.
 NO_INFO_PREFIX = "No encontré información suficiente"
@@ -41,7 +42,7 @@ def sanitize_history(history, turns: int, mode: str) -> list[HistoryTurn]:
     (si se pasa, salen las más viejas)."""
     if turns <= 0:
         return []
-    factor = REASONING_FACTOR if mode == "razonamiento" else 1
+    factor = REASONING_FACTOR if is_reasoning_class(mode) else 1
     max_answer = settings.history_max_answer_chars * factor
     max_total = settings.history_max_chars * factor
     valid: list[HistoryTurn] = []
@@ -69,7 +70,7 @@ def format_history(history: list[HistoryTurn] | None) -> str:
     entries = []
     for turn in history:
         lines = [f"Pregunta: {turn.question}", f"Respuesta: {turn.answer}"]
-        if turn.mode == "razonamiento":
+        if is_reasoning_class(turn.mode):
             lines.append(REASONING_WARNING)
         entries.append("\n".join(lines))
     return HISTORY_HEADER + "\n" + "\n\n".join(entries)

@@ -46,12 +46,15 @@ def preguntar_con_sesion(
     conversacion=None,
     modo="literal",
     historial=None,
+    template_id=None,
 ):
     cuerpo = {"domains": ["dom-1"], "question": pregunta, "mode": modo}
     if conversacion is not None:
         cuerpo["conversation_id"] = conversacion
     if historial is not None:
         cuerpo["history"] = historial
+    if template_id is not None:
+        cuerpo["template_id"] = template_id
     return client.post("/query", json=cuerpo, headers={**artefacto.headers, **sesion["headers"]})
 
 

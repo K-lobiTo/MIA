@@ -49,6 +49,8 @@ El bot (canal para atraer estudiantes, definido en [Definicion_Requerimientos_Bo
 
 Un segundo canal posible, no implementado, es un artefacto de correo electrónico (un servicio aparte que reciba el correo y consulte a la API como lo hace `mia-whatsapp`). Está documentado como idea a futuro, con sus opciones de recepción y decisiones abiertas, en [Idea_Artefacto_Correo.md](Idea_Artefacto_Correo.md).
 
+Otra extensión posible, tampoco implementada, es usar **páginas web como fuente de un dominio**, leídas cada X días. Su análisis de viabilidad, las opciones (script fuera del servidor, módulo del panel, programador en la API), el riesgo de calidad y las decisiones abiertas están en [Idea_Fuente_Web.md](Idea_Fuente_Web.md).
+
 ## Railway y OpenRouter (decisión del 2026-10-07)
 
 Reemplaza a la decisión de Cloud Run de la sección siguiente, que quedó descartada porque Google Cloud pidió un prepago de 30 USD.

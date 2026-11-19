@@ -41,7 +41,7 @@ def test_base_anterior_se_migra_sin_perder_datos(tmp_path):
     assert TABLAS_NUEVAS <= set(inspector.get_table_names())
     assert "unit_id" in {c["name"] for c in inspector.get_columns("domains")}
     assert "folder_id" in {c["name"] for c in inspector.get_columns("documents")}
-    assert _revision(engine) == "0013"
+    assert _revision(engine) == "0014"
     with engine.connect() as connection:
         assert connection.execute(text("SELECT name, unit_id FROM domains")).one() == (
             "Memoria del Consejo",
@@ -75,7 +75,7 @@ def test_base_vacia_queda_en_la_ultima_revision(tmp_path):
     init_db(engine)
 
     assert TABLAS_NUEVAS <= set(inspect(engine).get_table_names())
-    assert _revision(engine) == "0013"
+    assert _revision(engine) == "0014"
 
 
 def test_init_db_se_puede_correr_dos_veces(tmp_path):
@@ -84,7 +84,7 @@ def test_init_db_se_puede_correr_dos_veces(tmp_path):
     init_db(engine)
     init_db(engine)
 
-    assert _revision(engine) == "0013"
+    assert _revision(engine) == "0014"
 
 
 def test_migracion_0003_crea_administradores_sin_tocar_datos(tmp_path):
@@ -269,7 +269,7 @@ def test_subir_a_la_cabeza_sobre_una_base_en_la_0005_no_pierde_datos(tmp_path):
 
     _hasta(engine, "head")
 
-    assert _revision(engine) == "0013"
+    assert _revision(engine) == "0014"
     with engine.connect() as connection:
         assert connection.execute(text("SELECT filename FROM documents")).scalar_one() == "acta.pdf"
         assert connection.execute(text("SELECT name FROM domains")).scalar_one() == "Memoria del Consejo"
@@ -289,7 +289,7 @@ def test_bajar_a_la_0005_borra_solo_las_tablas_nuevas_y_se_puede_volver_a_subir(
 
     _hasta(engine, "head")
 
-    assert _revision(engine) == "0013"
+    assert _revision(engine) == "0014"
     assert {"bots", "bot_message_counts", "document_images"} <= set(
         inspect(engine).get_table_names()
     )
@@ -323,7 +323,7 @@ def test_la_migracion_0008_agrega_la_memoria_de_conversacion_sin_perder_datos(tm
     assert columnas["context_turns"]["nullable"] is False
     bots = {c["name"]: c for c in inspect(engine).get_columns("bots")}
     assert bots["context_turns"]["nullable"] is True
-    assert _revision(engine) == "0013"
+    assert _revision(engine) == "0014"
     with engine.connect() as connection:
         assert connection.execute(text("SELECT name, context_turns FROM artifacts")).one() == (
             "Consulta",
@@ -383,12 +383,12 @@ def test_la_migracion_0009_crea_usuarios_sesiones_y_conversaciones_sin_perder_da
     assert columnas("consulta_users")["unit_id"]["nullable"] is True
     assert {"id", "user_id", "token_hash", "created_at", "last_seen_at", "expires_at"} == set(columnas("consulta_sessions"))
     assert {"id", "user_id", "title", "created_at", "updated_at"} == set(columnas("conversations"))
-    assert {"id", "conversation_id", "position", "question", "answer", "sources", "mode", "no_info", "created_at"} == set(columnas("conversation_turns"))
+    assert {"id", "conversation_id", "position", "question", "answer", "sources", "mode", "no_info", "created_at", "template_id", "template_name"} == set(columnas("conversation_turns"))
     indices = {i["name"] for t in ("consulta_sessions", "conversations", "conversation_turns") for i in inspect(engine).get_indexes(t)}
     assert {"ix_consulta_sessions_token_hash", "ix_conversations_user_id_updated_at", "ix_conversation_turns_conversation_id"} <= indices
     require_login = columnas("artifacts")["require_login"]
     assert require_login["nullable"] is False
-    assert _revision(engine) == "0013"
+    assert _revision(engine) == "0014"
     with engine.connect() as connection:
         # El artefacto existente no cambia y nace sin exigir sesión.
         assert connection.execute(text("SELECT name, context_turns, require_login FROM artifacts")).one() == ("Consulta", 3, 0)
@@ -417,7 +417,7 @@ def test_bajar_a_la_0008_quita_lo_de_la_0009_y_conserva_el_resto(tmp_path):
 
     _hasta(engine, "head")
 
-    assert _revision(engine) == "0013"
+    assert _revision(engine) == "0014"
     assert "conversations" in set(inspect(engine).get_table_names())
 
 
@@ -443,7 +443,7 @@ def test_la_migracion_0010_agrega_dominios_dinamicos_sin_cambiar_los_existentes(
 
     dynamic = {c["name"]: c for c in inspect(engine).get_columns("domains")}["dynamic"]
     assert dynamic["nullable"] is False
-    assert _revision(engine) == "0013"
+    assert _revision(engine) == "0014"
     with engine.connect() as connection:
         # El dominio existente sigue siendo persistente.
         assert connection.execute(text("SELECT name, dynamic FROM domains WHERE id = 'dp'")).one() == ("Promoción", 0)
@@ -471,7 +471,7 @@ def test_la_migracion_0011_agrega_el_prompt_del_artefacto_vacio_y_es_reversible(
 
     columna = {c["name"]: c for c in inspect(engine).get_columns("artifacts")}["custom_prompt"]
     assert columna["nullable"] is False
-    assert _revision(engine) == "0013"
+    assert _revision(engine) == "0014"
     with engine.connect() as connection:
         # El artefacto existente queda sin prompt propio: responde como siempre.
         assert connection.execute(text("SELECT custom_prompt FROM artifacts WHERE id = 'a1'")).scalar_one() == ""
@@ -496,7 +496,7 @@ def test_la_migracion_0012_crea_la_tabla_de_contactos_y_es_reversible(tmp_path):
 
     _hasta(engine, "head")
 
-    assert _revision(engine) == "0013"
+    assert _revision(engine) == "0014"
     columnas = {c["name"]: c for c in inspect(engine).get_columns("whatsapp_contacts")}
     assert set(columnas) == {
         "id", "bot_id", "phone", "name", "email", "status", "email_retried", "created_at", "last_seen_at", "updated_at",
@@ -519,7 +519,7 @@ def test_la_migracion_0012_crea_la_tabla_de_contactos_y_es_reversible(tmp_path):
         assert connection.execute(text("SELECT name FROM bots WHERE id = 'b1'")).scalar_one() == "Bot"
 
     _hasta(engine, "head")
-    assert _revision(engine) == "0013"
+    assert _revision(engine) == "0014"
     assert "whatsapp_contacts" in inspect(engine).get_table_names()
 
 
@@ -529,7 +529,7 @@ def test_la_migracion_0013_agrega_la_nota_de_estado_nula_y_es_reversible(tmp_pat
 
     _hasta(engine, "head")
 
-    assert _revision(engine) == "0013"
+    assert _revision(engine) == "0014"
     columna = {c["name"]: c for c in inspect(engine).get_columns("documents")}["status_note"]
     assert columna["nullable"] is True
     with engine.connect() as connection:
@@ -543,4 +543,71 @@ def test_la_migracion_0013_agrega_la_nota_de_estado_nula_y_es_reversible(tmp_pat
         assert connection.execute(text("SELECT filename FROM documents WHERE id = 'doc1'")).scalar_one() == "acta.pdf"
 
     _hasta(engine, "head")
-    assert _revision(engine) == "0013"
+    assert _revision(engine) == "0014"
+
+
+def _insertar_usuario_y_artefacto(connection):
+    connection.execute(text("INSERT INTO consulta_users (id, username, password_hash, active, created_by, created_at, updated_at) VALUES ('u1', 'ana', 'x', 1, 't', '2026-11-18', '2026-11-18')"))
+    connection.execute(text(
+        "INSERT INTO artifacts (id, name, description, key_hash, key_prefix, active, all_domains, modes, daily_cap_usd, "
+        "created_at, updated_at) VALUES ('a1', 'Consulta', '', 'h1', 'mia_aaaa', 1, 0, 'literal', 0.5, '2026-11-18', '2026-11-18')"
+    ))
+
+
+def _plantilla(id, scope, owner_key, artifact_id, user_id, name_key="informe"):
+    def sql_valor(valor):
+        return "NULL" if valor is None else f"'{valor}'"
+
+    return text(
+        "INSERT INTO response_templates (id, scope, owner_key, artifact_id, user_id, name, name_key, content, created_by, "
+        f"created_at, updated_at) VALUES ('{id}', '{scope}', '{owner_key}', {sql_valor(artifact_id)}, {sql_valor(user_id)}, "
+        f"'Informe', '{name_key}', 'Resumen', 'x', '2026-11-18', '2026-11-18')"
+    )
+
+
+def test_la_migracion_0014_crea_plantillas_con_sus_reglas_y_es_reversible(tmp_path):
+    engine = _base_en(tmp_path, "0013")
+    assert "response_templates" not in inspect(engine).get_table_names()
+
+    _hasta(engine, "head")
+
+    assert _revision(engine) == "0014"
+    inspector = inspect(engine)
+    assert "response_templates" in set(inspector.get_table_names())
+    columnas = {c["name"] for c in inspector.get_columns("conversation_turns")}
+    assert {"template_id", "template_name"} <= columnas
+    nulas = {c["name"]: c["nullable"] for c in inspector.get_columns("conversation_turns")}
+    assert nulas["template_id"] is True and nulas["template_name"] is True
+    with engine.begin() as connection:
+        connection.execute(text("PRAGMA foreign_keys=ON"))
+        _insertar_usuario_y_artefacto(connection)
+        connection.execute(_plantilla("t1", "artifact", "a:a1", "a1", None))
+        # El mismo nombre en dos dueños es válido; el mismo nombre en el mismo dueño no.
+        connection.execute(_plantilla("t2", "personal", "u:u1", None, "u1"))
+        with pytest.raises(IntegrityError):
+            connection.execute(_plantilla("t3", "personal", "u:u1", "a1", "u1"))
+    with engine.begin() as connection:
+        connection.execute(text("PRAGMA foreign_keys=ON"))
+        # Una del artefacto sin `artifact_id` o una personal sin `user_id` violan el CHECK.
+        with pytest.raises(IntegrityError):
+            connection.execute(_plantilla("t4", "artifact", "a:a1", None, None, name_key="otro"))
+    with engine.begin() as connection:
+        connection.execute(text("PRAGMA foreign_keys=ON"))
+        with pytest.raises(IntegrityError):
+            connection.execute(_plantilla("t5", "personal", "u:u1", "a1", None, name_key="otro"))
+    with engine.begin() as connection:
+        connection.execute(text("PRAGMA foreign_keys=ON"))
+        # Eliminar al usuario elimina sus plantillas personales y deja las del artefacto.
+        connection.execute(text("DELETE FROM consulta_users WHERE id = 'u1'"))
+        assert connection.execute(text("SELECT id FROM response_templates")).scalars().all() == ["t1"]
+
+    _hasta(engine, "0013", accion="downgrade")
+
+    assert "response_templates" not in inspect(engine).get_table_names()
+    assert not {"template_id", "template_name"} & {c["name"] for c in inspect(engine).get_columns("conversation_turns")}
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT filename FROM documents WHERE id = 'doc1'")).scalar_one() == "acta.pdf"
+
+    _hasta(engine, "head")
+    assert _revision(engine) == "0014"
+    assert "response_templates" in inspect(engine).get_table_names()

@@ -10,6 +10,10 @@ const EXAMPLES: Record<ModeId, string[]> = {
     "¿Cuántos créditos suman los cursos de Sistemas Operativos Avanzados, Análisis de Algoritmos y Diseño de Experimentos?",
     "¿Cuántas horas tiene cada uno de estos dos cursos y cuál tiene más?",
   ],
+  plantilla: [
+    "Prepárame el informe de la Maestría en Ciberseguridad.",
+    "Hazme la ficha de requisitos y costos de la Maestría en Analítica.",
+  ],
 };
 
 export function examplesFor(mode: ModeId): string[] {

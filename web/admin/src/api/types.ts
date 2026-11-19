@@ -70,7 +70,7 @@ export interface DomainCreated {
   visible_to: VisibleTo;
 }
 
-export type ModeId = "literal" | "razonamiento";
+export type ModeId = "literal" | "razonamiento" | "plantilla";
 
 export interface ArtifactAccess {
   all_domains: boolean;
@@ -95,6 +95,8 @@ export interface Artifact {
   require_login: boolean;
   // Instrucciones propias, anexas a las del modo de respuesta; vacío: ninguna.
   custom_prompt: string;
+  // Plantillas del catálogo del artefacto (feature 020).
+  template_count: number;
   today: {
     spent_usd: number;
     reasoning_spent_usd: number;
@@ -103,6 +105,19 @@ export interface Artifact {
   };
   queries_last_7_days: number;
   created_at: string;
+}
+
+// Plantillas del artefacto (feature 020, contracts/plantillas-api.md, sección 2).
+export interface ArtifactTemplate {
+  id: string;
+  name: string;
+  content: string;
+  updated_at: string;
+}
+
+export interface ArtifactTemplatesResponse {
+  limits: { max_chars: number; max_per_artifact: number; file_max_mb: number };
+  templates: ArtifactTemplate[];
 }
 
 // Solo al crear: la clave completa se muestra una única vez.

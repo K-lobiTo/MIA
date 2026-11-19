@@ -5,7 +5,7 @@ import { useCreateArtifact, useUpdateArtifact } from "../../api/artifacts";
 import type { Artifact, ArtifactCreated, ModeId, ModeInfo, UnitNode } from "../../api/types";
 import { DynamicBadge } from "../../components/DynamicBadge";
 import { Notice } from "../../components/Notice";
-import { MODE_LABEL, describeCost, pruneCoveredDomains } from "./accessUtils";
+import { MODE_LABEL, avgCostOf, describeCost, pruneCoveredDomains } from "./accessUtils";
 import { capabilities } from "../../auth/capabilities";
 import { useMe } from "../../auth/session";
 import { approxQueries, parseUsd, validateCaps } from "./capMath";
@@ -22,7 +22,13 @@ interface Props {
   onCreated?: (artifact: ArtifactCreated) => void;
 }
 
-const ALL_MODES: ModeId[] = ["literal", "razonamiento"];
+const ALL_MODES: ModeId[] = ["literal", "razonamiento", "plantilla"];
+// Cómo se nombran las consultas de cada modo al estimar cuántas alcanza el tope.
+const QUERY_KIND: Record<ModeId, string> = {
+  literal: "literales",
+  razonamiento: "con razonamiento",
+  plantilla: "con plantilla",
+};
 // Tope diario con el que arranca un artefacto nuevo: bajo, para que un error o un abuso cueste poco (ART-8).
 const DEFAULT_CAP = "0.50";
 
@@ -174,8 +180,12 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
                     checked={selectedModes.includes(mode)}
                     onChange={() => setSelectedModes(toggle(selectedModes, mode))}
                     label={MODE_LABEL[mode]}
-                    description={`${describeCost(info?.avg_cost_usd_7d)}${
-                      info && !info.available ? " · todavía no está configurado en esta instancia" : ""
+                    description={`${mode === "plantilla" ? "Responde con la estructura de una plantilla, con el mismo modelo y costo que el razonamiento: " : ""}${describeCost(avgCostOf(mode, modes))}${
+                      info && !info.available
+                        ? mode === "plantilla"
+                          ? " · depende del modo con razonamiento, que no está configurado en esta instancia"
+                          : " · todavía no está configurado en esta instancia"
+                        : ""
                     }`}
                   />
                 );
@@ -197,8 +207,8 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
                     ? `${
                         selectedModes
                           .map((mode) => {
-                            const approx = approxQueries(dailyValue, modes.find((m) => m.id === mode)?.avg_cost_usd_7d);
-                            return approx === null ? null : `unas ${approx} consultas ${mode === "literal" ? "literales" : "con razonamiento"}`;
+                            const approx = approxQueries(dailyValue, avgCostOf(mode, modes));
+                            return approx === null ? null : `unas ${approx} consultas ${QUERY_KIND[mode]}`;
                           })
                           .filter(Boolean)
                           .join(" o ") || "sin consultas recientes para estimar cuántas alcanza"
@@ -207,12 +217,12 @@ export function ArtifactForm({ artifact, units, modes, onClose, onCreated }: Pro
                 }
               />
               <TextInput
-                label="Tope menor solo para el modo con razonamiento (opcional)"
+                label="Tope menor solo para los modos con razonamiento y plantilla (opcional)"
                 inputMode="decimal"
                 placeholder="Sin tope propio"
                 value={reasoningCap}
                 onChange={(e) => setReasoningCap(e.currentTarget.value)}
-                description="Al alcanzarlo, el artefacto sigue respondiendo en los otros modos hasta el tope total."
+                description="Lo comparten el modo con razonamiento y el modo plantilla (usan el mismo modelo). Al alcanzarlo, el artefacto sigue respondiendo en el modo literal hasta el tope total."
               />
               <Text c="dimmed" fz="sm">
                 Al alcanzar un tope el artefacto deja de responder hasta la medianoche (hora de Costa Rica), sin afectar a los demás.

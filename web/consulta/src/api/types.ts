@@ -1,7 +1,7 @@
 // Tipos de los contratos de la API (specs/002-panel-administracion/contracts/api-consulta.md y
 // specs/003-consulta-administrativa/contracts/api-consulta-modos.md).
 
-export type ModeId = "literal" | "razonamiento";
+export type ModeId = "literal" | "razonamiento" | "plantilla";
 export type Rating = "util" | "no_util";
 
 export interface Mode {
@@ -29,6 +29,34 @@ export interface Config {
   // Historial de chats (feature 015): si se guardan las conversaciones y por cuántos días.
   chat?: { enabled: boolean; retention_days: number };
   caps?: Caps;
+}
+
+// Plantillas de respuesta del modo plantilla (feature 020, contracts/plantillas-api.md).
+export interface Template {
+  id: string;
+  name: string;
+  content: string;
+  updated_at: string;
+  /** Solo en las personales: `all` (para todos los artefactos) o `artifact` (solo para este). */
+  scope?: "all" | "artifact";
+}
+
+export interface TemplateLimits {
+  max_chars: number;
+  max_per_user: number;
+  file_max_mb: number;
+}
+
+export interface TemplatesResponse {
+  /** El artefacto tiene el modo plantilla y la instancia lo tiene disponible. */
+  enabled: boolean;
+  limits: TemplateLimits;
+  /** Hay sesión iniciada: solo entonces se pueden guardar plantillas personales. */
+  can_create: boolean;
+  /** El catálogo del artefacto (lo gestiona la administración). */
+  artifact: Template[];
+  /** Las personales de la persona visibles en este artefacto. */
+  mine: Template[];
 }
 
 export interface Domain {
@@ -87,6 +115,9 @@ export interface StoredTurn {
   sources: { domain: string; document: string }[];
   mode: ModeId;
   no_info: boolean;
+  // La plantilla que usó la vuelta (feature 020): identificador y nombre, nunca el contenido.
+  template_id?: string | null;
+  template_name?: string | null;
   created_at: string;
 }
 

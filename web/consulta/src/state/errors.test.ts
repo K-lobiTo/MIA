@@ -66,3 +66,11 @@ describe("describeError", () => {
     });
   });
 });
+
+describe("describeError en el modo plantilla (feature 020)", () => {
+  it("ofrece reintentar en literal como en razonamiento", () => {
+    expect(describeError(error(-1, "x"), "plantilla")).toMatchObject({ canRetry: true, offerLiteral: true });
+    expect(describeError(error(502, "x"), "plantilla")).toMatchObject({ offerLiteral: true });
+    expect(describeError(error(-1, "x"), "plantilla", false)).toMatchObject({ offerLiteral: false });
+  });
+});

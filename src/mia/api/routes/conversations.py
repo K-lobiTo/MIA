@@ -58,6 +58,9 @@ class TurnOut(BaseModel):
     sources: list[SourceOut]
     mode: str
     no_info: bool
+    # La plantilla que usó la vuelta (feature 020): identificador y nombre, nunca el contenido. Nulos si no usó plantilla.
+    template_id: str | None = None
+    template_name: str | None = None
     created_at: str
 
 
@@ -129,6 +132,8 @@ def get_conversation(
                 sources=_sources(t.sources),
                 mode=t.mode,
                 no_info=t.no_info,
+                template_id=t.template_id,
+                template_name=t.template_name,
                 created_at=_iso(t.created_at),
             )
             for t in opened.turns

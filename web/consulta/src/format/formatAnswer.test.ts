@@ -60,3 +60,16 @@ describe("formatAnswer", () => {
     expect(formatAnswer("Dato **sin cerrar")).toEqual([{ kind: "paragraph", segments: [plain("Dato **sin cerrar")] }]);
   });
 });
+
+describe("una respuesta con la estructura de una plantilla (feature 020)", () => {
+  it("muestra los títulos como párrafos en negrita y conserva listas y la línea de sin información", () => {
+    const blocks = formatAnswer(
+      "# Resumen\nEl programa dura 2 años.\n\n## Requisitos\n- Bachillerato\n- Entrevista\n\n**Costos**\nSin información en los documentos",
+    );
+    expect(blocks[0]).toEqual({ kind: "paragraph", segments: [{ text: "Resumen", bold: true }] });
+    expect(blocks[2]).toEqual({ kind: "paragraph", segments: [{ text: "Requisitos", bold: true }] });
+    expect(blocks[3]).toMatchObject({ kind: "bullets" });
+    expect(blocks[4]).toEqual({ kind: "paragraph", segments: [{ text: "Costos", bold: true }] });
+    expect(blocks[5]).toEqual({ kind: "paragraph", segments: [{ text: "Sin información en los documentos", bold: false }] });
+  });
+});

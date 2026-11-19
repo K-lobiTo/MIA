@@ -6,6 +6,7 @@ import { describeMemory } from "./memoryUtils";
 import { describePrompt } from "./promptUtils";
 import { describeSession } from "./sessionUtils";
 import { Meter } from "./Meter";
+import { describeTemplateCount } from "./templateUtils";
 
 interface Props {
   artifact: Artifact;
@@ -14,9 +15,11 @@ interface Props {
   onEdit: () => void;
   onRegenerate: () => void;
   onToggleActive: () => void;
+  /** Abre el catálogo de plantillas del artefacto (solo con el modo plantilla habilitado). */
+  onTemplates: () => void;
 }
 
-export function ArtifactCard({ artifact, units, busy, onEdit, onRegenerate, onToggleActive }: Props) {
+export function ArtifactCard({ artifact, units, busy, onEdit, onRegenerate, onToggleActive, onTemplates }: Props) {
   return (
     <Paper component="article" withBorder p="md" radius="md" className="art-card" aria-label={artifact.name}>
       <Group gap="sm" wrap="wrap">
@@ -27,7 +30,7 @@ export function ArtifactCard({ artifact, units, busy, onEdit, onRegenerate, onTo
         </span>
         {(artifact.today.cap_reached || artifact.today.reasoning_cap_reached) && (
           <StatusBadge tone="danger">
-            {artifact.today.cap_reached ? "Tope alcanzado" : "Tope de razonamiento alcanzado"}
+            {artifact.today.cap_reached ? "Tope alcanzado" : "Tope de razonamiento y plantilla alcanzado"}
           </StatusBadge>
         )}
         <Text span c="dimmed" fz="sm" ml="auto">
@@ -54,7 +57,7 @@ export function ArtifactCard({ artifact, units, busy, onEdit, onRegenerate, onTo
           <Meter label="Tope diario total" spent={artifact.today.spent_usd} cap={artifact.daily_cap_usd} />
           {artifact.reasoning_daily_cap_usd !== null && (
             <Meter
-              label="Tope de razonamiento"
+              label="Tope de razonamiento y plantilla"
               spent={artifact.today.reasoning_spent_usd}
               cap={artifact.reasoning_daily_cap_usd}
             />
@@ -71,6 +74,11 @@ export function ArtifactCard({ artifact, units, busy, onEdit, onRegenerate, onTo
         <Button variant="default" size="compact-sm" onClick={onToggleActive} disabled={busy}>
           {artifact.active ? "Desactivar" : "Reactivar"}
         </Button>
+        {artifact.modes.includes("plantilla") && (
+          <Button variant="default" size="compact-sm" onClick={onTemplates} disabled={busy}>
+            {describeTemplateCount(artifact.template_count)}
+          </Button>
+        )}
       </Group>
     </Paper>
   );

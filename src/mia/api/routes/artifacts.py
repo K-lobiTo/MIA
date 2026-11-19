@@ -20,11 +20,20 @@ from mia.config import settings
 from mia.rag.llm import MAX_CUSTOM_PROMPT_CHARS
 from mia.rag.modes import MODE_IDS, MODES, mode_available
 from mia.storage.db import get_session
-from mia.storage.models import Artifact, ArtifactDomain, ArtifactUnit, Domain, QueryLog, Unit
+from mia.storage.models import (
+    Artifact,
+    ArtifactDomain,
+    ArtifactUnit,
+    Domain,
+    QueryLog,
+    ResponseTemplate,
+    Unit,
+)
+from mia.templates.service import count_for_artifact
 
 router = APIRouter(tags=["artifacts"])
 
-ModeId = Literal["literal", "razonamiento"]
+ModeId = Literal["literal", "razonamiento", "plantilla"]
 DEFAULT_DAILY_CAP = 0.50
 CustomPrompt = Annotated[str, StringConstraints(max_length=MAX_CUSTOM_PROMPT_CHARS)]
 
@@ -92,6 +101,8 @@ class ArtifactOut(BaseModel):
     context_turns: int
     require_login: bool
     custom_prompt: str
+    # Plantillas del artefacto (feature 020): cuántas tiene su catálogo.
+    template_count: int = 0
     today: TodayOut
     queries_last_7_days: int
     created_at: str
@@ -128,7 +139,7 @@ def _week_ago() -> datetime:
     return (datetime.now(UTC) - timedelta(days=7)).replace(tzinfo=None)
 
 
-def _to_out(session: Session, artifact: Artifact) -> ArtifactOut:
+def _to_out(session: Session, artifact: Artifact, template_counts: dict[str, int] | None = None) -> ArtifactOut:
     unit_ids = sorted(session.scalars(select(ArtifactUnit.unit_id).where(ArtifactUnit.artifact_id == artifact.id)))
     domain_ids = sorted(
         session.scalars(select(ArtifactDomain.domain_id).where(ArtifactDomain.artifact_id == artifact.id))
@@ -154,6 +165,9 @@ def _to_out(session: Session, artifact: Artifact) -> ArtifactOut:
         context_turns=artifact.context_turns,
         require_login=artifact.require_login,
         custom_prompt=artifact.custom_prompt,
+        template_count=(
+            template_counts.get(artifact.id, 0) if template_counts is not None else count_for_artifact(session, artifact.id)
+        ),
         today=TodayOut(
             spent_usd=float(state.spent),
             reasoning_spent_usd=float(state.reasoning_spent),
@@ -241,7 +255,17 @@ def list_artifacts(
             sum_of_artifact_caps_usd=cap_sum,
             caps_exceed_global=cap_sum > settings.daily_cap_usd,
         )
-    return ArtifactsOut(artifacts=[_to_out(session, a) for a in artifacts], global_=global_block, modes=modes)
+    # Las plantillas de cada artefacto se cuentan en una sola consulta, no una por fila.
+    template_counts = dict(
+        session.execute(
+            select(ResponseTemplate.artifact_id, func.count())
+            .where(ResponseTemplate.scope == "artifact")
+            .group_by(ResponseTemplate.artifact_id)
+        ).all()
+    )
+    return ArtifactsOut(
+        artifacts=[_to_out(session, a, template_counts) for a in artifacts], global_=global_block, modes=modes
+    )
 
 
 @router.post("/artifacts", response_model=ArtifactCreatedOut, status_code=201)

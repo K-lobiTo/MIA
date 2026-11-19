@@ -6,7 +6,7 @@ from mia.access.caps import artifact_status
 from mia.access.permissions import allowed_modes
 from mia.api.security import optional_artifact
 from mia.config import settings
-from mia.rag.modes import MODE_IDS, MODES, RAZONAMIENTO, mode_available
+from mia.rag.modes import MODE_IDS, MODES, is_reasoning_class, mode_available
 from mia.storage.db import get_session
 from mia.storage.models import Artifact
 
@@ -77,8 +77,8 @@ def get_config(
                 available, reason = False, "Se alcanzó el tope diario de gasto de toda la API. Se reinicia a la medianoche."
             elif state.cap_reached:
                 available, reason = False, "Este artefacto alcanzó su tope diario de gasto. Se reinicia a la medianoche."
-            elif mode == RAZONAMIENTO and state.reasoning_cap_reached:
-                available, reason = False, "Este artefacto alcanzó su tope diario del modo con razonamiento. Se reinicia a la medianoche."
+            elif is_reasoning_class(mode) and state.reasoning_cap_reached:
+                available, reason = False, "Este artefacto alcanzó su tope diario de los modos con razonamiento y plantilla. Se reinicia a la medianoche."
         info = MODES[mode]
         modes.append(
             ModeConfigOut(id=mode, name=info.name, description=info.description, available=available, reason=reason)

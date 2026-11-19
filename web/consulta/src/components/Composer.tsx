@@ -1,5 +1,5 @@
 import { Button, Textarea } from "@mantine/core";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { ModeId } from "../api/types";
 import type { Availability } from "../state/modes";
 import { ModePicker } from "./ModePicker";
@@ -23,6 +23,8 @@ interface Props {
   availability: Availability | null;
   /** Aviso de la memoria del artefacto ("Recuerda las últimas N preguntas..."); vacío si no tiene (feature 014). */
   memory?: string;
+  /** El selector de plantilla del modo plantilla (feature 020); nulo en los demás modos. Va a la derecha del selector de modo. */
+  templatePicker?: ReactNode;
   onModeChange: (mode: ModeId) => void;
   onSend: (question: string) => void;
 }
@@ -35,6 +37,7 @@ export function Composer({
   restore,
   availability,
   memory = "",
+  templatePicker = null,
   onModeChange,
   onSend,
 }: Props) {
@@ -70,6 +73,7 @@ export function Composer({
       {rejection && <Notice tone="danger">{rejection}</Notice>}
       <div className="composer-row">
         {availability && <ModePicker availability={availability} onChange={onModeChange} />}
+        {templatePicker}
         <Textarea
           id="question"
           aria-label="Tu pregunta"

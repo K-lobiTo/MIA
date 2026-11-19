@@ -20,7 +20,7 @@ def _modos(response):
     return {m["id"]: m for m in response.json()["modes"]}
 
 
-def test_config_sin_clave_lista_ambos_modos(client, base, modes_config, monkeypatch):
+def test_config_sin_clave_lista_todos_los_modos(client, base, modes_config, monkeypatch):
     monkeypatch.setattr(settings, "ingestion_enabled", True)
     monkeypatch.setattr(settings, "max_upload_mb", 25)
 
@@ -31,7 +31,8 @@ def test_config_sin_clave_lista_ambos_modos(client, base, modes_config, monkeypa
     assert body["ingestion_enabled"] is True and body["max_upload_mb"] == 25
     assert "artifact" not in body
     modos = _modos(response)
-    assert set(modos) == {"literal", "razonamiento"}
+    # Sin clave de artefacto se listan todos los modos de la instancia (el panel los ofrece al configurar un artefacto).
+    assert set(modos) == {"literal", "razonamiento", "plantilla"}
     assert modos["literal"]["name"] == "Literal" and modos["literal"]["available"] is True
     assert modos["literal"]["reason"] is None
     assert modos["razonamiento"]["description"]
@@ -407,3 +408,24 @@ def test_max_excel_rows_por_defecto_y_rango():
         with pytest.raises(ValidationError):
             Settings(max_excel_rows=valor)
     assert Settings(max_excel_rows=100).max_excel_rows == 100
+
+
+def test_ajustes_de_plantillas_por_defecto_y_rango():
+    from pydantic import ValidationError
+
+    from mia.config import Settings
+
+    ajustes = Settings()
+    assert ajustes.template_max_chars == 4000
+    assert ajustes.template_max_per_user == 20
+    assert ajustes.template_max_per_artifact == 30
+    assert ajustes.template_file_max_mb == 1
+    fuera_de_rango = [
+        ("template_max_chars", 199), ("template_max_chars", 20001),
+        ("template_max_per_user", 0), ("template_max_per_user", 201),
+        ("template_max_per_artifact", 0), ("template_max_per_artifact", 201),
+        ("template_file_max_mb", 0), ("template_file_max_mb", 11),
+    ]
+    for nombre, valor in fuera_de_rango:
+        with pytest.raises(ValidationError):
+            Settings(**{nombre: valor})

@@ -24,7 +24,7 @@ from mia.usage.aggregate import (
 router = APIRouter(tags=["usage"])
 
 PeriodName = Literal["today", "7d", "30d", "custom"]
-ModeName = Literal["literal", "razonamiento"]
+ModeName = Literal["literal", "razonamiento", "plantilla"]
 
 
 class UsageFilters:

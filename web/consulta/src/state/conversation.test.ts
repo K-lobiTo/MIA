@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { QueryResponse } from "../api/types";
-import { answeredExchange, failedExchange, formatLatency, newExchange, ratedExchange } from "./conversation";
+import { answeredExchange, failedExchange, formatLatency, newExchange, ratedExchange, templateFromConversation } from "./conversation";
 
 const response = (no_info: boolean): QueryResponse => ({
   id: "q1",
@@ -49,5 +49,23 @@ describe("transiciones de un intercambio", () => {
     const primera = ratedExchange(e, "no_util", "incompleta");
     expect(primera).toMatchObject({ rating: "no_util", ratingComment: "incompleta" });
     expect(ratedExchange(primera, "util")).toMatchObject({ rating: "util", ratingComment: undefined });
+  });
+});
+
+describe("templateFromConversation (feature 020)", () => {
+  it("devuelve la plantilla de la última vuelta que usó una", () => {
+    expect(
+      templateFromConversation([
+        { position: 1, template_id: "t1", template_name: "Informe" },
+        { position: 3, template_id: "t2", template_name: "Ficha" },
+        { position: 2, template_id: null, template_name: null },
+        { position: 4, template_id: null, template_name: null },
+      ]),
+    ).toEqual({ id: "t2", name: "Ficha" });
+  });
+
+  it("sin ninguna vuelta con plantilla devuelve nulo", () => {
+    expect(templateFromConversation([{ position: 1 }, { position: 2, template_id: null }])).toBeNull();
+    expect(templateFromConversation([])).toBeNull();
   });
 });
