@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { UnitNode } from "../../api/types";
-import { describeAccess, describeCost, describeModes, pruneCoveredDomains } from "./accessUtils";
+import { avgCostOf, describeAccess, describeCost, describeModes, pruneCoveredDomains } from "./accessUtils";
 
 const units: UnitNode[] = [
   {
@@ -54,6 +54,8 @@ describe("describeAccess", () => {
 describe("describeModes y describeCost", () => {
   it("nombra los modos", () => {
     expect(describeModes(["literal", "razonamiento"])).toBe("Literal y Con razonamiento");
+    expect(describeModes(["literal", "razonamiento", "plantilla"])).toBe("Literal, Con razonamiento y Plantilla");
+    expect(describeModes(["plantilla"])).toBe("Plantilla");
     expect(describeModes([])).toBe("Ninguno");
   });
 
@@ -69,5 +71,24 @@ describe("pruneCoveredDomains", () => {
   it("quita los dominios que ya cubre un programa completo", () => {
     expect(pruneCoveredDomains(["u1"], ["d1", "d3"], units)).toEqual(["d3"]);
     expect(pruneCoveredDomains([], ["d1"], units)).toEqual(["d1"]);
+  });
+});
+
+describe("avgCostOf", () => {
+  const modos = [
+    { id: "literal" as const, avg_cost_usd_7d: 0.001 },
+    { id: "razonamiento" as const, avg_cost_usd_7d: 0.02 },
+    { id: "plantilla" as const, avg_cost_usd_7d: null },
+  ];
+
+  it("usa el costo propio del modo", () => {
+    expect(avgCostOf("literal", modos)).toBe(0.001);
+    expect(avgCostOf("plantilla", [...modos.slice(0, 2), { id: "plantilla", avg_cost_usd_7d: 0.03 }])).toBe(0.03);
+  });
+
+  it("la plantilla sin consultas propias se estima con las del razonamiento; los demás no", () => {
+    expect(avgCostOf("plantilla", modos)).toBe(0.02);
+    expect(avgCostOf("razonamiento", [{ id: "razonamiento", avg_cost_usd_7d: null }, ...modos.slice(0, 1)])).toBeNull();
+    expect(avgCostOf("plantilla", [])).toBeNull();
   });
 });

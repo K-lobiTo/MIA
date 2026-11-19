@@ -12,6 +12,7 @@ const MODES = [
   { value: ALL, label: "Todos" },
   { value: "literal", label: "Literal" },
   { value: "razonamiento", label: "Con razonamiento" },
+  { value: "plantilla", label: "Plantilla" },
 ];
 
 const DAY = "YYYY-MM-DD";

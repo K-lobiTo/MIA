@@ -49,6 +49,8 @@ def test_abrir_una_conversacion_devuelve_sus_vueltas_en_orden_con_fuentes_y_modo
         "sources",
         "mode",
         "no_info",
+        "template_id",
+        "template_name",
         "created_at",
     }
     assert (

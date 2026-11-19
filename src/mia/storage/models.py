@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -123,7 +124,7 @@ class Artifact(Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Verdadero: todos los dominios, incluidas unidades futuras.
     all_domains: Mapped[bool] = mapped_column(Boolean, default=False)
-    # Lista separada por comas de "literal" y "razonamiento"; al menos uno.
+    # Lista separada por comas de "literal", "razonamiento" y "plantilla"; al menos uno.
     modes: Mapped[str] = mapped_column(String, default="literal")
     daily_cap_usd: Mapped[Decimal] = mapped_column(Numeric(10, 4), default=Decimal("0.50"))
     reasoning_daily_cap_usd: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
@@ -352,7 +353,44 @@ class ConversationTurn(Base):
     sources: Mapped[str] = mapped_column(Text, default="[]")  # JSON: [{domain, document}]
     mode: Mapped[str] = mapped_column(String, default="literal")
     no_info: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Plantilla usada en esta vuelta (feature 020): identificador y nombre, nunca el contenido. Sin clave foránea: eliminar la
+    # plantilla no toca la conversación.
+    template_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    template_name: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
+class ResponseTemplate(Base):
+    """Plantilla de respuesta del modo plantilla (feature 020): la estructura (secciones, títulos y orden) con la que se
+    redacta una respuesta. Dos tipos: `artifact` (catálogo del artefacto, lo gestiona la administración) y `personal` (de una
+    persona de la Consulta; `artifact_id` nulo = para todos los artefactos). `owner_key` (`a:<artifact_id>` o `u:<user_id>`)
+    con `name_key` hace único el nombre dentro de su alcance. No es un documento de los dominios: no se indexa ni se cita."""
+
+    __tablename__ = "response_templates"
+    __table_args__ = (
+        UniqueConstraint("owner_key", "name_key", name="uq_response_templates_owner_key_name_key"),
+        CheckConstraint(
+            "(scope = 'artifact' AND artifact_id IS NOT NULL AND user_id IS NULL) "
+            "OR (scope = 'personal' AND user_id IS NOT NULL)",
+            name="scope_coherente",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    scope: Mapped[str] = mapped_column(String)
+    owner_key: Mapped[str] = mapped_column(String)
+    artifact_id: Mapped[str | None] = mapped_column(
+        ForeignKey("artifacts.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("consulta_users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    name: Mapped[str] = mapped_column(String)
+    name_key: Mapped[str] = mapped_column(String)
+    content: Mapped[str] = mapped_column(Text)
+    created_by: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 
 
 class WhatsAppContact(Base):

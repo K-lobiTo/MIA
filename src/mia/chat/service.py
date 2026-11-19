@@ -82,8 +82,11 @@ def append_turn(
     sources: list[dict],
     mode: str,
     no_info: bool,
+    template_id: str | None = None,
+    template_name: str | None = None,
 ) -> str:
-    """Guarda una vuelta; crea la conversación si no se dio una. Devuelve el identificador de la conversación."""
+    """Guarda una vuelta; crea la conversación si no se dio una. Devuelve el identificador de la conversación. En el modo
+    plantilla guarda también el identificador y el nombre de la plantilla usada (nunca su contenido; feature 020)."""
     conversation = get_owned(session, user, conversation_id) if conversation_id else None
     if conversation is None:
         now = _now()
@@ -116,6 +119,8 @@ def append_turn(
                 sources=json.dumps(sources, ensure_ascii=False),
                 mode=mode,
                 no_info=no_info,
+                template_id=template_id,
+                template_name=template_name,
                 created_at=_now(),
             )
         )

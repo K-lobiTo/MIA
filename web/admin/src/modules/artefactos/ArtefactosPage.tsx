@@ -7,6 +7,7 @@ import type { Artifact } from "../../api/types";
 import { Notice } from "../../components/Notice";
 import { ArtifactCard } from "./ArtifactCard";
 import { ArtifactForm } from "./ArtifactForm";
+import { ArtifactTemplatesDialog } from "./ArtifactTemplatesDialog";
 import { capabilities } from "../../auth/capabilities";
 import { useMe } from "../../auth/session";
 import { formatUsd } from "./capMath";
@@ -17,7 +18,8 @@ type DialogState =
   | { kind: "new" }
   | { kind: "edit"; artifact: Artifact }
   | { kind: "reveal"; name: string; key: string; regenerated: boolean }
-  | { kind: "confirm-regenerate"; artifact: Artifact };
+  | { kind: "confirm-regenerate"; artifact: Artifact }
+  | { kind: "templates"; artifact: Artifact };
 
 export function ArtefactosPage() {
   const canSeeGlobal = capabilities(useMe()).showGlobalCaps;
@@ -101,6 +103,7 @@ export function ArtefactosPage() {
               onEdit={() => setDialog({ kind: "edit", artifact })}
               onRegenerate={() => setDialog({ kind: "confirm-regenerate", artifact })}
               onToggleActive={() => void toggleActive(artifact)}
+              onTemplates={() => setDialog({ kind: "templates", artifact })}
             />
           ))}
           {artifacts.data.artifacts.length === 0 && (
@@ -117,6 +120,7 @@ export function ArtefactosPage() {
           onCreated={(created) => setDialog({ kind: "reveal", name: created.name, key: created.key, regenerated: false })}
         />
       )}
+      {dialog?.kind === "templates" && <ArtifactTemplatesDialog artifact={dialog.artifact} onClose={close} />}
       {dialog?.kind === "edit" && <ArtifactForm artifact={dialog.artifact} units={units} modes={modes} onClose={close} />}
       {dialog?.kind === "reveal" && (
         <KeyReveal artifactName={dialog.name} keyValue={dialog.key} regenerated={dialog.regenerated} onClose={close} />

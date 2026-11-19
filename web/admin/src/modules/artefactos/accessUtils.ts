@@ -20,10 +20,21 @@ export function describeAccess(access: ArtifactAccess, units: UnitNode[]): strin
 export const MODE_LABEL: Record<ModeId, string> = {
   literal: "Literal",
   razonamiento: "Con razonamiento",
+  plantilla: "Plantilla",
 };
 
 export function describeModes(modes: ModeId[]): string {
-  return modes.length > 0 ? modes.map((m) => MODE_LABEL[m]).join(" y ") : "Ninguno";
+  if (modes.length === 0) return "Ninguno";
+  const labels = modes.map((m) => MODE_LABEL[m]);
+  return labels.length === 1 ? labels[0] : `${labels.slice(0, -1).join(", ")} y ${labels[labels.length - 1]}`;
+}
+
+/** Costo medio de un modo en los últimos 7 días. El modo plantilla usa el modelo del razonamiento: sin consultas propias
+ * se estima con las del razonamiento. */
+export function avgCostOf(mode: ModeId, modes: { id: ModeId; avg_cost_usd_7d: number | null }[]): number | null {
+  const own = modes.find((m) => m.id === mode)?.avg_cost_usd_7d ?? null;
+  if (own !== null || mode !== "plantilla") return own;
+  return modes.find((m) => m.id === "razonamiento")?.avg_cost_usd_7d ?? null;
 }
 
 /** Costo aproximado por consulta de un modo, para decidir qué modos permitir (ART-4). */

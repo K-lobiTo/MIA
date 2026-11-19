@@ -2,6 +2,7 @@
 sin depender de la zona horaria del servidor. El gasto se suma sobre el registro de consultas: es la
 misma fuente que usa el módulo Uso, así el panel y el control nunca discrepan."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -12,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from mia.config import settings
-from mia.rag.modes import RAZONAMIENTO
+from mia.rag.mode_ids import REASONING_CLASS, is_reasoning_class
 from mia.storage.models import Artifact, QueryLog
 
 Scope = Literal["api", "artifact", "reasoning"]
@@ -52,13 +53,16 @@ def spent_today(
     artifact_id: str | None = None,
     mode: str | None = None,
     now: datetime | None = None,
+    modes: Sequence[str] | None = None,
 ) -> Decimal:
-    """Gasto de hoy en USD, de toda la API o filtrado por artefacto y por modo."""
+    """Gasto de hoy en USD, de toda la API o filtrado por artefacto y por modo (`mode`) o por varios modos (`modes`)."""
     query = select(func.coalesce(func.sum(QueryLog.cost_usd), 0)).where(QueryLog.created_at >= day_start_utc(now))
     if artifact_id is not None:
         query = query.where(QueryLog.artifact_id == artifact_id)
     if mode is not None:
         query = query.where(QueryLog.mode == mode)
+    if modes is not None:
+        query = query.where(QueryLog.mode.in_(list(modes)))
     return Decimal(str(session.scalar(query)))
 
 
@@ -96,9 +100,10 @@ def check_caps(
     if spent >= cap:
         return CapStatus("artifact", cap, spent, resets_at)
 
-    if mode == RAZONAMIENTO and artifact.reasoning_daily_cap_usd is not None:
+    # El tope del modo con razonamiento lo comparten el razonamiento y la plantilla (mismo modelo y costo).
+    if is_reasoning_class(mode) and artifact.reasoning_daily_cap_usd is not None:
         reasoning_cap = Decimal(artifact.reasoning_daily_cap_usd)
-        reasoning_spent = spent_today(session, artifact_id=artifact.id, mode=RAZONAMIENTO, now=now) + extra
+        reasoning_spent = spent_today(session, artifact_id=artifact.id, modes=REASONING_CLASS, now=now) + extra
         if reasoning_spent >= reasoning_cap:
             return CapStatus("reasoning", reasoning_cap, reasoning_spent, resets_at)
     return None
@@ -118,7 +123,7 @@ class ArtifactCapState:
 
 def artifact_status(session: Session, artifact: Artifact, now: datetime | None = None) -> ArtifactCapState:
     spent = spent_today(session, artifact_id=artifact.id, now=now)
-    reasoning_spent = spent_today(session, artifact_id=artifact.id, mode=RAZONAMIENTO, now=now)
+    reasoning_spent = spent_today(session, artifact_id=artifact.id, modes=REASONING_CLASS, now=now)
     reasoning_cap = artifact.reasoning_daily_cap_usd
     return ArtifactCapState(
         spent=spent,

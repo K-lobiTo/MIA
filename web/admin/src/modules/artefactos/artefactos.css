@@ -15,3 +15,6 @@
 .meter-warn .meter-fill { background: var(--highlight); }
 .meter-full .meter-fill { background: var(--danger); }
 .meter-text { font-family: var(--font-mono); font-size: 0.82rem; }
+
+/* Plantillas del artefacto (feature 020) */
+.tpl-list { list-style: none; padding: 0; margin: 0; }

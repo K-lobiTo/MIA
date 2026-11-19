@@ -191,6 +191,14 @@ class Settings(BaseSettings):
     max_upload_mb: int = 25
     # Filas con contenido que se leen por libro de Excel, sumando las hojas visibles, antes de recortar (feature 018).
     max_excel_rows: int = Field(default=5000, ge=100, le=50000)
+    # Modo plantilla (feature 020): largo máximo del contenido de una plantilla, en caracteres.
+    template_max_chars: int = Field(default=4000, ge=200, le=20000)
+    # Plantillas personales que puede guardar cada persona.
+    template_max_per_user: int = Field(default=20, ge=1, le=200)
+    # Plantillas del artefacto (catálogo de la administración) por artefacto.
+    template_max_per_artifact: int = Field(default=30, ge=1, le=200)
+    # Tamaño máximo, en MB, del archivo .docx o .txt desde el que se carga una plantilla.
+    template_file_max_mb: int = Field(default=1, ge=1, le=10)
     # Opcional: permite leer el saldo de toda la cuenta de OpenRouter. Puede crear claves sin límite,
     # por lo que no se recomienda en producción (ver specs/002-panel-administracion/research.md).
     openrouter_management_key: str = ""

@@ -21,6 +21,7 @@ const artefacto: Artifact = {
   context_turns: 0,
   require_login: false,
   custom_prompt: "",
+  template_count: 0,
   today: { spent_usd: 0, reasoning_spent_usd: 0, cap_reached: false, reasoning_cap_reached: false },
   queries_last_7_days: 0,
   created_at: "2026-11-04T00:00:00Z",
@@ -29,7 +30,7 @@ const artefacto: Artifact = {
 function tarjeta(a: Artifact): string {
   return renderToString(
     <MantineProvider theme={theme}>
-      <ArtifactCard artifact={a} units={[]} busy={false} onEdit={vi.fn()} onRegenerate={vi.fn()} onToggleActive={vi.fn()} />
+      <ArtifactCard artifact={a} units={[]} busy={false} onEdit={vi.fn()} onRegenerate={vi.fn()} onToggleActive={vi.fn()} onTemplates={vi.fn()} />
     </MantineProvider>,
   );
 }

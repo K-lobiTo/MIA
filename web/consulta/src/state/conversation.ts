@@ -26,6 +26,19 @@ export interface Exchange {
   notSaved?: boolean;
 }
 
+/** La plantilla que se recuerda de una conversación guardada: la de la última vuelta que usó una (feature 020). */
+export interface RememberedTemplate {
+  id: string;
+  name: string;
+}
+
+export function templateFromConversation(
+  turns: { position: number; template_id?: string | null; template_name?: string | null }[],
+): RememberedTemplate | null {
+  const used = [...turns].sort((a, b) => b.position - a.position).find((turn) => turn.template_id);
+  return used ? { id: used.template_id as string, name: used.template_name ?? "" } : null;
+}
+
 let counter = 0;
 
 export function newExchange(question: string, domainIds: string[], mode: ModeId): Exchange {

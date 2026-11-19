@@ -53,3 +53,16 @@ cd ../admin && npm test && npx tsc --noEmit         # modo en el formulario de a
 ## 5. Medición (SC-001, SC-002, SC-004 y SC-011)
 
 Con un artefacto sobre los documentos de los posgrados y plantillas de 3 a 8 secciones, 20 preguntas de prueba (parte con datos ausentes, parte con una plantilla hostil), medir: porcentaje de respuestas con todas las secciones en orden (meta 90 %), secciones sin datos que dicen "Sin información en los documentos" y sin cifras inventadas (100 %), reglas mantenidas ante la plantilla hostil (100 %) y la mediana del tiempo frente al razonamiento (no más de 25 % mayor). Si SC-001 no se alcanza, probar el parámetro dedicado en `LLMProvider.answer` (research R3) antes de tocar el prompt. Anotar el resultado al final de este archivo.
+
+## Resultado del recorrido
+
+### Recorrido automático local (T042, 2026-11-18)
+
+Contra una API local con una base SQLite temporal (la migración `0014` aplicada al arrancar), sin Qdrant ni modelo de lenguaje y sin tocar producción. Se recorrió con un script de apoyo las secciones 2, 3 y 4 en lo que no consulta al modelo: **27 pasos, todos correctos**.
+
+- Administración: el artefacto con los tres modos; `GET /config` ofrece *Plantilla* solo al artefacto que la tiene; agregar una plantilla escrita y otra cargada desde un `.docx` (el texto vuelve para revisarlo antes de guardar); los rechazos de un `.pdf`, de un `.docx` dañado (mensaje fijo, sin detalles), de un archivo de más de 1 MB (`413`), de un nombre repetido (`409`) y de un contenido de más de 4000 caracteres (`422`); la tarjeta trae `template_count`.
+- Consulta sin sesión: `GET /templates` trae el grupo del artefacto, `can_create` en falso y el otro artefacto no ofrece nada; sin plantilla elegida `POST /query` responde `422` «Elige una plantilla.»; el artefacto sin el modo responde `403`; crear una personal sin sesión responde `401` con `login_required`.
+- Consulta con sesión (dos cuentas de prueba): crear una plantilla «para este artefacto» y otra «para todos»; en otro artefacto solo aparece la de todos; editar y eliminar la personal; la eliminada responde `404` «La plantilla ya no está disponible.»; la de otra persona responde el mismo `404` y no la ve.
+- Verificación automática: `pytest` 1974 pruebas sin fallos, `ruff` limpio, y `npm test` y `npx tsc --noEmit` en `web/consulta` (164 pruebas) y `web/admin` (219 pruebas).
+
+**No se pudo probar aquí** (queda para el usuario, T045 a T047): la respuesta del modelo real con la plantilla (la estructura, el contenido de los documentos, las fuentes y «Sin información en los documentos»), la medición de SC-001, SC-002, SC-004 y SC-011 con `scripts/medir_plantillas.py`, y el recorrido visual en el navegador de la Consulta y el panel (selector, diálogos, retomar una conversación). No había Qdrant local ni un modelo con clave en esta máquina.

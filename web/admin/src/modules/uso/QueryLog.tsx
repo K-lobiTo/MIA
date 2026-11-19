@@ -161,7 +161,7 @@ export function QueryLog({ filters }: { filters: UsageFilters }) {
                       </Anchor>
                     </Table.Td>
                     <Table.Td miw={200}>{item.artifact ?? "-"}</Table.Td>
-                    <Table.Td>{item.mode === "razonamiento" ? "razonamiento" : "literal"}</Table.Td>
+                    <Table.Td>{item.mode === "razonamiento" || item.mode === "plantilla" ? item.mode : "literal"}</Table.Td>
                     <Table.Td ff="monospace" fz="xs">{item.model ?? "-"}</Table.Td>
                     <Table.Td ta="right">{item.tokens === null ? "-" : formatTokens(item.tokens)}</Table.Td>
                     <Table.Td ta="right" style={{ whiteSpace: "nowrap" }}>

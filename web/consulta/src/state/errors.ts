@@ -5,13 +5,13 @@ export interface ErrorView {
   message: string;
   /** Se puede reintentar la misma pregunta tal cual. */
   canRetry: boolean;
-  /** Se ofrece reintentarla en modo literal (solo si falló un modo con razonamiento). */
+  /** Se ofrece reintentarla en modo literal (solo si falló un modo con razonamiento o plantilla). */
   offerLiteral: boolean;
 }
 
 /** Mensaje y salidas de un error al preguntar (CON-7), según la tabla de contracts/ui-consulta.md. */
 export function describeError(error: ExchangeError, mode: ModeId, literalAvailable = true): ErrorView {
-  const literalFallback = mode === "razonamiento" && literalAvailable;
+  const literalFallback = mode !== "literal" && literalAvailable;
   switch (error.status) {
     case 0:
       return { message: "No se pudo conectar con MIA. Revisa tu conexión.", canRetry: true, offerLiteral: false };

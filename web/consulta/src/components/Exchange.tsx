@@ -74,9 +74,9 @@ export function Exchange({ exchange, onRetry, literalAvailable, busy, modeNames,
                 Buscando en {exchange.domainIds.length} {exchange.domainIds.length === 1 ? "dominio" : "dominios"}...
               </Text>
             </Group>
-            {exchange.mode === "razonamiento" && (
+            {(exchange.mode === "razonamiento" || exchange.mode === "plantilla") && (
               <Text c="dimmed" fz="sm" mt={4}>
-                El modo con razonamiento puede tardar más de un minuto.
+                {exchange.mode === "plantilla" ? "El modo plantilla" : "El modo con razonamiento"} puede tardar más de un minuto.
               </Text>
             )}
           </Paper>

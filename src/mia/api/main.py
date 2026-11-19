@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 
 from mia.access.errors import AuthError
 from mia.api.routes import (
+    artifact_templates,
     artifacts,
     auth,
     bot_service,
@@ -28,6 +29,7 @@ from mia.api.routes import (
     me,
     media,
     query,
+    templates,
     usage,
 )
 from mia.chat.retention import purge_on_startup
@@ -123,6 +125,7 @@ app.include_router(health.router)
 app.include_router(me.router)
 app.include_router(inventory.router)
 app.include_router(artifacts.router)
+app.include_router(artifact_templates.router)
 app.include_router(config.router)
 app.include_router(equivalences.router)
 app.include_router(bots.router)
@@ -136,4 +139,5 @@ app.include_router(media.router)
 app.include_router(usage.router)
 app.include_router(domains.router)
 app.include_router(documents.router)
+app.include_router(templates.router)
 app.include_router(query.router)

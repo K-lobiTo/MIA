@@ -111,6 +111,8 @@ Los valores de cantidad (20 y 30) los fija esta planificación (la spec dejó "c
 
 **Riesgo**: `formatAnswer` solo entiende negritas, listas y encabezados como negrita; una plantilla con subtítulos o numeración anidada se ve plana. Es aceptable en esta versión y queda anotado.
 
+**Comprobado (2026-11-18, T043)**: una respuesta con la forma de una plantilla (`# Resumen`, `## Requisitos` con viñetas, `**Costos**` y la línea «Sin información en los documentos») se dibuja como títulos en negrita, listas y párrafos (prueba en `web/consulta/src/format/formatAnswer.test.ts`). No hizo falta cambiar `formatAnswer.ts`; queda la limitación de los subniveles, que se ven planos.
+
 ## R11. Panel de administración
 
 **Decisión**: `ArtifactForm` ofrece el tercer modo (`ALL_MODES`) con la misma advertencia de costo que el razonamiento; `ArtifactCard` gana el botón "Plantillas" que abre `ArtifactTemplatesDialog` (lista, agregar, editar, cargar archivo y eliminar, con el mismo `TemplateEditor` que la Consulta si es práctico compartir lógica de validación, no componentes: son dos aplicaciones distintas). El módulo Uso agrega "plantilla" a los filtros y a las columnas de modo.

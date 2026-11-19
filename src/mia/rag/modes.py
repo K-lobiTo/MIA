@@ -1,15 +1,15 @@
 """Modos de respuesta: cada uno tiene su proveedor, modelo y esfuerzo de razonamiento, definidos por
-configuración de la instancia, además de su instrucción al modelo y su cantidad de resultados de búsqueda. Los artefactos piden "literal" o "razonamiento" y nunca ven el modelo."""
+configuración de la instancia, además de su instrucción al modelo y su cantidad de resultados de búsqueda. Los artefactos piden "literal", "razonamiento" o "plantilla" y nunca ven el modelo. El modo "plantilla" (feature 020) reutiliza
+la configuración del razonamiento con una instrucción propia."""
 
 from dataclasses import dataclass
 from decimal import Decimal
 
 from mia.config import settings
-from mia.rag.llm import RAG_SYSTEM_PROMPT, REASONING_SYSTEM_PROMPT
+from mia.rag.llm import RAG_SYSTEM_PROMPT, REASONING_SYSTEM_PROMPT, TEMPLATE_SYSTEM_PROMPT
+from mia.rag.mode_ids import LITERAL, MODE_IDS, PLANTILLA, RAZONAMIENTO, is_reasoning_class
 
-LITERAL = "literal"
-RAZONAMIENTO = "razonamiento"
-MODE_IDS = [LITERAL, RAZONAMIENTO]
+__all__ = ["LITERAL", "MODE_IDS", "PLANTILLA", "RAZONAMIENTO", "is_reasoning_class"]
 
 
 @dataclass(frozen=True)
@@ -23,6 +23,9 @@ MODES = {
     LITERAL: ModeInfo(LITERAL, "Literal", "Lo que dice exactamente un documento: un acuerdo, un requisito, una fecha."),
     RAZONAMIENTO: ModeInfo(
         RAZONAMIENTO, "Con razonamiento", "Combina, compara y calcula datos de varios documentos."
+    ),
+    PLANTILLA: ModeInfo(
+        PLANTILLA, "Plantilla", "Responde con la estructura de una plantilla que eliges, con datos de los documentos."
     ),
 }
 
@@ -54,7 +57,8 @@ def mode_config(mode: str) -> ModeConfig | None:
             RAG_SYSTEM_PROMPT,
             settings.query_search_limit,
         )
-    if mode == RAZONAMIENTO:
+    if mode in (RAZONAMIENTO, PLANTILLA):
+        # La plantilla es el razonamiento con otra instrucción: mismo proveedor, modelo, esfuerzo, precios y búsqueda.
         if not settings.llm_provider_razonamiento:
             return None
         return ModeConfig(
@@ -63,7 +67,7 @@ def mode_config(mode: str) -> ModeConfig | None:
             settings.llm_reasoning_effort_razonamiento or settings.openrouter_reasoning_effort,
             settings.llm_price_in_razonamiento,
             settings.llm_price_out_razonamiento,
-            REASONING_SYSTEM_PROMPT,
+            REASONING_SYSTEM_PROMPT if mode == RAZONAMIENTO else TEMPLATE_SYSTEM_PROMPT,
             settings.query_search_limit_razonamiento,
         )
     return None

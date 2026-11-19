@@ -30,6 +30,8 @@ export interface AskInput {
   history?: HistoryTurn[];
   // Con sesión (feature 015): la conversación guardada a la que pertenece la pregunta.
   conversation_id?: string;
+  // Solo con el modo plantilla (feature 020): la API resuelve la plantilla por su identificador.
+  template_id?: string;
 }
 
 export function useAsk() {

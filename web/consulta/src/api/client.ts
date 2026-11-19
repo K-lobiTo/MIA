@@ -102,14 +102,15 @@ export function detailText(data: unknown, status: number): string {
 
 export async function apiFetch<T>(
   path: string,
-  options: { method?: string; body?: unknown; timeoutMs?: number } = {},
+  options: { method?: string; body?: unknown; formData?: FormData; timeoutMs?: number } = {},
 ): Promise<T> {
-  const { method = "GET", body, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
+  const { method = "GET", body, formData, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
   const headers: Record<string, string> = {};
   if (currentKey) headers["X-Artifact-Key"] = currentKey;
   const session = getSession();
   if (session) headers["X-Session-Token"] = session.token;
-  if (body !== undefined) headers["content-type"] = "application/json";
+  // Con un archivo (`formData`) el navegador pone el tipo de contenido y su separador: no se fuerza.
+  if (body !== undefined && formData === undefined) headers["content-type"] = "application/json";
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -118,7 +119,7 @@ export async function apiFetch<T>(
     response = await fetch(`${BASE}${path}`, {
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: formData ?? (body !== undefined ? JSON.stringify(body) : undefined),
       signal: controller.signal,
     });
   } catch (error) {

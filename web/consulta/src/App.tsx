@@ -5,6 +5,7 @@ import { ApiError, setInvalidKeyHandler, setSessionHandlers, useKey } from "./ap
 import { FIXED_KEY } from "./api/fixedKey";
 import { useLogin, useSessionCheck } from "./api/auth";
 import { useAsk, useConfig, useDomains } from "./api/consulta";
+import { useTemplates } from "./api/templates";
 import {
   CONVERSATIONS_KEY,
   fetchConversation,
@@ -23,12 +24,15 @@ import { KeyScreen } from "./components/KeyScreen";
 import { LoginPanel } from "./components/LoginPanel";
 import { Notice } from "./components/Notice";
 import { Sidebar } from "./components/Sidebar";
+import { TemplatePicker } from "./components/TemplatePicker";
+import { TemplatesDialog } from "./components/TemplatesDialog";
 import { SIDEBAR_WIDTH, loadSidebarOpen, saveSidebarOpen } from "./state/sidebar";
 import {
   answeredExchange,
   failedExchange,
   newExchange,
   ratedExchange,
+  templateFromConversation,
   type Exchange,
 } from "./state/conversation";
 import { rejectionOf } from "./state/rejection";
@@ -43,6 +47,15 @@ import {
 } from "./state/chat";
 import { memoryNotice } from "./state/history";
 import { loadMode, resolveAvailability, saveMode } from "./state/modes";
+
+import {
+  PICK_TEMPLATE,
+  TEMPLATE_GONE,
+  loadTemplateId,
+  resolveTemplateSelection,
+  restoreTemplate,
+  saveTemplateId,
+} from "./state/templates";
 
 export function App() {
   const key = useKey();
@@ -59,6 +72,10 @@ export function App() {
   const [rejection, setRejection] = useState<string | null>(null);
   const [restore, setRestore] = useState<{ text: string; n: number } | null>(null);
   const [savedMode, setSavedMode] = useState<string | null>(() => loadMode());
+  // Modo plantilla (feature 020): la plantilla elegida se recuerda por artefacto.
+  const templates = useTemplates();
+  const [managingTemplates, setManagingTemplates] = useState(false);
+  const [savedTemplate, setSavedTemplate] = useState<string | null>(() => loadTemplateId(key));
   // Usuarios e historial de chats (feature 015).
   const session = useSession();
   useSessionCheck();
@@ -86,6 +103,11 @@ export function App() {
   useEffect(() => {
     setExchanges([]);
     setConversationId(null);
+  }, [key]);
+
+  // Cada artefacto recuerda su propia plantilla elegida.
+  useEffect(() => {
+    setSavedTemplate(loadTemplateId(key));
   }, [key]);
 
   // La sesión venció o el artefacto exige una: se pide iniciar sesión (sin tocar la clave del artefacto).
@@ -122,6 +144,11 @@ export function App() {
     saveMode(next);
   };
 
+  const changeTemplate = (id: string | null) => {
+    setSavedTemplate(id);
+    saveTemplateId(key, id);
+  };
+
   const changeSelection = (ids: string[]) => {
     setSelected(ids);
     saveSelection(ids);
@@ -129,6 +156,7 @@ export function App() {
 
   const availability = config.data ? resolveAvailability(config.data, savedMode) : null;
   const mode: ModeId = availability?.effective ?? "literal";
+  const templateSelection = resolveTemplateSelection(mode, templates.data, savedTemplate);
   const modeNames = Object.fromEntries((config.data?.modes ?? []).map((m) => [m.id, m.name]));
   const busy = exchanges.some((e) => e.status === "pending");
   const memoryTurns = config.data?.artifact?.context_turns ?? 0;
@@ -136,13 +164,19 @@ export function App() {
   const send = useCallback(
     (question: string, modeToUse: ModeId = mode) => {
       if (selected.length === 0) return;
+      // Con el modo plantilla la API recibe solo el identificador de la plantilla elegida.
+      const templateId = modeToUse === "plantilla" ? templateSelection.template?.id : undefined;
+      if (modeToUse === "plantilla" && !templateId) {
+        setRejection(PICK_TEMPLATE);
+        return;
+      }
       const exchange = newExchange(question, selected, modeToUse);
       // Con sesión viaja el identificador de la conversación guardada; sin ella, las últimas vueltas respondidas (feature 014).
       const extra = askPayload({ hasSession: Boolean(session), chatEnabled, conversationId, exchanges, memoryTurns });
       setRejection(null);
       setExchanges((list) => [...list, exchange]);
       ask.mutate(
-        { domains: selected, question, mode: modeToUse, ...extra },
+        { domains: selected, question, mode: modeToUse, ...(templateId ? { template_id: templateId } : {}), ...extra },
         {
           onSuccess: (response) => {
             setExchanges((list) => list.map((e) => (e.localId === exchange.localId ? answeredExchange(e, response) : e)));
@@ -159,6 +193,16 @@ export function App() {
             if (apiError.status === 403 || apiError.status === 429) {
               void queryClient.invalidateQueries({ queryKey: ["config"] });
               void queryClient.invalidateQueries({ queryKey: ["domains"] });
+            }
+            // La plantilla se eliminó o dejó de estar disponible desde que se cargó la lista: se quita el intercambio, vuelve el
+            // texto al campo y se pide elegir otra (antes que el 404 de una conversación, que es otro caso).
+            if (apiError.status === 404 && apiError.message === TEMPLATE_GONE) {
+              setExchanges((list) => list.filter((e) => e.localId !== exchange.localId));
+              setRejection(`${TEMPLATE_GONE} Elige otra.`);
+              setRestore((previous) => ({ text: question, n: (previous?.n ?? 0) + 1 }));
+              changeTemplate(null);
+              void queryClient.invalidateQueries({ queryKey: ["templates"] });
+              return;
             }
             // Sesión vencida o exigida, conversación que ya no existe o un límite de la conversación: el texto escrito vuelve
             // al campo con un mensaje claro (feature 015).
@@ -193,7 +237,7 @@ export function App() {
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selected, ask.mutate, mode, queryClient, exchanges, memoryTurns, session, chatEnabled, conversationId],
+    [selected, ask.mutate, mode, queryClient, exchanges, memoryTurns, session, chatEnabled, conversationId, templateSelection.template],
   );
 
   async function openConversation(id: string) {
@@ -204,6 +248,16 @@ export function App() {
       setConversationId(id);
       setRejection(null);
       setSidebarOpen(false);
+      // Una conversación que usó una plantilla vuelve con el modo plantilla y esa plantilla seleccionadas (su versión actual);
+      // si ya no está disponible se pide elegir otra (feature 020).
+      const remembered = templateFromConversation(stored.turns);
+      if (remembered && config.data?.modes.some((m) => m.id === "plantilla" && m.available)) {
+        const fresh = (await templates.refetch()).data;
+        const restored = restoreTemplate(remembered, fresh);
+        changeMode("plantilla");
+        changeTemplate(restored.selectedId);
+        if (restored.notice) setRejection(restored.notice);
+      }
     } catch (error) {
       setRejection(
         error instanceof ApiError && error.status === 404 ? "Esa conversación ya no existe." : "No se pudo abrir la conversación.",
@@ -374,16 +428,30 @@ export function App() {
           <Composer
             selectedCount={selected.length}
             busy={busy}
-            blockedReason={availability?.sendBlocked ?? null}
+            blockedReason={availability?.sendBlocked ?? templateSelection.blocked}
             rejection={rejection}
             restore={restore}
             availability={availability}
             memory={memoryNotice(memoryTurns)}
+            templatePicker={
+              mode === "plantilla" && templates.data ? (
+                <TemplatePicker
+                  data={templates.data}
+                  selectedId={templateSelection.template?.id ?? null}
+                  onSelect={changeTemplate}
+                  onManage={() => setManagingTemplates(true)}
+                  onLogin={() => setShowLogin(true)}
+                />
+              ) : null
+            }
             onModeChange={changeMode}
             onSend={(question) => send(question)}
           />
         </main>
       </AppShell.Main>
+      {managingTemplates && templates.data && (
+        <TemplatesDialog mine={templates.data.mine} limits={templates.data.limits} onClose={() => setManagingTemplates(false)} />
+      )}
     </AppShell>
   );
 }

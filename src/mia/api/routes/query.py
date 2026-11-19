@@ -57,10 +57,12 @@ from mia.rag.lexical import (
 )
 from mia.rag.llm import (
     RagContext,
+    build_template_block,
     get_llm_provider,
     instructions_with_custom_prompt,
     is_no_info_answer,
 )
+from mia.rag.mode_ids import PLANTILLA
 from mia.rag.modes import estimate_cost, mode_available, mode_config
 from mia.rag.programs import (
     ClarifyPolicy,
@@ -91,6 +93,7 @@ from mia.rag.sections import (
 from mia.storage.db import get_session
 from mia.storage.models import Artifact, ConsultaUser, Document, Domain, QueryLog
 from mia.storage.vector_store import get_vector_store
+from mia.templates.service import resolve_template
 
 router = APIRouter(tags=["query"])
 logger = logging.getLogger(__name__)
@@ -124,13 +127,16 @@ class HistoryTurnIn(BaseModel):
 
     question: str = Field(min_length=1, max_length=2000)
     answer: str = Field(min_length=1, max_length=20000)
-    mode: Literal["literal", "razonamiento"] = "literal"
+    mode: Literal["literal", "razonamiento", "plantilla"] = "literal"
 
 
 class QueryRequest(BaseModel):
     domains: list[str] = Field(min_length=1)
     question: str = Field(min_length=1, max_length=2000)
-    mode: Literal["literal", "razonamiento"] = "literal"
+    mode: Literal["literal", "razonamiento", "plantilla"] = "literal"
+    # La plantilla del modo plantilla (feature 020): solo su identificador; la API resuelve la plantilla y su visibilidad. Es
+    # obligatoria con `mode = "plantilla"` y con otro modo se ignora.
+    template_id: str | None = Field(default=None, max_length=64)
     # La conversación guardada a la que pertenece la pregunta (feature 015): solo se usa con sesión de usuario; sin ella se ignora.
     conversation_id: str | None = Field(default=None, max_length=64)
     # Vueltas anteriores de la conversación, de la más vieja a la más nueva. La API las usa solo si el artefacto tiene
@@ -301,7 +307,7 @@ def cap_message(status: CapStatus) -> str:
     if status.scope == "artifact":
         return f"Este artefacto alcanzó su tope diario de gasto ({status.cap:.2f} USD). {reset}"
     return (
-        f"Este artefacto alcanzó su tope diario del modo con razonamiento ({status.cap:.2f} USD); "
+        f"Este artefacto alcanzó su tope diario de los modos con razonamiento y plantilla ({status.cap:.2f} USD); "
         f"puede seguir usando los otros modos. {reset}"
     )
 
@@ -338,7 +344,7 @@ def query(
     # Un artefacto que exige sesión rechaza lo que llegue sin ella (el bot no pasa por esta ruta).
     session_missing = artifact.require_login and user is None
     if user is None or settings.chat_retention_days == 0:
-        return run_query(payload, artifact, session, session_missing=session_missing)
+        return run_query(payload, artifact, session, session_missing=session_missing, user=user)
     chat_service.check_room(session, user, payload.conversation_id)
     # Con sesión el historial sale de lo guardado, no de lo que mande el cliente: una conversación nueva no tiene vueltas
     # anteriores y una guardada aporta las suyas (la memoria del artefacto las recorta después, como en la 014).
@@ -352,7 +358,8 @@ def query(
         else []
     )
     payload = payload.model_copy(update={"history": stored or None})
-    response = run_query(payload, artifact, session)
+    template_used: dict[str, str] = {}
+    response = run_query(payload, artifact, session, user=user, template_out=template_used)
     conversation_id: str | None = payload.conversation_id
     try:
         conversation_id = chat_service.append_turn(
@@ -364,6 +371,8 @@ def query(
             [{"domain": s.domain, "document": s.document} for s in response.sources],
             response.mode,
             response.no_info,
+            template_id=template_used.get("id"),
+            template_name=template_used.get("name"),
         )
         saved = True
     except Exception as exc:  # noqa: BLE001  (guardar nunca hace fallar una consulta)
@@ -381,6 +390,8 @@ def run_query(
     clarify: ClarifyPolicy | None = None,
     extras: QueryExtras | None = None,
     session_missing: bool = False,
+    user: ConsultaUser | None = None,
+    template_out: dict[str, str] | None = None,
 ) -> QueryResponse:
     """Una consulta completa con la configuración de `artifact` (permisos, topes, registro en Uso). La usan `POST /query`
     (el artefacto de la clave) y `POST /bot/query` (el artefacto asignado al bot de WhatsApp, feature 011): así los dos
@@ -388,7 +399,10 @@ def run_query(
 
     Solo el bot pasa `clarify` y `extras` (feature 013): con ellos, una consulta que no deja nada sobre el umbral decide si
     la pregunta es ambigua entre programas (`extras.clarify`), y una respuesta informa los documentos y los programas de
-    sus fuentes. Sin ellos la consulta es exactamente la de siempre."""
+    sus fuentes. Sin ellos la consulta es exactamente la de siempre.
+
+    Solo la Consulta pasa `user` (la persona con sesión, dueña de las plantillas personales) y `template_out`, donde se deja el
+    identificador y el nombre de la plantilla usada para guardarlos en la vuelta (feature 020)."""
     started = time.perf_counter()
     log = QueryLog(
         id=str(uuid.uuid4()),
@@ -427,6 +441,24 @@ def run_query(
             session, log, started, 403, "rejected_permission",
             "Este artefacto no tiene acceso a los dominios: " + ", ".join(forbidden) + ".",
         )
+
+    # Modo plantilla (feature 020): la plantilla se pide por identificador y la API aplica su visibilidad. Una inexistente,
+    # ajena o de otro artefacto responde lo mismo, para no revelar si existe.
+    template = None
+    if payload.mode == PLANTILLA:
+        if not payload.template_id:
+            raise _reject(session, log, started, 422, "rejected_permission", "Elige una plantilla.")
+        try:
+            template = resolve_template(session, artifact, user, payload.template_id)
+        except HTTPException as exc:
+            raise _reject(session, log, started, exc.status_code, "rejected_permission", str(exc.detail)) from None
+        if template_out is not None:
+            template_out.update(id=template.id, name=template.name)
+    # El modelo recibe la pregunta con el bloque de la plantilla; la búsqueda, el registro de Uso y la memoria usan siempre la
+    # pregunta original (el contenido de la plantilla nunca va a `queries`).
+    model_question = (
+        f"{payload.question}\n\n{build_template_block(template.content)}" if template is not None else payload.question
+    )
 
     # Topes de gasto del día. El costo de una consulta se conoce al terminar, así que un tope puede
     # excederse por el costo de las consultas que estaban en curso (acotado por OPENROUTER_MAX_TOKENS).
@@ -682,7 +714,7 @@ def run_query(
         if cite_sources:
             instructions = f"{instructions}\n\n{CITATION_INSTRUCTIONS}"
         answer = llm_provider.answer(
-            payload.question, context, instructions=instructions, **history_arg
+            model_question, context, instructions=instructions, **history_arg
         )
     except Exception as exc:
         # Sin esto el motivo real (clave inválida, modelo inexistente, timeout...) no queda en el log.
@@ -725,7 +757,7 @@ def run_query(
         if check_caps(session, artifact, payload.mode, extra=first_cost) is None:
             try:
                 second = llm_provider.answer(
-                    payload.question, context, instructions=instructions, **history_arg
+                    model_question, context, instructions=instructions, **history_arg
                 )
                 logger.info(
                     "Fin de la generación (reintento): %s (modo %s)", second.finish_reason or "desconocido", payload.mode
