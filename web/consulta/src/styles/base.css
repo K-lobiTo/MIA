@@ -60,11 +60,12 @@ a:not([class]) { color: var(--accent); }
 .composer { border-top: 1px solid var(--line); background: var(--surface); padding: 12px 18px; display: flex; flex-direction: column; gap: 8px; }
 .composer-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
 .composer-row .mode-button { flex: none; }
-.template-control { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
-.template-control-empty { flex: 1 1 100%; }
-.template-control .template-picker { flex: 0 1 210px; min-width: 150px; }
+.template-control { display: flex; gap: 6px 10px; align-items: center; flex-wrap: wrap; }
+.template-label { flex: none; color: var(--muted); }
+.template-control .template-picker { flex: 1 1 260px; max-width: 460px; min-width: 0; }
+.template-manage { flex: none; }
 .template-empty { flex: 1 1 220px; display: flex; flex-direction: column; gap: 2px; }
-.template-login { align-self: center; }
+.template-login { flex: 1 1 auto; }
 .template-list { list-style: none; padding: 0; margin: 0; }
 .template-example { white-space: pre-line; }
 .composer-row .mantine-Textarea-root { flex: 1 1 220px; min-width: 0; }

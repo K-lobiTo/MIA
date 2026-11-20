@@ -43,6 +43,9 @@ export const useUpdateArtifact = () =>
     apiFetch<Artifact>(`/artifacts/${v.id}`, { method: "PATCH", body: v.changes }),
   );
 
+export const useDeleteArtifact = () =>
+  useArtifactMutation((id: string) => apiFetch<void>(`/artifacts/${id}`, { method: "DELETE" }));
+
 export const useRegenerateKey = () =>
   useArtifactMutation((id: string) =>
     apiFetch<{ key: string; key_prefix: string }>(`/artifacts/${id}/key`, { method: "POST" }),

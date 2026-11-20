@@ -30,7 +30,7 @@ const artefacto: Artifact = {
 function tarjeta(a: Artifact): string {
   return renderToString(
     <MantineProvider theme={theme}>
-      <ArtifactCard artifact={a} units={[]} busy={false} onEdit={vi.fn()} onRegenerate={vi.fn()} onToggleActive={vi.fn()} onTemplates={vi.fn()} />
+      <ArtifactCard artifact={a} units={[]} busy={false} onEdit={vi.fn()} onRegenerate={vi.fn()} onToggleActive={vi.fn()} onTemplates={vi.fn()} onDelete={vi.fn()} />
     </MantineProvider>,
   );
 }

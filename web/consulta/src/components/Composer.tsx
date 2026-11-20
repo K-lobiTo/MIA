@@ -23,7 +23,7 @@ interface Props {
   availability: Availability | null;
   /** Aviso de la memoria del artefacto ("Recuerda las últimas N preguntas..."); vacío si no tiene (feature 014). */
   memory?: string;
-  /** El selector de plantilla del modo plantilla (feature 020); nulo en los demás modos. Va a la derecha del selector de modo. */
+  /** El selector de plantilla del modo plantilla (feature 020); nulo en los demás modos. Va en una línea propia sobre la pregunta. */
   templatePicker?: ReactNode;
   onModeChange: (mode: ModeId) => void;
   onSend: (question: string) => void;
@@ -71,9 +71,10 @@ export function Composer({
         </Notice>
       )}
       {rejection && <Notice tone="danger">{rejection}</Notice>}
+      {/* La plantilla va en su propia línea, encima de la pregunta: así la barra de abajo conserva modo, pregunta y envío. */}
+      {templatePicker}
       <div className="composer-row">
         {availability && <ModePicker availability={availability} onChange={onModeChange} />}
-        {templatePicker}
         <Textarea
           id="question"
           aria-label="Tu pregunta"

@@ -93,37 +93,37 @@
     {
       "id": "datos-04",
       "categoria": "datos",
-      "pregunta": "Prepárame el informe de la Maestría en Analítica.",
+      "pregunta": "Prepárame el informe de la Maestría en Analítica de Negocio.",
       "plantilla": "informe_programa"
     },
     {
       "id": "datos-05",
       "categoria": "datos",
-      "pregunta": "Hazme la ficha corta de la Maestría en Analítica.",
+      "pregunta": "Hazme la ficha corta de la Maestría en Analítica de Negocio.",
       "plantilla": "ficha_corta"
     },
     {
       "id": "datos-06",
       "categoria": "datos",
-      "pregunta": "Prepárame la comparación de la Maestría en Analítica.",
+      "pregunta": "Prepárame la comparación de la Maestría en Analítica de Negocio.",
       "plantilla": "comparacion"
     },
     {
       "id": "datos-07",
       "categoria": "datos",
-      "pregunta": "Prepárame el informe de la Maestría en Computación.",
+      "pregunta": "Prepárame el informe de la Maestría en Ciberseguridad con énfasis en Seguridad del Software.",
       "plantilla": "informe_programa"
     },
     {
       "id": "datos-08",
       "categoria": "datos",
-      "pregunta": "Hazme la ficha corta de la Maestría en Computación.",
+      "pregunta": "Hazme la ficha corta de la Maestría en Ciberseguridad con énfasis en Seguridad del Software.",
       "plantilla": "ficha_corta"
     },
     {
       "id": "datos-09",
       "categoria": "datos",
-      "pregunta": "Prepárame la comparación de la Maestría en Computación.",
+      "pregunta": "Prepárame la comparación de la Maestría en Ciberseguridad con énfasis en Seguridad del Software.",
       "plantilla": "comparacion"
     },
     {
@@ -151,7 +151,7 @@
     {
       "id": "sin_datos-02",
       "categoria": "sin_datos",
-      "pregunta": "Prepárame el informe ampliado de la Maestría en Analítica.",
+      "pregunta": "Prepárame el informe ampliado de la Maestría en Analítica de Negocio.",
       "plantilla": "con_secciones_sin_datos",
       "secciones_sin_datos": [
         "Convenios con empresas",
@@ -161,7 +161,7 @@
     {
       "id": "sin_datos-03",
       "categoria": "sin_datos",
-      "pregunta": "Prepárame el informe ampliado de la Maestría en Computación.",
+      "pregunta": "Prepárame el informe ampliado de la Maestría en Ciberseguridad con énfasis en Seguridad del Software.",
       "plantilla": "con_secciones_sin_datos",
       "secciones_sin_datos": [
         "Convenios con empresas",
@@ -191,7 +191,7 @@
     {
       "id": "sin_datos-06",
       "categoria": "sin_datos",
-      "pregunta": "Prepárame el informe ampliado de la Maestría en Analítica, con empresas aliadas.",
+      "pregunta": "Prepárame el informe ampliado de la Maestría en Analítica de Negocio, con empresas aliadas.",
       "plantilla": "con_secciones_sin_datos",
       "secciones_sin_datos": [
         "Convenios con empresas",
