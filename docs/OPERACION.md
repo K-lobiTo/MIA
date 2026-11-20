@@ -60,6 +60,11 @@ Guía práctica para desplegar, cargar documentos y mantener funcionando el prot
 | `MAX_IMAGE_MB` | `2` | tamaño máximo de una imagen asociada a un documento, de 1 a 10 (la base gratuita de Neon tiene 0,5 GB) | no se usa |
 | `MAX_UPLOAD_MB` | `25` | `25` | `25` |
 | `MAX_EXCEL_ROWS` | `5000` | `5000` | `5000` (de 100 a 50000): filas con contenido que se leen por libro de Excel, sumando las hojas visibles; si el libro tiene más, se recorta y el inventario muestra el aviso (feature 018) |
+| `WEB_FETCH_TIMEOUT_SECONDS` | `15` | `15` | `15` (de 1 a 60): plazo total, en segundos, de la lectura de una página web (incluye `robots.txt` y las redirecciones; feature 022) |
+| `WEB_MAX_PAGE_KB` | `2048` | `2048` | `2048` (de 64 a 10240): tamaño máximo del HTML de una página, ya descomprimido |
+| `WEB_MAX_REDIRECTS` | `5` | `5` | `5` (de 0 a 10): saltos de redirección que se siguen |
+| `WEB_MIN_TEXT_CHARS` | `300` | `300` | `300` (de 50 a 5000): texto útil mínimo para aceptar una página; por debajo se rechaza como sin contenido (probablemente la arma con JavaScript) |
+| `WEB_USER_AGENT` | `MIA-Lector/1.0 (...)` | `MIA-Lector/1.0 (...)` | identificación del cliente ante los sitios que se leen; sin datos personales; el token que se compara con `robots.txt` es `MIA-Lector` |
 | `TEMPLATE_MAX_CHARS` | `4000` | `4000` | `4000` (de 200 a 20000): largo máximo del contenido de una plantilla del modo plantilla (feature 020) |
 | `TEMPLATE_MAX_PER_USER` | `20` | `20` | `20` (de 1 a 200): plantillas personales que puede guardar cada persona |
 | `TEMPLATE_MAX_PER_ARTIFACT` | `30` | `30` | `30` (de 1 a 200): plantillas del artefacto (catálogo de la administración) por artefacto |
@@ -390,6 +395,39 @@ Si el documento sale de una página web, prepararlo antes según "Preparar docum
 
 Si un documento queda en `error`, ver el log de la API local (el mensaje empieza con "Fallo indexando documento"). Un documento que quedó en `processing` porque se cortó la API no se reintenta solo; la forma de reintentar es eliminarlo (ver "Eliminar documentos" más abajo) y volver a subir el archivo.
 
+**Páginas web (feature 022).** Además de archivos, un dominio puede tener **una página web** como fuente: en el Inventario, "Agregar página web" en el dominio o la carpeta (o `POST /domains/{id}/web-pages` con `{"url": "https://...", "name": "..."}`). El sistema lee **solo esa página**, en el momento, y si no se puede leer lo dice ahí mismo con la razón y **no crea nada** (cada intento rechazado queda en el registro de administración). Lo que hace: respeta `robots.txt`, se identifica como `MIA-Lector`, sigue las redirecciones de la propia dirección, se niega a leer redes internas, descarta menús, pie de página, botones y avisos de cookies, y escribe cada enlace como `texto (dirección)` **sin visitarlo**. El documento empieza con `Fuente: <dirección> (consultada el <día>)`; su nombre es el que se indique, o el título de la página, o el sitio. Se ve el texto guardado con **"Ver texto"** (contrastarlo con la página) y se elimina como cualquier documento.
+
+- **Qué no hace esta primera versión:** no sigue enlaces ni lee archivos enlazados (un PDF enlazado se sube a mano como archivo), no inicia sesión, no se vuelve a leer sola cada cierto tiempo, no tiene reglas por sitio, no usa un navegador (una página que arma su contenido con JavaScript, o que lo muestra solo al hacer clic en pestañas o acordeones, se rechaza o sale incompleta) y no reconstruye el título `<PROGRAMA>: <SECCIÓN>` ni repite el nombre del programa en cada sección: la calidad es "buena, no igual a la normalizada a mano", así que para lo que se consulta sin nombrar el programa sigue valiendo subir un texto normalizado (ver más abajo).
+- **Una dirección por dominio.** Agregar de nuevo la misma dirección (con o sin barra final, `http` o `https`, o por una redirección) responde `409 already_added` con la fecha de lectura, aunque la página haya cambiado. **Para actualizar una página: eliminar el documento y volver a agregarla.** El mismo texto con otra dirección no se duplica (`already_existed`, como un archivo repetido).
+- **Razones de rechazo** (campo `code` de la respuesta) y qué hacer:
+
+| `code` | Qué pasó | Qué hacer |
+|---|---|---|
+| `invalid_url` | La dirección no es válida (vacía, sin forma de sitio, esquema distinto de `http` o `https`, con usuario y clave, o de más de 2048 caracteres) | Corregirla |
+| `private_address` | Apunta a una red interna o privada (también por una redirección) | No se puede leer; usar una página pública |
+| `ingestion_disabled` | La instancia tiene la ingesta desactivada (`INGESTION_ENABLED=false`) | Agregar desde una instancia local |
+| `already_added` | Esa dirección ya está en el dominio | Eliminar el documento y volver a agregarla si se quiere actualizar |
+| `login_required` | La página pide iniciar sesión | Esta versión no puede leerla; copiar su contenido a un texto y subirlo como archivo |
+| `bot_blocked` | El sitio bloquea la lectura automática (protección anti-bot, pantalla de verificación) | No se intenta esquivar; pedir autorización al sitio o subir el contenido como archivo |
+| `forbidden` | El sitio responde 403 sin más señales (puede requerir sesión o bloquear lectores automáticos) | Igual que las dos anteriores |
+| `rate_limited` | El sitio pidió esperar (429) | Intentar más tarde |
+| `robots_disallowed` | `robots.txt` prohíbe leer esa ruta (o no se pudo consultar) | Respetarlo; subir el contenido como archivo si el sitio es propio |
+| `not_found` | 404 o 410 | Revisar la dirección |
+| `server_error` | El sitio respondió con otro error (4xx o 5xx) | Intentar más tarde |
+| `unreachable` | No se pudo conectar o no respondió a tiempo (`WEB_FETCH_TIMEOUT_SECONDS`) | Revisar la dirección o intentar más tarde |
+| `tls_error` | Certificado inválido o conexión segura fallida | Revisar el sitio |
+| `too_many_redirects` | Más de `WEB_MAX_REDIRECTS` saltos o un ciclo | Usar la dirección final |
+| `not_html` | No es una página de texto (por ejemplo, un PDF o una imagen) | Subirlo como archivo |
+| `too_large` | El HTML supera `WEB_MAX_PAGE_KB` | Subir el contenido como archivo |
+| `no_content` | Texto útil menor que `WEB_MIN_TEXT_CHARS`: la página probablemente carga su texto con JavaScript | Subir el contenido como archivo |
+| `text_too_large` | El texto extraído supera `MAX_UPLOAD_MB` | Subir por partes |
+
+- **Comprobado el 2026-11-20 con sitios reales** (solo lectura): `www.tec.ac.cr` y su página de posgrados se leen en 2 a 3 s con texto limpio (sin menús ni pie de página y con los enlaces escritos con su dirección; una línea de ruido en 74); `www.acm.org` se rechaza con `bot_blocked` y `tecdigital.tec.ac.cr` con `robots_disallowed`. Con direcciones de la red interna (`localhost`, `127.0.0.1`, `169.254.169.254` y otras 8 formas) el servidor ni siquiera recibe la petición.
+- **Responsabilidad sobre el sitio.** El sistema solo respeta `robots.txt`. **Para sitios ajenos al TEC hay que revisar los términos de uso y los derechos de autor** antes de agregarlos (las páginas del propio TEC son el caso más seguro). Un sitio como el de la ACM responde con protección anti-bot y se rechaza: es el comportamiento esperado.
+- **Datos personales.** Una página de programa puede traer nombres, correos y teléfonos de coordinación, que la guía de normalización pide no cargar: el sistema **no los filtra**. Revisar el texto con "Ver texto" y eliminar el documento si no es adecuado.
+- **Dónde corre.** La lectura ocurre en la instancia de la API donde se agrega (con `INGESTION_ENABLED=true`); con `INGESTION_SYNC=true` la respuesta de una página aceptada llega cuando termina su procesamiento, como al subir un archivo, y un rechazo siempre responde dentro del plazo.
+- **Despliegue:** hay una migración (`0015`, aditiva: `documents.source_url` y `documents.source_text`); la API la aplica al arrancar. Respetar "Cuidado con las migraciones" (no desplegar una versión con menos migraciones que las de la base; para volver atrás, `alembic downgrade 0014`, que pierde el texto guardado de los documentos web). Railway no redespliega solo: `./scripts/servicios.py encender MIA mia-panel` tras el merge a `main` y el push.
+
 ## Eliminar documentos (feature 012)
 
 Un documento cargado se puede eliminar de un dominio, con el mismo alcance que se tiene para subirlo (global o por programa). Es **definitivo**: no hay papelera ni deshacer. Especificación y decisiones en [specs/012-eliminar-documentos/](../specs/012-eliminar-documentos/spec.md).
@@ -425,6 +463,8 @@ La API elimina al recibir la petición: la confirmación es del panel, no de la 
 ## Preparar documentos que vienen de páginas web (normalización)
 
 El RAG responde con lo que encuentra en los fragmentos; un texto copiado tal cual de una página web llega con ruido, sin el contexto de la página y sin sus enlaces, y eso baja la calidad de las respuestas aunque la información esté. Antes de subir algo sacado de una página (web scraping, exportar a PDF o copiar y pegar) hay que **normalizarlo**. Lo aprendido con los posgrados del TEC (Ciberseguridad y Analítica de Negocio, 26 y 27 de octubre de 2026):
+
+**Lectura automática de una página (feature 022).** Para una sola página pública, "Agregar página web" en el Inventario la lee y la limpia sola (ver "Páginas web" en "Cargar documentos"). Cubre, a su manera, las reglas 2 (quita menús y pie de página), 5 (escribe cada enlace como `texto (dirección)`), 7 (texto plano, una idea por línea) y 9 (primera línea con la dirección y el día de la consulta). **No cubre** las reglas 1 (un documento por tema), 3 (no cargar contactos), 4 y 4b (nombre del programa en cada sección y título `<PROGRAMA>: <SECCIÓN>`), 6 (pestañas y acordeones), 8 (normalizar siglas y números) ni 10 (verificar contra la página): para lo que se consulta sin nombrar el programa, o para páginas con pestañas, sigue valiendo preparar el texto a mano y subirlo como archivo.
 
 1. **Un documento por tema, no uno por página ni uno gigante.** Un documento por sección de la fuente (por ejemplo, Presentación, Admisión y Plan de estudio de cada programa) recupera mejor que uno que lo junta todo, y cada respuesta cita solo la sección que aportó. Un documento sin nada que lo sustente (como un "énfasis" olvidado al armar el combinado) deja preguntas sin respuesta: contrastar contra la página antes de subir.
 2. **Quitar lo que no es contenido:** menús y navegación, botones ("Ver plan de estudios", "Leer más"), pie de página, enlaces de interés, listas de otros programas y titulares repetidos. Meten fragmentos que se parecen a muchas preguntas y no responden ninguna.

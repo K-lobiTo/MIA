@@ -191,6 +191,20 @@ class Settings(BaseSettings):
     max_upload_mb: int = 25
     # Filas con contenido que se leen por libro de Excel, sumando las hojas visibles, antes de recortar (feature 018).
     max_excel_rows: int = Field(default=5000, ge=100, le=50000)
+    # Lectura de una página web (feature 022). Identificación del cliente ante los sitios que se leen: clara y sin datos
+    # personales; el token que se compara con robots.txt es `MIA-Lector`.
+    web_user_agent: str = (
+        "MIA-Lector/1.0 (lectura de una pagina indicada por una persona administradora; "
+        "Instituto Tecnologico de Costa Rica)"
+    )
+    # Plazo total, en segundos, de la lectura de una página (incluye robots.txt y las redirecciones).
+    web_fetch_timeout_seconds: int = Field(default=15, ge=1, le=60)
+    # Tamaño máximo del HTML de una página, en KB, ya descomprimido.
+    web_max_page_kb: int = Field(default=2048, ge=64, le=10240)
+    # Saltos de redirección que se siguen antes de rechazar la dirección.
+    web_max_redirects: int = Field(default=5, ge=0, le=10)
+    # Texto útil mínimo, en caracteres, para aceptar una página (por debajo se rechaza como sin contenido).
+    web_min_text_chars: int = Field(default=300, ge=50, le=5000)
     # Modo plantilla (feature 020): largo máximo del contenido de una plantilla, en caracteres.
     template_max_chars: int = Field(default=4000, ge=200, le=20000)
     # Plantillas personales que puede guardar cada persona.

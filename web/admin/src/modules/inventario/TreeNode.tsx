@@ -4,6 +4,7 @@ import { createContext, useContext, useState, type DragEvent, type ReactNode } f
 import { DynamicBadge } from "../../components/DynamicBadge";
 import { StatusBadge, type BadgeTone } from "../../components/StatusBadge";
 import type { DocumentItem, DocumentStatus, DomainNode, FolderNode, UnitNode } from "../../api/types";
+import { enlaceSeguro } from "./inventoryUtils";
 import { estadoDeGrupo } from "./seleccion";
 
 /** Modo de selección para eliminar varios documentos (feature 012). Sin proveedor, el modo está apagado. */
@@ -130,10 +131,12 @@ export function DocumentRow({
   document,
   onImages,
   onDelete,
+  onViewText,
 }: {
   document: DocumentItem;
   onImages?: (document: DocumentItem) => void;
   onDelete?: (document: DocumentItem) => void;
+  onViewText?: (document: DocumentItem) => void;
 }) {
   const seleccion = useContext(SeleccionContext);
   const status = STATUS_LABEL[document.status] ?? { text: document.status, tone: "info" as BadgeTone };
@@ -162,6 +165,17 @@ export function DocumentRow({
           {`Imágenes (${document.image_count})`}
         </Button>
       )}
+      {onViewText && document.source_type === "web" && (
+        <Button
+          variant="default"
+          size="compact-xs"
+          aria-label={`Ver el texto de ${document.filename}`}
+          title="Ver el texto que se extrajo de la página, para contrastarlo con ella"
+          onClick={() => onViewText(document)}
+        >
+          Ver texto
+        </Button>
+      )}
       {onDelete && (
         <Button
           variant="default"
@@ -174,6 +188,15 @@ export function DocumentRow({
         >
           Eliminar
         </Button>
+      )}
+      {enlaceSeguro(document.source_url) && (
+        // Documento web (feature 022): la dirección de la página que se leyó; la fecha de lectura es la de la fila.
+        <Text className="doc-note" size="xs" c="dimmed">
+          {"Página: "}
+          <a href={enlaceSeguro(document.source_url) ?? undefined} target="_blank" rel="noopener noreferrer">
+            {document.source_url}
+          </a>
+        </Text>
       )}
       {document.status_note && (
         // Motivo del error o aviso de un documento listo (feature 018): siempre visible, en su propia línea.
@@ -202,9 +225,11 @@ interface Slots {
   onImages?: (domainId: string, document: DocumentItem) => void;
   // Elimina un documento (feature 012); sin esto la fila no muestra el botón.
   onDelete?: (domainId: string, document: DocumentItem) => void;
+  // Abre el texto extraído de un documento web (feature 022); sin esto la fila no muestra el botón.
+  onViewText?: (domainId: string, document: DocumentItem) => void;
 }
 
-export function FolderBranch({ folder, domainId, forceOpen, renderActions, onDropFiles, onImages, onDelete }: Slots & { folder: FolderNode; domainId: string }) {
+export function FolderBranch({ folder, domainId, forceOpen, renderActions, onDropFiles, onImages, onDelete, onViewText }: Slots & { folder: FolderNode; domainId: string }) {
   const node: NodeRef = { kind: "folder", id: folder.id, domainId };
   return (
     <Branch
@@ -226,6 +251,7 @@ export function FolderBranch({ folder, domainId, forceOpen, renderActions, onDro
           onDropFiles={onDropFiles}
           onImages={onImages}
           onDelete={onDelete}
+          onViewText={onViewText}
         />
       ))}
       {folder.documents.map((document) => (
@@ -234,6 +260,7 @@ export function FolderBranch({ folder, domainId, forceOpen, renderActions, onDro
           document={document}
           onImages={onImages && ((doc) => onImages(domainId, doc))}
           onDelete={onDelete && ((doc) => onDelete(domainId, doc))}
+          onViewText={onViewText && ((doc) => onViewText(domainId, doc))}
         />
       ))}
       {folder.folders.length === 0 && folder.documents.length === 0 && <div className="empty">Carpeta vacía</div>}
@@ -241,7 +268,7 @@ export function FolderBranch({ folder, domainId, forceOpen, renderActions, onDro
   );
 }
 
-export function DomainBranch({ domain, forceOpen, renderActions, onDropFiles, onImages, onDelete }: Slots & { domain: DomainNode }) {
+export function DomainBranch({ domain, forceOpen, renderActions, onDropFiles, onImages, onDelete, onViewText }: Slots & { domain: DomainNode }) {
   const node: NodeRef = { kind: "domain", id: domain.id, domainId: domain.id };
   return (
     <Branch
@@ -265,6 +292,7 @@ export function DomainBranch({ domain, forceOpen, renderActions, onDropFiles, on
           onDropFiles={onDropFiles}
           onImages={onImages}
           onDelete={onDelete}
+          onViewText={onViewText}
         />
       ))}
       {domain.documents.map((document) => (
@@ -273,6 +301,7 @@ export function DomainBranch({ domain, forceOpen, renderActions, onDropFiles, on
           document={document}
           onImages={onImages && ((doc) => onImages(domain.id, doc))}
           onDelete={onDelete && ((doc) => onDelete(domain.id, doc))}
+          onViewText={onViewText && ((doc) => onViewText(domain.id, doc))}
         />
       ))}
       {domain.folders.length === 0 && domain.documents.length === 0 && <div className="empty">Sin documentos todavía</div>}
@@ -280,7 +309,7 @@ export function DomainBranch({ domain, forceOpen, renderActions, onDropFiles, on
   );
 }
 
-export function UnitBranch({ unit, forceOpen, renderActions, onDropFiles, onImages, onDelete }: Slots & { unit: UnitNode }) {
+export function UnitBranch({ unit, forceOpen, renderActions, onDropFiles, onImages, onDelete, onViewText }: Slots & { unit: UnitNode }) {
   return (
     <Paper withBorder p="xs" radius="md">
       <Branch
@@ -303,6 +332,7 @@ export function UnitBranch({ unit, forceOpen, renderActions, onDropFiles, onImag
             onDropFiles={onDropFiles}
             onImages={onImages}
             onDelete={onDelete}
+            onViewText={onViewText}
           />
         ))}
         {unit.domains.length === 0 && <div className="empty">Sin dominios todavía</div>}

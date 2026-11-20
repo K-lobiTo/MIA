@@ -43,3 +43,24 @@ export const CSV_NOTICE =
 export function hasCsv(files: { name: string }[]): boolean {
   return files.some((file) => file.name.toLowerCase().endsWith(".csv"));
 }
+
+/** Aviso de la ventana "Agregar página web" (feature 022): el texto de una página puede traer nombres y contactos. */
+export const WEB_NOTICE =
+  "El contenido de la página se podrá consultar con los artefactos de este dominio. MIA no filtra datos personales (nombres, correos y teléfonos de contactos): revisa el texto una vez agregado y elimina el documento si no es adecuado.";
+
+/** Mensaje si la dirección está vacía, o null. La validación real (esquema, red interna, largo) es de la API. */
+export function validarDireccion(texto: string): string | null {
+  return texto.trim() === "" ? "Escribe la dirección de la página." : null;
+}
+
+export type ResultadoDeAgregar = { ok: true; yaExistia: boolean } | { ok: false; code?: string };
+
+/** La ventana se cierra sola solo cuando la página se agregó de verdad: un rechazo o una página que ya estaba se muestran en ella. */
+export function debeCerrar(resultado: ResultadoDeAgregar): boolean {
+  return resultado.ok && !resultado.yaExistia;
+}
+
+/** La dirección de un documento web solo se usa como enlace si es http o https (nunca `javascript:` ni `data:`). */
+export function enlaceSeguro(direccion: string | null | undefined): string | null {
+  return direccion && /^https?:\/\//i.test(direccion) ? direccion : null;
+}

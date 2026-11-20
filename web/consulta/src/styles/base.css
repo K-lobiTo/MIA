@@ -60,7 +60,9 @@ a:not([class]) { color: var(--accent); }
 .composer { border-top: 1px solid var(--line); background: var(--surface); padding: 12px 18px; display: flex; flex-direction: column; gap: 8px; }
 .composer-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
 .composer-row .mode-button { flex: none; }
+.composer-grid { display: flex; flex-direction: column; gap: 8px; }
 .template-control { display: flex; gap: 6px 10px; align-items: center; flex-wrap: wrap; }
+.template-body { flex: 1 1 260px; min-width: 0; display: flex; gap: 6px 10px; align-items: center; flex-wrap: wrap; }
 .template-label { flex: none; color: var(--muted); }
 .template-control .template-picker { flex: 1 1 260px; max-width: 460px; min-width: 0; }
 .template-manage { flex: none; }
@@ -70,6 +72,18 @@ a:not([class]) { color: var(--accent); }
 .template-example { white-space: pre-line; }
 .composer-row .mantine-Textarea-root { flex: 1 1 220px; min-width: 0; }
 .composer-hint { font-size: 0.82rem; color: var(--muted); display: flex; justify-content: space-between; gap: 12px; }
+
+/* En pantallas anchas la línea de la plantilla y la de la pregunta comparten columnas: la etiqueta queda sobre el botón del
+   modo y el selector empieza donde empieza el campo de la pregunta. En pantallas angostas se mantiene el flujo que se parte. */
+@media (min-width: 48em) {
+  .composer-grid { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; }
+  .composer-grid .template-control, .composer-grid .composer-row { display: contents; }
+  .template-label { grid-column: 1; align-self: center; }
+  .template-body { grid-column: 2 / -1; align-self: center; }
+  .composer-row .mode-button { grid-column: 1; align-self: end; }
+  .composer-row .mantine-Textarea-root { grid-column: 2; align-self: end; }
+  .composer-row > button[type="submit"] { grid-column: 3; align-self: end; }
+}
 
 @media (max-width: 48em) {
   .messages { padding: 12px; }

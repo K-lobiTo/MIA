@@ -17,7 +17,7 @@ Quedan **fuera del MVP** (no bloquean el arranque, pero deben resolverse antes d
 - Control de acceso por artefacto/rol (sección 7 del documento conceptual).
 - Métricas de éxito para evaluación con usuarios (objetivo específico 5).
 - Dominios adicionales (Currículum, Apertura de promoción, Docentes, Proyectos de graduación).
-- Ingesta vía web scraping (ACM) y CSV (el CSV se resolvió después con la feature 021).
+- Ingesta vía web scraping (ACM) y CSV (el CSV se resolvió después con la feature 021; el web scraping se resolvió en una primera versión mínima con la feature 022: una sola página, sin seguir enlaces; el rastreo y la ACM siguen pendientes, ver [Idea_Fuente_Web.md](Idea_Fuente_Web.md)).
 - Cualquier artefacto de chat (web, WhatsApp, interno).
 
 ## 2. Requerimientos funcionales del MVP
@@ -111,7 +111,7 @@ La documentación interactiva de FastAPI (`/docs`, Swagger UI) sirve como **clie
 
 Para cumplir el requerimiento de "cambiar partes del pipeline sin que interfiera con el resto":
 
-- **`DocumentLoader`** (interfaz): `PdfLoader`, `DocxLoader`, `TxtLoader` para el MVP. Extensible después a `CsvLoader`, `WebScraperLoader` (ACM) sin tocar el resto del pipeline.
+- **`DocumentLoader`** (interfaz): `PdfLoader`, `DocxLoader`, `TxtLoader` para el MVP. Extensible después a `CsvLoader` (feature 021) y `WebLoader` (feature 022, una sola página; el rastreo y la ACM siguen pendientes) sin tocar el resto del pipeline.
 - **`EmbeddingProvider`** (interfaz): implementación local (ej. modelo open-source vía `sentence-transformers` u Ollama) e implementación comercial (ej. OpenAI/Anthropic), seleccionable por `EMBEDDING_PROVIDER` en `.env`.
 - **`LLMProvider`** (interfaz): mismo patrón que `EmbeddingProvider`, seleccionable por `LLM_PROVIDER` en `.env`. Este es el "LLM intermediario" mencionado en la definición conceptual.
 - **`VectorStore`** (interfaz): implementación sobre Qdrant para el MVP; la interfaz existe para que cambiar de base vectorial en el futuro sea una implementación nueva, no un rediseño.

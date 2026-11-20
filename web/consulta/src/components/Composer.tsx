@@ -71,7 +71,9 @@ export function Composer({
         </Notice>
       )}
       {rejection && <Notice tone="danger">{rejection}</Notice>}
-      {/* La plantilla va en su propia línea, encima de la pregunta: así la barra de abajo conserva modo, pregunta y envío. */}
+      {/* La plantilla va en su propia línea, encima de la pregunta: así la barra de abajo conserva modo, pregunta y envío.
+          En pantallas anchas ambas líneas comparten columnas (ver `.composer-grid`) y el selector queda alineado con la pregunta. */}
+      <div className="composer-grid">
       {templatePicker}
       <div className="composer-row">
         {availability && <ModePicker availability={availability} onChange={onModeChange} />}
@@ -96,6 +98,7 @@ export function Composer({
         <Button type="submit" size="md" disabled={!canSend}>
           Preguntar
         </Button>
+      </div>
       </div>
       <div className="composer-hint">
         <span role={hint ? "status" : undefined}>{hint ?? memory}</span>

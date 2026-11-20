@@ -31,6 +31,7 @@ from mia.api.routes import (
     query,
     templates,
     usage,
+    web_pages,
 )
 from mia.chat.retention import purge_on_startup
 from mia.config import settings
@@ -139,5 +140,6 @@ app.include_router(media.router)
 app.include_router(usage.router)
 app.include_router(domains.router)
 app.include_router(documents.router)
+app.include_router(web_pages.router)
 app.include_router(templates.router)
 app.include_router(query.router)

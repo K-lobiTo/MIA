@@ -16,8 +16,10 @@ import {
   RenameFolderDialog,
 } from "./forms/Dialogs";
 import { EliminarDocumentosDialog } from "./EliminarDocumentosDialog";
+import { AgregarPaginaDialog } from "./AgregarPaginaDialog";
 import { CsvNotice } from "./CsvNotice";
 import { ImagenesDialog } from "./ImagenesDialog";
+import { TextoDocumentoDialog } from "./TextoDocumentoDialog";
 import { hasCsv } from "./inventoryUtils";
 import {
   aEliminar,
@@ -40,7 +42,9 @@ type DialogState =
   | { kind: "domain"; unitId: string; unitName: string }
   | { kind: "folder"; domainId: string; parentId: string | null; where: string }
   | { kind: "rename"; folderId: string; name: string }
-  | { kind: "delete"; folderId: string; name: string };
+  | { kind: "delete"; folderId: string; name: string }
+  // Agregar una página web como fuente (feature 022).
+  | { kind: "web"; domainId: string; folderId: string | null; destination: string };
 
 // Nombres de dominios y carpetas por id, para rotular destinos y diálogos.
 function buildLookup(inventory: Inventory) {
@@ -72,6 +76,8 @@ export function InventarioPage() {
   const [dialog, setDialog] = useState<DialogState | null>(null);
   // Documento cuyas imágenes se están viendo (feature 011).
   const [imagesFor, setImagesFor] = useState<{ domainId: string; document: DocumentItem } | null>(null);
+  // Documento web cuyo texto extraído se está revisando (feature 022).
+  const [textFor, setTextFor] = useState<{ domainId: string; document: DocumentItem } | null>(null);
   // Eliminación de documentos (feature 012): los que se van a eliminar, el modo de selección y el aviso del resultado.
   const [eliminar, setEliminar] = useState<DocumentoAEliminar[] | null>(null);
   const [modoSeleccion, setModoSeleccion] = useState(false);
@@ -150,6 +156,24 @@ export function InventarioPage() {
         Subir
       </Button>
     );
+    const webButton = (
+      <Button
+        variant="default"
+        size="compact-sm"
+        disabled={!ingestionEnabled}
+        title={
+          ingestionEnabled
+            ? "Leer una página web (solo esa página, sin seguir sus enlaces) y agregarla como fuente"
+            : READ_ONLY_REASON
+        }
+        onClick={() => {
+          const target = targetOf(node);
+          if (target) setDialog({ kind: "web", domainId: target.domainId, folderId: target.folderId, destination: target.destination });
+        }}
+      >
+        Agregar página web
+      </Button>
+    );
     if (node.kind === "unit") {
       const unitName = lookup?.units.get(node.id) ?? "el programa";
       return (
@@ -184,6 +208,7 @@ export function InventarioPage() {
             + Carpeta
           </Button>
           {uploadButton}
+          {webButton}
         </>
       );
     }
@@ -200,6 +225,7 @@ export function InventarioPage() {
           + Subcarpeta
         </Button>
         {uploadButton}
+        {webButton}
         <Button variant="default" size="compact-sm" onClick={() => setDialog({ kind: "rename", folderId: node.id, name: folderName })}>
           Renombrar
         </Button>
@@ -217,6 +243,7 @@ export function InventarioPage() {
 
   const close = () => setDialog(null);
   const openImages = (domainId: string, document: DocumentItem) => setImagesFor({ domainId, document });
+  const openText = (domainId: string, document: DocumentItem) => setTextFor({ domainId, document });
   const openDelete = (domainId: string, document: DocumentItem) => {
     setAviso(null);
     setEliminar([aEliminar(document, domainId, lookup?.domains.get(domainId) ?? "dominio")]);
@@ -315,6 +342,7 @@ export function InventarioPage() {
               onDropFiles={dropFiles}
               onImages={openImages}
               onDelete={openDelete}
+              onViewText={openText}
             />
           ))}
           {filtered.unassigned_domains.length > 0 && (
@@ -333,6 +361,7 @@ export function InventarioPage() {
                     onDropFiles={dropFiles}
                     onImages={openImages}
                     onDelete={openDelete}
+                    onViewText={openText}
                   />
                 ))}
               </div>
@@ -352,8 +381,14 @@ export function InventarioPage() {
       )}
       {dialog?.kind === "rename" && <RenameFolderDialog folderId={dialog.folderId} currentName={dialog.name} onClose={close} />}
       {dialog?.kind === "delete" && <DeleteFolderDialog folderId={dialog.folderId} name={dialog.name} onClose={close} />}
+      {dialog?.kind === "web" && (
+        <AgregarPaginaDialog domainId={dialog.domainId} folderId={dialog.folderId} destination={dialog.destination} onClose={close} />
+      )}
       {eliminar && (
         <EliminarDocumentosDialog documentos={eliminar} onClose={() => setEliminar(null)} onResultado={resultadoDeEliminar} />
+      )}
+      {textFor && (
+        <TextoDocumentoDialog domainId={textFor.domainId} document={textFor.document} onClose={() => setTextFor(null)} />
       )}
       {imagesFor && <ImagenesDialog domainId={imagesFor.domainId} document={imagesFor.document} onClose={() => setImagesFor(null)} />}
     </>

@@ -1,6 +1,6 @@
 # Idea a futuro: páginas web como fuente de información (scraping periódico)
 
-**Estado:** idea documentada el 2026-11-15. **No está especificada ni implementada**, no tiene feature asignada y no forma parte de ninguna versión. Este documento conserva el análisis de viabilidad que se hizo antes de decidir si construirla, para que quien la implemente no parta de cero. Quien lo pidió (el dueño del proyecto) **no la va a implementar**: la tomará otra persona.
+**Estado (actualizado el 2026-11-20):** **la primera versión, mínima, está implementada** con la feature 022 ([specs/022-ingesta-web-basica/](../specs/022-ingesta-web-basica/)): una persona administradora agrega **una sola página** desde el Inventario ("Agregar página web"), el sistema la lee en el momento, la limpia y la agrega como documento; si no se puede leer (inicio de sesión, anti-bot, contenido por JavaScript, `robots.txt`, error de red) lo dice ahí mismo y no crea nada. **Sigue sin implementarse** lo demás de este documento: el rastreo de varias páginas, la lectura de archivos enlazados, el inicio de sesión, la **lectura periódica** (cada X días), las reglas por sitio, el navegador automatizado y la ACM. Este documento conserva el análisis de viabilidad que se hizo antes de decidir, para quien continúe. Las decisiones abiertas que esa primera versión tomó están en la sección "Qué resolvió la feature 022" al final. Quien lo pidió (el dueño del proyecto) **no va a implementar** el resto: lo tomará otra persona.
 
 ## Qué se pidió
 
@@ -95,3 +95,16 @@ Conclusión práctica: una fuente web automática sale **bien, pero no igual** q
 2. Especificar la feature (`speckit-specify`), empezando por la opción A.
 3. Primera entrega con 2 o 3 páginas del TEC, un documento por sección y medición con preguntas reales.
 4. Después, según resultados: el panel (opción B) y más fuentes.
+
+## Qué resolvió la feature 022
+
+Primera versión, deliberadamente básica (el resto de este documento sigue vigente para lo que falta):
+
+- **Una dirección por fuente** (decisión abierta 4): se lee solo la página indicada, sin seguir enlaces ni abrir archivos enlazados; los enlaces quedan escritos como `texto (dirección)`.
+- **Rechazo en el momento y sin rastro** en lugar de "conservar el último contenido bueno" (decisión abierta 3, que no aplica porque no hay lectura periódica): cada intento rechazado se informa con su razón y queda auditado, sin crear documento.
+- **Legal y de cortesía** (decisión abierta 6): respeta `robots.txt` (RFC 9309), se identifica como `MIA-Lector`, no esquiva protecciones y se niega a leer redes internas. Para sitios ajenos al TEC, revisar términos de uso y derechos de autor sigue siendo de quien agrega la fuente.
+- **Cómo se muestra a quien consulta** (decisión abierta 5): un nombre legible (el indicado, el título de la página o el sitio) y la primera línea `Fuente: <dirección> (consultada el <día>)`.
+- **Datos personales** (decisión abierta 7): no se filtran; aviso en el panel y revisión con "Ver texto".
+- **Dónde corre**: dentro de la API (una sola página es breve y acotada: plazo de 15 s y 2 MB), no la opción A (script) ni la C (programador dentro de la API) de este documento; la lectura periódica sigue sin existir.
+- **Calidad**: "buena, no igual a la normalizada a mano" (extractor propio sobre `lxml`; si en las mediciones no alcanza, evaluar `trafilatura`).
+- **Para actualizar una página**: eliminar el documento y volver a agregarla (un solo documento web por dirección en cada dominio).

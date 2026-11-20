@@ -41,7 +41,7 @@ def test_base_anterior_se_migra_sin_perder_datos(tmp_path):
     assert TABLAS_NUEVAS <= set(inspector.get_table_names())
     assert "unit_id" in {c["name"] for c in inspector.get_columns("domains")}
     assert "folder_id" in {c["name"] for c in inspector.get_columns("documents")}
-    assert _revision(engine) == "0014"
+    assert _revision(engine) == "0015"
     with engine.connect() as connection:
         assert connection.execute(text("SELECT name, unit_id FROM domains")).one() == (
             "Memoria del Consejo",
@@ -75,7 +75,7 @@ def test_base_vacia_queda_en_la_ultima_revision(tmp_path):
     init_db(engine)
 
     assert TABLAS_NUEVAS <= set(inspect(engine).get_table_names())
-    assert _revision(engine) == "0014"
+    assert _revision(engine) == "0015"
 
 
 def test_init_db_se_puede_correr_dos_veces(tmp_path):
@@ -84,7 +84,7 @@ def test_init_db_se_puede_correr_dos_veces(tmp_path):
     init_db(engine)
     init_db(engine)
 
-    assert _revision(engine) == "0014"
+    assert _revision(engine) == "0015"
 
 
 def test_migracion_0003_crea_administradores_sin_tocar_datos(tmp_path):
@@ -269,7 +269,7 @@ def test_subir_a_la_cabeza_sobre_una_base_en_la_0005_no_pierde_datos(tmp_path):
 
     _hasta(engine, "head")
 
-    assert _revision(engine) == "0014"
+    assert _revision(engine) == "0015"
     with engine.connect() as connection:
         assert connection.execute(text("SELECT filename FROM documents")).scalar_one() == "acta.pdf"
         assert connection.execute(text("SELECT name FROM domains")).scalar_one() == "Memoria del Consejo"
@@ -289,7 +289,7 @@ def test_bajar_a_la_0005_borra_solo_las_tablas_nuevas_y_se_puede_volver_a_subir(
 
     _hasta(engine, "head")
 
-    assert _revision(engine) == "0014"
+    assert _revision(engine) == "0015"
     assert {"bots", "bot_message_counts", "document_images"} <= set(
         inspect(engine).get_table_names()
     )
@@ -323,7 +323,7 @@ def test_la_migracion_0008_agrega_la_memoria_de_conversacion_sin_perder_datos(tm
     assert columnas["context_turns"]["nullable"] is False
     bots = {c["name"]: c for c in inspect(engine).get_columns("bots")}
     assert bots["context_turns"]["nullable"] is True
-    assert _revision(engine) == "0014"
+    assert _revision(engine) == "0015"
     with engine.connect() as connection:
         assert connection.execute(text("SELECT name, context_turns FROM artifacts")).one() == (
             "Consulta",
@@ -388,7 +388,7 @@ def test_la_migracion_0009_crea_usuarios_sesiones_y_conversaciones_sin_perder_da
     assert {"ix_consulta_sessions_token_hash", "ix_conversations_user_id_updated_at", "ix_conversation_turns_conversation_id"} <= indices
     require_login = columnas("artifacts")["require_login"]
     assert require_login["nullable"] is False
-    assert _revision(engine) == "0014"
+    assert _revision(engine) == "0015"
     with engine.connect() as connection:
         # El artefacto existente no cambia y nace sin exigir sesión.
         assert connection.execute(text("SELECT name, context_turns, require_login FROM artifacts")).one() == ("Consulta", 3, 0)
@@ -417,7 +417,7 @@ def test_bajar_a_la_0008_quita_lo_de_la_0009_y_conserva_el_resto(tmp_path):
 
     _hasta(engine, "head")
 
-    assert _revision(engine) == "0014"
+    assert _revision(engine) == "0015"
     assert "conversations" in set(inspect(engine).get_table_names())
 
 
@@ -443,7 +443,7 @@ def test_la_migracion_0010_agrega_dominios_dinamicos_sin_cambiar_los_existentes(
 
     dynamic = {c["name"]: c for c in inspect(engine).get_columns("domains")}["dynamic"]
     assert dynamic["nullable"] is False
-    assert _revision(engine) == "0014"
+    assert _revision(engine) == "0015"
     with engine.connect() as connection:
         # El dominio existente sigue siendo persistente.
         assert connection.execute(text("SELECT name, dynamic FROM domains WHERE id = 'dp'")).one() == ("Promoción", 0)
@@ -471,7 +471,7 @@ def test_la_migracion_0011_agrega_el_prompt_del_artefacto_vacio_y_es_reversible(
 
     columna = {c["name"]: c for c in inspect(engine).get_columns("artifacts")}["custom_prompt"]
     assert columna["nullable"] is False
-    assert _revision(engine) == "0014"
+    assert _revision(engine) == "0015"
     with engine.connect() as connection:
         # El artefacto existente queda sin prompt propio: responde como siempre.
         assert connection.execute(text("SELECT custom_prompt FROM artifacts WHERE id = 'a1'")).scalar_one() == ""
@@ -496,7 +496,7 @@ def test_la_migracion_0012_crea_la_tabla_de_contactos_y_es_reversible(tmp_path):
 
     _hasta(engine, "head")
 
-    assert _revision(engine) == "0014"
+    assert _revision(engine) == "0015"
     columnas = {c["name"]: c for c in inspect(engine).get_columns("whatsapp_contacts")}
     assert set(columnas) == {
         "id", "bot_id", "phone", "name", "email", "status", "email_retried", "created_at", "last_seen_at", "updated_at",
@@ -519,7 +519,7 @@ def test_la_migracion_0012_crea_la_tabla_de_contactos_y_es_reversible(tmp_path):
         assert connection.execute(text("SELECT name FROM bots WHERE id = 'b1'")).scalar_one() == "Bot"
 
     _hasta(engine, "head")
-    assert _revision(engine) == "0014"
+    assert _revision(engine) == "0015"
     assert "whatsapp_contacts" in inspect(engine).get_table_names()
 
 
@@ -529,7 +529,7 @@ def test_la_migracion_0013_agrega_la_nota_de_estado_nula_y_es_reversible(tmp_pat
 
     _hasta(engine, "head")
 
-    assert _revision(engine) == "0014"
+    assert _revision(engine) == "0015"
     columna = {c["name"]: c for c in inspect(engine).get_columns("documents")}["status_note"]
     assert columna["nullable"] is True
     with engine.connect() as connection:
@@ -543,7 +543,7 @@ def test_la_migracion_0013_agrega_la_nota_de_estado_nula_y_es_reversible(tmp_pat
         assert connection.execute(text("SELECT filename FROM documents WHERE id = 'doc1'")).scalar_one() == "acta.pdf"
 
     _hasta(engine, "head")
-    assert _revision(engine) == "0014"
+    assert _revision(engine) == "0015"
 
 
 def _insertar_usuario_y_artefacto(connection):
@@ -571,7 +571,7 @@ def test_la_migracion_0014_crea_plantillas_con_sus_reglas_y_es_reversible(tmp_pa
 
     _hasta(engine, "head")
 
-    assert _revision(engine) == "0014"
+    assert _revision(engine) == "0015"
     inspector = inspect(engine)
     assert "response_templates" in set(inspector.get_table_names())
     columnas = {c["name"] for c in inspector.get_columns("conversation_turns")}
@@ -609,5 +609,33 @@ def test_la_migracion_0014_crea_plantillas_con_sus_reglas_y_es_reversible(tmp_pa
         assert connection.execute(text("SELECT filename FROM documents WHERE id = 'doc1'")).scalar_one() == "acta.pdf"
 
     _hasta(engine, "head")
-    assert _revision(engine) == "0014"
+    assert _revision(engine) == "0015"
     assert "response_templates" in inspect(engine).get_table_names()
+
+
+def test_la_migracion_0015_agrega_la_fuente_web_nula_y_es_reversible(tmp_path):
+    engine = _base_en(tmp_path, "0014")
+    columnas = {c["name"] for c in inspect(engine).get_columns("documents")}
+    assert "source_url" not in columnas and "source_text" not in columnas
+
+    _hasta(engine, "head")
+
+    assert _revision(engine) == "0015"
+    columnas = {c["name"]: c for c in inspect(engine).get_columns("documents")}
+    assert columnas["source_url"]["nullable"] is True and columnas["source_text"]["nullable"] is True
+    assert "ix_documents_source_url" in {i["name"] for i in inspect(engine).get_indexes("documents")}
+    with engine.connect() as connection:
+        # El documento existente queda con las dos columnas nulas.
+        fila = connection.execute(text("SELECT source_url, source_text FROM documents WHERE id = 'doc1'")).one()
+        assert fila == (None, None)
+
+    _hasta(engine, "0014", accion="downgrade")
+
+    columnas = {c["name"] for c in inspect(engine).get_columns("documents")}
+    assert "source_url" not in columnas and "source_text" not in columnas
+    assert "ix_documents_source_url" not in {i["name"] for i in inspect(engine).get_indexes("documents")}
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT filename FROM documents WHERE id = 'doc1'")).scalar_one() == "acta.pdf"
+
+    _hasta(engine, "head")
+    assert _revision(engine) == "0015"

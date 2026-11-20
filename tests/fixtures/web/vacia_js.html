@@ -1,0 +1,13 @@
+<!-- Pagina inventada cuyo contenido se arma con programacion del navegador. -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Aplicación</title></head>
+<body>
+  <div id="app"></div>
+  <noscript>Esta página requiere JavaScript</noscript>
+  <script>
+    window.__DATOS__ = {"programas": [{"nombre": "Programa A"}, {"nombre": "Programa B"}]};
+    document.getElementById("app").innerHTML = "<h1>Contenido que solo existe al ejecutar la página</h1>";
+  </script>
+</body>
+</html>
