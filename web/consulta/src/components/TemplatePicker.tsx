@@ -32,6 +32,7 @@ export function TemplatePicker({ data, selectedId, onSelect, onManage, onLogin }
       <Text fz="xs" fw={600} className="template-label" id="template-label">
         Plantilla
       </Text>
+      <div className="template-body">
       {empty ? (
         <div className="template-empty" role="status">
           <Text fz="sm" fw={600}>
@@ -79,6 +80,7 @@ export function TemplatePicker({ data, selectedId, onSelect, onManage, onLogin }
           </Text>
         )
       )}
+      </div>
     </div>
   );
 }
