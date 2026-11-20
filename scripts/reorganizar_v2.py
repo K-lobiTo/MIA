@@ -35,7 +35,7 @@ from mia.storage.models import ArtifactDomain, Document, Domain, Folder, Unit
 
 MAPEO_POR_DEFECTO = Path(__file__).parent / "datos" / "reorganizacion_v2.json"
 RAIZ_POR_DEFECTO = Path("tmp")
-TIPOS = {".pdf", ".docx", ".txt", ".xlsx"}
+TIPOS = {".pdf", ".docx", ".txt", ".xlsx", ".csv"}
 
 
 @dataclass

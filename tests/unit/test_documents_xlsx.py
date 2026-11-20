@@ -57,14 +57,14 @@ def test_subir_un_xlsx_lo_guarda_y_lo_deja_listo(client, admin, mundo, tmp_path)
     assert mundo.count_chunks(cuerpo["id"]) >= 1
 
 
-@pytest.mark.parametrize("nombre", ["datos.csv", "datos.xls", "datos.xlsm"])
+@pytest.mark.parametrize("nombre", ["datos.xls", "datos.xlsm", "datos.tsv", "datos.ods"])
 def test_los_demas_formatos_de_hoja_se_rechazan_con_los_tipos_aceptados(client, admin, mundo, nombre):
     respuesta = _subir(client, admin, nombre, b"x")
 
     assert respuesta.status_code == 400
     extension = nombre.rsplit(".", 1)[1]
     assert respuesta.json()["detail"] == (
-        f"Tipo de fuente no soportado: {extension}. Tipos aceptados: pdf, docx, txt, xlsx."
+        f"Tipo de fuente no soportado: {extension}. Tipos aceptados: pdf, docx, txt, xlsx, csv."
     )
 
 

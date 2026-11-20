@@ -16,7 +16,9 @@ import {
   RenameFolderDialog,
 } from "./forms/Dialogs";
 import { EliminarDocumentosDialog } from "./EliminarDocumentosDialog";
+import { CsvNotice } from "./CsvNotice";
 import { ImagenesDialog } from "./ImagenesDialog";
+import { hasCsv } from "./inventoryUtils";
 import {
   aEliminar,
   alternar,
@@ -75,6 +77,8 @@ export function InventarioPage() {
   const [modoSeleccion, setModoSeleccion] = useState(false);
   const [seleccionados, setSeleccionados] = useState<ReadonlySet<string>>(new Set());
   const [aviso, setAviso] = useState<string | null>(null);
+  // Aviso de datos personales al elegir o soltar un CSV (feature 021).
+  const [avisoCsv, setAvisoCsv] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const pickTarget = useRef<UploadTarget | null>(null);
 
@@ -125,6 +129,7 @@ export function InventarioPage() {
     const target = targetOf(node);
     if (!target) return;
     if (!ingestionEnabled) return;
+    if (hasCsv(files)) setAvisoCsv(true);
     uploads.add(files, target);
   }
 
@@ -139,7 +144,7 @@ export function InventarioPage() {
         variant="default"
         size="compact-sm"
         disabled={!ingestionEnabled}
-        title={ingestionEnabled ? "Elegir archivos PDF, DOCX o TXT (también se pueden arrastrar aquí)" : READ_ONLY_REASON}
+        title={ingestionEnabled ? "Elegir archivos PDF, DOCX, TXT, XLSX o CSV (también se pueden arrastrar aquí)" : READ_ONLY_REASON}
         onClick={() => pickFiles(node)}
       >
         Subir
@@ -277,13 +282,15 @@ export function InventarioPage() {
         type="file"
         multiple
         hidden
-        accept=".pdf,.docx,.txt,.xlsx"
+        accept=".pdf,.docx,.txt,.xlsx,.csv"
         onChange={(event) => {
           const files = Array.from(event.target.files ?? []);
+          if (hasCsv(files)) setAvisoCsv(true);
           if (files.length > 0 && pickTarget.current) uploads.add(files, pickTarget.current);
           event.target.value = "";
         }}
       />
+      {avisoCsv && <CsvNotice onClose={() => setAvisoCsv(false)} />}
       <UploadList items={uploads.items} onRetry={uploads.retry} onDismiss={uploads.dismiss} onClear={uploads.clearFinished} />
 
       {inventory.isPending && <Text c="dimmed">Cargando el inventario...</Text>}

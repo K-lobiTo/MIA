@@ -17,7 +17,7 @@ Quedan **fuera del MVP** (no bloquean el arranque, pero deben resolverse antes d
 - Control de acceso por artefacto/rol (sección 7 del documento conceptual).
 - Métricas de éxito para evaluación con usuarios (objetivo específico 5).
 - Dominios adicionales (Currículum, Apertura de promoción, Docentes, Proyectos de graduación).
-- Ingesta vía web scraping (ACM) y CSV.
+- Ingesta vía web scraping (ACM) y CSV (el CSV se resolvió después con la feature 021).
 - Cualquier artefacto de chat (web, WhatsApp, interno).
 
 ## 2. Requerimientos funcionales del MVP

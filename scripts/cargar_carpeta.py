@@ -1,6 +1,6 @@
 """Carga todos los documentos de una o varias carpetas a un dominio de MIA, a través de la API.
 
-Crea el dominio si no existe (lo busca por nombre, dentro del programa indicado), sube cada archivo PDF, DOCX o TXT de las
+Crea el dominio si no existe (lo busca por nombre, dentro del programa indicado), sube cada archivo PDF, DOCX, TXT, XLSX o CSV de las
 carpetas (recorriendo subcarpetas) y espera a que termine de indexarse antes de subir el
 siguiente, para no acumular ingestas en paralelo en la API. Un archivo que ya estaba en el
 dominio no se duplica: la API devuelve el documento existente.
@@ -29,9 +29,18 @@ import urllib.request
 import uuid
 from pathlib import Path
 
-TIPOS = {".pdf", ".docx", ".txt", ".xlsx"}
+TIPOS = {".pdf", ".docx", ".txt", ".xlsx", ".csv"}
 ESPERA_ESTADO = 5  # segundos entre consultas de estado de un documento en proceso
 TIMEOUT = 900  # una tesis larga puede tardar varios minutos en indexarse
+
+
+def avisar_si_hay_csv(archivos) -> None:
+    """Avisa una sola vez, antes de cargar, si entre los archivos hay algún CSV: suelen ser listas de personas (feature 021)."""
+    if any(Path(archivo).suffix.lower() == ".csv" for archivo in archivos):
+        print(
+            "Aviso: hay archivos CSV en la carpeta. Los CSV suelen traer datos de personas (cédulas, correos, teléfonos): "
+            "quita o anonimiza esas columnas antes de cargarlos si no hacen falta."
+        )
 
 
 CLAVE_ADMIN = os.environ.get("MIA_ADMIN_KEY", "")
@@ -119,6 +128,7 @@ def main() -> int:
         and not p.name.startswith("~$")
         and not any(texto in p.name for texto in args.excluir)
     )
+    avisar_si_hay_csv(archivos)
     dominio_id = obtener_dominio(api, args.dominio, args.descripcion, args.programa)
     print(f"Dominio '{args.dominio}' ({dominio_id}): {len(archivos)} archivos")
 

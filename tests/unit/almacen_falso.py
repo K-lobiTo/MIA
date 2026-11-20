@@ -5,6 +5,7 @@ fragmentos} y puede fallar a pedido."""
 class AlmacenFalso:
     def __init__(self):
         self.fragmentos: dict[str, int] = {}
+        self.textos: dict[str, list[str]] = {}  # {documento: texto de cada fragmento}, feature 021
         self.falla_al_borrar = False
         self.no_borra = False
         self.al_borrar = None  # función que se llama justo antes de borrar
@@ -12,6 +13,7 @@ class AlmacenFalso:
     def upsert(self, chunks):
         for chunk in chunks:
             self.fragmentos[chunk.document_id] = self.fragmentos.get(chunk.document_id, 0) + 1
+            self.textos.setdefault(chunk.document_id, []).append(chunk.text)
 
     def delete_document(self, document_id):
         if self.al_borrar:

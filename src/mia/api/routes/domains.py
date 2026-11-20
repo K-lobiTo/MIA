@@ -190,10 +190,10 @@ def upload_document(
     ensure_domain(principal, domain, "document.upload")
 
     source_type = Path(file.filename or "").suffix.lstrip(".").lower()
-    if source_type not in {"pdf", "docx", "txt", "xlsx"}:
+    if source_type not in {"pdf", "docx", "txt", "xlsx", "csv"}:
         raise HTTPException(
             status_code=400,
-            detail=f"Tipo de fuente no soportado: {source_type}. Tipos aceptados: pdf, docx, txt, xlsx.",
+            detail=f"Tipo de fuente no soportado: {source_type}. Tipos aceptados: pdf, docx, txt, xlsx, csv.",
         )
 
     if folder_id is not None:

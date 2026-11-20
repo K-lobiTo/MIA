@@ -254,13 +254,15 @@ def test_el_mapeo_real_es_coherente_con_el_anexo_a():
     assert len(por_unidad["Área académica de Analítica de Negocios"]) == 4
 
 
-def test_ubicaciones_acepta_xlsx_e_ignora_los_temporales_de_excel(tmp_path):
+def test_ubicaciones_acepta_xlsx_y_csv_e_ignora_los_temporales_de_excel_y_otros_tipos(tmp_path):
     base = tmp_path / "origen"
     base.mkdir()
     (base / "horarios.xlsx").write_bytes(b"x")
     (base / "~$horarios.xlsx").write_bytes(b"x")
     (base / "datos.csv").write_bytes(b"x")
+    (base / "DATOS2.CSV").write_bytes(b"x")
+    (base / "datos.tsv").write_bytes(b"x")
 
     ubicaciones = _cargar_script()._ubicaciones(tmp_path, [{"ruta": "origen", "carpeta": ["Horarios"]}])
 
-    assert ubicaciones == {"horarios.xlsx": ["Horarios"]}
+    assert ubicaciones == {"horarios.xlsx": ["Horarios"], "datos.csv": ["Horarios"], "DATOS2.CSV": ["Horarios"]}
