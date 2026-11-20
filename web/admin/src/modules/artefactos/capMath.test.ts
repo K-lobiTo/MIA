@@ -54,6 +54,13 @@ describe("validateCaps", () => {
     expect(validateCaps("1", "2")).toMatch(/no puede superar/);
     expect(validateCaps("1", "abc")).toMatch(/razonamiento/);
   });
+
+  it("los mensajes del tope menor dicen que lo comparten los modos con razonamiento y plantilla", () => {
+    expect(validateCaps("1", "2")).toBe("El tope de los modos con razonamiento y plantilla no puede superar el tope diario total.");
+    expect(validateCaps("1", "abc")).toBe(
+      "El tope de los modos con razonamiento y plantilla debe ser un monto mayor que 0, o quedar vacío.",
+    );
+  });
 });
 
 describe("formatUsd", () => {

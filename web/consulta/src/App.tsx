@@ -46,11 +46,11 @@ import {
   lockMessage,
 } from "./state/chat";
 import { memoryNotice } from "./state/history";
+import { templateGoneAction } from "./state/errors";
 import { loadMode, resolveAvailability, saveMode } from "./state/modes";
 
 import {
   PICK_TEMPLATE,
-  TEMPLATE_GONE,
   loadTemplateId,
   resolveTemplateSelection,
   restoreTemplate,
@@ -196,9 +196,10 @@ export function App() {
             }
             // La plantilla se eliminó o dejó de estar disponible desde que se cargó la lista: se quita el intercambio, vuelve el
             // texto al campo y se pide elegir otra (antes que el 404 de una conversación, que es otro caso).
-            if (apiError.status === 404 && apiError.message === TEMPLATE_GONE) {
+            const templateGone = templateGoneAction(apiError.status, apiError.message);
+            if (templateGone) {
               setExchanges((list) => list.filter((e) => e.localId !== exchange.localId));
-              setRejection(`${TEMPLATE_GONE} Elige otra.`);
+              setRejection(templateGone.message);
               setRestore((previous) => ({ text: question, n: (previous?.n ?? 0) + 1 }));
               changeTemplate(null);
               void queryClient.invalidateQueries({ queryKey: ["templates"] });

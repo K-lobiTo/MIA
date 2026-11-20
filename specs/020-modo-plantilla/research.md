@@ -55,7 +55,7 @@ La búsqueda sigue usando `search_text` (la pregunta sola), así que la recupera
 - `user_id` (FK a `consulta_users`, `ON DELETE CASCADE`): obligatorio en las personales, nulo en las del artefacto. Eliminar al usuario las elimina (FR-013).
 - `name`, `name_key`, `content`, `created_by`, `created_at`, `updated_at`.
 
-**Razón**: una sola tabla con una clave de dueño evita dos tablas casi iguales y deja la unicidad en la base (SQLite y Postgres), sin índices parciales. Los artefactos no se eliminan (solo se desactivan), así que el `CASCADE` por artefacto es defensivo.
+**Razón**: una sola tabla con una clave de dueño evita dos tablas casi iguales y deja la unicidad en la base (SQLite y Postgres), sin índices parciales. Desde el 2026-11-19 el panel puede eliminar artefactos (`DELETE /artifacts/{id}`): esa ruta borra explícitamente las plantillas del artefacto y las personales limitadas a él (SQLite no hace cumplir las claves foráneas sin `PRAGMA`), y el `CASCADE` de la base queda como respaldo. Las personales para todos los artefactos no se tocan.
 
 **Alternativas**: dos tablas (más código repetido); guardar las plantillas del artefacto en una columna JSON de `artifacts` (sin unicidad ni edición atómica, y mezcla datos del usuario con la configuración).
 
