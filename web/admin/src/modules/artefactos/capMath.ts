@@ -35,7 +35,7 @@ export function validateCaps(dailyText: string, reasoningText: string): string |
   if (daily === null) return "El tope diario debe ser un monto mayor que 0.";
   if (reasoningText.trim() === "") return null;
   const reasoning = parseUsd(reasoningText);
-  if (reasoning === null) return "El tope del modo con razonamiento debe ser un monto mayor que 0, o quedar vacío.";
-  if (reasoning > daily) return "El tope del modo con razonamiento no puede superar el tope diario total.";
+  if (reasoning === null) return "El tope de los modos con razonamiento y plantilla debe ser un monto mayor que 0, o quedar vacío.";
+  if (reasoning > daily) return "El tope de los modos con razonamiento y plantilla no puede superar el tope diario total.";
   return null;
 }

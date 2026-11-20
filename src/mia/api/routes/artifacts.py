@@ -199,7 +199,7 @@ def _validate_access(session: Session, access: Access) -> None:
 def _validate_caps(daily: float, reasoning: float | None) -> None:
     if reasoning is not None and reasoning > daily:
         raise HTTPException(
-            status_code=422, detail="El tope de razonamiento no puede superar el tope diario total del artefacto."
+            status_code=422, detail="El tope de los modos con razonamiento y plantilla no puede superar el tope diario total del artefacto."
         )
 
 

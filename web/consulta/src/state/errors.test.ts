@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeError } from "./errors";
+import { describeError, templateGoneAction } from "./errors";
 
 const error = (status: number, message: string) => ({ status, message });
 
@@ -72,5 +72,22 @@ describe("describeError en el modo plantilla (feature 020)", () => {
     expect(describeError(error(-1, "x"), "plantilla")).toMatchObject({ canRetry: true, offerLiteral: true });
     expect(describeError(error(502, "x"), "plantilla")).toMatchObject({ offerLiteral: true });
     expect(describeError(error(-1, "x"), "plantilla", false)).toMatchObject({ offerLiteral: false });
+  });
+});
+
+describe("templateGoneAction (feature 020)", () => {
+  it("un 404 con el mensaje de la plantilla pide elegir otra y olvidar la elegida", () => {
+    expect(templateGoneAction(404, "La plantilla ya no está disponible.")).toEqual({
+      message: "La plantilla ya no está disponible. Elige otra.",
+      forgetTemplate: true,
+    });
+  });
+
+  it("no confunde el 404 de una conversación ni otros errores", () => {
+    expect(templateGoneAction(404, "Conversación no encontrada.")).toBeNull();
+    expect(templateGoneAction(404, "Esa conversación ya no existe.")).toBeNull();
+    expect(templateGoneAction(403, "La plantilla ya no está disponible.")).toBeNull();
+    expect(templateGoneAction(422, "Elige una plantilla.")).toBeNull();
+    expect(templateGoneAction(0, "")).toBeNull();
   });
 });

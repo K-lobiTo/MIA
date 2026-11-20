@@ -1,5 +1,6 @@
 import type { ModeId } from "../api/types";
 import type { ExchangeError } from "./conversation";
+import { TEMPLATE_GONE } from "./templates";
 
 export interface ErrorView {
   message: string;
@@ -37,4 +38,19 @@ export function describeError(error: ExchangeError, mode: ModeId, literalAvailab
     default:
       return { message: `Error ${error.status}: ${error.message}`, canRetry: true, offerLiteral: false };
   }
+}
+
+export interface TemplateGoneAction {
+  /** Lo que se le dice a la persona; el texto escrito vuelve al campo para no perderlo. */
+  message: string;
+  /** Se olvida la plantilla elegida y se vuelve a pedir la lista de plantillas. */
+  forgetTemplate: true;
+}
+
+/** Cómo se atiende un rechazo de `POST /query` porque la plantilla elegida ya no está disponible (se eliminó o no es de esa
+ * persona, feature 020): un `404` con el mensaje fijo de la API. Se distingue del `404` de una conversación que ya no existe
+ * por su mensaje, así que se evalúa primero. Para cualquier otro error devuelve null. */
+export function templateGoneAction(status: number, message: string): TemplateGoneAction | null {
+  if (status !== 404 || message !== TEMPLATE_GONE) return null;
+  return { message: `${TEMPLATE_GONE} Elige otra.`, forgetTemplate: true };
 }
