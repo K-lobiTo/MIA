@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DocumentItem, DocumentStatus, Inventory } from "../../api/types";
-import { hasPendingDocuments, validateFile } from "./inventoryUtils";
+import { CSV_NOTICE, hasCsv, hasPendingDocuments, validateFile } from "./inventoryUtils";
 
 const doc = (status: DocumentStatus): DocumentItem => ({
   id: status,
@@ -55,16 +55,16 @@ describe("hasPendingDocuments", () => {
 });
 
 describe("validateFile", () => {
-  it("acepta PDF, DOCX, TXT y XLSX sin importar mayúsculas", () => {
-    for (const name of ["a.pdf", "A.PDF", "b.docx", "c.txt", "Horarios.XLSX"]) {
+  it("acepta PDF, DOCX, TXT, XLSX y CSV sin importar mayúsculas", () => {
+    for (const name of ["a.pdf", "A.PDF", "b.docx", "c.txt", "Horarios.XLSX", "datos.csv", "DATOS.CSV"]) {
       expect(validateFile({ name, size: 10 }, 25)).toBeNull();
     }
   });
 
   it("rechaza otros tipos antes de subir", () => {
-    expect(validateFile({ name: "foto.png", size: 10 }, 25)).toBe("Solo se aceptan archivos PDF, DOCX, TXT y XLSX.");
-    for (const name of ["datos.csv", "datos.xls", "datos.xlsm"]) {
-      expect(validateFile({ name, size: 10 }, 25)).toMatch(/XLSX/);
+    expect(validateFile({ name: "foto.png", size: 10 }, 25)).toBe("Solo se aceptan archivos PDF, DOCX, TXT, XLSX y CSV.");
+    for (const name of ["datos.tsv", "datos.xls", "datos.xlsm", "datos.ods"]) {
+      expect(validateFile({ name, size: 10 }, 25)).toMatch(/CSV/);
     }
     expect(validateFile({ name: "sin-extension", size: 10 }, 25)).not.toBeNull();
   });
@@ -73,5 +73,24 @@ describe("validateFile", () => {
     const mb = 1024 * 1024;
     expect(validateFile({ name: "a.pdf", size: 2 * mb + 1 }, 2)).toMatch(/2 MB/);
     expect(validateFile({ name: "a.pdf", size: 2 * mb }, 2)).toBeNull();
+  });
+});
+
+describe("hasCsv (aviso de datos personales, feature 021)", () => {
+  it("es verdadero si algún archivo es un CSV, sin importar mayúsculas", () => {
+    expect(hasCsv([{ name: "a.pdf" }, { name: "datos.csv" }])).toBe(true);
+    expect(hasCsv([{ name: "DATOS.CSV" }])).toBe(true);
+  });
+
+  it("es falso con otros tipos, con nombres parecidos y con una lista vacía", () => {
+    expect(hasCsv([{ name: "a.pdf" }, { name: "b.xlsx" }, { name: "c.txt" }])).toBe(false);
+    expect(hasCsv([{ name: "csv.pdf" }, { name: "datos.csv.bak" }])).toBe(false);
+    expect(hasCsv([])).toBe(false);
+  });
+
+  it("el texto del aviso habla de datos personales y de quitarlos o anonimizarlos", () => {
+    expect(CSV_NOTICE).toContain("datos de personas");
+    expect(CSV_NOTICE).toContain("anonimiza");
+    expect(CSV_NOTICE).not.toContain("\u2014");
   });
 });
