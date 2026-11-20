@@ -17,9 +17,11 @@ interface Props {
   onToggleActive: () => void;
   /** Abre el catálogo de plantillas del artefacto (solo con el modo plantilla habilitado). */
   onTemplates: () => void;
+  /** Pide confirmar la eliminación del artefacto. */
+  onDelete: () => void;
 }
 
-export function ArtifactCard({ artifact, units, busy, onEdit, onRegenerate, onToggleActive, onTemplates }: Props) {
+export function ArtifactCard({ artifact, units, busy, onEdit, onRegenerate, onToggleActive, onTemplates, onDelete }: Props) {
   return (
     <Paper component="article" withBorder p="md" radius="md" className="art-card" aria-label={artifact.name}>
       <Group gap="sm" wrap="wrap">
@@ -79,6 +81,9 @@ export function ArtifactCard({ artifact, units, busy, onEdit, onRegenerate, onTo
             {describeTemplateCount(artifact.template_count)}
           </Button>
         )}
+        <Button variant="default" size="compact-sm" onClick={onDelete} disabled={busy}>
+          Eliminar
+        </Button>
       </Group>
     </Paper>
   );

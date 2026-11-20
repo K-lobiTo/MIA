@@ -1,4 +1,5 @@
 import { Anchor, Button, NativeSelect, Text } from "@mantine/core";
+import { IconSettings } from "@tabler/icons-react";
 import type { TemplatesResponse } from "../api/types";
 import { LOGIN_NOTICE, TEMPLATE_EXAMPLE } from "../state/templates";
 
@@ -28,6 +29,9 @@ export function TemplatePicker({ data, selectedId, onSelect, onManage, onLogin }
 
   return (
     <div className={`template-control${empty ? " template-control-empty" : ""}`}>
+      <Text fz="xs" fw={600} className="template-label" id="template-label">
+        Plantilla
+      </Text>
       {empty ? (
         <div className="template-empty" role="status">
           <Text fz="sm" fw={600}>
@@ -44,14 +48,20 @@ export function TemplatePicker({ data, selectedId, onSelect, onManage, onLogin }
         <NativeSelect
           className="template-picker"
           aria-label="Plantilla de la respuesta"
-          size="md"
           value={selectedId ?? ""}
           onChange={(event) => onSelect(event.currentTarget.value || null)}
           data={[{ value: "", label: "Elige una plantilla" }, ...groups]}
         />
       )}
       {data.can_create && onManage ? (
-        <Button variant="default" size="md" onClick={onManage} className="template-manage">
+        <Button
+          variant="subtle"
+          size="compact-sm"
+          fw={500}
+          leftSection={<IconSettings size={16} aria-hidden="true" />}
+          onClick={onManage}
+          className="template-manage"
+        >
           Administrar mis plantillas
         </Button>
       ) : (

@@ -175,6 +175,7 @@ Agregar un correo que ya existe reemplaza su alcance y lo reactiva. El correo no
 | Consulta administrativa Área Académica Administración Empresas | Área académica de Analítica de Negocios (programa completo) | literal y con razonamiento | 1.00 / 0.60 USD por día |
 
 - Cambiar el acceso, los modos o los topes rige desde la consulta siguiente, sin reiniciar la API. Al crear un dominio nuevo, el panel avisa qué artefactos lo verán de inmediato (los que tienen el programa completo o todos los dominios) y cuáles hay que habilitar a mano.
+- **Eliminar un artefacto:** en su tarjeta, botón **Eliminar** (pide confirmar; `DELETE /artifacts/{id}`). La clave deja de funcionar de inmediato. Se eliminan su acceso a dominios y sus plantillas (también las personales limitadas a él); **el registro de consultas se conserva** en Uso y en el gasto de hoy de toda la API, pero esas consultas quedan sin artefacto (se ven como «(ninguno)»). No se puede deshacer. **Si un bot de WhatsApp lo usa se rechaza** (409): primero asígnale otro artefacto en el módulo Bots. Mismo alcance que editar el artefacto, y queda `artifact.delete` en el registro de administración. Para pausar un artefacto sin perderlo, usa **Desactivar**.
 - Para probar con curl: `curl -H "X-Artifact-Key: mia_..." <url>/domains` (los dominios que ve ese artefacto) y `<url>/config` (sus modos).
 
 ### Topes de gasto y saldo
@@ -495,6 +496,7 @@ Un tercer modo de la Consulta que responde con la **estructura de una plantilla 
 - **Despliegue:** hay una migración (`0014`, aditiva): la API la aplica al arrancar. Railway no redespliega solo: después de hacer el merge a `main` y `git push origin main`, `./scripts/servicios.py encender MIA mia-panel mia-computacion mia-administracion` (la API, el panel y los dos sitios de la Consulta). Comprobar `GET /health` y que `GET /openapi.json` trae `/templates`.
 - **Volver atrás:** quitar *Plantilla* de los modos del artefacto (las plantillas se conservan y reaparecen al volver a habilitarlo). Para quitarlo todo: `alembic downgrade 0013` (se pierden las plantillas), antes de desplegar una API anterior.
 - **Límites conocidos:** las respuestas se muestran como texto (negritas, listas y párrafos): las tablas no se dibujan, así que una plantilla que pida una se responde con filas de texto; no se exporta a Word ni PDF.
+- **Plantillas de ejemplo:** `docs/plantillas_ejemplo/` trae tres `.docx` listos para cargar desde el panel o la Consulta (Informe de programa, Ficha corta y Comparación de programas).
 
 ## Mostrar solo las fuentes que aportaron (`QUERY_CITED_SOURCES`)
 

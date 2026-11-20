@@ -161,7 +161,7 @@ Agregar el modo plantilla no cambia el modo literal ni el modo con razonamiento,
 - **Dos administradores editan la misma plantilla del artefacto a la vez**: la última edición gana y se avisa si la versión cambió.
 - **Archivo cargado que no es una plantilla** (un documento largo, un libro de Excel, una imagen): se rechaza por tipo o por largo; si el texto extraído supera el máximo, se rechaza con el límite en lugar de recortarlo en silencio.
 - **Una persona cierra la sesión o cambia de cuenta**: ya no ve las plantillas personales de la cuenta anterior, solo las del artefacto.
-- **Se elimina un artefacto** (hoy los artefactos se desactivan, no se eliminan; es una protección de la base): se eliminan también las plantillas del artefacto y las personales creadas solo para él; las personales para todos no cambian.
+- **Se elimina un artefacto** (desde el 2026-11-19 el panel puede eliminar artefactos): se eliminan también las plantillas del artefacto y las personales creadas solo para él; las personales para todos no cambian.
 - **Un artefacto sin el modo plantilla habilitado**: no ofrece ninguna plantilla, ni siquiera las personales para todos de quien inicia sesión.
 - **Se quita el modo plantilla de un artefacto**: sus plantillas se conservan guardadas por si se vuelve a habilitar, pero no se ofrecen mientras tanto.
 - **Respuesta más larga que lo habitual** por la estructura: puede tardar más que el modo literal; se mantiene el límite de espera del modo con razonamiento.

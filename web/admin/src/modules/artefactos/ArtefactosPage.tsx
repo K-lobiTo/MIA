@@ -1,7 +1,7 @@
-import { Button, Group, Modal, Text } from "@mantine/core";
+import { Button, Group, Modal, Stack, Text } from "@mantine/core";
 import { IconPlus } from "@tabler/icons-react";
 import { useState } from "react";
-import { useRegenerateKey, useArtifacts, useUpdateArtifact } from "../../api/artifacts";
+import { useDeleteArtifact, useRegenerateKey, useArtifacts, useUpdateArtifact } from "../../api/artifacts";
 import { useInventory } from "../../api/inventory";
 import type { Artifact } from "../../api/types";
 import { Notice } from "../../components/Notice";
@@ -12,6 +12,7 @@ import { capabilities } from "../../auth/capabilities";
 import { useMe } from "../../auth/session";
 import { formatUsd } from "./capMath";
 import { KeyReveal } from "./KeyReveal";
+import { DELETE_CONSEQUENCES } from "./deleteUtils";
 import "./artefactos.css";
 
 type DialogState =
@@ -19,7 +20,8 @@ type DialogState =
   | { kind: "edit"; artifact: Artifact }
   | { kind: "reveal"; name: string; key: string; regenerated: boolean }
   | { kind: "confirm-regenerate"; artifact: Artifact }
-  | { kind: "templates"; artifact: Artifact };
+  | { kind: "templates"; artifact: Artifact }
+  | { kind: "confirm-delete"; artifact: Artifact };
 
 export function ArtefactosPage() {
   const canSeeGlobal = capabilities(useMe()).showGlobalCaps;
@@ -27,6 +29,7 @@ export function ArtefactosPage() {
   const inventory = useInventory();
   const update = useUpdateArtifact();
   const regenerate = useRegenerateKey();
+  const remove = useDeleteArtifact();
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -51,6 +54,18 @@ export function ArtefactosPage() {
     } catch (caught) {
       setDialog(null);
       setActionError(caught instanceof Error ? caught.message : "No se pudo regenerar la clave.");
+    }
+  }
+
+  async function confirmDelete(artifact: Artifact) {
+    setActionError(null);
+    try {
+      await remove.mutateAsync(artifact.id);
+      setDialog(null);
+    } catch (caught) {
+      // El motivo (por ejemplo, un bot de WhatsApp que lo usa) se muestra en la página, fuera del diálogo.
+      setDialog(null);
+      setActionError(caught instanceof Error ? caught.message : "No se pudo eliminar el artefacto.");
     }
   }
 
@@ -99,11 +114,12 @@ export function ArtefactosPage() {
               key={artifact.id}
               artifact={artifact}
               units={units}
-              busy={update.isPending || regenerate.isPending}
+              busy={update.isPending || regenerate.isPending || remove.isPending}
               onEdit={() => setDialog({ kind: "edit", artifact })}
               onRegenerate={() => setDialog({ kind: "confirm-regenerate", artifact })}
               onToggleActive={() => void toggleActive(artifact)}
               onTemplates={() => setDialog({ kind: "templates", artifact })}
+              onDelete={() => setDialog({ kind: "confirm-delete", artifact })}
             />
           ))}
           {artifacts.data.artifacts.length === 0 && (
@@ -124,6 +140,28 @@ export function ArtefactosPage() {
       {dialog?.kind === "edit" && <ArtifactForm artifact={dialog.artifact} units={units} modes={modes} onClose={close} />}
       {dialog?.kind === "reveal" && (
         <KeyReveal artifactName={dialog.name} keyValue={dialog.key} regenerated={dialog.regenerated} onClose={close} />
+      )}
+      {dialog?.kind === "confirm-delete" && (
+        <Modal opened onClose={close} title="Eliminar artefacto" centered>
+          <Stack gap="sm">
+            <Text>
+              ¿Eliminar <strong>{dialog.artifact.name}</strong>? Su clave dejará de funcionar de inmediato y todo lo que la use
+              (el sitio publicado, scripts) dejará de responder.
+            </Text>
+            <Text c="dimmed" fz="sm">{DELETE_CONSEQUENCES}</Text>
+            {dialog.artifact.active && (
+              <Notice tone="warn">Este artefacto está activo: puede que alguien lo esté usando ahora. Si solo quieres pausarlo, usa Desactivar.</Notice>
+            )}
+          </Stack>
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={close}>
+              Cancelar
+            </Button>
+            <Button color="coral" loading={remove.isPending} onClick={() => void confirmDelete(dialog.artifact)}>
+              Eliminar
+            </Button>
+          </Group>
+        </Modal>
       )}
       {dialog?.kind === "confirm-regenerate" && (
         <Modal opened onClose={close} title="Regenerar clave" centered>

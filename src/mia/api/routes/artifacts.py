@@ -3,9 +3,9 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field, StringConstraints
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from mia.access import audit
@@ -24,6 +24,7 @@ from mia.storage.models import (
     Artifact,
     ArtifactDomain,
     ArtifactUnit,
+    Bot,
     Domain,
     QueryLog,
     ResponseTemplate,
@@ -397,3 +398,35 @@ def regenerate_key(
     session.commit()
     audit.log_write(principal, "artifact.key_regenerate", artifact.id, artifact.name)
     return NewKeyOut(key=key, key_prefix=key_prefix(key))
+
+
+@router.delete("/artifacts/{artifact_id}", status_code=204)
+def delete_artifact(
+    artifact_id: str, principal: Principal = Depends(require_admin), session: Session = Depends(get_session)
+) -> Response:
+    """Elimina un artefacto: su clave deja de funcionar de inmediato. Mismo alcance que editarlo (uno fuera del alcance
+    responde igual que uno inexistente). Se conserva el registro de consultas (Uso y el gasto de hoy de toda la API): sus
+    consultas quedan sin artefacto. Se eliminan su acceso a dominios y sus plantillas, y las personales limitadas a él. Si un
+    bot de WhatsApp lo usa se rechaza, porque el bot dejaría de responder: primero hay que asignarle otro artefacto."""
+    artifact = session.get(Artifact, artifact_id)
+    if artifact is None or not artifact_in_scope(session, principal, artifact):
+        raise HTTPException(status_code=404, detail="Artefacto no encontrado.")
+    bots = session.scalar(select(func.count()).select_from(Bot).where(Bot.artifact_id == artifact.id)) or 0
+    if bots:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"No se puede eliminar: {'lo usa 1 bot' if bots == 1 else f'lo usan {bots} bots'} de WhatsApp. "
+                "Asigna otro artefacto a ese bot (módulo Bots) y vuelve a intentarlo."
+            ),
+        )
+    name = artifact.name
+    # Las claves foráneas no se hacen cumplir en SQLite sin PRAGMA: se borra y se desvincula explícitamente.
+    session.execute(delete(ResponseTemplate).where(ResponseTemplate.artifact_id == artifact.id))
+    session.execute(update(QueryLog).where(QueryLog.artifact_id == artifact.id).values(artifact_id=None))
+    session.execute(delete(ArtifactUnit).where(ArtifactUnit.artifact_id == artifact.id))
+    session.execute(delete(ArtifactDomain).where(ArtifactDomain.artifact_id == artifact.id))
+    session.delete(artifact)
+    session.commit()
+    audit.log_write(principal, "artifact.delete", artifact_id, name)
+    return Response(status_code=204)

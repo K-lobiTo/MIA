@@ -208,10 +208,10 @@ description: "Tareas de implementación de la feature 020: modo plantilla en la 
 
 ## Phase 11: Medición, merge y despliegue (lo hace el usuario)
 
-- [ ] T044 [USUARIO] Revisar el diff de la feature en `dev` y hacer el merge a `main` y `git push origin main`
-- [ ] T045 [USUARIO] Medir SC-001, SC-002, SC-004 y SC-011 con `scripts/medir_plantillas.py` contra los documentos de los posgrados y un proveedor real configurado para el razonamiento (cuesta créditos del modelo: usar las 20 preguntas del script); anotar el resultado en `specs/020-modo-plantilla/quickstart.md` y, si SC-001 o SC-004 no se alcanzan, decidir si se prueba el parámetro dedicado en los proveedores (research R3)
-- [ ] T046 [USUARIO] Desplegar con `scripts/servicios.py encender MIA mia-panel mia-computacion mia-administracion` (la API aplica la migración `0014` al arrancar; confirmar `GET /health` y que `GET /openapi.json` trae `/templates`)
-- [ ] T047 [USUARIO] En producción: habilitar el modo plantilla en un artefacto de prueba, agregar una plantilla desde el panel (también cargando un `.docx`), consultar con ella desde la Consulta y verificar que aparece en Uso como "plantilla"; probar una plantilla personal con una cuenta de prueba y retomar la conversación
+- [x] T044 [USUARIO] Revisar el diff de la feature en `dev` y hacer el merge a `main` y `git push origin main`
+- [x] T045 [USUARIO] Medir SC-001, SC-002, SC-004 y SC-011 con `scripts/medir_plantillas.py` contra los documentos de los posgrados y un proveedor real configurado para el razonamiento (cuesta créditos del modelo: usar las 20 preguntas del script); anotar el resultado en `specs/020-modo-plantilla/quickstart.md` y, si SC-001 o SC-004 no se alcanzan, decidir si se prueba el parámetro dedicado en los proveedores (research R3)
+- [x] T046 [USUARIO] Desplegar con `scripts/servicios.py encender MIA mia-panel mia-computacion mia-administracion` (la API aplica la migración `0014` al arrancar; confirmar `GET /health` y que `GET /openapi.json` trae `/templates`)
+- [x] T047 [USUARIO] En producción: habilitar el modo plantilla en un artefacto de prueba, agregar una plantilla desde el panel (también cargando un `.docx`), consultar con ella desde la Consulta y verificar que aparece en Uso como "plantilla"; probar una plantilla personal con una cuenta de prueba y retomar la conversación
 
 ---
 

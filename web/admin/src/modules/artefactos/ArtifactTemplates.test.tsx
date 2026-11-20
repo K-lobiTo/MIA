@@ -32,7 +32,7 @@ const envolver = (nodo: React.ReactNode) => renderToString(<MantineProvider them
 
 const tarjeta = (a: Artifact) =>
   envolver(
-    <ArtifactCard artifact={a} units={[]} busy={false} onEdit={vi.fn()} onRegenerate={vi.fn()} onToggleActive={vi.fn()} onTemplates={vi.fn()} />,
+    <ArtifactCard artifact={a} units={[]} busy={false} onEdit={vi.fn()} onRegenerate={vi.fn()} onToggleActive={vi.fn()} onTemplates={vi.fn()} onDelete={vi.fn()} />,
   );
 
 describe("ArtifactCard y las plantillas", () => {
@@ -135,5 +135,12 @@ describe("TemplateEditor", () => {
     const html = editor({ errors: { name: null, content: "El contenido no puede superar 200 caracteres." }, content: "x".repeat(300) });
     expect(html).toContain("El contenido no puede superar 200 caracteres.");
     expect(html).toMatch(/<button[^>]*disabled[^>]*type="submit"|<button[^>]*type="submit"[^>]*disabled/);
+  });
+});
+
+describe("ArtifactCard y eliminar", () => {
+  it("ofrece el botón Eliminar", () => {
+    expect(tarjeta(artefacto)).toContain("Eliminar");
+    expect(tarjeta({ ...artefacto, modes: ["literal"] })).toContain("Eliminar");
   });
 });
