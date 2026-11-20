@@ -13,6 +13,8 @@ export interface DocumentItem {
   image_count: number;
   // Motivo de un error o aviso de un documento listo (feature 018).
   status_note?: string | null;
+  // Dirección de la página de un documento web (feature 022); null en los demás tipos.
+  source_url?: string | null;
 }
 
 export interface FolderNode {

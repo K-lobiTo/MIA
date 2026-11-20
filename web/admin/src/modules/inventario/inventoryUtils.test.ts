@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { DocumentItem, DocumentStatus, Inventory } from "../../api/types";
-import { CSV_NOTICE, hasCsv, hasPendingDocuments, validateFile } from "./inventoryUtils";
+import {
+  CSV_NOTICE,
+  debeCerrar,
+  enlaceSeguro,
+  hasCsv,
+  hasPendingDocuments,
+  validarDireccion,
+  validateFile,
+  WEB_NOTICE,
+} from "./inventoryUtils";
 
 const doc = (status: DocumentStatus): DocumentItem => ({
   id: status,
@@ -92,5 +101,36 @@ describe("hasCsv (aviso de datos personales, feature 021)", () => {
     expect(CSV_NOTICE).toContain("datos de personas");
     expect(CSV_NOTICE).toContain("anonimiza");
     expect(CSV_NOTICE).not.toContain("\u2014");
+  });
+});
+
+describe("páginas web (feature 022)", () => {
+  it("validarDireccion pide algo escrito y deja la validación real a la API", () => {
+    expect(validarDireccion("")).toBe("Escribe la dirección de la página.");
+    expect(validarDireccion("   ")).toBe("Escribe la dirección de la página.");
+    expect(validarDireccion("https://www.tec.ac.cr/posgrado")).toBeNull();
+    expect(validarDireccion("tec.ac.cr")).toBeNull();
+  });
+
+  it("WEB_NOTICE avisa de los datos personales y de revisar el texto", () => {
+    expect(WEB_NOTICE).toContain("se podrá consultar con los artefactos de este dominio");
+    expect(WEB_NOTICE).toContain("MIA no filtra datos personales");
+    expect(WEB_NOTICE).toContain("elimina el documento si no es adecuado");
+  });
+
+  it("debeCerrar solo cuando la página se agregó de verdad", () => {
+    expect(debeCerrar({ ok: true, yaExistia: false })).toBe(true);
+    expect(debeCerrar({ ok: true, yaExistia: true })).toBe(false);
+    expect(debeCerrar({ ok: false, code: "already_added" })).toBe(false);
+    expect(debeCerrar({ ok: false, code: "login_required" })).toBe(false);
+  });
+
+  it("enlaceSeguro solo deja pasar direcciones http y https", () => {
+    expect(enlaceSeguro("https://ejemplo.test/a")).toBe("https://ejemplo.test/a");
+    expect(enlaceSeguro("http://ejemplo.test/a")).toBe("http://ejemplo.test/a");
+    expect(enlaceSeguro("javascript:alert(1)")).toBeNull();
+    expect(enlaceSeguro("data:text/html,hola")).toBeNull();
+    expect(enlaceSeguro(null)).toBeNull();
+    expect(enlaceSeguro(undefined)).toBeNull();
   });
 });

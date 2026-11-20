@@ -446,7 +446,7 @@ La versión 3 se empezó a definir en [Definicion_Requerimientos_V3.md](Definici
 - **Usuarios individuales:** cuentas con su propia identidad dentro de un artefacto (hoy los permisos son por artefacto, ver 2.5, y todas las personas que usan un artefacto comparten su clave). Se agregarían como un módulo más del panel de administración.
 - **Administración completa del inventario:** borrar, renombrar, mover y reintentar documentos, con los archivos originales en almacenamiento persistente. (Borrar documentos, uno o varios, ya existe desde la feature 012; faltan renombrar, mover y reintentar.)
 - **Consulta y permisos por carpeta:** buscar solo en una carpeta de un dominio, o habilitar a un artefacto solo algunas carpetas. Requiere guardar la carpeta en la metadata de los fragmentos en Qdrant.
-- **Nuevas fuentes:** páginas web (ACM, repositorio Orion). XLSX (feature 018) y CSV (feature 021) ya están resueltos. Para las páginas web hay un análisis de viabilidad en [Idea_Fuente_Web.md](Idea_Fuente_Web.md).
+- **Nuevas fuentes:** páginas web (ACM, repositorio Orion). XLSX (feature 018) y CSV (feature 021) ya están resueltos, y **una sola página web** también (feature 022: sin seguir enlaces, sin leer archivos enlazados, sin inicio de sesión y sin lectura periódica). Siguen pendientes el rastreo de varias páginas, los archivos enlazados, la lectura periódica, las reglas por sitio y la ACM (bloquea con anti-bot); el análisis de viabilidad está en [Idea_Fuente_Web.md](Idea_Fuente_Web.md).
 
 ## Anexo A. Clasificación de los proyectos de graduación de Computación
 

@@ -31,6 +31,8 @@ class DocumentNode(BaseModel):
     image_count: int = 0
     # Motivo de un error o aviso de un documento listo (feature 018); null si no hay nada que decir.
     status_note: str | None = None
+    # Dirección de la página de un documento web (feature 022); null en los demás tipos.
+    source_url: str | None = None
 
 
 class FolderNode(BaseModel):
@@ -85,6 +87,7 @@ def _document_node(document: Document, image_counts: dict[str, int]) -> Document
         folder_id=document.folder_id,
         image_count=image_counts.get(document.id, 0),
         status_note=document.status_note,
+        source_url=document.source_url,
     )
 
 

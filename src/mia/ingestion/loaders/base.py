@@ -34,6 +34,10 @@ def get_loader(source_type: str) -> DocumentLoader:
         from mia.ingestion.loaders.csv_loader import CsvLoader
 
         return CsvLoader()
+    if source_type == "web":
+        from mia.ingestion.loaders.web_loader import WebLoader
+
+        return WebLoader()
     if source_type == "txt":
         from mia.ingestion.loaders.txt_loader import TxtLoader
 

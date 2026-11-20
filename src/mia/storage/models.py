@@ -105,6 +105,11 @@ class Document(Base):
     # Motivo de un estado `error` o aviso de uno `done` (por ejemplo, un libro recortado). Mensaje fijo, nunca contenido
     # del documento; máximo 500 caracteres, se recorta al guardar (feature 018).
     status_note: Mapped[str | None] = mapped_column(String, nullable=True, default=None)
+    # Documento web (feature 022): dirección final de la página y texto que se extrajo de ella (el disco de Railway no
+    # persiste, así que el texto se guarda aquí para poder revisarlo). Nulos en los demás tipos. `source_text` es
+    # `deferred`: listar el inventario no lo lee. La fecha de lectura es `uploaded_at`.
+    source_url: Mapped[str | None] = mapped_column(String, nullable=True, default=None, index=True)
+    source_text: Mapped[str | None] = deferred(mapped_column(Text, nullable=True, default=None))
 
     domain: Mapped[Domain] = relationship(back_populates="documents")
     folder: Mapped[Folder | None] = relationship(back_populates="documents")

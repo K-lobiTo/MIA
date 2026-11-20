@@ -1,5 +1,6 @@
 import hashlib
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -66,6 +67,9 @@ class DocumentOut(BaseModel):
     folder_id: str | None = None
     status_note: str | None = None
     already_existed: bool = False
+    # Documento web (feature 022): dirección final de la página y momento de la lectura; nulos en los demás tipos.
+    source_url: str | None = None
+    uploaded_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

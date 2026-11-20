@@ -104,3 +104,51 @@ describe("DomainBranch", () => {
     expect(render(dominio(undefined))).not.toContain("Dinámico");
   });
 });
+
+describe("documento web (feature 022)", () => {
+  const web: DocumentItem = {
+    ...documento,
+    id: "web1",
+    filename: "Maestría de Ejemplo",
+    source_type: "web",
+    source_url: "https://www.ejemplo.test/programa",
+    image_count: 0,
+  };
+
+  it("muestra el tipo WEB, la dirección como enlace seguro y la fecha de lectura", () => {
+    const html = render(web);
+    expect(html).toContain("WEB");
+    expect(html).toContain('href="https://www.ejemplo.test/programa"');
+    expect(html).toContain('rel="noopener noreferrer"');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain("2026");
+  });
+
+  it("no hace enlace de una dirección que no es http ni https", () => {
+    const html = render({ ...web, source_url: "javascript:alert(1)" });
+    expect(html).not.toContain("javascript:alert(1)");
+  });
+
+  it("un documento que no es web no muestra dirección", () => {
+    expect(render(documento)).not.toContain("Página:");
+  });
+});
+
+describe("Ver texto de un documento web (feature 022)", () => {
+  const web: DocumentItem = { ...documento, id: "web1", filename: "Maestría de Ejemplo", source_type: "web", image_count: 0 };
+  const fila = (doc: DocumentItem, onViewText?: (d: DocumentItem) => void) =>
+    renderToString(
+      <MantineProvider theme={theme}>
+        <DocumentRow document={doc} onViewText={onViewText} />
+      </MantineProvider>,
+    );
+
+  it("un documento web muestra el botón Ver texto", () => {
+    expect(fila(web, vi.fn())).toContain("Ver texto");
+  });
+
+  it("un documento que no es web no lo muestra, y sin la acción tampoco", () => {
+    expect(fila(documento, vi.fn())).not.toContain("Ver texto");
+    expect(fila(web)).not.toContain("Ver texto");
+  });
+});
