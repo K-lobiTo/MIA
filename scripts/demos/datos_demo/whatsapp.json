@@ -22,6 +22,22 @@
         {
           "tipo": "texto",
           "texto": "*Matrícula*\nPara *Unidad de Postgrados de Computación*, la matrícula se hace en las fechas del *calendario de ejemplo* del periodo.\n\n- Se paga en la oficina del programa.\n- Hay que tener el plan de estudios al día.\n\nFuentes: Calendario de ejemplo del periodo.txt"
+        },
+        {
+          "tipo": "texto",
+          "texto": "Si quieres que la Coordinación del programa te contacte, puedes dejarme tu nombre y tu correo. Es totalmente opcional: puedes seguir preguntando sin dejarlos. Guardo tu número de WhatsApp y, si los das, tu nombre y correo, solo para que te contacten sobre los programas; no los uses dentro de tus preguntas. Para dejarlos escribe, por ejemplo: Ana Pérez ana@correo.com. Si no quieres dejarlos, escribe «no». Para borrar tus datos, escribe «borrar mis datos»."
+        }
+      ]
+    },
+    {
+      "id": "contacto-entrega",
+      "titulo": "La persona deja su nombre y su correo",
+      "persona": "ana",
+      "entrada": "Ana Pérez ana@ejemplo.com",
+      "mensajes": [
+        {
+          "tipo": "texto",
+          "texto": "Listo, guardé tu nombre (Ana Pérez) y tu correo (a**@ejemplo.com). Para corregirlo escribe «quiero dejar mis datos»; para borrarlo, «borrar mis datos». Sigue con tus preguntas cuando quieras."
         }
       ]
     },
@@ -70,7 +86,7 @@
       "id": "limite",
       "titulo": "Demasiados mensajes seguidos",
       "persona": "ana",
-      "entrada": "hola 6",
+      "entrada": "hola 5",
       "mensajes": [
         {
           "tipo": "texto",

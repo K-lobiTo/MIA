@@ -1,0 +1,47 @@
+{
+  "id": "c3-contactos",
+  "titulo": "Contactos de WhatsApp",
+  "duracion": 56.25,
+  "pistas": [
+    {
+      "inicio": 1.79,
+      "fin": 9.26,
+      "texto": "Cuando alguien escribe al bot, MIA guarda su teléfono y, si quiere, su nombre y su correo para que la Coordinación lo contacte."
+    },
+    {
+      "inicio": 9.26,
+      "fin": 16.56,
+      "texto": "Son datos personales. Solo el alcance global ve este módulo, y cada descarga y cada borrado queda registrado, sin los datos."
+    },
+    {
+      "inicio": 16.56,
+      "fin": 24.08,
+      "texto": "Los cuadros cuentan los contactos por estado: dejó sus datos, invitada, pendiente y no quiso dejar datos."
+    },
+    {
+      "inicio": 24.08,
+      "fin": 29.73,
+      "texto": "Filtra por bot, por estado o por si dejaron correo. Por ejemplo, solo quienes dejaron sus datos."
+    },
+    {
+      "inicio": 29.73,
+      "fin": 36.79,
+      "texto": "La tabla muestra el teléfono, el nombre y el correo si los dejó, el estado y las fechas del primer y del último mensaje."
+    },
+    {
+      "inicio": 36.79,
+      "fin": 40.55,
+      "texto": "«Descargar CSV» baja los contactos que ves con el filtro actual."
+    },
+    {
+      "inicio": 40.55,
+      "fin": 48.74,
+      "texto": "El bote de basura borra un contacto, con su nombre y su correo. Si esa persona vuelve a escribir, será una persona nueva."
+    },
+    {
+      "inicio": 48.74,
+      "fin": 56.25,
+      "texto": "«Borrar los filtrados» elimina de una vez todos los contactos que ves. También pide confirmación."
+    }
+  ]
+}

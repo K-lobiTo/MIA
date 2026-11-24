@@ -1,51 +1,51 @@
 {
   "id": "a2-dominios",
   "titulo": "Elegir dominios",
-  "duracion": 45.65,
+  "duracion": 45.81,
   "pistas": [
     {
-      "inicio": 1.61,
-      "fin": 7.14,
+      "inicio": 1.53,
+      "fin": 7.06,
       "texto": "Un dominio es un conjunto de documentos del mismo tema, como Currículum o Memoria del Consejo."
     },
     {
-      "inicio": 7.14,
-      "fin": 12.61,
+      "inicio": 7.06,
+      "fin": 12.53,
       "texto": "Al abrir la Consulta, todos los dominios vienen elegidos. El contador muestra cuántos llevas."
     },
     {
-      "inicio": 12.61,
-      "fin": 18.38,
+      "inicio": 12.53,
+      "fin": 18.3,
       "texto": "«Ninguno» los quita todos. Sin dominios elegidos no se puede preguntar, y el campo te lo recuerda."
     },
     {
-      "inicio": 18.38,
-      "fin": 21.91,
+      "inicio": 18.3,
+      "fin": 21.82,
       "texto": "Abre la lista para elegir. Cada dominio trae su descripción."
     },
     {
-      "inicio": 21.91,
-      "fin": 27.73,
+      "inicio": 21.82,
+      "fin": 27.65,
       "texto": "La etiqueta «Dinámico» indica que el contenido cambia cada periodo y solo trae información vigente."
     },
     {
-      "inicio": 27.73,
-      "fin": 33.14,
+      "inicio": 27.65,
+      "fin": 33.06,
       "texto": "Marca los dominios que necesites. La respuesta solo usa documentos de los dominios elegidos."
     },
     {
-      "inicio": 33.14,
-      "fin": 38.07,
+      "inicio": 33.06,
+      "fin": 38.17,
       "texto": "También puedes escribir para filtrar la lista, por ejemplo «tesis»."
     },
     {
-      "inicio": 38.07,
-      "fin": 40.77,
+      "inicio": 38.17,
+      "fin": 40.93,
       "texto": "Para quitar uno, usa la x de su etiqueta."
     },
     {
-      "inicio": 40.77,
-      "fin": 45.65,
+      "inicio": 40.93,
+      "fin": 45.81,
       "texto": "«Todos» vuelve a elegirlos. El navegador recuerda tu selección para la próxima vez."
     }
   ]

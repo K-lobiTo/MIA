@@ -1,0 +1,67 @@
+{
+  "id": "b8-excel-csv-web",
+  "titulo": "Excel, CSV y páginas web",
+  "duracion": 98.5,
+  "pistas": [
+    {
+      "inicio": 1.75,
+      "fin": 7.99,
+      "texto": "Además de PDF, DOCX y TXT, MIA acepta libros de Excel (.xlsx) y archivos CSV. Se suben igual: con «Subir»."
+    },
+    {
+      "inicio": 7.99,
+      "fin": 14.52,
+      "texto": "Elige el Excel y el CSV. Cada fila se convierte en texto que se puede consultar, con el nombre de sus columnas."
+    },
+    {
+      "inicio": 14.52,
+      "fin": 20.99,
+      "texto": "Un CSV suele traer datos de personas. El panel avisa antes: quita o anonimiza esas columnas si no hacen falta."
+    },
+    {
+      "inicio": 20.99,
+      "fin": 26.4,
+      "texto": "El CSV exportado de Excel en español, con tildes y punto y coma, se lee sin que lo prepares."
+    },
+    {
+      "inicio": 26.4,
+      "fin": 32.45,
+      "texto": "Pasan por los mismos estados que cualquier documento: En cola, Procesando y Listo."
+    },
+    {
+      "inicio": 32.45,
+      "fin": 59.24,
+      "texto": "Si un archivo no se puede leer, queda en «Error» y el motivo se ve debajo. Aquí, un CSV vacío."
+    },
+    {
+      "inicio": 59.24,
+      "fin": 65.3,
+      "texto": "También puedes agregar una página web como fuente: «Agregar página web» en el dominio o en una carpeta."
+    },
+    {
+      "inicio": 65.3,
+      "fin": 72.73,
+      "texto": "MIA lee solo esa página, sin seguir sus enlaces. Si no se puede leer, te dice por qué y no crea nada."
+    },
+    {
+      "inicio": 72.73,
+      "fin": 79.28,
+      "texto": "Corrige la dirección. El nombre es opcional: si lo dejas vacío, se usa el título de la página."
+    },
+    {
+      "inicio": 79.28,
+      "fin": 85.77,
+      "texto": "El panel recuerda que el contenido será consultable y que MIA no filtra datos personales de la página."
+    },
+    {
+      "inicio": 85.77,
+      "fin": 91.07,
+      "texto": "La página queda como un documento de tipo web, con su dirección y la fecha en que se leyó."
+    },
+    {
+      "inicio": 91.07,
+      "fin": 98.5,
+      "texto": "«Ver texto» muestra lo que se extrajo de la página, para contrastarlo con ella antes de usarla."
+    }
+  ]
+}

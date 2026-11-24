@@ -1,51 +1,51 @@
 {
   "id": "b6-usuarios",
   "titulo": "Usuarios de la Consulta",
-  "duracion": 53.52,
+  "duracion": 53.48,
   "pistas": [
     {
-      "inicio": 1.69,
-      "fin": 7.33,
+      "inicio": 1.85,
+      "fin": 7.5,
       "texto": "Aquí registras a las personas que inician sesión en la Consulta para guardar sus conversaciones."
     },
     {
-      "inicio": 7.33,
-      "fin": 12.16,
+      "inicio": 7.5,
+      "fin": 12.32,
       "texto": "Cada tarjeta muestra su programa, su último acceso y cuántas conversaciones tiene."
     },
     {
-      "inicio": 12.16,
-      "fin": 17.69,
+      "inicio": 12.32,
+      "fin": 17.85,
       "texto": "Quien administra no puede leer las conversaciones: solo ve cuántas hay y cuándo fue la última."
     },
     {
-      "inicio": 17.69,
-      "fin": 22.22,
+      "inicio": 17.85,
+      "fin": 22.37,
       "texto": "«Registrar usuario» crea una cuenta. Escribe el nombre de usuario."
     },
     {
-      "inicio": 22.22,
-      "fin": 27.87,
+      "inicio": 22.37,
+      "fin": 28.02,
       "texto": "El programa decide qué cuentas de administración la gestionan. No limita lo que puede consultar."
     },
     {
-      "inicio": 27.87,
-      "fin": 32.72,
+      "inicio": 28.02,
+      "fin": 32.81,
       "texto": "La contraseña inicial es opcional: si la dejas vacía, MIA genera una."
     },
     {
-      "inicio": 32.72,
-      "fin": 39.28,
+      "inicio": 32.81,
+      "fin": 39.33,
       "texto": "La contraseña se muestra una sola vez. Cópiala y entrégala a la persona; no se podrá volver a ver."
     },
     {
-      "inicio": 39.28,
-      "fin": 47.76,
+      "inicio": 39.33,
+      "fin": 47.71,
       "texto": "Si alguien olvida su contraseña, restablécela. La anterior deja de funcionar y se cierran sus sesiones."
     },
     {
-      "inicio": 47.76,
-      "fin": 53.52,
+      "inicio": 47.71,
+      "fin": 53.48,
       "texto": "«Desactivar» impide que la persona entre, sin borrar sus datos. «Reactivar» le devuelve el acceso."
     }
   ]

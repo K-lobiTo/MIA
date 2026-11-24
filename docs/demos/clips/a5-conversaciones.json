@@ -1,66 +1,66 @@
 {
   "id": "a5-conversaciones",
   "titulo": "Cuenta y conversaciones guardadas",
-  "duracion": 76.21,
+  "duracion": 76.56,
   "pistas": [
     {
-      "inicio": 1.61,
-      "fin": 7.67,
+      "inicio": 1.66,
+      "fin": 7.71,
       "texto": "Con un usuario, MIA guarda tus conversaciones. Te lo crea quien administra MIA: no hay registro propio."
     },
     {
-      "inicio": 7.67,
-      "fin": 9.82,
+      "inicio": 7.72,
+      "fin": 9.9,
       "texto": "Pulsa «Iniciar sesión»."
     },
     {
-      "inicio": 9.82,
-      "fin": 16.87,
+      "inicio": 9.9,
+      "fin": 16.99,
       "texto": "Escribe tu usuario y tu contraseña. Se guardan 90 días sin actividad y las puedes borrar cuando quieras."
     },
     {
-      "inicio": 16.87,
-      "fin": 21.23,
+      "inicio": 16.99,
+      "fin": 21.35,
       "texto": "Ahora el menú lateral muestra tus conversaciones, la más reciente primero."
     },
     {
-      "inicio": 21.23,
-      "fin": 27.05,
+      "inicio": 21.35,
+      "fin": 27.17,
       "texto": "Toca una para retomarla. Las guardadas muestran la pregunta, la respuesta y los documentos citados."
     },
     {
-      "inicio": 27.05,
-      "fin": 33.87,
+      "inicio": 27.17,
+      "fin": 33.97,
       "texto": "Sigue preguntando: la conversación continúa con lo que ya se habló."
     },
     {
-      "inicio": 33.87,
-      "fin": 42.03,
+      "inicio": 33.97,
+      "fin": 42.29,
       "texto": "«Nueva conversación» empieza otra desde cero. Queda guardada con tu primera pregunta como título."
     },
     {
-      "inicio": 42.03,
-      "fin": 49.61,
+      "inicio": 42.29,
+      "fin": 49.95,
       "texto": "El menú de tres puntos de cada conversación permite renombrarla."
     },
     {
-      "inicio": 49.61,
-      "fin": 55.98,
+      "inicio": 49.95,
+      "fin": 56.37,
       "texto": "También permite borrarla. Pide confirmación porque no se puede deshacer."
     },
     {
-      "inicio": 55.98,
-      "fin": 59.04,
+      "inicio": 56.37,
+      "fin": 59.43,
       "texto": "«Borrar todas» elimina todo tu historial de una vez."
     },
     {
-      "inicio": 59.04,
-      "fin": 70.56,
+      "inicio": 59.43,
+      "fin": 70.91,
       "texto": "Desde tu nombre cambias la contraseña. Pide la actual y una nueva de al menos 10 caracteres."
     },
     {
-      "inicio": 70.56,
-      "fin": 76.21,
+      "inicio": 70.91,
+      "fin": 76.56,
       "texto": "Cuando termines, abre el mismo menú y elige «Cerrar sesión», sobre todo en un equipo compartido."
     }
   ]

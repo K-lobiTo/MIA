@@ -57,10 +57,21 @@ def guion(g: Grabacion) -> None:
     with g.sub("Si la pregunta puede ser de varios programas, el bot te pregunta a cuál te refieres. Responde con el nombre o con su número."):
         _enviar(g, "aclaracion-respuesta")
         _recibir(g, "aclaracion-respuesta")
-        g.pausa(1.5)
+        g.pausa(1.0)
 
     with g.sub("Con el programa elegido responde solo con lo que dicen los documentos y termina con las fuentes."):
+        g.pausa(3.0)
+
+    with g.sub("Después, en un mensaje aparte, te invita a dejar tu nombre y tu correo para que la Coordinación del programa te contacte. Es opcional."):
+        g.pausa(5.0)
+
+    with g.sub("Si no quieres, escribe «no» o sigue preguntando: el bot funciona igual. No uses estos datos dentro de tus preguntas."):
         g.pausa(3.5)
+
+    with g.sub("Si los dejas, el bot confirma qué guardó, con el correo parcialmente oculto. Para corregirlos o borrarlos, usa las frases que te indica."):
+        _enviar(g, "contacto-entrega")
+        _recibir(g, "contacto-entrega", espera=1.2)
+        g.pausa(4.0)
 
     with g.sub("Si el documento tiene imágenes, el bot envía la primera después del texto, con su descripción como pie de foto."):
         _enviar(g, "respuesta")
@@ -84,5 +95,5 @@ def guion(g: Grabacion) -> None:
         _recibir(g, "limite", espera=1.0)
         g.pausa(3.0)
 
-    with g.sub("El bot no entrega teléfonos ni correos de los programas: solo responde con lo que dicen los documentos."):
-        g.pausa(3.0)
+    with g.sub("El bot guarda tu número de WhatsApp y, si los das, tu nombre y tu correo, solo para que te contacten sobre los programas."):
+        g.pausa(3.5)

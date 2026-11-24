@@ -32,7 +32,7 @@ def guion(g: Grabacion) -> None:
         g.mover(p.get_by_role("heading", name="Artefactos y accesos"))
         g.pausa(1.5)
 
-    with g.sub("Cada tarjeta muestra su estado, los dominios, los modos, la memoria y el gasto de hoy frente a su tope."):
+    with g.sub("Cada tarjeta muestra su estado, los dominios, los modos, la memoria, las instrucciones y el gasto de hoy frente a su tope."):
         g.mover(_tarjeta(p, "Consulta Postgrados de Computación").get_by_text("Gasto de hoy"))
         g.pausa(2.5)
 
@@ -54,13 +54,17 @@ def guion(g: Grabacion) -> None:
         _marcar(g, p.get_by_role("checkbox", name=re.compile("^Con razonamiento")))
         g.pausa(1.0)
 
+    with g.sub("«Plantilla» responde con la estructura de una plantilla, con el mismo modelo y el mismo costo que el razonamiento."):
+        _marcar(g, p.get_by_role("checkbox", name=re.compile("^Plantilla")))
+        g.pausa(2.0)
+
     with g.sub("Fija un tope de gasto diario en dólares. Al alcanzarlo, el artefacto deja de responder hasta la medianoche."):
         campo = p.get_by_label(re.compile("^Tope total"))
         campo.fill("")
         g.escribir(campo, "0.30")
         g.pausa(1.0)
 
-    with g.sub("Opcionalmente, un tope menor para el modo con razonamiento, que suele costar más."):
+    with g.sub("Opcionalmente, un tope menor para los modos con razonamiento y plantilla, que comparten modelo y suelen costar más."):
         campo = p.get_by_label(re.compile("^Tope menor"))
         g.escribir(campo, "0.10")
         g.pausa(0.8)
@@ -70,6 +74,11 @@ def guion(g: Grabacion) -> None:
         campo.fill("")
         g.escribir(campo, "2")
         g.pausa(1.0)
+
+    with g.sub("Las instrucciones propias son opcionales: un texto que se suma a las del modo para ajustar el enfoque, sin reemplazarlas."):
+        campo = p.get_by_label(re.compile("^Instrucciones propias del artefacto"))
+        g.escribir(campo, "Centra tus respuestas en la información de la Unidad de Postgrados de Computación.")
+        g.pausa(2.0)
 
     with g.sub("Puedes exigir inicio de sesión: así solo responde a personas con usuario. Déjalo apagado si no lo necesitas."):
         g.mover(p.get_by_text("Exigir inicio de sesión para consultar"))
@@ -111,3 +120,11 @@ def guion(g: Grabacion) -> None:
         g.pausa(1.5)
         g.clic(p.get_by_role("button", name="Ya la guardé"))
         g.pausa(0.8)
+
+    with g.sub("«Eliminar» borra el artefacto: su clave deja de funcionar y se pierden sus accesos y plantillas. El registro de Uso se conserva."):
+        g.clic(_tarjeta(p, NOMBRE).get_by_role("button", name="Eliminar"))
+        p.get_by_text("Se eliminan su acceso a dominios").wait_for()
+        g.pausa(4.0)
+        g.clic(p.get_by_role("dialog").get_by_role("button", name="Eliminar", exact=True))
+        _tarjeta(p, NOMBRE).wait_for(state="detached", timeout=20000)
+        g.pausa(1.5)

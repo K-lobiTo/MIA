@@ -1,51 +1,51 @@
 {
   "id": "b4-eliminar-documentos",
   "titulo": "Eliminar documentos",
-  "duracion": 52.31,
+  "duracion": 52.06,
   "pistas": [
     {
-      "inicio": 1.66,
-      "fin": 6.95,
+      "inicio": 1.76,
+      "fin": 7.05,
       "texto": "Para eliminar un documento, búscalo en el inventario. Cada fila tiene su botón «Eliminar»."
     },
     {
-      "inicio": 6.95,
-      "fin": 14.48,
+      "inicio": 7.05,
+      "fin": 14.58,
       "texto": "Antes de borrar, la ventana te dice qué documento es y qué se pierde: el archivo, sus imágenes y su contenido en las respuestas."
     },
     {
-      "inicio": 14.48,
-      "fin": 20.37,
+      "inicio": 14.58,
+      "fin": 20.46,
       "texto": "También avisa que no se puede deshacer: para recuperarlo hay que volver a subir el archivo original."
     },
     {
-      "inicio": 20.37,
-      "fin": 25.9,
+      "inicio": 20.46,
+      "fin": 25.7,
       "texto": "Si estás de acuerdo, confirma con «Eliminar». El panel avisa que el documento se eliminó."
     },
     {
-      "inicio": 25.9,
-      "fin": 31.01,
+      "inicio": 25.7,
+      "fin": 30.82,
       "texto": "Para eliminar varios a la vez, pulsa «Seleccionar». Cada documento muestra una casilla."
     },
     {
-      "inicio": 31.01,
-      "fin": 37.54,
+      "inicio": 30.82,
+      "fin": 37.35,
       "texto": "La casilla de una carpeta, un dominio o un programa marca todos sus documentos. La barra cuenta cuántos llevas."
     },
     {
-      "inicio": 37.54,
-      "fin": 43.54,
+      "inicio": 37.35,
+      "fin": 43.35,
       "texto": "«Eliminar seleccionados» abre una sola confirmación para todos, con la lista de lo que se va a borrar."
     },
     {
-      "inicio": 43.54,
-      "fin": 47.19,
+      "inicio": 43.35,
+      "fin": 46.94,
       "texto": "Al confirmar, el aviso dice cuántos documentos se eliminaron."
     },
     {
-      "inicio": 47.19,
-      "fin": 52.31,
+      "inicio": 46.94,
+      "fin": 52.06,
       "texto": "«Cancelar selección» vuelve a la vista normal. Lo que borres solo afecta a tu programa."
     }
   ]

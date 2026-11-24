@@ -93,7 +93,7 @@ def guion(g: Grabacion) -> None:
         g.clic(p.get_by_role("button", name="Enviar comentario"))
         g.pausa(0.8)
 
-    with g.sub("Si el selector de modo aparece, elige «Con razonamiento» para comparar o calcular con varios documentos."):
+    with g.sub("Si el selector de modo aparece, elige «Con razonamiento» para comparar o calcular con varios documentos. «Plantilla» tiene su propio video."):
         g.clic(p.locator(".mode-button"))
         g.pausa(0.8)
         g.clic(p.get_by_role("option", name=re.compile("Con razonamiento")))
