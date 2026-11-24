@@ -90,13 +90,67 @@ def _respuesta(payload, historial) -> tuple[str, list[Source], bool]:
     return NO_INFO, [], True
 
 
-def responder(payload, artifact, session, session_missing: bool = False) -> QueryResponse:
+# Lo que "dicen los documentos" de ejemplo para cada sección posible de una plantilla (por una palabra de su título).
+DATOS_DEL_TALLER = {
+    "resumen": "El Taller de Ejemplo A es un curso práctico de tres unidades.",
+    "requisito": "Tener el plan de estudios al día.",
+    "plan": "3 créditos, en tres unidades: fundamentos, práctica guiada y proyecto final.",
+    "fecha": "Se imparte los martes a las 6:00 p. m.",
+    "modalidad": "Presencial.",
+    "duraci": "Un periodo lectivo y 3 créditos.",
+    "programa": "Taller de Ejemplo A.",
+    "para qui": "Personas del programa de posgrado.",
+}
+SIN_DATOS = "Sin información en los documentos."
+
+
+def _titulos(contenido: str, nombre: str) -> list[str]:
+    """Los títulos de las secciones de una plantilla: `Título: indicación` o líneas cortas sin punto (el formato de un .docx)."""
+    titulos = []
+    lineas = [renglon.strip() for renglon in contenido.splitlines() if renglon.strip()]
+    for posicion, linea in enumerate(lineas):
+        # La primera línea sin ":" de un .docx es el título del documento, no una sección.
+        if linea.lower() == nombre.lower() or (posicion == 0 and ":" not in linea):
+            continue
+        if ":" in linea:
+            titulos.append(linea.split(":", 1)[0].strip())
+        elif len(linea) <= 40 and "." not in linea:
+            titulos.append(linea)
+    return titulos
+
+
+def _con_plantilla(pregunta: str, nombre: str, contenido: str) -> tuple[str, list[Source], bool]:
+    """Una respuesta con las mismas secciones, en el mismo orden y con los mismos títulos que la plantilla. Si la pregunta es del
+    Taller de Ejemplo A hay datos; una sección sin datos lo dice, no se inventa ni se omite."""
+    del_taller = "taller de ejemplo a" in pregunta.lower()
+    partes = []
+    for titulo in _titulos(contenido, nombre):
+        dato = next((v for k, v in DATOS_DEL_TALLER.items() if k in titulo.lower()), SIN_DATOS) if del_taller else SIN_DATOS
+        partes.append(f"**{titulo}**\n{dato}")
+    fuentes = (
+        [Source(domain="Currículum", document="Programa de curso Taller de Ejemplo A.pdf", excerpt="Créditos: 3. (Documento de ejemplo)")]
+        if del_taller
+        else []
+    )
+    return "\n\n".join(partes), fuentes, False
+
+
+def responder(payload, artifact, session, session_missing: bool = False, user=None, template_out=None, **_) -> QueryResponse:
     """Con la firma de `run_query`: devuelve una respuesta fija y deja la fila del registro de consultas."""
     inicio = time.monotonic()
-    time.sleep(4.0 if payload.mode == "razonamiento" else 2.0)  # lo que se ve en pantalla como "Buscando..."
+    time.sleep(4.0 if payload.mode in ("razonamiento", "plantilla") else 2.0)  # lo que se ve en pantalla como "Buscando..."
     # Como la consulta real: el historial solo cuenta si el artefacto tiene memoria.
     historial = payload.history if artifact.context_turns > 0 else None
-    texto, fuentes, sin_info = _respuesta(payload, historial)
+    if payload.mode == "plantilla":
+        # La plantilla se resuelve como en la consulta real: solo las visibles para el artefacto y la persona.
+        from mia.templates.service import resolve_template
+
+        plantilla = resolve_template(session, artifact, user, payload.template_id or "")
+        if template_out is not None:
+            template_out.update(id=plantilla.id, name=plantilla.name)
+        texto, fuentes, sin_info = _con_plantilla(payload.question, plantilla.name, plantilla.content)
+    else:
+        texto, fuentes, sin_info = _respuesta(payload, historial)
     identificador = str(uuid.uuid4())
     session.add(
         QueryLog(
@@ -105,7 +159,7 @@ def responder(payload, artifact, session, session_missing: bool = False) -> Quer
             question=payload.question,
             domain_ids=json.dumps(list(payload.domains)),
             mode=payload.mode,
-            model="modelo-razonamiento-ejemplo" if payload.mode == "razonamiento" else "modelo-literal-ejemplo",
+            model="modelo-razonamiento-ejemplo" if payload.mode in ("razonamiento", "plantilla") else "modelo-literal-ejemplo",
             prompt_tokens=900,
             completion_tokens=120,
             cost_usd=Decimal("0.004"),

@@ -86,6 +86,7 @@ def main() -> int:
         "KAPSO_API_KEY": "clave-kapso-demo",
         "KAPSO_WEBHOOK_SECRET": SECRETO,
         "KAPSO_API_URL": f"http://localhost:{PUERTO_KAPSO}",
+        "BOT_CONTACT": "on",  # feature 017: invita a dejar nombre y correo, y guarda el teléfono
         "PATH": "/usr/bin:/bin",
     }
     bot = subprocess.Popen(
@@ -112,6 +113,8 @@ def main() -> int:
         ambigua = "¿Cuánto cuesta la matrícula?"
         agregar("aclaracion-pregunta", "Pregunta ambigua entre programas", persona, ambigua, enviar(ambigua, persona))
         agregar("aclaracion-respuesta", "La persona elige el programa", persona, "Computación", enviar("Computación", persona))
+        datos = "Ana Pérez ana@ejemplo.com"
+        agregar("contacto-entrega", "La persona deja su nombre y su correo", persona, datos, enviar(datos, persona))
         pregunta = "¿Cuántos créditos tiene el Taller de Ejemplo A?"
         agregar("respuesta", "Una pregunta con respuesta e imagen", persona, pregunta, enviar(pregunta, persona))
         fuera = "¿Cuál es el menú de la cafetería?"

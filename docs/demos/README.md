@@ -49,3 +49,19 @@ Un guion es `scripts/demos/guiones/<id>.py` con `ID`, `TITULO`, `URL`, `STORAGE`
 - Subtítulos en tú, sin guion largo, de una o dos líneas, y solo con lo que la pantalla muestra.
 - Solo datos de ejemplo: nada de actas ni documentos reales.
 - Si una espera no aporta (procesar un documento, una respuesta lenta), se simula con una demora corta y no se espera de verdad.
+
+## Cuando cambia la aplicación (cómo se actualizó la guía el 2026-11-23)
+
+Cada feature nueva puede dejar un video desactualizado. Para ponerlos al día:
+
+1. Traer `dev` al worktree de los videos y leer el código y la spec de lo nuevo (los guiones solo deben decir lo que la interfaz hace).
+2. Actualizar `servidor_demo.py` y `respuestas_demo.py` si la API cambió: la firma de `run_query` (la consulta de ejemplo acepta `**kwargs` para los argumentos nuevos), los modos del artefacto, las plantillas, los contactos, etc.
+3. Regrabar **todos** los videos con un servidor limpio (`grabar.py <id>` uno por uno) y revisar una hoja de fotogramas de los que cambian de pantalla. Un subtítulo que quedó viejo se corrige editando el `.json` del clip, sin regrabar.
+4. Agregar los videos nuevos al `catalogo.json` y publicar el Artifact con `index.html`, `catalogo.json` y `clips/`.
+
+Lo que se agregó con las features 017 a 022: A7 (modo Plantilla), B8 (Excel, CSV y páginas web), B9 (plantillas de un artefacto), C3 (Contactos de WhatsApp), y cambios en B3, B5 y D1. Para eso el servidor de demostración:
+
+- corre el **cargador real** de cada tipo de archivo al procesar un documento (sin Qdrant), así las notas y los errores de Excel y CSV son los verdaderos; los archivos de ejemplo se crean con `crear_datos.py`;
+- lee una página web de mentira (`PaginasDeEjemplo`), sin red, y rechaza las direcciones con `no-existe`;
+- siembra plantillas del artefacto, instrucciones propias y contactos de WhatsApp ficticios;
+- activa `BOT_CONTACT=on` en la captura del bot (`capturar_whatsapp.py`), así D1 muestra la invitación a dejar nombre y correo con los textos reales del servicio.

@@ -35,6 +35,30 @@ UNIDAD_COMP = "Unidad de Postgrados de Computación"
 UNIDAD_ANAL = "Área académica de Analítica de Negocios"
 
 
+# Plantillas del catálogo del artefacto de Computación (la estructura de la respuesta: secciones con su indicación).
+PLANTILLAS_DEL_ARTEFACTO = [
+    (
+        "Informe de programa",
+        (
+            "Resumen: qué es el programa, a quién va dirigido y qué título otorga, en dos o tres frases.\n"
+            "Requisitos de ingreso: lo que se pide para ser admitido.\n"
+            "Plan de estudios: cantidad de créditos y los cursos principales, en una lista.\n"
+            "Costos: cuánto cuesta, según los documentos.\n"
+            "Fechas: cuándo inicia y las fechas de admisión."
+        ),
+    ),
+    (
+        "Ficha corta",
+        (
+            "Programa: nombre completo y título que otorga.\n"
+            "Modalidad: presencial, virtual o híbrida.\n"
+            "Duración: cuánto dura y cuántos créditos tiene.\n"
+            "Para quién es: a qué personas está dirigido."
+        ),
+    ),
+]
+
+
 def _doc(s, domain_id, folder_id, nombre, estado="done"):
     from mia.storage.models import Document
 
@@ -68,7 +92,9 @@ def sembrar_demo(session_factory) -> None:
         Domain,
         Folder,
         QueryLog,
+        ResponseTemplate,
         Unit,
+        WhatsAppContact,
     )
 
     azar = Random(2026)
@@ -133,7 +159,7 @@ def sembrar_demo(session_factory) -> None:
             "Consulta Postgrados de Computación",
             CLAVE_COMPUTACION,
             description="Personal administrativo de la Unidad de Postgrados de Computación",
-            modes="literal,razonamiento",
+            modes="literal,razonamiento,plantilla",
             daily_cap_usd=Decimal("0.5"),
             reasoning_daily_cap_usd=Decimal("0.2"),
             context_turns=2,
@@ -147,6 +173,10 @@ def sembrar_demo(session_factory) -> None:
             daily_cap_usd=Decimal("0.5"),
             context_turns=3,
             require_login=True,
+            custom_prompt=(
+                "Eres el asistente del Área Académica de Analítica de Negocios. Centra tus respuestas en la información "
+                "de la propia Área."
+            ),
         )
         s.add(ArtifactUnit(artifact_id=a_anal.id, unit_id=unidades[UNIDAD_ANAL].id))
         a_bot = artefacto(
@@ -158,6 +188,23 @@ def sembrar_demo(session_factory) -> None:
         )
         s.add(ArtifactDomain(artifact_id=a_bot.id, domain_id=curriculum.id))
         s.add(ArtifactDomain(artifact_id=a_bot.id, domain_id=tesis.id))
+        s.flush()
+        from mia.templates.service import artifact_owner_key, prepare
+
+        for nombre, contenido in PLANTILLAS_DEL_ARTEFACTO:
+            limpio, clave, texto = prepare(nombre, contenido)
+            s.add(
+                ResponseTemplate(
+                    id=str(uuid.uuid4()),
+                    scope="artifact",
+                    owner_key=artifact_owner_key(a_comp.id),
+                    artifact_id=a_comp.id,
+                    name=limpio,
+                    name_key=clave,
+                    content=texto,
+                    created_by="demo",
+                )
+            )
         s.flush()
 
         # Consultas de los últimos 30 días: modelos, resultados y calificaciones variados.
@@ -253,6 +300,21 @@ def sembrar_demo(session_factory) -> None:
         s.add(bot)
         s.flush()
         s.add(BotMessageCount(bot_id=bot.id, month=current_month(), received=410, sent=388))
+        for n, (estado, con_datos) in enumerate(
+            [("entrego", True)] * 5 + [("invitada", False)] * 3 + [("pendiente", False)] * 2 + [("declino", False)] * 2, start=1
+        ):
+            s.add(
+                WhatsAppContact(
+                    id=str(uuid.uuid4()),
+                    bot_id=bot.id,
+                    phone=f"+5067000{n:04d}",
+                    name=f"Persona de ejemplo {n}" if con_datos else None,
+                    email=f"persona{n}@ejemplo.com" if con_datos else None,
+                    status=estado,
+                    created_at=ahora - timedelta(days=azar.randint(0, 20), hours=azar.randint(0, 20)),
+                    last_seen_at=ahora - timedelta(hours=azar.randint(1, 40)),
+                )
+            )
         s.commit()
 
         for correo, (_, alcance, _) in idp.CUENTAS.items():
@@ -263,27 +325,76 @@ def sembrar_demo(session_factory) -> None:
 
 
 def simular_ingesta(session_factory):
-    """Sin modelo de embeddings: un documento subido pasa de en cola a procesando y a listo, con pausas, para poder grabarlo."""
+    """Sin modelo de embeddings ni Qdrant: un documento pasa de en cola a procesando y a listo, con pausas para poder grabarlo.
+    Se corre el cargador REAL del tipo de archivo (Excel, CSV, web...), así las notas y los errores que se ven son los verdaderos."""
 
     def ingest(document_id: str) -> None:
+        from mia.ingestion.loaders.base import LoaderError, get_loader
+        from mia.ingestion.pipeline import UPLOAD_DIR
         from mia.storage.models import Document
 
-        def cambiar(estado: str) -> None:
+        def cambiar(estado: str, nota: str | None = None) -> None:
             with session_factory() as s:
                 doc = s.get(Document, document_id)
                 if doc is not None:
                     doc.status = estado
+                    doc.status_note = nota
                     s.commit()
 
         def trabajo() -> None:
             time.sleep(5)
             cambiar("processing")
             time.sleep(12)
-            cambiar("done")
+            with session_factory() as s:
+                doc = s.get(Document, document_id)
+                tipo = doc.source_type if doc is not None else ""
+            estado, nota = "done", None
+            try:
+                cargador = get_loader(tipo)
+                cargador.load(UPLOAD_DIR / f"{document_id}.{tipo}")
+                nota = " ".join(cargador.notes) or None
+            except LoaderError as error:
+                estado, nota = "error", str(error)
+            except Exception:  # noqa: BLE001, S110  (un tipo sin cargador de ejemplo: se deja listo)
+                pass
+            cambiar(estado, nota)
 
         threading.Thread(target=trabajo, daemon=True).start()
 
     return ingest
+
+
+
+class PaginasDeEjemplo:
+    """Lee páginas web de mentira (sin red): una de ejemplo para cualquier dirección y un rechazo para la que dice `no-existe`."""
+
+    HTML = (
+        "<html lang='es'><head><meta charset='utf-8'><title>Calendario de ejemplo del periodo</title></head><body>"
+        "<main><h1>Calendario de ejemplo del periodo</h1>"
+        "<p>Esta página es un ejemplo inventado para la guía de uso de MIA. Resume las fechas más importantes del periodo "
+        "lectivo de los posgrados de ejemplo.</p>"
+        "<h2>Matrícula</h2><p>La matrícula se realiza durante la primera semana del periodo, en la oficina del programa. "
+        "Hay que tener el plan de estudios al día.</p>"
+        "<h2>Inicio de lecciones</h2><p>Las lecciones inician el lunes de la segunda semana y terminan después de dieciséis "
+        "semanas de clases.</p>"
+        "<h2>Entrega de notas</h2><p>Las notas finales se entregan a la Coordinación una semana después de la última "
+        "lección.</p></main></body></html>"
+    )
+
+    def fetch(self, url: str):
+        from mia.ingestion.web.errors import rechazo
+        from mia.ingestion.web.fetcher import FetchedPage
+
+        if "no-existe" in url:
+            raise rechazo("not_found")
+        return FetchedPage(
+            url_final=url,
+            estado=200,
+            cabeceras={"content-type": "text/html; charset=utf-8"},
+            cuerpo=self.HTML.encode("utf-8"),
+            tipo_contenido="text/html; charset=utf-8",
+            codificacion="utf-8",
+        )
 
 
 def main() -> int:
@@ -316,6 +427,10 @@ def main() -> int:
     fuente, _ = identidad.claves_publicas()
     api.dependency_overrides[security.get_key_source] = lambda: fuente
     domains.ingest_document = simular_ingesta(SessionLocal)
+    from mia.api.routes import web_pages
+
+    web_pages.ingest_document = domains.ingest_document
+    web_pages.get_page_fetcher = lambda: PaginasDeEjemplo()
     # Sin Qdrant ni modelo: la respuesta es fija, lo demás de POST /query (sesión, historial, guardado, calificación) es real.
     import respuestas_demo
 
