@@ -35,7 +35,7 @@ def guion(g: Grabacion) -> None:
         g.clic(p.get_by_label(f"Expandir {DOMINIO}"))
         g.pausa(1.0)
 
-    with g.sub("Pulsa «Subir» y elige los archivos. Se aceptan PDF, DOCX y TXT, y puedes elegir varios a la vez."):
+    with g.sub("Pulsa «Subir» y elige los archivos. Se aceptan PDF, DOCX, TXT, Excel y CSV, y puedes elegir varios a la vez."):
         _subir(g, ARCHIVOS)
         p.get_by_text("Subidas", exact=True).wait_for()
         g.pausa(1.0)

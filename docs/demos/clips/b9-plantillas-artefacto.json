@@ -1,0 +1,52 @@
+{
+  "id": "b9-plantillas-artefacto",
+  "titulo": "Plantillas de un artefacto",
+  "duracion": 57.62,
+  "pistas": [
+    {
+      "inicio": 1.72,
+      "fin": 8.19,
+      "texto": "Un artefacto con el modo Plantilla tiene un catálogo de plantillas. Se administra desde el botón «Plantillas»."
+    },
+    {
+      "inicio": 8.19,
+      "fin": 15.13,
+      "texto": "Una plantilla es la estructura de la respuesta: secciones, títulos y orden. Los datos salen siempre de los documentos."
+    },
+    {
+      "inicio": 15.13,
+      "fin": 20.95,
+      "texto": "Las ve toda persona que consulte con este artefacto, con o sin sesión, en el grupo «Del artefacto»."
+    },
+    {
+      "inicio": 20.95,
+      "fin": 26.05,
+      "texto": "«Agregar plantilla» abre el formulario. Escribe el nombre."
+    },
+    {
+      "inicio": 26.05,
+      "fin": 32.87,
+      "texto": "El contenido se escribe, o se carga desde un archivo Word (.docx) o de texto (.txt) para revisarlo antes de guardar."
+    },
+    {
+      "inicio": 32.87,
+      "fin": 38.78,
+      "texto": "No incluyas datos personales ni información confidencial: la plantilla se guarda tal cual."
+    },
+    {
+      "inicio": 38.78,
+      "fin": 45.32,
+      "texto": "«Editar» cambia el nombre o el contenido. Las consultas siguientes usan la versión nueva."
+    },
+    {
+      "inicio": 45.32,
+      "fin": 51.85,
+      "texto": "«Eliminar» pide confirmación. Las respuestas ya entregadas no cambian, pero la plantilla ya no se podrá elegir."
+    },
+    {
+      "inicio": 51.85,
+      "fin": 57.62,
+      "texto": "Las plantillas personales de cada persona son aparte: las administra ella misma desde la Consulta."
+    }
+  ]
+}

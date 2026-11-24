@@ -1,7 +1,7 @@
 {
   "id": "b3-subir-documentos",
   "titulo": "Subir documentos",
-  "duracion": 47.86,
+  "duracion": 47.78,
   "pistas": [
     {
       "inicio": 1.69,
@@ -11,7 +11,7 @@
     {
       "inicio": 6.86,
       "fin": 12.51,
-      "texto": "Pulsa «Subir» y elige los archivos. Se aceptan PDF, DOCX y TXT, y puedes elegir varios a la vez."
+      "texto": "Pulsa «Subir» y elige los archivos. Se aceptan PDF, DOCX, TXT, Excel y CSV, y puedes elegir varios a la vez."
     },
     {
       "inicio": 12.51,
@@ -25,22 +25,22 @@
     },
     {
       "inicio": 22.69,
-      "fin": 30.09,
+      "fin": 30.01,
       "texto": "El estado pasa a «Procesando» y, cuando termina, a «Listo». La página se actualiza sola."
     },
     {
-      "inicio": 30.09,
-      "fin": 36.21,
+      "inicio": 30.01,
+      "fin": 36.13,
       "texto": "Solo cuando el documento está «Listo» sus respuestas pueden usarlo. Si algo falla, el estado es «Error»."
     },
     {
-      "inicio": 36.21,
-      "fin": 41.21,
+      "inicio": 36.13,
+      "fin": 41.13,
       "texto": "Si subes un archivo que ya está en el dominio, MIA te avisa y no lo procesa de nuevo."
     },
     {
-      "inicio": 41.21,
-      "fin": 47.86,
+      "inicio": 41.13,
+      "fin": 47.78,
       "texto": "«Limpiar terminadas» vacía la lista de subidas. También puedes arrastrar archivos sobre un dominio o una carpeta."
     }
   ]

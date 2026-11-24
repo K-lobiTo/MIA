@@ -1,61 +1,61 @@
 {
   "id": "b2-inventario",
   "titulo": "Organizar el inventario",
-  "duracion": 69.83,
+  "duracion": 69.22,
   "pistas": [
     {
-      "inicio": 1.67,
-      "fin": 6.91,
+      "inicio": 1.69,
+      "fin": 6.93,
       "texto": "El inventario organiza la información en niveles: programa, dominio, carpeta y documento."
     },
     {
-      "inicio": 6.91,
-      "fin": 12.79,
+      "inicio": 6.93,
+      "fin": 12.81,
       "texto": "Un dominio agrupa documentos del mismo tema y es lo que se elige al consultar. Ábrelo con la flecha."
     },
     {
-      "inicio": 12.79,
-      "fin": 17.55,
+      "inicio": 12.81,
+      "fin": 17.57,
       "texto": "Las carpetas solo ordenan los documentos dentro de un dominio y se pueden anidar."
     },
     {
-      "inicio": 17.55,
-      "fin": 22.79,
+      "inicio": 17.57,
+      "fin": 22.81,
       "texto": "Cada documento muestra su tipo, su fecha y su estado: En cola, Procesando, Listo o Error."
     },
     {
-      "inicio": 22.79,
-      "fin": 28.86,
+      "inicio": 22.81,
+      "fin": 28.69,
       "texto": "La búsqueda encuentra programas, dominios, carpetas y documentos, y abre lo que coincide."
     },
     {
-      "inicio": 28.86,
-      "fin": 35.27,
+      "inicio": 28.69,
+      "fin": 35.1,
       "texto": "«+ Carpeta» crea una carpeta en el dominio. La consulta sigue siendo por dominio: las carpetas no la cambian."
     },
     {
-      "inicio": 35.27,
-      "fin": 41.18,
+      "inicio": 35.1,
+      "fin": 40.91,
       "texto": "Una carpeta se puede renombrar..."
     },
     {
-      "inicio": 41.18,
-      "fin": 46.26,
+      "inicio": 40.91,
+      "fin": 45.93,
       "texto": "...y borrar, pero solo si está vacía. Pide confirmación."
     },
     {
-      "inicio": 46.26,
-      "fin": 56.88,
+      "inicio": 45.93,
+      "fin": 56.28,
       "texto": "«+ Dominio» crea un dominio nuevo dentro del programa, con su nombre y una descripción."
     },
     {
-      "inicio": 56.88,
-      "fin": 62.88,
+      "inicio": 56.28,
+      "fin": 62.28,
       "texto": "El panel te dice qué artefactos lo verán enseguida y cuáles hay que habilitar en Artefactos y accesos."
     },
     {
-      "inicio": 62.88,
-      "fin": 69.83,
+      "inicio": 62.28,
+      "fin": 69.22,
       "texto": "«Marcar dinámico» etiqueta un dominio cuyo contenido cambia cada periodo. Es solo una etiqueta: no cambia la búsqueda."
     }
   ]

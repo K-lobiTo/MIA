@@ -1,0 +1,72 @@
+{
+  "id": "a7-plantillas",
+  "titulo": "Responder con una plantilla",
+  "duracion": 94.43,
+  "pistas": [
+    {
+      "inicio": 1.96,
+      "fin": 7.84,
+      "texto": "El modo «Plantilla» responde con la estructura que tú eliges: sus secciones, sus títulos y su orden."
+    },
+    {
+      "inicio": 7.84,
+      "fin": 12.79,
+      "texto": "Elige una plantilla. Las del grupo «Del artefacto» las prepara quien administra MIA."
+    },
+    {
+      "inicio": 12.79,
+      "fin": 22.53,
+      "texto": "Escribe tu pregunta. Los datos salen siempre de los documentos: la plantilla solo da la forma."
+    },
+    {
+      "inicio": 22.53,
+      "fin": 29.29,
+      "texto": "La respuesta trae las mismas secciones, en el mismo orden. Si los documentos no tienen un dato, la sección lo dice."
+    },
+    {
+      "inicio": 29.29,
+      "fin": 40.46,
+      "texto": "Sin iniciar sesión solo ves las plantillas del artefacto. Para guardar las tuyas, inicia sesión."
+    },
+    {
+      "inicio": 40.46,
+      "fin": 45.76,
+      "texto": "Con sesión aparece «Administrar mis plantillas». Ahí agregas, editas y eliminas las tuyas."
+    },
+    {
+      "inicio": 45.76,
+      "fin": 52.46,
+      "texto": "«Agregar plantilla» abre el formulario. Escribe un nombre y elige dónde se usa: solo en este artefacto o en todos."
+    },
+    {
+      "inicio": 52.46,
+      "fin": 57.64,
+      "texto": "Puedes escribir el contenido o cargarlo desde un archivo Word (.docx) o de texto (.txt)."
+    },
+    {
+      "inicio": 57.64,
+      "fin": 63.52,
+      "texto": "Del archivo se toma solo el texto: lo revisas y lo editas antes de guardar. El archivo no se guarda."
+    },
+    {
+      "inicio": 63.52,
+      "fin": 69.48,
+      "texto": "No incluyas datos personales ni información confidencial: la plantilla se guarda tal cual."
+    },
+    {
+      "inicio": 69.48,
+      "fin": 76.73,
+      "texto": "Cada plantilla muestra dónde se usa. «Eliminar» pide confirmación y no borra las respuestas que ya recibiste."
+    },
+    {
+      "inicio": 76.73,
+      "fin": 88.37,
+      "texto": "Tus plantillas aparecen en el grupo «Mías». Elige la nueva y vuelve a preguntar."
+    },
+    {
+      "inicio": 88.37,
+      "fin": 94.43,
+      "texto": "La respuesta sigue ahora la estructura de tu ficha. Usa la plantilla que mejor sirva para cada informe."
+    }
+  ]
+}
