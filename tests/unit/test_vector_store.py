@@ -107,3 +107,14 @@ def test_la_interfaz_base_no_sabe_eliminar_y_la_subclase_minima_sigue_instancian
 
     with pytest.raises(NotImplementedError):
         Minimo().delete_document("doc-1")
+
+
+def test_document_ids_in_domain_recorre_todas_las_paginas_y_filtra_por_dominio():
+    client = MagicMock()
+    punto = lambda doc: SimpleNamespace(payload={"document_id": doc})
+    client.scroll.side_effect = [([punto("a"), punto("a")], "siguiente"), ([punto("b")], None)]
+
+    assert _store(client).document_ids_in_domain("d1") == {"a", "b"}
+    assert client.scroll.call_count == 2
+    filtro = client.scroll.call_args.kwargs["scroll_filter"]
+    assert filtro.must[0].key == "domain" and filtro.must[0].match.value == "d1"

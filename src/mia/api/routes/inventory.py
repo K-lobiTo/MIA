@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, StringConstraints
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from mia.access import audit
@@ -258,7 +259,14 @@ def create_folder(
         raise HTTPException(status_code=409, detail=f"Ya existe una carpeta '{payload.name}' en ese nivel.")
     folder = Folder(id=str(uuid.uuid4()), domain_id=domain_id, parent_id=payload.parent_id, name=payload.name)
     session.add(folder)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError as exc:
+        # El dominio pudo eliminarse entre la validación y el guardado.
+        session.rollback()
+        if session.get(Domain, domain_id) is None:
+            raise HTTPException(status_code=404, detail="El dominio ya no existe.") from exc
+        raise
     session.refresh(folder)
     audit.log_write(principal, "folder.create", folder.id, folder.name)
     return folder

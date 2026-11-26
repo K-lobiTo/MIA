@@ -6,6 +6,7 @@ import { useInventory } from "../../api/inventory";
 import type { ConsultaUser } from "../../api/types";
 import { useMe } from "../../auth/session";
 import { Notice } from "../../components/Notice";
+import { CambiarProgramaDialog } from "./CambiarProgramaDialog";
 import { PasswordReveal } from "./PasswordReveal";
 import { UserCard } from "./UserCard";
 import { UserForm } from "./UserForm";
@@ -15,6 +16,7 @@ import "./usuarios.css";
 type DialogState =
   | { kind: "new" }
   | { kind: "reset"; user: ConsultaUser }
+  | { kind: "unit"; user: ConsultaUser }
   | { kind: "reveal"; username: string; password: string; reset: boolean };
 
 /** Módulo "Usuarios de la Consulta": quienes inician sesión en la Consulta para guardar sus conversaciones. Cada cuenta de
@@ -81,6 +83,7 @@ export function UsuariosPage() {
               busy={update.isPending || reset.isPending}
               onToggleActive={() => void toggleActive(user)}
               onResetPassword={() => setDialog({ kind: "reset", user })}
+              onChangeUnit={() => setDialog({ kind: "unit", user })}
             />
           ))}
           {users.data.users.length === 0 && (
@@ -98,6 +101,9 @@ export function UsuariosPage() {
             setDialog({ kind: "reveal", username: created.username, password: created.password, reset: false })
           }
         />
+      )}
+      {dialog?.kind === "unit" && (
+        <CambiarProgramaDialog user={dialog.user} units={inventory.data?.units ?? []} isGlobal={Boolean(me?.is_global)} onClose={close} />
       )}
       {dialog?.kind === "reset" && (
         <Modal opened onClose={close} centered title={`Restablecer la contraseña de ${dialog.user.username}`}>

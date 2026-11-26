@@ -421,3 +421,14 @@ class WhatsAppContact(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, index=True)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
+
+
+class DeletedDomain(Base):
+    """Nombre de un dominio eliminado (feature 023): las consultas ya registradas guardan su id, y con esto el módulo Uso
+    sigue diciendo de qué dominio eran. Sin claves foráneas: el dominio y su programa ya no existen."""
+
+    __tablename__ = "deleted_domains"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)  # el id que tenía el dominio
+    label: Mapped[str] = mapped_column(String)  # "Programa / Dominio", o solo el nombre si no tenía programa
+    deleted_at: Mapped[datetime] = mapped_column(DateTime, default=_now)

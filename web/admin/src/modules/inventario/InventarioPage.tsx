@@ -15,6 +15,7 @@ import {
   NewUnitDialog,
   RenameFolderDialog,
 } from "./forms/Dialogs";
+import { EliminarEstructuraDialog } from "./EliminarEstructuraDialog";
 import { EliminarDocumentosDialog } from "./EliminarDocumentosDialog";
 import { AgregarPaginaDialog } from "./AgregarPaginaDialog";
 import { CsvNotice } from "./CsvNotice";
@@ -43,6 +44,8 @@ type DialogState =
   | { kind: "folder"; domainId: string; parentId: string | null; where: string }
   | { kind: "rename"; folderId: string; name: string }
   | { kind: "delete"; folderId: string; name: string }
+  // Eliminar un programa o un dominio (feature 023).
+  | { kind: "delete-structure"; tipo: "unit" | "domain"; id: string; name: string }
   // Agregar una página web como fuente (feature 022).
   | { kind: "web"; domainId: string; folderId: string | null; destination: string };
 
@@ -177,9 +180,22 @@ export function InventarioPage() {
     if (node.kind === "unit") {
       const unitName = lookup?.units.get(node.id) ?? "el programa";
       return (
-        <Button variant="default" size="compact-sm" onClick={() => setDialog({ kind: "domain", unitId: node.id, unitName })}>
-          + Dominio
-        </Button>
+        <>
+          <Button variant="default" size="compact-sm" onClick={() => setDialog({ kind: "domain", unitId: node.id, unitName })}>
+            + Dominio
+          </Button>
+          {/* Como crearlo, eliminar un programa es solo del alcance global. */}
+          {canCreateUnit && (
+            <Button
+              variant="default"
+              size="compact-sm"
+              color="coral"
+              onClick={() => setDialog({ kind: "delete-structure", tipo: "unit", id: node.id, name: unitName })}
+            >
+              Eliminar programa
+            </Button>
+          )}
+        </>
       );
     }
     const domainName = lookup?.domains.get(node.domainId ?? "") ?? "el dominio";
@@ -209,6 +225,14 @@ export function InventarioPage() {
           </Button>
           {uploadButton}
           {webButton}
+          <Button
+            variant="default"
+            size="compact-sm"
+            color="coral"
+            onClick={() => setDialog({ kind: "delete-structure", tipo: "domain", id: node.id, name: domainName })}
+          >
+            Eliminar
+          </Button>
         </>
       );
     }
@@ -381,6 +405,9 @@ export function InventarioPage() {
       )}
       {dialog?.kind === "rename" && <RenameFolderDialog folderId={dialog.folderId} currentName={dialog.name} onClose={close} />}
       {dialog?.kind === "delete" && <DeleteFolderDialog folderId={dialog.folderId} name={dialog.name} onClose={close} />}
+      {dialog?.kind === "delete-structure" && (
+        <EliminarEstructuraDialog tipo={dialog.tipo} id={dialog.id} nombre={dialog.name} onClose={close} />
+      )}
       {dialog?.kind === "web" && (
         <AgregarPaginaDialog domainId={dialog.domainId} folderId={dialog.folderId} destination={dialog.destination} onClose={close} />
       )}

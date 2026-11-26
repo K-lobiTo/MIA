@@ -6,6 +6,7 @@ import json
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import event
 
 from mia.api.routes import documents as documents_routes
 from mia.api.routes import domains as domain_routes
@@ -522,3 +523,27 @@ def test_el_rechazo_por_direccion_repetida_queda_auditado(client, admin, mundo, 
 
     linea = _lineas(capsys)[0]
     assert linea["result"] == "rechazado" and linea["detail"] == f"already_added {URL}"
+
+
+def test_dominio_eliminado_durante_la_lectura_responde_404_y_no_deja_archivo(client, admin, mundo, db, monkeypatch):
+    engine = db.kw["bind"]
+    # SQLite no aplica claves foráneas por defecto; Postgres sí.
+    event.listen(engine, "connect", lambda conn, _: conn.execute("PRAGMA foreign_keys=ON"))
+    engine.dispose()
+
+    class LectorQueBorra(FetcherFalso):
+        # Simula que otra persona elimina el dominio mientras se lee la página.
+        def fetch(self, url):
+            with db() as session:
+                session.delete(session.get(Folder, "f2"))
+                session.delete(session.get(Domain, "d2"))
+                session.commit()
+            return super().fetch(url)
+
+    falso = LectorQueBorra({URL: pagina_leida(pagina("programa.html"), url=URL)})
+    monkeypatch.setattr(web_pages_routes, "get_page_fetcher", lambda *args, **kwargs: falso)
+
+    respuesta = _agregar(client, admin, dominio="d2")
+
+    assert respuesta.status_code == 404 and respuesta.json()["detail"] == "El dominio ya no existe."
+    assert list(mundo.subidas.iterdir()) == []

@@ -141,9 +141,11 @@ def add_web_page(
     try:
         session.commit()
     except IntegrityError as exc:
-        # La carpeta pudo borrarse entre la validación y el guardado: no deja el archivo huérfano.
+        # El dominio o la carpeta pudieron borrarse entre la validación y el guardado: no deja el archivo huérfano.
         session.rollback()
         destino.unlink(missing_ok=True)
+        if session.get(Domain, domain_id) is None:
+            raise HTTPException(status_code=404, detail="El dominio ya no existe.") from exc
         if folder_id is not None and session.get(Folder, folder_id) is None:
             raise HTTPException(status_code=404, detail="La carpeta ya no existe.") from exc
         raise

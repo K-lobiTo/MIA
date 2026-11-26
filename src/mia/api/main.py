@@ -30,6 +30,7 @@ from mia.api.routes import (
     me,
     media,
     query,
+    structure,
     templates,
     usage,
     web_pages,
@@ -139,6 +140,7 @@ async def auth_error_handler(request: Request, error: AuthError) -> JSONResponse
 app.include_router(health.router)
 app.include_router(me.router)
 app.include_router(inventory.router)
+app.include_router(structure.router)
 app.include_router(artifacts.router)
 app.include_router(artifact_templates.router)
 app.include_router(config.router)

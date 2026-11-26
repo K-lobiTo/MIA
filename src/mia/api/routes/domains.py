@@ -104,7 +104,14 @@ def create_domain(
         dynamic=payload.dynamic,
     )
     session.add(domain)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError as exc:
+        # El programa pudo eliminarse entre la validación y el guardado.
+        session.rollback()
+        if session.get(Unit, payload.unit_id) is None:
+            raise HTTPException(status_code=404, detail="El programa ya no existe.") from exc
+        raise
     audit.log_write(principal, "domain.create", domain.id, domain.name)
     return DomainCreated(
         id=domain.id,
@@ -242,9 +249,11 @@ def upload_document(
     try:
         session.commit()
     except IntegrityError as exc:
-        # La carpeta pudo borrarse entre la validación y el guardado: no deja el archivo huérfano.
+        # El dominio o la carpeta pudieron borrarse entre la validación y el guardado: no deja el archivo huérfano.
         session.rollback()
         dest.unlink(missing_ok=True)
+        if session.get(Domain, domain_id) is None:
+            raise HTTPException(status_code=404, detail="El dominio ya no existe.") from exc
         if folder_id is not None and session.get(Folder, folder_id) is None:
             raise HTTPException(status_code=404, detail="La carpeta ya no existe.") from exc
         raise

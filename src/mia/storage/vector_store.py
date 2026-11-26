@@ -84,6 +84,11 @@ class VectorStore(ABC):
         """Lectura mínima para que un almacén alojado no se considere inactivo (ver storage/keepalive.py)."""
         raise NotImplementedError("Este almacén no necesita lectura de mantenimiento")
 
+    def document_ids_in_domain(self, domain_id: str) -> set[str]:
+        """Ids de los documentos que tienen fragmentos etiquetados con ese dominio (feature 023: antes de eliminar un
+        dominio se comprueba que no quede contenido buscable)."""
+        raise NotImplementedError("Este almacén no sabe listar el contenido de un dominio")
+
     # Eliminación de documentos (feature 012). No es abstracto, como los de abajo: un almacén que no lo tenga hace
     # que la eliminación responda 503 sin tocar la base.
     def delete_document(self, document_id: str) -> None:
@@ -308,6 +313,22 @@ class QdrantVectorStore(VectorStore):
             ),
             exact=True,
         ).count
+
+    def document_ids_in_domain(self, domain_id: str) -> set[str]:
+        found: set[str] = set()
+        offset = None
+        while True:
+            points, offset = self.client.scroll(
+                collection_name=self.collection,
+                scroll_filter=Filter(must=[FieldCondition(key="domain", match=MatchValue(value=domain_id))]),
+                limit=256,
+                offset=offset,
+                with_payload=["document_id"],
+                with_vectors=False,
+            )
+            found.update(point.payload["document_id"] for point in points)
+            if offset is None:
+                return found
 
     def delete_document(self, document_id: str) -> None:
         self.client.delete(

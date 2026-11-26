@@ -199,6 +199,16 @@ Un tercer modo de respuesta, `plantilla`, para responder con la **estructura de 
 - **Si falla el almacén con el documento procesándose:** la cancelación ya detuvo la ingesta, así que `_mark_error` (en `removal.py`) lo deja en `error` (un `UPDATE` que solo toca filas `processing`) para que no quede "Procesando" sin proceso; el reintento de la eliminación es seguro. Un 409 (la ingesta no soltó el cerrojo) no cambia nada.
 - **Panel:** botón por documento, modo de selección y una ventana de confirmación única (`EliminarDocumentosDialog`, utilidades puras con pruebas en `seleccion.ts`).
 
+## Eliminación de programas y dominios (feature 023)
+
+Solo se elimina lo vacío: un dominio sin documentos ni carpetas (los artefactos con acceso puntual a él lo pierden) y un programa sin dominios, usuarios de la Consulta, cuentas de administración ni artefactos con acceso a él. No hay cascada de contenido ni papelera. Diseño en [specs/023-eliminar-programas-dominios](../specs/023-eliminar-programas-dominios/).
+
+- **Servicio** `src/mia/access/structure.py`: calcula impedimentos y afectados y elimina en una transacción (bloqueo de la fila con `FOR UPDATE`, nueva comprobación, borrado directo sin la relación del ORM, y confirmación). En Postgres las claves foráneas impiden que entre algo mientras tanto (409, o 404 para una carga, carpeta o usuario que llegue tarde). SQLite no bloquea filas ni aplica claves foráneas por defecto: límite solo de desarrollo.
+- **Rutas** `src/mia/api/routes/structure.py`: `GET` y `DELETE` de `/domains/{id}` (global o su programa) y `/units/{id}` (solo global); el `GET .../deletion` no cambia nada y alimenta la ventana del panel. Contrato en `contracts/eliminar-estructura-api.md`.
+- **Almacén de vectores:** `VectorStore.document_ids_in_domain`. Antes de confirmar la eliminación de un dominio se borran los fragmentos de documentos que ya no existen y se reetiquetan los de documentos que viven en otro dominio; si el almacén no responde, 503 y no cambia nada.
+- **Historial de Uso:** tabla `deleted_domains` (migración `0016`) con el nombre "Programa / Dominio" de cada dominio eliminado; el detalle de una consulta lo muestra con "(eliminado)".
+- **Usuarios de la Consulta:** `PATCH /consulta-users/{id}` acepta `unit_id` (ausente no cambia; `null` solo con alcance global).
+
 ## El patrón que se repite: interfaz + factory por nombre
 
 `DocumentLoader`, `EmbeddingProvider`, `LLMProvider` y `VectorStore` siguen el mismo patrón: una clase abstracta define el contrato, cada implementación concreta vive en su propio archivo, y una función `get_x(name)` hace el dispatch leyendo `settings` (que a su vez lee `.env`). Para agregar un proveedor nuevo (otro LLM, otro loader), se agrega una clase que implemente la interfaz y una rama en el factory correspondiente; no se toca el resto del sistema. Este es el mecanismo concreto detrás del requerimiento de "poder cambiar partes del pipeline sin que interfiera con el resto" (sección 3 de Definicion_Requerimientos_MVP.md).

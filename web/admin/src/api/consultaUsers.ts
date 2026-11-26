@@ -34,6 +34,12 @@ export const useUpdateConsultaUser = () =>
     apiFetch<ConsultaUser>(`/consulta-users/${v.id}`, { method: "PATCH", body: { active: v.active } }),
   );
 
+/** Cambia o quita (null) el programa de un usuario (feature 023). */
+export const useSetConsultaUserUnit = () =>
+  useUserMutation((v: { id: string; unit_id: string | null }) =>
+    apiFetch<ConsultaUser>(`/consulta-users/${v.id}`, { method: "PATCH", body: { unit_id: v.unit_id } }),
+  );
+
 export const useResetConsultaPassword = () =>
   useUserMutation((v: { id: string; password?: string | null }) =>
     apiFetch<{ password: string }>(`/consulta-users/${v.id}/reset-password`, {
