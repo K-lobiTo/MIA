@@ -58,7 +58,7 @@ python scripts/pruebas_mvp.py --url https://mia-main.up.railway.app --clave mia_
 
 ## Despliegue
 
-Prototipo de costo casi cero: API en [Railway](https://railway.com) (plan Hobby, `railway.json`), metadata en Postgres de [Neon](https://neon.tech) (free), vectores en [Qdrant Cloud](https://cloud.qdrant.io) (free) y LLM por [OpenRouter](https://openrouter.ai) (saldo prepagado, con topes de gasto por artefacto). Los documentos se ingieren en el propio servidor, o desde una instancia local apuntando a esas mismas bases. El panel y la Consulta administrativa se publican como sitios estáticos. Pasos completos, y el checklist de puesta en producción de la versión 2, en [docs/OPERACION.md](docs/OPERACION.md).
+Prototipo de costo casi cero: API en [Railway](https://railway.com) (plan Hobby, `Dockerfile`), metadata en Postgres de [Neon](https://neon.tech) (free), vectores en [Qdrant Cloud](https://cloud.qdrant.io) (free) y LLM por [OpenRouter](https://openrouter.ai) (saldo prepagado, con topes de gasto por artefacto). Los documentos se ingieren en el propio servidor, o desde una instancia local apuntando a esas mismas bases. El panel y la Consulta administrativa se publican como sitios estáticos. Pasos completos, y el checklist de puesta en producción de la versión 2, en [docs/OPERACION.md](docs/OPERACION.md).
 
 ## Spec-driven development
 
