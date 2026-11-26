@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import sys
 from contextlib import asynccontextmanager
@@ -39,6 +40,7 @@ from mia.rag.embeddings import get_embedding_provider
 from mia.rag.lexical import hybrid_enabled
 from mia.rag.rerank import warm_up_rerank_provider
 from mia.storage.db import init_db
+from mia.storage.keepalive import keep_active
 from mia.storage.vector_store import get_vector_store
 
 
@@ -65,7 +67,19 @@ async def lifespan(app: FastAPI):
     ensure_text_index()
     # Con RERANK_PROVIDER=local el modelo se carga al arrancar para que la primera consulta no pague la carga.
     warm_up_rerank_provider()
-    yield
+    # Lectura periódica de Qdrant para que un clúster gratuito no se suspenda por falta de uso.
+    keepalive = None
+    if settings.qdrant_keepalive_hours > 0:
+        keepalive = asyncio.create_task(
+            keep_active(
+                lambda: get_vector_store().ping(embedding_provider.dimension), settings.qdrant_keepalive_hours * 3600
+            )
+        )
+    try:
+        yield
+    finally:
+        if keepalive:
+            keepalive.cancel()
 
 
 # Los mensajes informativos de MIA (por ejemplo el motivo de fin de la generación de cada consulta) salen por la

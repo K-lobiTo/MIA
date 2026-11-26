@@ -22,6 +22,7 @@ Guía práctica para desplegar, cargar documentos y mantener funcionando el prot
 | `DATABASE_URL` | `sqlite:///./mia.db` | URL de Neon (secreto) | URL de Neon |
 | `QDRANT_URL` / `QDRANT_API_KEY` | `http://localhost:6333` / vacío | Qdrant Cloud (secretos) | Qdrant Cloud |
 | `QDRANT_COLLECTION` | `mia_chunks` | `mia_chunks` | `mia_chunks` |
+| `QDRANT_KEEPALIVE_HOURS` | `24` | `24` (opcional) | horas entre lecturas de mantenimiento a Qdrant (0 a 144; 0 apaga). Ver "Inactividad de Qdrant Cloud" |
 | `EMBEDDING_PROVIDER` | `local` | `local` | `local` (debe coincidir con producción) |
 | `LLM_PROVIDER` / `GEMINI_API_KEY` | `gemini` / clave | `openrouter` / no se usa | no se usa al ingerir |
 | `OPENROUTER_API_KEY` / `OPENROUTER_MODEL` / `OPENROUTER_REASONING_EFFORT` / `OPENROUTER_ZDR` | solo si `LLM_PROVIDER=openrouter` | no se usa | no se usa al ingerir (en Railway: clave, id del modelo, `low`, `false`) |
@@ -312,6 +313,26 @@ railway up -s mia-whatsapp --detach         # bot de WhatsApp (feature 011)
 - En los servicios estáticos **no** fijar *Config-as-code* ni *Dockerfile Path* (hace que se use el `Dockerfile` de la raíz, el de la API).
 - Para comprobar qué corre: `railway deployment list -s <servicio>` y los logs (`Accepting connections at http://localhost:3000` en los sitios).
 
+### Mudar MIA a otra cuenta de Railway
+
+Los servicios de Railway no guardan estado (los datos están en Neon y Qdrant Cloud), así que mudarse es recrear los cinco servicios con las mismas variables. `scripts/crear_servicios.py` lo hace con la CLI; solo quedan a mano el inicio de sesión y el límite de uso.
+
+1. **A mano:** `railway login` con la cuenta nueva y, en la interfaz de Railway, *Usage limits* del espacio de trabajo (antes de desplegar).
+2. **Cuentas de servicio nuevas** si se cambian de dueño: Neon (usar la conexión directa, sin `-pooler`), Qdrant Cloud, OpenRouter (clave con límite de crédito) y Kapso. Dos archivos `.env` (ignorados por git), fuera de los que apuntan a la cuenta anterior: uno para la API con `DATABASE_URL`, `QDRANT_URL`, `QDRANT_API_KEY` y `OPENROUTER_API_KEY`, y otro para el bot con `KAPSO_API_KEY`. El resto de la API sale de `deploy/railway/variables.example.env`, incluido el modelo de cada modo (`LLM_MODEL_LITERAL` y `LLM_MODEL_RAZONAMIENTO`; se cambian poniéndolos en el archivo de la API). `OPENROUTER_MODEL` solo hace falta como respaldo si un modo no tiene modelo propio.
+3. **Simular y ejecutar:**
+
+```bash
+python scripts/crear_servicios.py --proyecto mia --env-api .env.railway-api --env-bot .env.railway-bot --simular
+python scripts/crear_servicios.py --proyecto mia --env-api .env.railway-api --env-bot .env.railway-bot
+```
+
+   Crea el proyecto (`railway init`; vincula esta carpeta al proyecto nuevo, así que la cuenta anterior deja de estar vinculada aquí), los cinco servicios vacíos, sus dominios (los sitios apuntan al puerto 3000) y las variables con las direcciones reales (`VITE_API_URL`, `MIA_API_URL`, `CORS_ORIGINS`), todo con `--skip-deploys`. Las credenciales se pasan por stdin, no por la línea de comandos. `ADMIN_KEY`, `BOT_SERVICE_KEY` y `KAPSO_WEBHOOK_SECRET` se generan si no vienen en los archivos y se guardan en `.env.railway.generado`. Se puede repetir: reutiliza servicios, dominios y secretos.
+4. **Desplegar:** `python scripts/servicios.py encender`. El script escribió `servicios.local.json` (ignorado por git) con las direcciones nuevas y `"subir_carpeta": true`: con eso sube cada servicio desde su carpeta (`whatsapp/`, `web/consulta/`, `web/admin/`), así que **no hace falta configurar *Root Directory*** y las direcciones fijas del script no se tocan. Sin ese archivo, `servicios.py` funciona como antes.
+5. **Después:** el panel con la `ADMIN_KEY` nueva (programas, dominios, artefactos y carga de documentos; los datos empiezan de cero), el webhook de Kapso apuntando a `https://<mia-whatsapp>/webhooks/kapso` y registrar el bot en el módulo Bots. Si TI configuró un client ID de Entra, pedirles la dirección de redirección nueva del panel.
+6. **Apagar la cuenta anterior:** vincular la carpeta a ese proyecto (`railway link`), mover o renombrar `servicios.local.json` y `python scripts/servicios.py apagar`.
+
+Para volver al trabajo con la cuenta anterior basta borrar `servicios.local.json` y volver a vincular el proyecto con `railway link`.
+
 ## Despliegue en Cloud Run (alternativa, no adoptada)
 
 Se preparó el 2026-10-06 y quedó descartado al requerir Google Cloud un prepago de 30 USD; los archivos quedan en `deploy/cloudrun/` por si se retoma. Motivos y alternativas comparadas en [ESCALABILIDAD.md](ESCALABILIDAD.md), sección "Migración a Cloud Run". Neon y Qdrant Cloud no cambian.
@@ -597,6 +618,12 @@ Con `QUERY_HYBRID_SEARCH=on`, `POST /query` además busca por **coincidencia de 
 - **Qué cambia y qué no.** Una palabra es específica si aparece en pocos documentos (`HYBRID_MAX_DOCS`, 10); una que no existe en los documentos cuenta como específica sin coincidencias, así que "¿Quién es Zacarías Fernández Pizarro?" sigue siendo "sin información" sin llamar al modelo. Un fragmento que solo llegó por palabras pasa si contiene más de la mitad de las palabras específicas. Al modelo nunca llegan más fragmentos que el límite del modo (8 o 16). Límites conocidos: no corrige errores de tipeo; coincide por inicio de palabra (`curso` encuentra `cursos`, no al revés); el texto extraído de un PDF puede partir las palabras con acento ("Calder´on"); una sigla que aparece en muchos documentos (MGTI en 14 del dominio de Currículum) deja de ser específica.
 - **Medición local (2026-10-19, gratis):** con 70 casos, el documento esperado entra a la lista final en 65 de 69 casos (antes 40 en literal y 44 con razonamiento), las 8 preguntas de BUS-1 y BUS-2 pasan de 1 y 2 a 8, ninguna consulta que esperaba "sin información" empieza a llegar al modelo y ningún caso empeora. Detalle y casos que siguen sin resolverse en [LINEA_BASE_BUSQUEDA.md](LINEA_BASE_BUSQUEDA.md).
 - **Volver a una versión anterior** (por ejemplo `prototipo-v2-estable`): la API migra la base al arrancar y una versión más vieja que la base **no arranca**. Antes de desplegarla: guardar la lista de siglas (`GET /equivalences` con `X-Admin-Key`), correr `alembic downgrade 0004` con `DATABASE_URL` de producción (borra solo `sigla_equivalences`) y desplegar. El índice de texto de Qdrant no le afecta; se puede dejar o quitar con `scripts/palabras.py quitar`. Se probó el 2026-10-19 sobre una base SQLite y sobre una copia de la base de Neon: `prototipo-v2-estable` no arranca sobre la revisión `0005`, y sí sobre la devuelta a `0004`; al volver a la versión nueva la API sube la base sola (con las semillas; la lista editada se pierde, por eso se guarda antes). Ojo: la "ida y vuelta" de `scripts/probar_migracion.py` baja ahora por defecto hasta `0004` (`--bajar-a`), porque hasta `0001` ya no es posible con los datos de producción (hay dominios con el mismo nombre en programas distintos y la `0002` exigiría que el nombre sea único por sí solo); `--bajar-a 0001` sigue disponible para bases sin esos datos.
+
+## Inactividad de Qdrant Cloud
+
+Un clúster gratuito de Qdrant Cloud [se suspende tras una semana sin actividad y se elimina tras cuatro](https://qdrant.tech/documentation/cloud/create-cluster) si nadie lo reactiva. Para que el poco uso (vacaciones, entre períodos) no llegue a eso, la API hace una búsqueda mínima al arrancar y luego cada `QDRANT_KEEPALIVE_HOURS` (24): sin modelos, sin costo y sin cambiar datos. En el registro queda `Lectura de mantenimiento de Qdrant hecha`; si falla, un aviso y un reintento en una hora.
+
+Límites: solo protege **mientras la API esté encendida** (apagada, o detenida por el límite de gasto de Railway, el plazo corre). Qdrant no documenta qué cuenta como actividad: conviene revisar la consola de Qdrant tras una o dos semanas sin uso. Si el clúster se suspende, se reactiva desde la consola; si se elimina, hay que crear otro y volver a cargar los documentos.
 
 ## Medir la búsqueda (línea base)
 

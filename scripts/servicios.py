@@ -25,6 +25,11 @@ actual tal cual (respeta .gitignore, así que .env* y tmp/ no se suben; avisa si
 commitear). Pide confirmación (--forzar la omite), espera a que cada servicio termine de desplegar y
 comprueba que responda.
 
+Otra cuenta de Railway: `scripts/crear_servicios.py` crea los cinco servicios y escribe `servicios.local.json`
+(ignorado por git) con las direcciones de esa cuenta y `"subir_carpeta": true`. Con ese archivo, este script usa
+esas direcciones y sube cada servicio desde su propia carpeta (`whatsapp/`, `web/consulta/`, `web/admin/`), así que
+no hace falta configurar *Root Directory* en Railway. Sin el archivo todo funciona como antes (cuenta original).
+
 Ojo con la base de datos: la API migra la base al arrancar. Desplegar una versión con menos
 migraciones que las que ya tiene la base (p. ej. `main` sobre una base ya migrada por `dev`) hace que
 la API no arranque; hay que devolver antes la base con `alembic downgrade`. Ver "Desplegar cambios" en
@@ -43,13 +48,14 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 RAIZ_REPO = Path(__file__).resolve().parents[1]
 ESPERA_MAXIMA_S = 600
 REF_POR_DEFECTO = "origin/main"
 TERMINADOS = {"SUCCESS", "FAILED", "CRASHED", "REMOVED"}
+ARCHIVO_CONFIG = RAIZ_REPO / "servicios.local.json"
 
 
 @dataclass(frozen=True)
@@ -58,36 +64,74 @@ class Servicio:
     url: str
     ruta_salud: str
     descripcion: str
+    carpeta: str = ""  # carpeta del repositorio que se sube cuando "subir_carpeta" está activo ("" es la raíz)
 
 
 # La API va primero: los sitios y el bot llaman a la API, y al apagar se deja para el final.
 SERVICIOS = [
     Servicio("MIA", "https://mia-main.up.railway.app", "/health", "API"),
-    Servicio("mia-whatsapp", "https://mia-whatsapp.up.railway.app", "/health", "Bot de WhatsApp (Kapso)"),
-    Servicio("mia-computacion", "https://mia-computacion.up.railway.app", "/", "Consulta de la Unidad de Postgrados de Computación"),
+    Servicio("mia-whatsapp", "https://mia-whatsapp.up.railway.app", "/health", "Bot de WhatsApp (Kapso)", "whatsapp"),
+    Servicio(
+        "mia-computacion",
+        "https://mia-computacion.up.railway.app",
+        "/",
+        "Consulta de la Unidad de Postgrados de Computación",
+        "web/consulta",
+    ),
     Servicio(
         "mia-administracion",
         "https://mia-analitica-negocio.up.railway.app",
         "/",
         "Consulta del Área académica de Analítica de Negocios",
+        "web/consulta",
     ),
-    Servicio("mia-panel", "https://mia-panel.up.railway.app", "/", "Panel de administración"),
+    Servicio("mia-panel", "https://mia-panel.up.railway.app", "/", "Panel de administración", "web/admin"),
 ]
 POR_NOMBRE = {s.nombre.lower(): s for s in SERVICIOS}
 
 
-def seleccionar(nombres: list[str], invertir: bool = False) -> list[Servicio]:
-    """Los servicios pedidos (todos si no se pide ninguno), en el orden de SERVICIOS o al revés."""
+def cargar_configuracion(ruta: Path = ARCHIVO_CONFIG) -> dict:
+    """Lee `servicios.local.json` (vacío si no existe): {"urls": {"MIA": "https://..."}, "subir_carpeta": true}."""
+    if not ruta.exists():
+        return {}
+    try:
+        config = json.loads(ruta.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise ValueError(f"{ruta.name} no es un JSON válido: {error}") from error
+    if not isinstance(config, dict):
+        raise ValueError(f"{ruta.name} debe ser un objeto JSON.")  # noqa: TRY004 (main atrapa ValueError)
+    desconocidos = [n for n in config.get("urls", {}) if n.lower() not in POR_NOMBRE]
+    if desconocidos:
+        raise ValueError(f"{ruta.name}: servicios desconocidos en \"urls\": {', '.join(desconocidos)}.")
+    return config
+
+
+def aplicar_configuracion(config: dict) -> list[Servicio]:
+    """El catálogo de servicios con las direcciones de la configuración (las que no aparecen quedan como están)."""
+    urls = {nombre.lower(): url.rstrip("/") for nombre, url in config.get("urls", {}).items()}
+    return [replace(s, url=urls.get(s.nombre.lower(), s.url)) for s in SERVICIOS]
+
+
+def seleccionar(nombres: list[str], invertir: bool = False, catalogo: list[Servicio] | None = None) -> list[Servicio]:
+    """Los servicios pedidos (todos si no se pide ninguno), en el orden del catálogo o al revés."""
+    catalogo = catalogo if catalogo is not None else SERVICIOS
+    por_nombre = {s.nombre.lower(): s for s in catalogo}
     if not nombres:
-        elegidos = list(SERVICIOS)
+        elegidos = list(catalogo)
     else:
-        desconocidos = [n for n in nombres if n.lower() not in POR_NOMBRE]
+        desconocidos = [n for n in nombres if n.lower() not in por_nombre]
         if desconocidos:
-            validos = ", ".join(s.nombre for s in SERVICIOS)
+            validos = ", ".join(s.nombre for s in catalogo)
             raise ValueError(f"Servicio desconocido: {', '.join(desconocidos)}. Los válidos: {validos}.")
-        pedidos = {POR_NOMBRE[n.lower()].nombre for n in nombres}
-        elegidos = [s for s in SERVICIOS if s.nombre in pedidos]
+        pedidos = {por_nombre[n.lower()].nombre for n in nombres}
+        elegidos = [s for s in catalogo if s.nombre in pedidos]
     return list(reversed(elegidos)) if invertir else elegidos
+
+
+def carpeta_de_subida(servicio: Servicio, base: Path, subir_carpeta: bool) -> Path:
+    """Desde dónde se sube un servicio: la base (raíz del repositorio o su exportación), o con `subir_carpeta`
+    la carpeta propia del servicio, que tiene su `Dockerfile` y funciona sin *Root Directory* en Railway."""
+    return base / servicio.carpeta if subir_carpeta and servicio.carpeta else base
 
 
 def railway(*args: str, revisar: bool = True, cwd: Path | None = None) -> subprocess.CompletedProcess:
@@ -177,7 +221,14 @@ def esperar_despliegue(servicio: Servicio, id_anterior: str | None) -> str:
     return "TIEMPO_AGOTADO"
 
 
-def encender(servicios: list[Servicio], forzar: bool, esperar: bool, ref: str = REF_POR_DEFECTO, local: bool = False) -> int:
+def encender(
+    servicios: list[Servicio],
+    forzar: bool,
+    esperar: bool,
+    ref: str = REF_POR_DEFECTO,
+    local: bool = False,
+    subir_carpeta: bool = False,
+) -> int:
     if local:
         print(f"Se subirá lo que hay en esta carpeta (rama {rama_actual()}), no lo publicado en GitHub.")
         if hay_cambios_sin_commitear():
@@ -188,7 +239,8 @@ def encender(servicios: list[Servicio], forzar: bool, esperar: bool, ref: str = 
         elif not forzar and not confirmar("¿Encender " + ", ".join(s.nombre for s in servicios) + "?"):
             print("Cancelado.")
             return 1
-        return _desplegar(servicios, esperar, carpeta=None, proyecto=None)
+        proyecto = datos_del_proyecto() if subir_carpeta else None
+        return _desplegar(servicios, esperar, carpeta=None, proyecto=proyecto, subir_carpeta=subir_carpeta)
 
     if ref.startswith("origin/") or ref == "origin":
         print("Actualizando las referencias de GitHub (git fetch)...")
@@ -202,21 +254,28 @@ def encender(servicios: list[Servicio], forzar: bool, esperar: bool, ref: str = 
     with tempfile.TemporaryDirectory(prefix="mia-despliegue-") as temporal:
         carpeta = Path(temporal) / "codigo"
         exportar_ref(ref, carpeta)
-        return _desplegar(servicios, esperar, carpeta=carpeta, proyecto=proyecto)
+        return _desplegar(servicios, esperar, carpeta=carpeta, proyecto=proyecto, subir_carpeta=subir_carpeta)
 
 
-def _desplegar(servicios: list[Servicio], esperar: bool, carpeta: Path | None, proyecto: tuple[str, str] | None) -> int:
+def _desplegar(
+    servicios: list[Servicio],
+    esperar: bool,
+    carpeta: Path | None,
+    proyecto: tuple[str, str] | None,
+    subir_carpeta: bool = False,
+) -> int:
     fallos = 0
     for servicio in servicios:
         anterior = ultimo_despliegue(servicio)
         print(f"\n{servicio.nombre} ({servicio.descripcion}): subiendo...")
-        if carpeta is None:
+        if carpeta is None and not subir_carpeta:
             railway("up", "-s", servicio.nombre, "--detach")
         else:
             proyecto_id, entorno = proyecto
-            # Desde la propia carpeta temporal: `railway up <ruta>` exige que la ruta esté dentro del proyecto
-            # vinculado ("prefix not found"), y la temporal no lo está.
-            railway("up", "-p", proyecto_id, "-e", entorno, "-s", servicio.nombre, "--detach", cwd=carpeta)
+            # Desde la propia carpeta (la temporal, o la del servicio con `subir_carpeta`): `railway up <ruta>` exige
+            # que la ruta esté dentro del proyecto vinculado ("prefix not found"), y la temporal no lo está.
+            origen = carpeta_de_subida(servicio, carpeta if carpeta is not None else RAIZ_REPO, subir_carpeta)
+            railway("up", "-p", proyecto_id, "-e", entorno, "-s", servicio.nombre, "--detach", cwd=origen)
         if not esperar:
             print("  lanzado (sin esperar).")
             continue
@@ -264,17 +323,28 @@ def main() -> int:
         "--ref", default=REF_POR_DEFECTO, help=f"con encender: rama o commit publicado que se despliega (por defecto {REF_POR_DEFECTO})"
     )
     parser.add_argument("--local", action="store_true", help="con encender: subir la carpeta local en vez de lo publicado en GitHub")
+    parser.add_argument(
+        "--config", type=Path, default=ARCHIVO_CONFIG, help="archivo con las direcciones y el modo de subida (por defecto servicios.local.json)"
+    )
     args = parser.parse_args()
 
     if shutil.which("railway") is None:
         print("No se encontró la CLI de Railway. Instalarla con: npm install -g @railway/cli", file=sys.stderr)
         return 2
     try:
-        elegidos = seleccionar(args.servicios, invertir=args.accion == "apagar")
+        config = cargar_configuracion(args.config)
+        elegidos = seleccionar(args.servicios, invertir=args.accion == "apagar", catalogo=aplicar_configuracion(config))
         if args.accion == "estado":
             return estado(elegidos)
         if args.accion == "encender":
-            return encender(elegidos, args.forzar, esperar=not args.sin_esperar, ref=args.ref, local=args.local)
+            return encender(
+                elegidos,
+                args.forzar,
+                esperar=not args.sin_esperar,
+                ref=args.ref,
+                local=args.local,
+                subir_carpeta=bool(config.get("subir_carpeta", False)),
+            )
         return apagar(elegidos, args.forzar)
     except (ValueError, RuntimeError) as error:
         print(f"Error: {error}", file=sys.stderr)

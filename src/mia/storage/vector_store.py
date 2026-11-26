@@ -80,6 +80,10 @@ class VectorStore(ABC):
     def get_chunks(self, document_id: str, chunk_indexes: list[int]) -> list[SearchResult]:
         """Fragmentos de un documento por posición (sin puntaje de similitud, `score=0`)."""
 
+    def ping(self, vector_size: int) -> None:
+        """Lectura mínima para que un almacén alojado no se considere inactivo (ver storage/keepalive.py)."""
+        raise NotImplementedError("Este almacén no necesita lectura de mantenimiento")
+
     # Eliminación de documentos (feature 012). No es abstracto, como los de abajo: un almacén que no lo tenga hace
     # que la eliminación responda 503 sin tocar la base.
     def delete_document(self, document_id: str) -> None:
@@ -154,6 +158,11 @@ class QdrantVectorStore(VectorStore):
             self.client.create_payload_index(
                 collection_name=self.collection, field_name=field, field_schema=schema
             )
+
+    def ping(self, vector_size: int) -> None:
+        # Una búsqueda como la de una consulta real (sin filtro ni modelo), que es lo que con más seguridad cuenta
+        # como actividad en Qdrant Cloud.
+        self.client.query_points(collection_name=self.collection, query=[1.0] + [0.0] * (vector_size - 1), limit=1)
 
     def upsert(self, chunks: list[Chunk]) -> None:
         points = [
