@@ -6,13 +6,13 @@ Guía práctica para desplegar, cargar documentos y mantener funcionando el prot
 
 | Pieza | Servicio | Plan | Límite relevante |
 |---|---|---|---|
-| API (consultas e ingesta) | [Railway](https://railway.com), servicio `MIA`, `https://mia-main.up.railway.app` (`railway.json`) | Hobby (5 USD/mes) | Límite duro de gasto configurado en Railway (10 USD); disco no persistente. Hasta el 2026-10-07 la API estaba en Render free (`render.yaml`), hoy suspendido |
+| API (consultas e ingesta) | [Railway](https://railway.com), servicio `MIA`, `https://mia-main.up.railway.app` (`Dockerfile`) | Hobby (5 USD/mes) | Límite duro de gasto configurado en Railway (10 USD); disco no persistente. Hasta el 2026-10-07 la API estaba en Render free (`render.yaml`), hoy suspendido |
 | Metadata (dominios, documentos) | [Neon](https://neon.tech) Postgres | Free | 0.5 GB; la base se suspende sin uso y despierta sola al conectarse |
 | Vectores | [Qdrant Cloud](https://cloud.qdrant.io) | Free | 1 GB; el clúster se suspende tras 1 semana sin uso (se reactiva desde el panel) |
 | LLM | [OpenRouter](https://openrouter.ai): modo literal con `z-ai/glm-5.3-flash` (razonamiento bajo) y modo con razonamiento con `z-ai/glm-5.3` (esfuerzo medio) | Saldo prepagado | Al agotarse el saldo, las consultas fallan (502). La cuenta exige proveedores de retención cero y que no entrenen con los datos |
 | Embeddings | Modelo local e5-small (ONNX), dentro de la imagen | Sin costo | Ninguno externo |
 | Sitios web (Consulta administrativa y panel) | Tres servicios más de Railway que sirven archivos estáticos: `mia-computacion`, `mia-administracion` y `mia-panel` (`https://<nombre>.up.railway.app`; la Consulta de Analítica de Negocio conserva el nombre de servicio `mia-administracion` pero su dirección es `https://mia-analitica-negocio.up.railway.app` desde el 2026-11-06) | Mismo plan Hobby | Cada uno gasta solo mientras está encendido; se apagan con *Remove*. Sin auto-deploy: se despliegan con `railway up` (ver "Desplegar cambios") |
-| Bot de WhatsApp (feature 011) | Servicio `mia-whatsapp` de Railway (`https://mia-whatsapp.up.railway.app`, `whatsapp/Dockerfile` y `whatsapp/railway.json`), más [Kapso](https://kapso.ai) como canal (primera entrega: solo su sandbox) | Mismo plan Hobby; plan gratuito de Kapso | El límite real es la cuota de mensajes de Kapso (2.000 al mes entre recibidos y enviados), no el gasto de modelos; ver "El bot de WhatsApp". Un servicio pequeño (imagen de unos 170 MB): medir su costo en Railway la primera semana |
+| Bot de WhatsApp (feature 011) | Servicio `mia-whatsapp` de Railway (`https://mia-whatsapp.up.railway.app`, `whatsapp/Dockerfile`), más [Kapso](https://kapso.ai) como canal (primera entrega: solo su sandbox) | Mismo plan Hobby; plan gratuito de Kapso | El límite real es la cuota de mensajes de Kapso (2.000 al mes entre recibidos y enviados), no el gasto de modelos; ver "El bot de WhatsApp". Un servicio pequeño (imagen de unos 170 MB): medir su costo en Railway la primera semana |
 | Ingesta de documentos | La propia API en Railway, o una API local contra producción (cargas masivas con `scripts/cargar_carpeta.py`) | Sin costo adicional | Los archivos originales no quedan guardados en el servidor |
 
 ## Variables de entorno
@@ -95,7 +95,7 @@ Reemplazó a Render free: la API en [Railway](https://railway.com) (plan Hobby) 
 | Railway Hobby | 5 USD al mes, que incluyen 5 USD de uso; MIA consume unos 4 a 4.5 USD (unos 340 MB de RAM en reposo, cobro por segundo) | Límite de uso (*Usage limits*): al alcanzarlo, Railway apaga los servicios en vez de seguir cobrando. Avisa por correo al 75 %, 90 % y 100 %. Los datos se conservan. |
 | OpenRouter | Según consultas: unos 10 a 12 USD por 1000 consultas con un modelo sin razonamiento y GLM 5.3 (ver ESCALABILIDAD.md) | Saldo prepagado: al agotarse, las consultas fallan. Además, cada clave puede tener su propio límite de crédito. |
 
-**Qué cambia frente a Render free:** la API no se duerme, y con memoria suficiente la ingesta se hace en el propio servidor (`INGESTION_ENABLED=true`, en segundo plano como en local), así que se pueden subir documentos desde Swagger o desde el futuro panel de administración sin levantar una API local. **Railway no redespliega solo** con los push a `main`: no tiene instalada su aplicación de GitHub, así que cada despliegue es manual con `scripts/servicios.py encender` (ver "Desplegar cambios"; comprobado el 2026-11-15, tras el push de la feature 018 la API siguió con la versión anterior hasta correr el script). Los `watchPatterns` de `railway.json` (`src/`, `Dockerfile`, `pyproject.toml`, `railway.json`) solo tendrían efecto si algún día se instala esa aplicación.
+**Qué cambia frente a Render free:** la API no se duerme, y con memoria suficiente la ingesta se hace en el propio servidor (`INGESTION_ENABLED=true`, en segundo plano como en local), así que se pueden subir documentos desde Swagger o desde el futuro panel de administración sin levantar una API local. **Railway no redespliega solo** con los push a `main`: no tiene instalada su aplicación de GitHub, así que cada despliegue es manual con `scripts/servicios.py encender` (ver "Desplegar cambios"; comprobado el 2026-11-15, tras el push de la feature 018 la API siguió con la versión anterior hasta correr el script). Los archivos `railway.json` del repositorio ya no se aplican (ver "Los `railway.json` ya no se aplican").
 
 **Pasos, OpenRouter (una sola vez):**
 
@@ -110,7 +110,7 @@ Reemplazó a Render free: la API en [Railway](https://railway.com) (plan Hobby) 
 
 1. Crear la cuenta y pasar al plan Hobby.
 2. **Antes de desplegar**, en la configuración del espacio de trabajo, *Usage > Set usage limits*: alerta por correo en 6 USD y límite duro en 10 USD.
-3. *New Project > Deploy from GitHub repo* y elegir este repositorio. Railway lee `railway.json`: construye con el `Dockerfile` y usa `/health` como chequeo de salud.
+3. *New Project > Deploy from GitHub repo* y elegir este repositorio. Railway construye con el `Dockerfile`. El chequeo de salud se configura a mano (ver "Los `railway.json` ya no se aplican").
 4. En el servicio, *Variables > Raw Editor*: pegar `deploy/railway/variables.example.env` y completar las credenciales de Neon, Qdrant Cloud y OpenRouter, y el `OPENROUTER_MODEL` elegido.
 5. En *Settings*, elegir la región más cercana a Qdrant Cloud (este de Estados Unidos).
 6. En *Settings > Networking*, *Generate Domain* para obtener la URL pública.
@@ -194,7 +194,7 @@ Agregar un correo que ya existe reemplaza su alcance y lo reactiva. El correo no
 
 ### Publicar el panel como sitio estático
 
-El panel se publica igual que la Consulta: como un servicio de Railway que sirve archivos estáticos (`web/admin/Dockerfile` y `web/admin/railway.json`). Se puede apagar con *Remove* cuando no se use.
+El panel se publica igual que la Consulta: como un servicio de Railway que sirve archivos estáticos (`web/admin/Dockerfile`). Se puede apagar con *Remove* cuando no se use.
 
 1. En el proyecto de MIA: *New > GitHub Repo* y elegir este repositorio. Nombre sugerido: `mia-panel`.
 2. *Settings > Source > Root Directory*: `web/admin`. **No** poner ruta en *Config-as-code* ni en *Dockerfile Path*: con una ruta fija Railway busca el `Dockerfile` de la raíz (el de la API) y la compilación falla con `"/pyproject.toml": not found`. Sin ruta, usa el `Dockerfile` de la carpeta.
@@ -328,10 +328,23 @@ python scripts/crear_servicios.py --proyecto mia --env-api .env.railway-api --en
 
    Crea el proyecto (`railway init`; vincula esta carpeta al proyecto nuevo, así que la cuenta anterior deja de estar vinculada aquí), los cinco servicios vacíos, sus dominios (los sitios apuntan al puerto 3000) y las variables con las direcciones reales (`VITE_API_URL`, `MIA_API_URL`, `CORS_ORIGINS`), todo con `--skip-deploys`. Las credenciales se pasan por stdin, no por la línea de comandos. `ADMIN_KEY`, `BOT_SERVICE_KEY` y `KAPSO_WEBHOOK_SECRET` se generan si no vienen en los archivos y se guardan en `.env.railway.generado`. Se puede repetir: reutiliza servicios, dominios y secretos.
 4. **Desplegar:** `python scripts/servicios.py encender`. El script escribió `servicios.local.json` (ignorado por git) con las direcciones nuevas y `"subir_carpeta": true`: con eso sube cada servicio desde su carpeta (`whatsapp/`, `web/consulta/`, `web/admin/`), así que **no hace falta configurar *Root Directory*** y las direcciones fijas del script no se tocan. Sin ese archivo, `servicios.py` funciona como antes.
-5. **Después:** el panel con la `ADMIN_KEY` nueva (programas, dominios, artefactos y carga de documentos; los datos empiezan de cero), el webhook de Kapso apuntando a `https://<mia-whatsapp>/webhooks/kapso` y registrar el bot en el módulo Bots. Si TI configuró un client ID de Entra, pedirles la dirección de redirección nueva del panel.
+5. **Después:** el chequeo de salud de `MIA` y `mia-whatsapp` (a mano, ver "Los `railway.json` ya no se aplican"); el panel con la `ADMIN_KEY` nueva (programas, dominios, artefactos y carga de documentos; los datos empiezan de cero), el webhook de Kapso apuntando a `https://<mia-whatsapp>/webhooks/kapso` y registrar el bot en el módulo Bots. Si TI configuró un client ID de Entra, pedirles la dirección de redirección nueva del panel.
 6. **Apagar la cuenta anterior:** vincular la carpeta a ese proyecto (`railway link`), mover o renombrar `servicios.local.json` y `python scripts/servicios.py apagar`.
 
 Para volver al trabajo con la cuenta anterior basta borrar `servicios.local.json` y volver a vincular el proyecto con `railway link`.
+
+### Los `railway.json` ya no se aplican
+
+Los cuatro archivos (`railway.json` en la raíz, `whatsapp/`, `web/admin/` y `web/consulta/`) eran la configuración de Railway como código: constructor `Dockerfile`, chequeo de salud y hasta 3 reinicios. Comprobado el 2026-11-26 en la cuenta actual: los despliegues salen **sin chequeo de salud y con 10 reintentos** (el valor por defecto), así que Railway no los está leyendo. Railway además [dejó obsoleta esa forma de configurar](https://docs.railway.com/config-as-code): deja de leer los archivos el 2026-12-01. No hace falta migrarlos: Railway usa el `Dockerfile` por su cuenta y los sitios y la API funcionan. Se conservan como referencia.
+
+Lo que sí se pierde es el chequeo de salud: sin él, Railway da por buena una versión nueva sin probar que responda, y una versión defectuosa puede reemplazar a la que funcionaba (`servicios.py encender` lo detecta después, porque prueba la dirección, pero no lo evita). Para recuperarlo, **a mano en la interfaz de Railway** (opcional; rige desde el siguiente despliegue):
+
+| Servicio | *Settings > Deploy > Healthcheck Path* | Tiempo máximo (*Healthcheck Timeout*) |
+|---|---|---|
+| `MIA` | `/health` | 300 segundos |
+| `mia-whatsapp` | `/health` | 60 segundos |
+
+En los tres sitios estáticos no se considera necesario.
 
 ## Despliegue en Cloud Run (alternativa, no adoptada)
 
