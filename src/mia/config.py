@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: str = ""
     qdrant_collection: str = "mia_chunks"
+    # Horas entre lecturas de mantenimiento a Qdrant, para que Qdrant Cloud no suspenda un clúster gratuito por
+    # inactividad (una semana). 0 las desactiva; el máximo, 144 (seis días), queda bajo ese plazo.
+    qdrant_keepalive_hours: float = Field(default=24, ge=0, le=144)
 
     database_url: str = "sqlite:///./mia.db"
 
