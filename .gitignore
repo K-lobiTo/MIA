@@ -243,6 +243,4 @@ web/consulta/dist/
 # Videos de la guia de uso: los mp4 se regeneran con scripts/demos/grabar.py
 docs/demos/clips/*.mp4
 .venv-demos/
-.neon
-node_modules/
 servicios.local.json
