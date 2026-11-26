@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import delete, func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from mia.access import audit
@@ -211,6 +212,22 @@ def _set_access(session: Session, artifact: Artifact, access: Access) -> None:
     session.add_all([ArtifactDomain(artifact_id=artifact.id, domain_id=d) for d in dict.fromkeys(access.domain_ids)])
 
 
+def _commit_access(session: Session, access: Access | None) -> None:
+    """Confirma. Si un programa o dominio del acceso se eliminó entre la validación y el guardado, responde 404 sin
+    cambiar nada."""
+    try:
+        session.commit()
+    except IntegrityError as exc:
+        session.rollback()
+        if access is not None:
+            units = set(session.scalars(select(Unit.id).where(Unit.id.in_(access.unit_ids))))
+            domains = set(session.scalars(select(Domain.id).where(Domain.id.in_(access.domain_ids))))
+            if set(access.unit_ids) - units or set(access.domain_ids) - domains:
+                detail = "Un programa o dominio elegido ya no existe. Revisa la selección e intenta de nuevo."
+                raise HTTPException(status_code=404, detail=detail) from exc
+        raise
+
+
 def _modes_text(modes: list[str]) -> str:
     return ",".join(m for m in MODE_IDS if m in modes)
 
@@ -302,7 +319,7 @@ def create_artifact(
     session.add(artifact)
     session.flush()
     _set_access(session, artifact, payload.access)
-    session.commit()
+    _commit_access(session, payload.access)
     session.refresh(artifact)
     audit.log_write(principal, "artifact.create", artifact.id, artifact.name)
     return ArtifactCreatedOut(**_to_out(session, artifact).model_dump(), key=key)
@@ -357,7 +374,7 @@ def update_artifact(
         artifact.custom_prompt = payload.custom_prompt.strip()
     if payload.active is not None:
         artifact.active = payload.active
-    session.commit()
+    _commit_access(session, payload.access)
     session.refresh(artifact)
     audit.log_write(principal, "artifact.update", artifact.id, artifact.name)
     if artifact.context_turns != previous_turns:

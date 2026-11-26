@@ -56,6 +56,8 @@ class ConsultaUserCreate(BaseModel):
 
 class ConsultaUserUpdate(BaseModel):
     active: bool | None = None
+    # Ausente: el programa no cambia. null: queda sin programa (feature 023).
+    unit_id: str | None = None
 
 
 class PasswordReset(BaseModel):
@@ -174,8 +176,10 @@ def create_user(
     try:
         session.commit()
     except IntegrityError as exc:
-        # Otro alta igual llegó entre la comprobación y el guardado.
+        # Otro alta igual llegó entre la comprobación y el guardado, o el programa se eliminó mientras tanto.
         session.rollback()
+        if payload.unit_id is not None and session.get(Unit, payload.unit_id) is None:
+            raise HTTPException(status_code=404, detail="Programa no encontrado.") from exc
         raise HTTPException(
             status_code=409, detail=f"Ya existe un usuario llamado '{username}'."
         ) from exc
@@ -198,6 +202,25 @@ def update_user(
     session: Session = Depends(get_session),
 ) -> ConsultaUserOut:
     user = _user_in_scope(session, principal, user_id)
+    # El programa se valida antes de cambiar nada. No da permisos: no se cierran sesiones al cambiarlo.
+    moves = "unit_id" in payload.model_fields_set and payload.unit_id != user.unit_id
+    unit = None
+    if moves:
+        if payload.unit_id is not None:
+            unit = session.get(Unit, payload.unit_id)
+            if unit is None:
+                raise HTTPException(status_code=404, detail="Programa no encontrado.")
+        ensure_unit(principal, payload.unit_id, "consulta_user.update", user.id)
+        user.unit_id = payload.unit_id
+        try:
+            session.commit()
+        except IntegrityError as exc:
+            # El programa pudo eliminarse entre la validación y el guardado.
+            session.rollback()
+            raise HTTPException(status_code=404, detail="Programa no encontrado.") from exc
+        audit.log_write(
+            principal, "consulta_user.update", user.id, f"{user.username}: programa {unit.name if unit else 'ninguno'}"
+        )
     if payload.active is not None and payload.active != user.active:
         user.active = payload.active
         session.commit()

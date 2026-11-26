@@ -7,7 +7,7 @@ import json
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from mia.storage.models import Artifact, Domain, QueryLog, Unit
+from mia.storage.models import Artifact, DeletedDomain, Domain, QueryLog, Unit
 
 CSV_COLUMNS = [
     "id", "created_at", "artifact", "mode", "model", "prompt_tokens", "completion_tokens", "reasoning_tokens",
@@ -48,11 +48,14 @@ def detail(session: Session, row: QueryLog) -> dict:
     domain_ids = json.loads(row.domain_ids or "[]")
     units = {u.id: u.name for u in session.scalars(select(Unit))}
     domains = {d.id: d for d in session.scalars(select(Domain).where(Domain.id.in_(domain_ids)))} if domain_ids else {}
+    gone = [i for i in domain_ids if i not in domains]
+    deleted = {d.id: d.label for d in session.scalars(select(DeletedDomain).where(DeletedDomain.id.in_(gone)))} if gone else {}
     labels = []
     for domain_id in domain_ids:
         domain = domains.get(domain_id)
         if domain is None:
-            labels.append(f"({domain_id}, ya no existe)")
+            # Un dominio eliminado conserva su nombre (feature 023).
+            labels.append(f"{deleted[domain_id]} (eliminado)" if domain_id in deleted else f"({domain_id}, ya no existe)")
         else:
             unit = units.get(domain.unit_id or "")
             labels.append(f"{unit} / {domain.name}" if unit else domain.name)

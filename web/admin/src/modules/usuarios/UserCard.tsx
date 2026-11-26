@@ -8,9 +8,10 @@ interface Props {
   busy: boolean;
   onToggleActive: () => void;
   onResetPassword: () => void;
+  onChangeUnit: () => void;
 }
 
-export function UserCard({ user, busy, onToggleActive, onResetPassword }: Props) {
+export function UserCard({ user, busy, onToggleActive, onResetPassword, onChangeUnit }: Props) {
   const status = describeUserStatus(user);
   return (
     <Paper component="article" withBorder p="md" radius="md" className="user-card" aria-label={user.username}>
@@ -43,6 +44,9 @@ export function UserCard({ user, busy, onToggleActive, onResetPassword }: Props)
         </Button>
         <Button variant="default" size="compact-sm" onClick={onResetPassword} disabled={busy}>
           Restablecer contraseña
+        </Button>
+        <Button variant="default" size="compact-sm" onClick={onChangeUnit} disabled={busy}>
+          Cambiar programa
         </Button>
       </Group>
     </Paper>

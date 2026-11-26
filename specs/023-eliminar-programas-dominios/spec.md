@@ -52,7 +52,7 @@ Una persona con alcance global elimina un programa que no debía existir. Desapa
 1. **Given** un programa sin dominios y sin nada asociado, **When** una persona con alcance global lo elimina y confirma, **Then** desaparece de todas las listas.
 2. **Given** una persona con alcance de programa, **When** intenta eliminar un programa, **Then** se rechaza, igual que hoy se rechaza crearlo, y el rechazo queda registrado.
 3. **Given** un programa con dominios, **When** se intenta eliminar, **Then** se rechaza y se nombran los dominios que hay que eliminar primero.
-4. **Given** un programa con usuarios de la Consulta, cuentas de administración o artefactos con acceso a él, **When** se intenta eliminar, **Then** se rechaza y se nombra cada uno; ninguno cambia.
+4. **Given** un programa con usuarios de la Consulta, cuentas de administración o artefactos con acceso a él, **When** se intenta eliminar, **Then** se rechaza y se dice cuántos son y cuáles (hasta 10 de cada tipo); ninguno cambia.
 
 ---
 
@@ -107,7 +107,7 @@ Eliminar un programa o dominio no altera otros programas, dominios ni documentos
 - El programa es el único acceso de un artefacto: como un artefacto no puede quedar sin ningún acceso, el mensaje indica darle otro acceso o eliminar el artefacto.
 - Un usuario de la Consulta desactivado sigue asignado al programa: también impide eliminarlo y también se puede reasignar.
 - Una cuenta de administración limitada al programa lo impide y, como esas cuentas no se gestionan desde el panel, el mensaje dice que hay que pedirlo a soporte técnico.
-- El dominio eliminado era lo único que un artefacto podía consultar: el artefacto sigue existiendo y responde que no tiene información; el panel lo advierte antes de confirmar.
+- El dominio eliminado era lo único que un artefacto podía consultar: el artefacto sigue existiendo sin nada que consultar (el bot responde que no tiene información y la Consulta dice que todavía no tiene dominios); el panel lo advierte antes de confirmar.
 - Un bot de WhatsApp usa ese artefacto: la advertencia lo menciona, porque responde a personas externas.
 - Alguien sube un documento al dominio mientras otra persona lo elimina: no pueden quedar documentos ni contenido buscable sin dominio.
 - Dos personas eliminan lo mismo a la vez: una lo logra y la otra recibe que ya no existe.

@@ -494,6 +494,21 @@ La API elimina al recibir la petición: la confirmación es del panel, no de la 
 
 **Recuperar un documento eliminado por error.** No hay papelera: se **vuelve a subir el archivo original** (desde el panel o con `scripts/cargar_carpeta.py`). Entra como un documento nuevo y responde de nuevo en cuanto termina de procesarse. Tener en cuenta que (1) **las imágenes asociadas no se recuperan**: hay que asociarlas de nuevo desde el botón "Imágenes", y (2) **el sistema no conserva el archivo original** (`uploads/` no persiste en Railway), así que quien administra debe guardar los originales fuera de MIA. Una imagen que el bot ya envió o un enlace público ya servido pueden verse en las cachés externas (Kapso, Meta, navegadores) hasta una hora aunque el documento ya no exista.
 
+## Eliminar programas y dominios (feature 023)
+
+Desde el Inventario: cada dominio tiene **Eliminar** y cada programa **Eliminar programa** (solo alcance global). La ventana dice primero qué lo impide o a quién afecta. Es **definitivo**.
+
+| Para eliminar | Antes hay que |
+|---|---|
+| Un dominio | Eliminar sus documentos (con **Seleccionar** se hace en bloque) y borrar sus carpetas, una por una, empezando por las de más adentro |
+| Un programa | Eliminar sus dominios; cambiar de programa a sus usuarios de la Consulta (**Cambiar programa**); quitarlo de los artefactos que lo incluyen (si es su único acceso, darles otro o eliminarlos); y quitar sus cuentas de administración con `scripts/admin.py` |
+
+Por la API: `GET /domains/{id}/deletion` o `/units/{id}/deletion` para revisar y `DELETE` sobre `/domains/{id}` o `/units/{id}` con `X-Admin-Key` (204 eliminado, 409 con la explicación de lo que lo impide).
+
+**Despliegue:** hay una migración (`0016`, aditiva: tabla `deleted_domains`) que la API aplica al arrancar. Encender `MIA` y `mia-panel`. Para volver a una versión anterior, `alembic downgrade 0015` antes (se pierden los nombres de los dominios eliminados en el historial).
+
+**Límite conocido:** una cuenta de programa que elimine el único dominio de un artefacto deja un artefacto sin accesos, que después solo ve el alcance global.
+
 ## Preparar documentos que vienen de páginas web (normalización)
 
 El RAG responde con lo que encuentra en los fragmentos; un texto copiado tal cual de una página web llega con ruido, sin el contexto de la página y sin sus enlaces, y eso baja la calidad de las respuestas aunque la información esté. Antes de subir algo sacado de una página (web scraping, exportar a PDF o copiar y pegar) hay que **normalizarlo**. Lo aprendido con los posgrados del TEC (Ciberseguridad y Analítica de Negocio, 26 y 27 de octubre de 2026):

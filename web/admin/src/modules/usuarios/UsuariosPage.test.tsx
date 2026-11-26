@@ -10,6 +10,7 @@ import { theme } from "../../theme";
 let me: Me;
 vi.mock("../../auth/session", () => ({ useMe: () => me }));
 
+import { opcionesDePrograma } from "./CambiarProgramaDialog";
 import { UsuariosPage } from "./UsuariosPage";
 
 const global: Me = { email: "operador@itcr.ac.cr", is_global: true, source: "entra", units: [] };
@@ -53,6 +54,7 @@ describe("UsuariosPage", () => {
     expect(html).toContain("3 conversaciones");
     expect(html).toContain("Desactivar");
     expect(html).toContain("Restablecer contraseña");
+    expect(html).toContain("Cambiar programa");
   });
 
   it("un usuario desactivado ofrece reactivarlo y uno sin programa dice global", () => {
@@ -73,5 +75,14 @@ describe("UsuariosPage", () => {
 
   it("sin usuarios invita a registrar el primero", () => {
     expect(render({ users: [] })).toContain("Todavía no hay usuarios registrados");
+  });
+});
+
+describe("opcionesDePrograma", () => {
+  const units = [{ id: "p1", name: "Computación" }];
+
+  it("solo el alcance global puede dejar a alguien sin programa", () => {
+    expect(opcionesDePrograma(units, true).map((o) => o.label)).toEqual(["Ninguno (global)", "Computación"]);
+    expect(opcionesDePrograma(units, false).map((o) => o.label)).toEqual(["Computación"]);
   });
 });
