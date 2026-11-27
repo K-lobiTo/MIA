@@ -29,7 +29,7 @@ URLS = {
     "MIA": "https://api.up.railway.app",
     "mia-whatsapp": "https://bot.up.railway.app",
     "mia-computacion": "https://comp.up.railway.app",
-    "mia-administracion": "https://admin.up.railway.app",
+    "mia-analitica-negocios": "https://admin.up.railway.app",
     "mia-panel": "https://panel.up.railway.app",
 }
 
@@ -177,7 +177,7 @@ def test_con_subir_carpeta_cada_servicio_se_sube_desde_su_carpeta():
         "MIA": base,
         "mia-whatsapp": base / "whatsapp",
         "mia-computacion": base / "web/consulta",
-        "mia-administracion": base / "web/consulta",
+        "mia-analitica-negocios": base / "web/consulta",
         "mia-panel": base / "web/admin",
     }
     assert all(srv.carpeta_de_subida(s, base, False) == base for s in srv.SERVICIOS)
