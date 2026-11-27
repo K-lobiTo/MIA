@@ -21,7 +21,7 @@ def nombres(lista):
 
 
 def test_sin_nombres_se_eligen_los_cinco_con_la_api_primero():
-    assert nombres(servicios.seleccionar([])) == ["MIA", "mia-whatsapp", "mia-computacion", "mia-administracion", "mia-panel"]
+    assert nombres(servicios.seleccionar([])) == ["MIA", "mia-whatsapp", "mia-computacion", "mia-analitica-negocios", "mia-panel"]
 
 
 def test_al_apagar_se_invierte_el_orden_y_la_api_queda_al_final():

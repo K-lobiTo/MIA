@@ -6,7 +6,7 @@ docs/OPERACION.md). Hace con la CLI lo que de otro modo se haría a mano en la i
 
   1. (opcional) crea el proyecto: `railway init`.
   2. crea los servicios que falten (vacíos, sin GitHub): MIA, mia-whatsapp, mia-computacion,
-     mia-administracion y mia-panel.
+     mia-analitica-negocios y mia-panel.
   3. genera el dominio de cada uno (los sitios, apuntando al puerto 3000).
   4. pone las variables, con las direcciones reales: VITE_API_URL de los sitios, MIA_API_URL del bot y
      CORS_ORIGINS de la API. Usa `--skip-deploys`: nada se despliega todavía.
@@ -49,7 +49,7 @@ RAIZ_REPO = srv.RAIZ_REPO
 PLANTILLA_API = RAIZ_REPO / "deploy" / "railway" / "variables.example.env"
 ARCHIVO_SECRETOS = RAIZ_REPO / ".env.railway.generado"
 PUERTO_SITIO = "3000"
-SITIOS = ("mia-computacion", "mia-administracion", "mia-panel")
+SITIOS = ("mia-computacion", "mia-analitica-negocios", "mia-panel")
 SECRETOS_GENERABLES_API = ("ADMIN_KEY", "BOT_SERVICE_KEY")
 # Sin estas, la API no arranca o no puede responder.
 OBLIGATORIAS_API = ("DATABASE_URL", "QDRANT_URL", "QDRANT_API_KEY", "OPENROUTER_API_KEY")

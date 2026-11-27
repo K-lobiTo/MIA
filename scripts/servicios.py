@@ -15,7 +15,7 @@ y `railway link`):
     python scripts/servicios.py apagar mia-panel
 
 Los nombres válidos: MIA (la API), mia-whatsapp (el bot de WhatsApp), mia-computacion,
-mia-administracion y mia-panel. Los sitios y el bot necesitan la API encendida para funcionar.
+mia-analitica-negocios y mia-panel. Los sitios y el bot necesitan la API encendida para funcionar.
 
 `encender` despliega por defecto lo que hay en `main` de GitHub (`origin/main`, tras un `git fetch`),
 no lo que haya en la carpeta local: exporta esa versión del repositorio a una carpeta temporal y la
@@ -79,7 +79,7 @@ SERVICIOS = [
         "web/consulta",
     ),
     Servicio(
-        "mia-administracion",
+        "mia-analitica-negocios",
         "https://mia-analitica-negocio.up.railway.app",
         "/",
         "Consulta del Área académica de Analítica de Negocios",
@@ -304,11 +304,11 @@ def apagar(servicios: list[Servicio], forzar: bool) -> int:
 
 
 def estado(servicios: list[Servicio]) -> int:
-    print(f"{'Servicio':<20} {'Último despliegue':<18} {'HTTP':<5} Dirección")
+    print(f"{'Servicio':<23} {'Último despliegue':<18} {'HTTP':<5} Dirección")
     for servicio in servicios:
         despliegue = ultimo_despliegue(servicio)
         etiqueta = despliegue["status"] if despliegue else "sin despliegues"
-        print(f"{servicio.nombre:<20} {etiqueta:<18} {codigo_http(servicio):<5} {servicio.url}")
+        print(f"{servicio.nombre:<23} {etiqueta:<18} {codigo_http(servicio):<5} {servicio.url}")
     print("\nHTTP 200: encendido. 404: apagado. 502: encendido pero mal configurado (puerto).")
     return 0
 
@@ -316,7 +316,7 @@ def estado(servicios: list[Servicio]) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Enciende, apaga y consulta los servicios de MIA en Railway.")
     parser.add_argument("accion", choices=["estado", "encender", "apagar"])
-    parser.add_argument("servicios", nargs="*", help="MIA, mia-whatsapp, mia-computacion, mia-administracion, mia-panel (por defecto, todos)")
+    parser.add_argument("servicios", nargs="*", help="MIA, mia-whatsapp, mia-computacion, mia-analitica-negocios, mia-panel (por defecto, todos)")
     parser.add_argument("--forzar", action="store_true", help="no pedir confirmación")
     parser.add_argument("--sin-esperar", action="store_true", help="con encender: lanzar los despliegues sin esperar su resultado")
     parser.add_argument(
